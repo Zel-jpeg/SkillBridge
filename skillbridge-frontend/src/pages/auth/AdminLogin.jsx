@@ -43,11 +43,30 @@ export default function AdminLogin() {
     // Simulated delay — remove when real API is wired
     setTimeout(() => {
       setLoading(false)
-      // Fake success → go to admin dashboard
-      // In real flow: store JWT in localStorage then navigate
-      localStorage.setItem('sb-token', 'admin-placeholder-token')
-      localStorage.setItem('sb-role',  'admin')
-      navigate('/admin/dashboard')
+      
+      // =========================================================================
+      // [ADJUSTED PART START]: Added dummy data validation and conditional routing
+      // =========================================================================
+      if (username === 'admin' && password === 'admin01031') {
+        // Fake success for admin → go to admin dashboard
+        localStorage.setItem('sb-token', 'admin-placeholder-token')
+        localStorage.setItem('sb-role',  'admin')
+        navigate('/admin/dashboard')
+      } 
+      else if (username === 'instructor' && password === 'instructor01031') {
+        // Fake success for instructor → go to instructor dashboard
+        localStorage.setItem('sb-token', 'instructor-placeholder-token')
+        localStorage.setItem('sb-role',  'instructor')
+        navigate('/instructor/dashboard')
+      } 
+      else {
+        // Invalid credentials fallback
+        setError('Invalid username or password.')
+      }
+      // =========================================================================
+      // [ADJUSTED PART END]
+      // =========================================================================
+
     }, 800)
   }
 
