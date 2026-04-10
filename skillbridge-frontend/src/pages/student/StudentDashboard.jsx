@@ -69,19 +69,34 @@ function loadLeaflet() {
   return _leafletPromise
 }
 
-function makeCompanyIcon(L, name) {
+function makeCompanyIcon(L, name, isTopMatch = false) {
+  const pinFill = isTopMatch ? '#f59e0b' : '#16a34a'
+  const labelBg = isTopMatch ? '#f59e0b' : '#111827'
+
   return L.divIcon({
-    className: '', iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -38],
+    className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -42],
     html: `
-      <div class="group relative flex flex-col justify-end items-center cursor-pointer">
-        <div class="absolute bottom-[36px] whitespace-nowrap bg-gray-900 group-hover:bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md pointer-events-none z-50 transition-all duration-200 group-hover:-translate-y-1">
-          ${name}
-          <div class="absolute -bottom-[4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4px border-t-4px border-l-transparent border-r-transparent border-t-gray-900 group-hover:border-t-green-600 transition-colors duration-200"></div>
+      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none"
+           style="position:relative;z-index:${isTopMatch ? 9999 : 100}">
+        <div style="
+          position:absolute;bottom:40px;white-space:nowrap;
+          background:${labelBg};color:white;
+          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
+          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+          pointer-events:none;transition:all .18s;
+          transform:translateX(-50%);left:50%;
+        ">
+          ${isTopMatch ? '⭐ ' : ''}${name}
+          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+            border-top:6px solid ${labelBg}"></div>
         </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 28 36" class="transition-transform duration-200 group-hover:scale-110" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3))">
-          <path fill="#16a34a" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-          <circle fill="white" cx="14" cy="13" r="5"/>
-        </svg>
+        <div style="transition:transform .18s" class="group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="${isTopMatch ? 32 : 26}" height="${isTopMatch ? 40 : 34}" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));display:block">
+            <path fill="${pinFill}" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
+            <circle fill="white" cx="14" cy="13" r="5"/>
+          </svg>
+        </div>
       </div>`,
   })
 }
@@ -120,12 +135,18 @@ function NearbyMap({ companies, studentPin }) {
 
       const allMarkers = []
 
-      companies.forEach(co => {
+      // Company pins — add in reverse so top match (highest rank) renders last = on top
+      const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
+      ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
         if (co.lat == null) return
+        const isTopMatch = idx === 0
         const distTxt = studentPin
           ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
           : ''
-        const mk = L.marker([co.lat, co.lng], { icon: makeCompanyIcon(L, co.name) })
+        const mk = L.marker([co.lat, co.lng], {
+          icon: makeCompanyIcon(L, co.name, isTopMatch),
+          zIndexOffset: isTopMatch ? 1000 : idx * -10,
+        })
           .addTo(map)
           .bindPopup(`
             <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
@@ -162,7 +183,7 @@ function NearbyMap({ companies, studentPin }) {
   }, []) // intentional
 
   // Fill 100% of parent — parent must have an explicit height or use flex-1
-  return <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" />
+  return <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" style={{ isolation: 'isolate' }} />
 }
 
 // ════════════════════════════════════════════════════════════════

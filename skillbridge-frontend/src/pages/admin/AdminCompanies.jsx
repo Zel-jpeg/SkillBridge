@@ -74,15 +74,48 @@ async function geocodeAddress({ barangay, city, province }) {
   return { lat: 7.1907, lng: 125.4553, zoom } // fallback: Davao City
 }
 
-// ── Custom green pin icon ─────────────────────────────────────────
-function makePinIcon(L, color = '#16a34a') {
+// ── Company pin icon with hoverable name label ───────────────────
+function makeCompanyIcon(L, name) {
+  return L.divIcon({
+    className:   '',
+    iconSize:    [28, 36],
+    iconAnchor:  [14, 36],
+    popupAnchor: [0, -42],
+    html: `
+      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none"
+           style="position:relative;z-index:100">
+        <div style="
+          position:absolute;bottom:40px;white-space:nowrap;
+          background:#111827;color:white;
+          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
+          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+          pointer-events:none;transition:all .18s;
+          transform:translateX(-50%);left:50%;
+        ">
+          ${name}
+          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+            border-top:6px solid #111827"></div>
+        </div>
+        <div style="transition:transform .18s" class="group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));display:block">
+            <path fill="#16a34a" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
+            <circle fill="white" cx="14" cy="13" r="5"/>
+          </svg>
+        </div>
+      </div>`,
+  })
+}
+
+// ── Simple pin icon (for PinMap placement marker only) ────────────
+function makePinIcon(L) {
   return L.divIcon({
     className:   '',
     iconSize:    [28, 36],
     iconAnchor:  [14, 36],
     popupAnchor: [0, -40],
     html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
-      <path fill="${color}" stroke="white" stroke-width="2"
+      <path fill="#16a34a" stroke="white" stroke-width="2"
         d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
       <circle fill="white" cx="14" cy="13" r="5"/>
     </svg>`,
@@ -162,7 +195,7 @@ function PinMap({ center, pinned, onPin }) {
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 248 }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 248, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
@@ -187,7 +220,7 @@ function CompaniesMap({ companies }) {
     mksRef.current = []
     const geo = list.filter(c => c.lat != null && c.lng != null)
     const markers = geo.map(co =>
-      L.marker([co.lat, co.lng], { icon: makePinIcon(L) })
+      L.marker([co.lat, co.lng], { icon: makeCompanyIcon(L, co.name) })
         .addTo(map)
         .bindPopup(`
           <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
@@ -236,7 +269,7 @@ function CompaniesMap({ companies }) {
   }, [companies]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={elRef} className="w-full rounded-2xl overflow-hidden" style={{ height: 340 }} />
+    <div ref={elRef} className="w-full rounded-2xl overflow-hidden" style={{ height: 340, isolation: 'isolate' }} />
   )
 }
 
@@ -250,6 +283,12 @@ const TrashIcon = ({ size = 14 }) => (
 const XIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M18 6L6 18M6 6l12 12"/>
+  </svg>
+)
+const BellIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
   </svg>
 )
 const MenuIcon = () => (
@@ -359,6 +398,7 @@ let nextPositionId = 1000
 function AdminNav({ admin }) {
   const navigate = useNavigate()
   const [open,   setOpen]   = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [dark,   setDark]   = useState(() => localStorage.getItem('sb-theme') === 'dark')
 
@@ -371,7 +411,7 @@ function AdminNav({ admin }) {
   const links = [
     { label: 'Dashboard', path: '/admin/dashboard' },
     { label: 'Companies', path: '/admin/companies', active: true },
-    { label: 'Students',  path: '/admin/students'  },
+    { label: 'Users',     path: '/admin/users'  },
   ]
 
   return (
@@ -397,11 +437,56 @@ function AdminNav({ admin }) {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          
+          <div className="relative hidden sm:block">
+            <button onClick={() => { setNotifOpen(p => !p); setOpen(false) }} className="relative p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors delay-100">
+              <BellIcon />
+              <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-900 pointer-events-none"></span>
+            </button>
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden z-20">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Notifications</p>
+                  <span className="text-[10px] uppercase font-bold text-gray-400">3 New</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  <div onClick={() => { navigate('/admin/users?tab=pending'); setNotifOpen(false) }} className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors bg-blue-50/30 dark:bg-blue-900/10">
+                    <div className="mt-0.5 w-2 h-2 bg-blue-500 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">New Instructor Request</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Alice Walker has requested instructor access.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">2 mins ago</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
+                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">Azeus Systems Registered</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A new company profile was created.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">1 hour ago</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
+                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">System Update</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Assessment matching engine updated to v2.0.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">1 day ago</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 text-center border-t border-gray-100 dark:border-gray-800">
+                  <button onClick={() => { navigate('/admin/notifications'); setNotifOpen(false) }} className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">View All activity</button>
+                </div>
+              </div>
+            )}
+          </div>
+          
           <button onClick={() => setMobile(p => !p)} className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             {mobile ? <XIcon size={20}/> : <MenuIcon/>}
           </button>
-          <div className="relative">
-            <button onClick={() => setOpen(p => !p)} className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all">
+          <div className="relative ml-1">
+            <button onClick={() => { setOpen(p => !p); setNotifOpen(false) }} className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all">
               {admin.initials}
             </button>
             {open && (

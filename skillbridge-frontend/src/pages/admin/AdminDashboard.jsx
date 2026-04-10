@@ -21,6 +21,12 @@ const XIcon = ({ size = 14 }) => (
     <path d="M18 6L6 18M6 6l12 12"/>
   </svg>
 )
+const BellIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+  </svg>
+)
 const GridIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
@@ -162,8 +168,8 @@ function Pagination({ total, page, onPage }) {
 // ── Admin Nav ─────────────────────────────────────────────────────
 function AdminNav({ admin }) {
   const navigate = useNavigate()
-  // Each piece of state is self-contained — no outside dependencies
   const [open,   setOpen]   = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [dark,   setDark]   = useState(() => localStorage.getItem('sb-theme') === 'dark')
 
@@ -183,7 +189,7 @@ function AdminNav({ admin }) {
   const links = [
     { label: 'Dashboard', path: '/admin/dashboard', active: true },
     { label: 'Companies', path: '/admin/companies' },
-    { label: 'Students',  path: '/admin/students'  },
+    { label: 'Users',     path: '/admin/users'     },
   ]
 
   return (
@@ -221,6 +227,51 @@ function AdminNav({ admin }) {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          
+          <div className="relative hidden sm:block">
+            <button onClick={() => { setNotifOpen(p => !p); setOpen(false) }} className="relative p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors delay-100">
+              <BellIcon />
+              <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-900 pointer-events-none"></span>
+            </button>
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden z-20">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Notifications</p>
+                  <span className="text-[10px] uppercase font-bold text-gray-400">3 New</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  <div onClick={() => { navigate('/admin/users?tab=pending'); setNotifOpen(false) }} className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors bg-blue-50/30 dark:bg-blue-900/10">
+                    <div className="mt-0.5 w-2 h-2 bg-blue-500 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">New Instructor Request</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Alice Walker has requested instructor access.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">2 mins ago</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
+                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">Azeus Systems Registered</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A new company profile was created.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">1 hour ago</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
+                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">System Update</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Assessment matching engine updated to v2.0.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">1 day ago</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 text-center border-t border-gray-100 dark:border-gray-800">
+<button onClick={() => { navigate('/admin/notifications'); setNotifOpen(false) }} className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">View All activity</button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setMobile(p => !p)}
@@ -231,9 +282,9 @@ function AdminNav({ admin }) {
           </button>
 
           {/* Avatar dropdown */}
-          <div className="relative">
+          <div className="relative ml-1">
             <button
-              onClick={() => setOpen(p => !p)}
+              onClick={() => { setOpen(p => !p); setNotifOpen(false) }}
               className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all"
             >
               {admin.initials}

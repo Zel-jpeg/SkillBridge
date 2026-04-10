@@ -15,11 +15,13 @@ import StudentProfile    from './pages/student/StudentProfile'
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
 import InstructorUpload from './pages/instructor/InstructorUpload'
 import EnrolledStudents from './pages/instructor/EnrolledStudents'
+import InstructorPending from './pages/instructor/InstructorPending'
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminCompanies from './pages/admin/AdminCompanies'
-import AdminStudents from './pages/admin/AdminStudents'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminNotifications from './pages/admin/AdminNotifications'
 
 function App() {
   return (
@@ -40,11 +42,13 @@ function App() {
       <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
       <Route path="/instructor/assessment/create" element={<InstructorUpload />} />
       <Route path="/instructor/students" element={<EnrolledStudents />} />
+      <Route path="/instructor/pending" element={<InstructorPending />} />
 
       {/* Admin */}
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/companies" element={<AdminCompanies />} />
-      <Route path="/admin/students" element={<AdminStudents />} />
+      <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/admin/notifications" element={<AdminNotifications />} />
     </Routes>
   )
 }

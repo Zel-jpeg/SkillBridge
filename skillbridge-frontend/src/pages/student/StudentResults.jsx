@@ -78,22 +78,32 @@ function loadLeaflet() {
   return _leafletPromise
 }
 
-function makeCompanyIcon(L, isTopMatch = false) {
-  const bg = isTopMatch ? 'bg-amber-500' : 'bg-green-600'
-  const svgFill = isTopMatch ? '#f59e0b' : '#16a34a'
-  const ring = isTopMatch ? 'ring-4 ring-amber-500/30' : ''
+function makeCompanyIcon(L, name, isTopMatch = false) {
+  const pinFill   = isTopMatch ? '#f59e0b' : '#16a34a'
+  const labelBg   = isTopMatch ? '#f59e0b' : '#111827'
+  const hoverBg   = isTopMatch ? '#d97706' : '#16a34a'
+  const zClass    = isTopMatch ? 'z-[9999]' : 'z-[100]'
 
   return L.divIcon({
-    className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -40],
+    className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -42],
     html: `
-      <div class="group relative flex flex-col justify-end items-center cursor-pointer ${isTopMatch ? 'z-50' : 'z-10'}">
-        <div class="absolute bottom-[40px] whitespace-nowrap bg-gray-900 group-hover:${bg} text-white text-xs font-bold px-2 py-1 rounded-md shadow-md pointer-events-none z-50 transition-all duration-200 group-hover:-translate-y-1">
-          ${isTopMatch ? '⭐ Top Match' : 'View match'}
-          <div class="absolute -bottom-[4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-gray-900 group-hover:border-t-${isTopMatch ? 'amber-500' : 'green-600'} transition-colors duration-200"></div>
+      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none ${zClass}" style="position:relative;z-index:${isTopMatch ? 9999 : 100}">
+        <div style="
+          position:absolute;bottom:40px;white-space:nowrap;
+          background:${labelBg};color:white;
+          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
+          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+          pointer-events:none;transition:all .18s;
+          transform:translateX(-50%);left:50%;
+        ">
+          ${isTopMatch ? '⭐ ' : ''}${name}
+          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+            border-top:6px solid ${labelBg}"></div>
         </div>
-        <div class="relative ${isTopMatch ? 'scale-110' : ''} transition-transform duration-200 group-hover:scale-125">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 3px 5px rgba(0,0,0,0.4))" class="rounded-full ${ring}">
-            <path fill="${svgFill}" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
+        <div style="transition:transform .18s" class="group-hover:scale-125">
+          <svg xmlns="http://www.w3.org/2000/svg" width="${isTopMatch ? 32 : 26}" height="${isTopMatch ? 40 : 34}" viewBox="0 0 28 36" style="filter:drop-shadow(0 3px 5px rgba(0,0,0,0.4));display:block">
+            <path fill="${pinFill}" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
             <circle fill="white" cx="14" cy="13" r="5"/>
           </svg>
         </div>
@@ -131,17 +141,21 @@ function ResultsMap({ companies, studentPin }) {
         maxZoom: 19,
       }).addTo(map)
       map.zoomControl.setPosition('bottomright')
-      setTimeout(() => map.invalidateSize(), 150)
+      setTimeout(() => map.invalidateSize(), 300)
 
       const allMarkers = []
 
-      // Company pins
-      companies.forEach((co, idx) => {
+      // Company pins — add in reverse so top match renders last (on top)
+      const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
+      ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
         if (co.lat == null) return
         const isTopMatch = idx === 0
         const dist    = studentPin ? haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng) : null
         const distTxt = dist != null ? `<span style="color:#2563eb;font-weight:600">${dist.toFixed(1)} km away</span>` : ''
-        const mk = L.marker([co.lat, co.lng], { icon: makeCompanyIcon(L, isTopMatch) })
+        const mk = L.marker([co.lat, co.lng], {
+          icon: makeCompanyIcon(L, co.company, isTopMatch),
+          zIndexOffset: isTopMatch ? 1000 : idx * -10,
+        })
           .addTo(map)
           .bindPopup(`
             <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
@@ -168,15 +182,27 @@ function ResultsMap({ companies, studentPin }) {
       }
 
       mapRef.current = map
+
+      // ── Resize observer: force Leaflet to recalculate when container changes ──
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => map.invalidateSize())
+        ro.observe(elRef.current)
+        mapRef.current._resizeObserver = ro
+      }
     })
     return () => {
       alive = false
+      mapRef.current?._resizeObserver?.disconnect()
       mapRef.current?.remove()
       mapRef.current = null
     }
   }, []) // intentional
 
-  return <div ref={elRef} className="w-full rounded-2xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800" style={{ height: 420 }} />
+  return (
+    <div className="w-full relative" style={{ paddingBottom: 'clamp(280px, 45vw, 460px)', minHeight: 280 }}>
+      <div ref={elRef} className="absolute inset-0 rounded-2xl overflow-hidden" />
+    </div>
+  )
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -326,10 +352,12 @@ ${recommendations}
           </div>
         </div>
 
-        {/* ── MAP AT THE TOP ── */}
-        <div className="mt-6 mb-8 w-full">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm flex flex-col p-1">
-            <div className="flex items-center justify-between px-4 py-3">
+        {/* ── TOP ROW: Map (left) + Skill Profile (right) side by side ── */}
+        <div className="mt-6 mb-8 flex flex-col lg:flex-row gap-6 lg:items-start">
+
+          {/* Map — takes ~65% width on desktop */}
+          <div className="flex-1 min-w-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm flex flex-col" style={{ isolation: 'isolate' }}>
+            <div className="flex items-center justify-between px-4 py-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center shrink-0">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -338,30 +366,61 @@ ${recommendations}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Interactive Placement Map</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 block sm:hidden">Results dynamically highlighted</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Top match highlighted per sort mode</p>
                 </div>
               </div>
               {!hasPin ? (
-                <button onClick={() => navigate('/student/profile')} className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-                  <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold cursor-pointer">Pin location in profile</p>
+                <button onClick={() => navigate('/student/profile')} className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                  <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold">Pin location</p>
                 </button>
               ) : (
-                <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium tracking-wide bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 hidden sm:block">Top match dynamically highlighted ⭐</p>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700 hidden sm:inline">⭐ Dynamic</span>
               )}
             </div>
-            <div className="p-1 sm:p-2 pt-0 w-full relative z-0">
-               <ResultsMap key={sortMode} companies={sorted} studentPin={studentPin} />
+            {/* Map fills remaining card area, no extra padding */}
+            <div className="flex-1 w-full min-h-0 px-3 pb-3">
+              <ResultsMap key={sortMode} companies={sorted} studentPin={studentPin} />
+            </div>
+          </div>
+
+          {/* Skill Assessment Profile — ~35% width on desktop, sticky */}
+          <div className="w-full lg:w-[35%] shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm lg:sticky lg:top-6 h-fit">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Skill assessment profile</p>
+            <div className="flex flex-col gap-3.5">
+              {SKILL_SCORES.map(s => (
+                <div key={s.category}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{s.category}</span>
+                    <span className={`text-xs font-bold ${s.text}`}>{s.score}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${s.color} transition-all duration-700 ease-out`}
+                      style={{ width: animated ? `${s.score}%` : '0%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-xl flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                    stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Strongest Area</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                  {SKILL_SCORES.reduce((a, b) => a.score > b.score ? a : b).category}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ── SPLIT DASHBOARD LAYOUT ── */}
-        <div className="flex flex-col lg:flex-row-reverse gap-6 sm:gap-8 items-start">
-          
-          {/* ── RIGHT COLUMN (in DOM, rendered on Right): Company Matches (70%) ── */}
-          <div className="flex-1 w-full flex flex-col gap-5 min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        {/* ── COMPANY MATCHES — full width below ── */}
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Company matches</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sorted.length} positions found</p>
@@ -393,18 +452,18 @@ ${recommendations}
             </div>
           </div>
 
-          {/* Sort explanation */}
+          {/* Sort explanation banners */}
           {sortMode === 'combined' && hasPin && (
-            <div className="mb-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
               <p className="text-xs text-blue-700 dark:text-blue-300">Combined score = 70% skill match + 30% proximity</p>
             </div>
           )}
 
-          {!hasPin && (sortMode === 'match') && (
-            <div className="mb-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
+          {!hasPin && sortMode === 'match' && (
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                📍 Pin your location in setup to unlock <strong>Nearest</strong> and <strong>Combined</strong> sorting.
+                📍 Pin your location to unlock <strong>Nearest</strong> and <strong>Combined</strong> sorting.
               </p>
               <button onClick={() => navigate('/student/profile')}
                 className="text-xs font-medium text-green-600 dark:text-green-400 hover:underline whitespace-nowrap shrink-0">
@@ -413,17 +472,18 @@ ${recommendations}
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
+          {/* Match cards — 2-column grid on large screens */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {sorted.map((r, idx) => (
               <div key={r.id}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5">
+                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-shadow">
 
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
 
                     {/* Rank badge */}
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5
-                      ${idx === 0 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' :
+                      ${idx === 0 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' :
                         idx === 1 ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
                         idx === 2 ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300' :
                         'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
@@ -432,7 +492,7 @@ ${recommendations}
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{r.company}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{r.position}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{r.position}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{r.address}</p>
                     </div>
                   </div>
@@ -466,7 +526,6 @@ ${recommendations}
                     </span>
                   ))}
 
-                  {/* Distance badge — always show if pin available */}
                   {r.distKm != null && sortMode !== 'distance' && (
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${distBadgeColor(r.distKm)}`}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -492,7 +551,7 @@ ${recommendations}
                   })()}
                 </div>
 
-                {/* Sub-scores row if combined */}
+                {/* Sub-scores if combined */}
                 {sortMode === 'combined' && hasPin && (
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-600">
                     <span className="text-green-600 dark:text-green-400 font-medium">{r.match}% skill</span>
@@ -505,48 +564,8 @@ ${recommendations}
               </div>
             ))}
           </div>
-          </div>
-
-        {/* ── LEFT COLUMN (in DOM, rendered on Left): Skills (30%) ── */}
-        <div className="w-full lg:w-[32%] shrink-0 flex flex-col gap-6 lg:sticky lg:top-8 h-fit order-last lg:order-0">
-          
-          {/* ── Skill profile ── */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Skill assessment profile</p>
-            <div className="flex flex-col gap-3">
-              {SKILL_SCORES.map(s => (
-                <div key={s.category}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{s.category}</span>
-                    <span className={`text-xs font-bold ${s.text}`}>{s.score}%</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${s.color} transition-all duration-700 ease-out`}
-                      style={{ width: animated ? `${s.score}%` : '0%' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
-              <div className="w-7 h-7 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center shrink-0">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                    stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Strongest Area</p>
-                <p className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">
-                  {SKILL_SCORES.reduce((a, b) => a.score > b.score ? a : b).category}
-                </p>
-              </div>
-            </div>
-          </div>
-
-
-
         </div>
-        </div>
+
       </main>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
