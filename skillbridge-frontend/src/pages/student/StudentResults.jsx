@@ -18,13 +18,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
+import { useApi } from '../../hooks/useApi'
+
+function getCachedUser() {
+  try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
+}
 
 // ================================================================
 // DUMMY DATA — replace with API in Week 5
 // ================================================================
-const STUDENT = {
-  name: 'David Rey Bali-os', initials: 'DR', studentId: '2023-01031', course: 'BSIT',
-}
 
 const SKILL_SCORES = [
   { category: 'Web Development', score: 82, color: 'bg-green-500',  text: 'text-green-600 dark:text-green-400'  },
@@ -548,6 +550,19 @@ export default function StudentResults() {
   const [animated, setAnimated] = useState(false)
   useEffect(() => { const t = setTimeout(() => setAnimated(true), 100); return () => clearTimeout(t) }, [])
 
+  // ── Real API call ─────────────────────────────────────────────
+  const { data: apiStudent } = useApi('/api/students/me/', { initialData: getCachedUser() })
+  const displayName   = apiStudent?.name      ?? 'Student'
+  const displayId     = apiStudent?.school_id ?? ''
+  const displayCourse = apiStudent?.course    ?? ''
+  const navStudent    = {
+    name:      displayName,
+    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
+    studentId: displayId,
+    course:    displayCourse,
+    photoUrl:  apiStudent?.photo_url ?? null,
+  }
+
   // Mock download report
   function handleDownloadReport() {
     const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -563,9 +578,9 @@ export default function StudentResults() {
 ---
 
 ### Student Information
-**Name:** ${STUDENT.name}
-**Student ID:** ${STUDENT.studentId}
-**Course:** ${STUDENT.course}
+**Name:** ${displayName}
+**Student ID:** ${displayId}
+**Course:** ${displayCourse}
 **Date of Assessment:** ${reportDate}
 
 ---
@@ -590,7 +605,7 @@ ${recommendations}
     const blob = new Blob([text], { type: 'text/markdown' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `OJT_Report_${STUDENT.studentId}.md`
+    link.download = `OJT_Report_${displayId || 'student'}.md`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -598,7 +613,7 @@ ${recommendations}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-12">
-      <NavBar student={STUDENT} />
+      <NavBar student={navStudent} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
@@ -616,7 +631,7 @@ ${recommendations}
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Your results</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Based on your assessment · {STUDENT.course} · {STUDENT.studentId}
+              Based on your assessment · {displayCourse} · {displayId}
             </p>
           </div>
           <div className="flex items-center gap-2">

@@ -1,48 +1,35 @@
 // src/pages/student/StudentDashboard.jsx
 //
-// BENTO GRID REDESIGN
-//   - max-w-5xl container (was max-w-2xl) — fills available screen space
-//   - 3-column named-area CSS grid on desktop (lg+)
-//   - 2-column grid on tablet (sm), stacked on mobile
-//   - Map tile is always visible (no collapse) — spans 2 rows on desktop
-//   - Map tile shows a locked state before assessment is taken
-//
-// hasTakenAssessment read from localStorage ('sb_assessment_done')
-// studentPin read from localStorage ('sb_pin_location')
-// TODO Week 5: replace with GET /api/students/me/
+// BENTO GRID — wired to GET /api/students/me/ (Week 4)
+//   - Replaces mock STUDENT constant with real API data
+//   - hasTakenAssessment now comes from API has_submitted field
+//   - retakeAllowed now comes from API retake_allowed field
+//   - Shows a loading skeleton while the API call is in flight
+//   - studentPin still read from localStorage (set during profile setup)
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
+import { useApi } from '../../hooks/useApi'
 
-// ================================================================
-// MOCK DATA — replace with real API data in Week 5
-// ================================================================
-const STUDENT = {
-  name: 'David Rey Bali-os', initials: 'DR', studentId: '2023-01031', course: 'BSIT',
-  retakeAllowed: true,  // TODO Week 4: read from API — true if instructor granted retake
+// Read the user object saved by the login response
+// This lets pages render instantly without a skeleton on every navigation.
+function getCachedUser() {
+  try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
 }
 
-const SKILL_SCORES = [
-  { label: 'Web Development', pct: 82 },
-  { label: 'Database',        pct: 70 },
-  { label: 'Design',          pct: 60 },
-  { label: 'Networking',      pct: 55 },
-  { label: 'Backend',         pct: 48 },
-]
-
-const ALL_COMPANIES = [
-  { id: 1, name: 'DNSC ICT Office',       position: 'Web Developer Intern',   match: 91, address: 'Panabo City',    lat: 7.3167, lng: 125.6847 },
-  { id: 2, name: 'Globe Telecom Panabo',  position: 'Network Trainee',        match: 78, address: 'Panabo City',    lat: 7.3100, lng: 125.6860 },
-  { id: 3, name: 'LGU Panabo City',       position: 'IT Support Intern',      match: 72, address: 'Panabo City',    lat: 7.3072, lng: 125.6839 },
-  { id: 4, name: 'DepEd Division Office', position: 'Systems Assistant',      match: 65, address: 'Tagum City',     lat: 7.4482, lng: 125.8147 },
-  { id: 5, name: 'BDO Unibank Panabo',    position: 'IT Operations Trainee',  match: 58, address: 'Panabo City',    lat: 7.3055, lng: 125.6825 },
-]
-
-const TOP_MATCHES = ALL_COMPANIES.slice(0, 3)
+// ================================================================
+// Week 5: these will come from GET /api/students/me/results/
+// Until assessment is built, hasTakenAssessment is false so the
+// locked state renders instead. These are left as empty [] so
+// the hasTakenAssessment===true branch doesn't crash if triggered.
+// ================================================================
+const SKILL_SCORES  = []   // [{ label, pct }]
+const ALL_COMPANIES = []   // [{ id, name, position, match, address, lat, lng }]
+const TOP_MATCHES   = []   // top 3 by match score
+const BAR_COLORS    = ['bg-green-500', 'bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500']
 // ================================================================
 
-const BAR_COLORS = ['bg-green-500', 'bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500']
 
 // ── Haversine distance ────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -187,12 +174,57 @@ function NearbyMap({ companies, studentPin }) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// LOADING SKELETON — shown while GET /api/students/me/ is in flight
+// ════════════════════════════════════════════════════════════════
+function DashboardSkeleton() {
+  const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl animate-pulse'
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="h-14 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={`${tile} px-5 py-4 sm:col-span-2 h-16`} />
+          <div className={`${tile} p-5 h-36`} />
+          <div className={`${tile} p-5 h-36`} />
+          <div className={`${tile} p-5 sm:col-span-2 h-48`} />
+          <div className={`${tile} sm:col-span-2 h-72`} />
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════
 export default function StudentDashboard() {
   const navigate = useNavigate()
 
-  const hasTakenAssessment = localStorage.getItem('sb_assessment_done') === 'true'
+  // ── Real API call (instant via cached sb-user) ────────────────
+  // initialData = user object saved at login → renders with no skeleton
+  // API refreshes in background to get has_submitted + retake_allowed
+  const { data: student } = useApi('/api/students/me/', { initialData: getCachedUser() })
+
+
+  // ── Derived display values (safe fallbacks if API is slow/offline) ──
+  const firstName       = student?.name?.split(' ')[0] ?? 'Student'
+  const displayName     = student?.name     ?? 'Student'
+  const displayCourse   = student?.course   ?? ''
+  const displayId       = student?.school_id ?? ''
+  const photoUrl        = student?.photo_url ?? null
+  const hasTakenAssessment = student?.has_submitted ?? false
+  const retakeAllowed   = student?.retake_allowed  ?? false
+
+  // ── NavBar student prop (matches NavBar expected shape) ────────
+  const navStudent = {
+    name:      displayName,
+    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
+    studentId: displayId,
+    course:    displayCourse,
+    photoUrl:  photoUrl,
+  }
+
+  // ── Student pin (still from localStorage) ─────────────────────
   const studentPin = (() => {
     try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
   })()
@@ -210,6 +242,7 @@ export default function StudentDashboard() {
 
   // ── Bento tile base style ─────────────────────────────────────
   const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl'
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -246,10 +279,10 @@ export default function StudentDashboard() {
         }
       `}</style>
 
-      <NavBar student={STUDENT} />
+      <NavBar student={navStudent} />
 
       {/* ── Retake Available Banner ── */}
-      {STUDENT.retakeAllowed && hasTakenAssessment && (
+      {retakeAllowed && hasTakenAssessment && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
           <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-3">
@@ -285,10 +318,10 @@ export default function StudentDashboard() {
           <div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                {greeting}, {STUDENT.name.split(' ')[0]} 👋
+                {greeting}, {firstName} 👋
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {STUDENT.course} · {STUDENT.studentId} · OJT Assessment Portal
+                {displayCourse} · {displayId} · OJT Assessment Portal
               </p>
             </div>
             {hasTakenAssessment && (

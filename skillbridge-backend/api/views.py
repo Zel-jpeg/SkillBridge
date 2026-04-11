@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .models import User
+from .models import User, StudentResponse
 from .serializers import UserSerializer
 
 
@@ -65,6 +65,7 @@ def refresh(request):
 def me(request):
     return Response(UserSerializer(request.user).data)
 
+
 # ── POST /api/auth/google/ ────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -116,6 +117,7 @@ def google_login(request):
         'user':    UserSerializer(user).data,
     })
 
+
 # ── PATCH /api/students/me/profile/ ──────────────────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
@@ -127,8 +129,8 @@ def student_profile(request):
 
     # Pack all address + location data into the address JSONField
     address = {
-        'stayingAt':        request.data.get('stayingAt', ''),
-        'travelWilling':    request.data.get('travelWilling', ''),
+        'stayingAt':     request.data.get('stayingAt', ''),
+        'travelWilling': request.data.get('travelWilling', ''),
         'home': {
             'province': request.data.get('homeProvince', ''),
             'city':     request.data.get('homeCity', ''),
@@ -150,3 +152,32 @@ def student_profile(request):
     user.save(update_fields=['school_id', 'course', 'phone', 'address'])
 
     return Response(UserSerializer(user).data)
+
+
+# ── GET /api/students/me/ ─────────────────────────────────────────
+# Returns the student's full profile + assessment status flags.
+# Used by StudentDashboard to replace the mock STUDENT constant.
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_me(request):
+    user = request.user
+
+    if user.role != 'student':
+        return Response({'error': 'Not a student'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Check whether this student has submitted any assessment
+    latest_response = (
+        StudentResponse.objects
+        .filter(student=user)
+        .order_by('-submitted_at')
+        .first()
+    )
+
+    has_submitted  = latest_response is not None
+    retake_allowed = latest_response.retake_allowed if latest_response else False
+
+    return Response({
+        **UserSerializer(user).data,
+        'has_submitted':  has_submitted,
+        'retake_allowed': retake_allowed,
+    })

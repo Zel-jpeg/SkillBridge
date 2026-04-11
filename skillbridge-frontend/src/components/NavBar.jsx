@@ -37,7 +37,10 @@ export default function NavBar({ student }) {
 
   function handleLogout() {
     localStorage.removeItem('sb-token')
-    navigate('/login')
+    localStorage.removeItem('sb-refresh')
+    localStorage.removeItem('sb-role')
+    localStorage.removeItem('sb-user')
+    navigate('/login', { replace: true })
   }
 
   return (

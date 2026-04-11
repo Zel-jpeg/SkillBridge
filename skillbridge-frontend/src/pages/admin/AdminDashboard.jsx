@@ -7,6 +7,11 @@
 
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Pagination  from '../../components/Pagination'
+import StatusBadge from '../../components/StatusBadge'
+import PageHeader  from '../../components/PageHeader'
+import SearchBar   from '../../components/SearchBar'
+import EmptyState  from '../../components/EmptyState'
 
 const PAGE_SIZE = 10
 
@@ -124,46 +129,7 @@ function matchBarColor(pct) {
 }
 function ini(name) { return name.split(' ').map(n => n[0]).slice(0, 2).join('') }
 
-// ── Pagination ────────────────────────────────────────────────────
-function Pagination({ total, page, onPage }) {
-  const pages = Math.ceil(total / PAGE_SIZE)
-  if (pages <= 1) return null
-  const from  = (page - 1) * PAGE_SIZE + 1
-  const to    = Math.min(page * PAGE_SIZE, total)
-  const nums  = Array.from({ length: pages }, (_, i) => i + 1)
-    .filter(p => p === 1 || p === pages || Math.abs(p - page) <= 1)
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-1 py-1">
-      <p className="text-xs text-gray-400 dark:text-gray-500 order-2 sm:order-1">
-        Showing {from}–{to} of {total}
-      </p>
-      <div className="flex items-center gap-1 order-1 sm:order-2">
-        <button onClick={() => onPage(page - 1)} disabled={page === 1}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:cursor-not-allowed">
-          ← Prev
-        </button>
-        {nums.reduce((acc, p, idx, arr) => {
-          if (idx > 0 && p - arr[idx - 1] > 1) acc.push('…')
-          acc.push(p); return acc
-        }, []).map((p, i) => p === '…'
-          ? <span key={i} className="text-xs text-gray-300 dark:text-gray-700 px-1">…</span>
-          : <button key={p} onClick={() => onPage(p)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors
-                ${p === page
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-              {p}
-            </button>
-        )}
-        <button onClick={() => onPage(page + 1)} disabled={page === pages}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:cursor-not-allowed">
-          Next →
-        </button>
-      </div>
-    </div>
-  )
-}
+// Pagination is now imported from src/components/Pagination.jsx
 
 // ── Admin Nav ─────────────────────────────────────────────────────
 function AdminNav({ admin }) {
@@ -302,7 +268,13 @@ function AdminNav({ admin }) {
                     <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </div>
-                <button onClick={() => go('/login')}
+                <button onClick={() => {
+                  localStorage.removeItem('sb-token')
+                  localStorage.removeItem('sb-refresh')
+                  localStorage.removeItem('sb-role')
+                  localStorage.removeItem('sb-user')
+                  go('/login')
+                }}
                   className="w-full text-left px-4 py-3 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors">
                   Sign out
                 </button>
@@ -366,27 +338,24 @@ export default function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* Page title */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Admin Dashboard</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              System-wide overview of students, companies, and recommendations.
-            </p>
-          </div>
-          {/* Quick actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => navigate('/admin/companies')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors">
-              <IconCompany />
-              Manage Companies
-            </button>
-            <button onClick={() => navigate('/admin/students')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-green-600 hover:bg-green-700 active:bg-green-800 text-white transition-colors">
-              <IconStudents />
-              Manage Users
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Admin Dashboard"
+          subtitle="System-wide overview of students, companies, and recommendations."
+          action={
+            <>
+              <button onClick={() => navigate('/admin/companies')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors">
+                <IconCompany />
+                Manage Companies
+              </button>
+              <button onClick={() => navigate('/admin/users')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-green-600 hover:bg-green-700 active:bg-green-800 text-white transition-colors">
+                <IconStudents />
+                Manage Users
+              </button>
+            </>
+          }
+        />
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -435,17 +404,12 @@ export default function AdminDashboard() {
 
             <div className="flex items-center gap-2 flex-wrap flex-1 sm:justify-end">
               {/* Search */}
-              <div className="relative flex-1 sm:flex-none">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-                </svg>
-                <input
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(1) }}
-                  placeholder="Search students…"
-                  className="w-full sm:w-44 pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
+              <SearchBar
+                value={search}
+                onChange={v => { setSearch(v); setPage(1) }}
+                placeholder="Search students…"
+                className="flex-1 sm:w-44 sm:flex-none"
+              />
 
               {/* Status filter pills */}
               <div className="flex items-center gap-1">
@@ -479,11 +443,10 @@ export default function AdminDashboard() {
 
           {/* Empty state */}
           {filtered.length === 0 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-14 flex flex-col items-center gap-3">
-              <p className="text-sm text-gray-400 dark:text-gray-600">No students match your search.</p>
-              <button onClick={() => { setSearch(''); setFilter('all') }}
-                className="text-xs text-green-600 dark:text-green-400 hover:underline">Clear filters</button>
-            </div>
+            <EmptyState
+              message="No students match your search."
+              onClear={() => { setSearch(''); setFilter('all') }}
+            />
           )}
 
           {/* ── GRID VIEW (always on mobile, toggle on desktop) ─── */}
@@ -503,14 +466,7 @@ export default function AdminDashboard() {
                         <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{s.email}</p>
                       </div>
                     </div>
-                    {s.status === 'completed'
-                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full shrink-0">
-                          <span className="w-1 h-1 rounded-full bg-green-500"/>Done
-                        </span>
-                      : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2 py-0.5 rounded-full shrink-0">
-                          <span className="w-1 h-1 rounded-full bg-amber-500"/>Pending
-                        </span>
-                    }
+                    <StatusBadge status={s.status} />
                   </div>
 
                   {/* Instructor */}
@@ -573,14 +529,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-3 py-4 text-xs text-gray-500 dark:text-gray-400">{s.instructor}</td>
                         <td className="px-3 py-4">
-                          {s.status === 'completed'
-                            ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full">
-                                <span className="w-1 h-1 rounded-full bg-green-500 inline-block"/> Done
-                              </span>
-                            : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full">
-                                <span className="w-1 h-1 rounded-full bg-amber-500 inline-block"/> Pending
-                              </span>
-                          }
+                          <StatusBadge status={s.status} size="md" />
                         </td>
                         <td className="px-3 py-4">
                           {s.position
@@ -605,7 +554,7 @@ export default function AdminDashboard() {
           )}
 
           {/* Pagination */}
-          <Pagination total={filtered.length} page={page} onPage={setPage} />
+          <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
 
         </div>
 

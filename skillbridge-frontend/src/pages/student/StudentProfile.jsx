@@ -14,10 +14,15 @@
 //   GET  /api/students/me/profile/
 //   PATCH /api/students/me/profile/
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import AddressDropdowns from '../../components/AddressDropdowns'
+import { useApi } from '../../hooks/useApi'
+
+function getCachedUser() {
+  try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
+}
 
 // ================================================================
 const TRAVEL_OPTIONS = [
@@ -27,22 +32,8 @@ const TRAVEL_OPTIONS = [
   { value: 'anywhere',     label: 'Open to anywhere in Mindanao' },
 ]
 
-// DUMMY — replace with GET /api/students/me/profile/ in Week 3
-// These are the read-only fields set by the instructor during enrollment.
-const PROFILE = {
-  name:             'David Rey Bali-os',
-  initials:         'DR',
-  studentId:        '2023-01031',
-  course:           'BSIT',
-  photoUrl:         '',   // TODO Week 3: comes from Google OAuth → stored as user.photo_url in DB
-  stayingAt:        'home',          // 'home' | 'boarding' | 'open'
-  homeProvince:     'Davao del Norte',
-  homeCity:         'PANABO CITY',
-  homeBarangay:     'Sto. Niño',
-  boardingProvince: '',
-  boardingCity:     '',
-  boardingBarangay: '',
-}
+// Address saved data comes from GET /api/students/me/ via useApi (Week 4)
+// Editable saves go to PATCH /api/students/me/profile/ (Week 5)
 // ================================================================
 
 // ────────────────────────────────────────────────────────────────
@@ -156,7 +147,7 @@ function PinMap({ center, pinned, onPin }) {
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 264 }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 264, isolation: 'isolate', zIndex: 0 }}>
       <div ref={elRef} className="absolute inset-0" />
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
@@ -186,27 +177,42 @@ function ReadOnlyField({ label, value }) {
 export default function StudentProfile() {
   const navigate = useNavigate()
 
-  // Editable state
-  const [phone,              setPhone]              = useState('09123456789')  // TODO Week 3: from API
-  const [travelWilling,      setTravelWilling]      = useState('panabo')       // TODO Week 3: from API
-  const [emailNotifications, setEmailNotifications] = useState(true)          // TODO Week 3: from API
+  // ── Real API call ───────────────────────────────────────────────
+  const { data: apiStudent, loading: apiLoading } = useApi('/api/students/me/', { initialData: getCachedUser() })
 
-  // Photo comes from Google OAuth — not editable
-  // TODO Week 3: read from GET /api/students/me/profile/ → user.photo_url
-  const photoUrl = PROFILE.photoUrl ?? ''
+  // Derive read-only display values from real API data
+  const displayName   = apiStudent?.name      ?? ''
+  const displayId     = apiStudent?.school_id ?? ''
+  const displayCourse = apiStudent?.course    ?? ''
+  const photoUrl      = apiStudent?.photo_url ?? ''
 
-  // Address state — editable, initialised from PROFILE (API values in Week 3)
-  const [stayingAt,    setStayingAt]    = useState(PROFILE.stayingAt)
-  const [homeAddr,     setHomeAddr]     = useState({
-    province: PROFILE.homeProvince,
-    city:     PROFILE.homeCity,
-    barangay: PROFILE.homeBarangay,
-  })
-  const [boardingAddr, setBoardingAddr] = useState({
-    province: PROFILE.boardingProvince,
-    city:     PROFILE.boardingCity,
-    barangay: PROFILE.boardingBarangay,
-  })
+  // Editable state — seeded from API address once loaded
+  const [phone,              setPhone]              = useState('')
+  const [travelWilling,      setTravelWilling]      = useState('panabo')
+  const [emailNotifications, setEmailNotifications] = useState(true)
+
+  // Address state — editable; seeded from API address JSONField when available
+  const [stayingAt,    setStayingAt]    = useState('home')
+  const [homeAddr,     setHomeAddr]     = useState({ province: '', city: '', barangay: '' })
+  const [boardingAddr, setBoardingAddr] = useState({ province: '', city: '', barangay: '' })
+
+  // Seed editable fields once API data arrives
+  useEffect(() => {
+    if (!apiStudent) return
+    setPhone(apiStudent.phone ?? '')
+    setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
+    setStayingAt(apiStudent.address?.stayingAt ?? 'home')
+    setHomeAddr({
+      province: apiStudent.address?.home?.province ?? '',
+      city:     apiStudent.address?.home?.city     ?? '',
+      barangay: apiStudent.address?.home?.barangay ?? '',
+    })
+    setBoardingAddr({
+      province: apiStudent.address?.boarding?.province ?? '',
+      city:     apiStudent.address?.boarding?.city     ?? '',
+      barangay: apiStudent.address?.boarding?.barangay ?? '',
+    })
+  }, [apiStudent])
 
   // Pin map state
   const [pinnedLoc,     setPinnedLoc]     = useState(() => {
@@ -293,10 +299,10 @@ export default function StudentProfile() {
   }[stayingAt] ?? '—'
 
   const navStudent = {
-    name:      PROFILE.name,
-    initials:  PROFILE.initials,
-    studentId: PROFILE.studentId,
-    course:    PROFILE.course,
+    name:      displayName,
+    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
+    studentId: displayId,
+    course:    displayCourse,
     photoUrl,
   }
 
@@ -333,15 +339,17 @@ export default function StudentProfile() {
               {photoUrl
                 ? <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 : <span className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-300">
-                    {PROFILE.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                    {displayName.split(' ').map(n => n[0]).slice(0, 2).join('') || '?'}
                   </span>
               }
             </div>
           </div>
 
           <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{PROFILE.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{PROFILE.course} · {PROFILE.studentId}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {apiLoading ? <span className="inline-block h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /> : displayName}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{displayCourse} · {displayId}</p>
             <div className="flex items-center gap-1.5 mt-1.5">
               <svg width="13" height="13" viewBox="0 0 48 48" className="shrink-0">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -369,9 +377,9 @@ export default function StudentProfile() {
             </span>
           </div>
 
-          <ReadOnlyField label="Full name"   value={PROFILE.name} />
-          <ReadOnlyField label="Student ID"  value={PROFILE.studentId} />
-          <ReadOnlyField label="Course"      value={PROFILE.course} />
+          <ReadOnlyField label="Full name"   value={apiLoading ? '' : displayName} />
+          <ReadOnlyField label="Student ID"  value={apiLoading ? '' : displayId} />
+          <ReadOnlyField label="Course"      value={apiLoading ? '' : displayCourse} />
 
           {/* Phone — editable */}
           <div>
