@@ -1,20 +1,20 @@
 // src/pages/student/StudentProfile.jsx
 //
-// Students can update: profile photo, phone number, staying-at preference,
+// Students can update: phone number, staying-at preference,
 // home address, boarding address, travel preference, location pin (map),
 // and notification preferences.
 //
-// Read-only (set by instructor during enrollment):
-//   name, student ID, course
+// Read-only (set by system / Google OAuth):
+//   name, student ID, course, profile photo (pulled from DNSC Google account)
 //
 // Pin location is saved to localStorage ('sb_pin_location') and is read
 // by StudentResults for proximity scoring.
 //
 // TODO Week 3: replace localStorage reads/writes with API calls
 //   GET  /api/students/me/profile/
-//   PATCH /api/students/me/profile/   (multipart/form-data for photo)
+//   PATCH /api/students/me/profile/
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import AddressDropdowns from '../../components/AddressDropdowns'
@@ -34,6 +34,7 @@ const PROFILE = {
   initials:         'DR',
   studentId:        '2023-01031',
   course:           'BSIT',
+  photoUrl:         '',   // TODO Week 3: comes from Google OAuth → stored as user.photo_url in DB
   stayingAt:        'home',          // 'home' | 'boarding' | 'open'
   homeProvince:     'Davao del Norte',
   homeCity:         'PANABO CITY',
@@ -184,13 +185,15 @@ function ReadOnlyField({ label, value }) {
 // ════════════════════════════════════════════════════════════════
 export default function StudentProfile() {
   const navigate = useNavigate()
-  const fileRef  = useRef(null)
 
   // Editable state
   const [phone,              setPhone]              = useState('09123456789')  // TODO Week 3: from API
   const [travelWilling,      setTravelWilling]      = useState('panabo')       // TODO Week 3: from API
   const [emailNotifications, setEmailNotifications] = useState(true)          // TODO Week 3: from API
-  const [preview,            setPreview]            = useState(() => localStorage.getItem('sb_photo') ?? '')
+
+  // Photo comes from Google OAuth — not editable
+  // TODO Week 3: read from GET /api/students/me/profile/ → user.photo_url
+  const photoUrl = PROFILE.photoUrl ?? ''
 
   // Address state — editable, initialised from PROFILE (API values in Week 3)
   const [stayingAt,    setStayingAt]    = useState(PROFILE.stayingAt)
@@ -249,26 +252,6 @@ export default function StudentProfile() {
     geocodeForType(pinAddrType)
   }, [pinAddrType]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Photo ────────────────────────────────────────────────────
-  function handlePhotoChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const dataUrl = ev.target.result
-      setPreview(dataUrl)
-      localStorage.setItem('sb_photo', dataUrl)  // TODO Week 3: upload to API instead
-      setSaved(false)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function removePhoto() {
-    setPreview('')
-    localStorage.removeItem('sb_photo')
-    setSaved(false)
-  }
-
   // ── Save ─────────────────────────────────────────────────────
   function handleSave() {
     const e = {}
@@ -314,7 +297,7 @@ export default function StudentProfile() {
     initials:  PROFILE.initials,
     studentId: PROFILE.studentId,
     course:    PROFILE.course,
-    photoUrl:  preview,
+    photoUrl,
   }
 
   return (
@@ -339,16 +322,16 @@ export default function StudentProfile() {
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">My profile</h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Update your photo, contact info, and location pin.
+            Update your contact info, address, and location pin.
           </p>
         </div>
 
-        {/* ── Photo ── */}
+        {/* ── Photo — read-only, sourced from DNSC Google account ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-6 flex items-center gap-4 sm:gap-5">
-          <div className="relative shrink-0">
+          <div className="shrink-0">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center overflow-hidden">
-              {preview
-                ? <img src={preview} alt="Profile" className="w-full h-full object-cover" />
+              {photoUrl
+                ? <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 : <span className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-300">
                     {PROFILE.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                   </span>
@@ -356,33 +339,18 @@ export default function StudentProfile() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 sm:gap-2 min-w-0">
+          <div className="flex flex-col gap-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{PROFILE.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{PROFILE.course} · {PROFILE.studentId}</p>
-            <div className="flex gap-2 mt-0.5">
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950 px-3 py-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900 transition-colors"
-              >
-                {preview ? 'Change' : 'Upload'}
-              </button>
-              {preview && (
-                <button
-                  onClick={removePhoto}
-                  className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Remove
-                </button>
-              )}
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <svg width="13" height="13" viewBox="0 0 48 48" className="shrink-0">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Photo from your DNSC Google account</p>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-600">JPG or PNG, max 2MB</p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
           </div>
         </div>
 

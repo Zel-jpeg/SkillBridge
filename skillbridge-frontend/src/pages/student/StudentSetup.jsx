@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
+import api from '../../api/axios'
 
 // ================================================================
 const COURSES = ['BSIT', 'BSIS']
@@ -172,6 +173,8 @@ export default function StudentSetup() {
   const [pinAddressType, setPinAddressType] = useState('primary') // 'primary' | 'home'
 
   const [errors, setErrors] = useState({})
+  const [submitError,  setSubmitError]  = useState('')   // ← add
+  const [submitLoading, setSubmitLoading] = useState(false) // ← add
 
   function updateForm(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -248,10 +251,39 @@ export default function StudentSetup() {
 
   function handleBack() { setErrors({}); setStep(s => s - 1) }
 
-  function handleSubmit() {
-    if (formData.pinLat) localStorage.setItem('sb_pin_location', JSON.stringify({ lat: formData.pinLat, lng: formData.pinLng }))
-    console.log('Profile to save:', formData)
-    navigate('/student/dashboard')
+  async function handleSubmit() {
+    setSubmitError('')
+    setSubmitLoading(true)
+  
+    if (formData.pinLat) {
+      localStorage.setItem('sb_pin_location', JSON.stringify({ lat: formData.pinLat, lng: formData.pinLng }))
+    }
+  
+    console.log('Token being sent:', localStorage.getItem('sb-token'))
+    console.log('Form data being sent:', formData)
+  
+    try {
+      const res = await api.patch('/api/students/me/profile/', formData)
+      localStorage.setItem('sb-user', JSON.stringify(res.data))
+      navigate('/student/dashboard')
+    } catch (err) {
+      console.log('Setup save error:', err.response?.data)
+      const status = err.response?.status
+  
+      if (status === 401) {
+        setSubmitError('Your session expired. Please go back to login and sign in again.')
+      } else if (status === 403) {
+        setSubmitError('Access denied. Only students can complete this setup.')
+      } else if (status === 500) {
+        setSubmitError('Server error. Please try again in a moment.')
+      } else if (!err.response) {
+        setSubmitError('Cannot reach the server. Make sure the backend is running.')
+      } else {
+        setSubmitError('Failed to save your profile. Please try again.')
+      }
+    } finally {
+      setSubmitLoading(false)
+    }
   }
 
   const stepLabels = ['Details', 'Location', 'Pin', 'Review']
@@ -507,7 +539,20 @@ export default function StudentSetup() {
         )}
 
         {/* Nav buttons */}
-        <div className="flex gap-3 mt-2">
+        <div className="flex flex-col gap-3 mt-2">
+
+        {/* Error banner — only shown on step 4 after failed submit */}
+        {step === 4 && submitError && (
+          <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0 text-red-500">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <p className="text-xs text-red-600 leading-relaxed">{submitError}</p>
+          </div>
+        )}
+
+        <div className="flex gap-3">
           {step > 1 && (
             <button onClick={handleBack}
               className="flex-1 py-3.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
@@ -516,12 +561,23 @@ export default function StudentSetup() {
           )}
           <button
             onClick={step === 4 ? handleSubmit : handleNext}
-            className="flex-1 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 transition-colors"
+            disabled={submitLoading}
+            className="flex-1 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            {step === 4 ? 'Finish & go to dashboard →'
-             : step === 3 ? (pinnedLoc ? 'Continue →' : 'Skip for now →')
-             : 'Next'}
+            {submitLoading ? (
+              <>
+                <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/>
+                </svg>
+                Saving…
+              </>
+            ) : (
+              step === 4 ? 'Finish & go to dashboard →'
+              : step === 3 ? (pinnedLoc ? 'Continue →' : 'Skip for now →')
+              : 'Next'
+            )}
           </button>
+        </div>
         </div>
 
       </div>

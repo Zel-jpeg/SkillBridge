@@ -12,6 +12,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 
 // ================================================================
 const SYSTEM_NAME    = "SkillBridge"
@@ -30,6 +31,39 @@ export default function AdminLogin() {
   const [forgotSent,  setForgotSent]  = useState(false)  // for the forgot-password flow
 
   // ── Login handler ────────────────────────────────────────────
+  
+  function handleLogin(e) {
+    e.preventDefault()
+    setError('')
+
+    if (!username.trim()) { setError('Username is required.'); return }
+    if (!password)        { setError('Password is required.'); return }
+
+    setLoading(true)
+
+    api.post('/api/auth/login/', { email: username, password })
+      .then(res => {
+        const { access, refresh, user } = res.data
+        localStorage.setItem('sb-token',   access)
+        localStorage.setItem('sb-refresh', refresh)
+        localStorage.setItem('sb-role',    user.role)
+        localStorage.setItem('sb-user',    JSON.stringify(user))
+
+        if (user.role === 'admin')       navigate('/admin/dashboard')
+        else if (user.role === 'instructor') {
+          if (!user.is_approved) navigate('/instructor/pending')
+          else                   navigate('/instructor/dashboard')
+        }
+      })
+      .catch(err => {
+        const msg = err.response?.data?.error
+        if (msg === 'pending') navigate('/instructor/pending')
+        else setError('Invalid username or password.')
+      })
+      .finally(() => setLoading(false))
+  }
+  
+ /*
   function handleLogin(e) {
     e.preventDefault()
     setError('')
@@ -69,6 +103,7 @@ export default function AdminLogin() {
 
     }, 800)
   }
+  */
 
   // ── Forgot password ──────────────────────────────────────────
   function handleForgotPassword() {
