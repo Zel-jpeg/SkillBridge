@@ -545,6 +545,8 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
   const [xlsxLoading, setXlsxLoading] = useState(false)
   const [manId,       setManId]       = useState('')
   const [manEmail,    setManEmail]    = useState('')
+  const [manName,     setManName]     = useState('')
+  const [nameEdited,  setNameEdited]  = useState(false)
   const [manCourse,   setManCourse]   = useState('BSIT')
   const [manErr,      setManErr]      = useState({})
 
@@ -578,6 +580,7 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
 
   function handleManual() {
     const e = {}
+    if (!manName.trim()) e.name = 'Name is required'
     if (!manId.trim()) e.studentId = 'Student ID is required'
     else if (!/^\d{4}-\d{5}$/.test(manId.trim())) e.studentId = 'Format: YYYY-NNNNN'
     if (!manEmail.trim()) e.email = 'Email is required'
@@ -585,9 +588,8 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
     if (existingStudents.find(s => s.studentId === manId.trim())) e.studentId = 'ID already enrolled'
     if (existingStudents.find(s => s.email === manEmail.trim().toLowerCase())) e.email = 'Email already enrolled'
     if (Object.keys(e).length) { setManErr(e); return }
-    const derivedName = nameFromEmail(manEmail.trim().toLowerCase())
-    onEnroll([{ name: derivedName, studentId: manId.trim(), email: manEmail.trim().toLowerCase(), course: manCourse }])
-    setManId(''); setManEmail(''); setManCourse('BSIT'); setManErr({})
+    onEnroll([{ name: manName.trim(), studentId: manId.trim(), email: manEmail.trim().toLowerCase(), course: manCourse }])
+    setManId(''); setManEmail(''); setManName(''); setNameEdited(false); setManCourse('BSIT'); setManErr({})
   }
 
   function downloadTemplate() {
@@ -687,9 +689,48 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
             </>
           ) : (
             <>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Add one student at a time. The name is extracted automatically from their DNSC email.
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                Add one student at a time. The name is suggested automatically from the DNSC email.
               </p>
+
+              {/* DNSC Email */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">DNSC Email</label>
+                <input
+                  type="email"
+                  value={manEmail}
+                  onChange={e => {
+                    const val = e.target.value
+                    setManEmail(val)
+                    setManErr(err => ({ ...err, email: '' }))
+                    if (!nameEdited && val.includes('.')) {
+                      setManName(nameFromEmail(val.trim().toLowerCase()))
+                    }
+                  }}
+                  placeholder="e.g. villanueva.azel@dnsc.edu.ph"
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400
+                    ${manErr.email ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+                />
+                {manErr.email && <p className="text-xs text-rose-500 mt-1">{manErr.email}</p>}
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Full Name</label>
+                <input
+                  type="text"
+                  value={manName}
+                  onChange={e => {
+                    setManName(e.target.value)
+                    setNameEdited(true)
+                    setManErr(err => ({ ...err, name: '' }))
+                  }}
+                  placeholder="e.g. Azel Villanueva"
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400
+                    ${manErr.name ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+                />
+                {manErr.name && <p className="text-xs text-rose-500 mt-1">{manErr.name}</p>}
+              </div>
 
               {/* Student ID */}
               <div>
@@ -703,32 +744,6 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
                     ${manErr.studentId ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
                 />
                 {manErr.studentId && <p className="text-xs text-rose-500 mt-1">{manErr.studentId}</p>}
-              </div>
-
-              {/* DNSC Email + derived name preview */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">DNSC Email</label>
-                <input
-                  type="email"
-                  value={manEmail}
-                  onChange={e => { setManEmail(e.target.value); setManErr(err => ({ ...err, email: '' })) }}
-                  placeholder="e.g. villanueva.azel@dnsc.edu.ph"
-                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400
-                    ${manErr.email ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
-                />
-                {manErr.email && <p className="text-xs text-rose-500 mt-1">{manErr.email}</p>}
-                {/* Live name preview */}
-                {manEmail.toLowerCase().endsWith('@dnsc.edu.ph') && !manErr.email && (
-                  <div className="mt-2 flex items-center gap-2 bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-900 rounded-xl px-3 py-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-300 shrink-0">
-                      {ini(nameFromEmail(manEmail.trim().toLowerCase()))}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Will be enrolled as</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{nameFromEmail(manEmail.trim().toLowerCase())}</p>
-                    </div>
-                  </div>
-                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Course</label>

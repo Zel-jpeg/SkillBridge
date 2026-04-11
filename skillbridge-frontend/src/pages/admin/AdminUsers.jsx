@@ -363,6 +363,7 @@ function AdminNav({ admin }) {
 // ── Add Instructor Modal ──────────────────────────────────────────
 function AddInstructorModal({ existingInstructors, onClose, onAdd }) {
   const [name,         setName]         = useState('')
+  const [nameEdited,   setNameEdited]   = useState(false)
   const [email,        setEmail]        = useState('')
   const [instructorId, setInstructorId] = useState('')
   const [department,   setDepartment]   = useState('Institute of Computing')
@@ -395,20 +396,27 @@ function AddInstructorModal({ existingInstructors, onClose, onAdd }) {
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"><XIcon /></button>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Full Name</label>
-          <input value={name} onChange={e => setName(e.target.value)}
-            placeholder="e.g. Ma. Lourdes T. Reyes"
-            className={`w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
-              ${errors.name ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'}`}/>
-          {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-        </div>
-        <div>
           <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">DNSC Email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)}
+          <input value={email} onChange={e => {
+              const val = e.target.value
+              setEmail(val)
+              setErrors(err => ({ ...err, email: '' }))
+              if (!nameEdited && val.includes('.')) {
+                setName(nameFromEmail(val.trim().toLowerCase()))
+              }
+            }}
             placeholder="e.g. mtreyes@dnsc.edu.ph"
             className={`w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
               ${errors.email ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'}`}/>
           {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Full Name</label>
+          <input value={name} onChange={e => { setName(e.target.value); setNameEdited(true); setErrors(err => ({ ...err, name: '' })) }}
+            placeholder="e.g. Ma. Lourdes T. Reyes"
+            className={`w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
+              ${errors.name ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'}`}/>
+          {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
         </div>
         <div>
           <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Instructor ID</label>
