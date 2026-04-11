@@ -6,10 +6,12 @@
 //   - Answers autosaved to localStorage on every pick — survives refresh/disconnect
 //   - Review screen with Edit per question
 //   - Confirmation modal before final submit
+//   - On submit: passes { questions, answers } via router state → StudentResults Answer Review
 //
 // TODO Week 4: replace DUMMY_* with real API data
 //   GET  /api/assessments/active/   → { id, title, duration_minutes, questions }
 //   POST /api/assessments/submit/   → { assessment_id, answers: { q_id: choice_id } }
+//   API response will include correct answers per question after submission
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -34,6 +36,7 @@ const DUMMY_QUESTIONS = [
     id: 1,
     text: 'Which HTML tag is used to link an external CSS stylesheet?',
     skill_category: 'Web Development',
+    correct: 'b',                          // ← added: correct answer choice id
     choices: [
       { id: 'a', text: '<style>' },
       { id: 'b', text: '<link>' },
@@ -45,6 +48,7 @@ const DUMMY_QUESTIONS = [
     id: 2,
     text: 'What does SQL stand for?',
     skill_category: 'Database',
+    correct: 'a',
     choices: [
       { id: 'a', text: 'Structured Query Language' },
       { id: 'b', text: 'Simple Question Language' },
@@ -56,6 +60,7 @@ const DUMMY_QUESTIONS = [
     id: 3,
     text: 'Which layer of the OSI model is responsible for routing?',
     skill_category: 'Networking',
+    correct: 'c',
     choices: [
       { id: 'a', text: 'Data Link Layer' },
       { id: 'b', text: 'Transport Layer' },
@@ -67,6 +72,7 @@ const DUMMY_QUESTIONS = [
     id: 4,
     text: 'In Python, which keyword is used to define a function?',
     skill_category: 'Backend',
+    correct: 'c',
     choices: [
       { id: 'a', text: 'function' },
       { id: 'b', text: 'define' },
@@ -78,6 +84,7 @@ const DUMMY_QUESTIONS = [
     id: 5,
     text: 'Which color model is used for screen/digital design?',
     skill_category: 'Design',
+    correct: 'b',
     choices: [
       { id: 'a', text: 'CMYK' },
       { id: 'b', text: 'RGB' },
@@ -154,10 +161,24 @@ export default function StudentAssessment() {
     setShowWarning(false)
     setSubmitting(true)
     // TODO Week 4: POST { assessment_id: ASSESSMENT_ID, answers } to API
+    // The API will return correct answers in the response — pass those instead of
+    // DUMMY_QUESTIONS so students never see correct answers before submitting.
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(TIMER_KEY)
     localStorage.setItem('sb_assessment_done', 'true')
-    setTimeout(() => navigate('/student/results'), 1200)
+    setTimeout(() =>
+      navigate('/student/results', {
+        state: {
+          // Pass snapshot of questions (with correct answers) + student's answers
+          // so StudentResults can render the Answer Review section.
+          // Week 4: replace DUMMY_QUESTIONS with the API response payload.
+          reviewData: {
+            questions: DUMMY_QUESTIONS,
+            answers,                    // { [question_id]: chosen_choice_id }
+          },
+        },
+      })
+    , 1200)
   }
 
   // Timer urgency levels
