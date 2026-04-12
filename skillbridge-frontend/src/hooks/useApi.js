@@ -21,7 +21,7 @@ function friendlyError(status) {
     case 400: return 'Invalid request. Please check your input.'
     case 403: return 'You do not have permission to do that.'
     case 404: return 'The requested data was not found.'
-    case 429: return 'Too many requests. Please slow down.'
+    case 429: return 'Too many requests. Please wait a moment and try again.'
     case 500: return 'Server error. Please try again in a moment.'
     case 502:
     case 503:
