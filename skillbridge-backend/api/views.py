@@ -1,3 +1,4 @@
+from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,11 +9,20 @@ from django.contrib.auth import authenticate
 from .models import User, StudentResponse
 from .serializers import UserSerializer
 
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login'
 
 # ── POST /api/auth/login/ ─────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
+    throttle = LoginRateThrottle()
+    if not throttle.allow_request(request, None):
+        return Response(
+            {'error': 'Too many login attempts. Please wait a minute and try again.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
     email    = request.data.get('email', '').strip().lower()
     password = request.data.get('password', '')
 
