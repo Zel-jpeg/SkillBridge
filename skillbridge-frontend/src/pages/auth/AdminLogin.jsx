@@ -57,6 +57,20 @@ export default function AdminLogin() {
       })
       .catch(err => {
         const msg = err.response?.data?.error
+      // =========================================================================
+      // ⚠️ TEMPORARY DEMO LOGIN (DELETE BEFORE FINAL DEFENSE)
+      // =========================================================================
+      if (
+        username === 'instructor@dnsc.edu.ph' &&
+        password === 'instructor123'
+      ) {
+        localStorage.setItem('sb-token', 'demo-instructor-token')
+        localStorage.setItem('sb-role',  'instructor')
+        navigate('/instructor/dashboard')
+        return
+      }
+      //------------------
+        
         if (msg === 'pending') navigate('/instructor/pending')
         else setError('Invalid username or password.')
       })
