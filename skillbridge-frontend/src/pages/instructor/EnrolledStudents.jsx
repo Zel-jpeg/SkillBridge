@@ -15,6 +15,11 @@ const PAGE_SIZE  = 10
 // Fallback batches shown before API loads
 const FALLBACK_BATCHES = []
 
+// Helper: derive initials from a full name string
+function getInitials(name = '') {
+  return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'IN'
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 function avg(scores) {
   const v = Object.values(scores); if (!v.length) return null
@@ -738,6 +743,22 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
 export default function EnrolledStudents() {
   const navigate = useNavigate()
 
+  // ── Logged-in instructor — loaded from API ──────────────────────
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    api.get('/api/auth/me/')
+      .then(res => setUser(res.data))
+      .catch(() => { /* keep null; nav will show fallback initials */ })
+  }, []) // eslint-disable-line
+
+  // Build the shape InstructorNav expects from the real user object
+  const instructor = {
+    name:     user?.name     ?? 'Instructor',
+    initials: user ? getInitials(user.name) : 'IN',
+    subject:  user?.course   ?? 'OJT Coordinator',
+  }
+
   // ── Batch state — loaded from API ───────────────────────────────
   const [batches,         setBatches]         = useState(FALLBACK_BATCHES)
   const [loadingBatches,  setLoadingBatches]  = useState(true)
@@ -895,7 +916,7 @@ export default function EnrolledStudents() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav instructor={INSTRUCTOR} />
+      <InstructorNav instructor={instructor} />
 
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
@@ -979,7 +1000,7 @@ export default function EnrolledStudents() {
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm text-gray-500 dark:text-gray-400">{INSTRUCTOR.subject}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{instructor.subject}</p>
               {/* Batch selector */}
               <select
                 value={activeBatchId}
