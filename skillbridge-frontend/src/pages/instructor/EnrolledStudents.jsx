@@ -767,34 +767,46 @@ export default function EnrolledStudents() {
   const [showNewBatch,    setShowNewBatch]    = useState(false)
   const [newBatchName,    setNewBatchName]    = useState('')
 
-  // Load batches from API on mount
+  // Load batches + their students from API on mount
   useEffect(() => {
     api.get('/api/instructor/batches/')
-      .then(res => {
+      .then(async res => {
         const apiData = res.data
-        // Normalize API shape → { id, name, status, archivedAt, students[] }
+
+        // ── FIX: API already returns b.status ('active'|'archived')
+        //         Previous code used b.is_active (undefined) → everything became 'archived'
         const normalized = apiData.map(b => ({
           id:         b.id,
           name:       b.name,
-          status:     b.is_active ? 'active' : 'archived',
+          status:     b.status,               // ← was: b.is_active ? 'active' : 'archived'
           archivedAt: b.archived_at ?? null,
-          students:   (b.students || []).map(s => ({
-            id:            s.id,
-            name:          s.name,
-            studentId:     s.school_id || s.student_id || '',
-            email:         s.email,
-            course:        s.course,
-            status:        s.has_submitted ? 'completed' : 'pending',
-            retakeAllowed: s.retake_allowed ?? false,
-            scores:        s.skill_scores ?? {},
-          }))
+          students:   [],                     // filled below
         }))
+
         setBatches(normalized)
         const active = normalized.find(b => b.status === 'active')
         setActiveBatchId(active?.id ?? normalized[normalized.length - 1]?.id ?? null)
+
+        // Fetch students for every batch in parallel
+        await Promise.all(normalized.map(async b => {
+          try {
+            const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
+            const students = (r.data.students || []).map(s => ({
+              id:            s.id,
+              name:          s.name,
+              studentId:     s.school_id || '',
+              email:         s.email,
+              course:        s.course,
+              status:        s.has_submitted ? 'completed' : 'pending',
+              retakeAllowed: s.retake_allowed ?? false,
+              scores:        s.skill_scores   ?? {},
+            }))
+            setBatches(prev => prev.map(pb => pb.id === b.id ? { ...pb, students } : pb))
+          } catch { /* keep empty students for this batch on error */ }
+        }))
       })
       .catch(() => {
-        // API not yet wired — keep empty list, show "no batch" state
+        // API not yet reachable — keep empty list, show "no batch" state
       })
       .finally(() => setLoadingBatches(false))
   }, []) // eslint-disable-line

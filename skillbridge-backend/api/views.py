@@ -449,27 +449,45 @@ def instructor_batch_students(request, batch_id):
     enrollments = BatchEnrollment.objects.filter(batch=batch).select_related('student')
     students    = []
 
+    # Preload the batch's assessment once (avoids per-student queries)
+    try:
+        batch_assessment = Assessment.objects.get(batch=batch)
+    except Assessment.DoesNotExist:
+        batch_assessment = None
+
     for e in enrollments:
         s = e.student
-        # Has this student submitted for this batch's assessment?
-        has_submitted = False
-        try:
-            assessment = Assessment.objects.get(batch=batch)
-            has_submitted = StudentResponse.objects.filter(
-                student=s, assessment=assessment, submitted_at__isnull=False
-            ).exists()
-        except Assessment.DoesNotExist:
-            pass
+
+        # Submission + retake status
+        has_submitted  = False
+        retake_allowed = False
+        if batch_assessment:
+            response = StudentResponse.objects.filter(
+                student=s, assessment=batch_assessment
+            ).first()
+            if response:
+                has_submitted  = response.submitted_at is not None
+                retake_allowed = response.retake_allowed
+
+        # Skill scores — { "Web Development": 82.5, "Database": 67.0, … }
+        skill_scores = {}
+        if batch_assessment:
+            for score in SkillScore.objects.filter(
+                student=s, assessment=batch_assessment
+            ).select_related('skill_category'):
+                skill_scores[score.skill_category.name] = round(score.percentage, 1)
 
         students.append({
-            'id':           s.id,
-            'name':         s.name,
-            'email':        s.email,
-            'school_id':    s.school_id,
-            'course':       s.course,
-            'photo_url':    s.photo_url,
-            'has_submitted': has_submitted,
-            'enrolled_at':  e.enrolled_at,
+            'id':             s.id,
+            'name':           s.name,
+            'email':          s.email,
+            'school_id':      s.school_id,
+            'course':         s.course,
+            'photo_url':      s.photo_url,
+            'has_submitted':  has_submitted,
+            'retake_allowed': retake_allowed,
+            'skill_scores':   skill_scores,
+            'enrolled_at':    e.enrolled_at,
         })
 
     return Response({'batch': {'id': batch.id, 'name': batch.name}, 'students': students})
