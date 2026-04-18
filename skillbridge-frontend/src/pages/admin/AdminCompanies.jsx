@@ -342,7 +342,96 @@ function ConfirmModal({ title, message, confirmLabel = 'Delete', onConfirm, onCa
 // ════════════════════════════════════════════════════════════════
 const ADMIN = { name: 'System Administrator', initials: 'SA' }
 
-const SKILL_CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
+// Skill categories are loaded from /api/categories/ — this is the fallback
+const SKILL_CATEGORIES_FALLBACK = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
+
+// ── Skill Level Presets ───────────────────────────────────────────
+const SKILL_LEVELS = [
+  { label: 'Not Required', value: 0,  color: 'gray'   },
+  { label: 'Basic',        value: 25, color: 'blue'   },
+  { label: 'Mid',          value: 50, color: 'yellow' },
+  { label: 'Advanced',     value: 75, color: 'orange' },
+  { label: 'Expert',       value: 90, color: 'green'  },
+]
+
+const LEVEL_COLORS = {
+  gray:   { btn: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',   active: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 ring-1 ring-gray-400 dark:ring-gray-500' },
+  blue:   { btn: 'bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400',    active: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 ring-1 ring-blue-400 dark:ring-blue-500' },
+  yellow: { btn: 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600 dark:text-yellow-400', active: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200 ring-1 ring-yellow-400 dark:ring-yellow-500' },
+  orange: { btn: 'bg-orange-50 dark:bg-orange-950 text-orange-500 dark:text-orange-400', active: 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 ring-1 ring-orange-400 dark:ring-orange-500' },
+  green:  { btn: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400', active: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 ring-1 ring-green-400 dark:ring-green-500' },
+}
+
+// ── Level Selector Row (per skill category) ───────────────────────
+function SkillLevelSelector({ category, value, onChange }) {
+  const [customMode, setCustomMode] = useState(false)
+  const [customVal,  setCustomVal]  = useState(value || '')
+
+  const presetMatch = SKILL_LEVELS.find(l => l.value === value)
+  const isCustom    = value > 0 && !presetMatch
+
+  function selectPreset(level) {
+    setCustomMode(false)
+    onChange(level.value)
+  }
+
+  function handleCustomChange(e) {
+    const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+    setCustomVal(v)
+    onChange(v)
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{category}</span>
+        {value > 0 && (
+          <span className="text-xs font-bold text-green-600 dark:text-green-400">{value}%</span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {SKILL_LEVELS.map(level => {
+          const isActive = !isCustom && !customMode && value === level.value
+          const colors   = LEVEL_COLORS[level.color]
+          return (
+            <button
+              key={level.label}
+              type="button"
+              onClick={() => selectPreset(level)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? colors.active : colors.btn} hover:scale-105 active:scale-95`}
+            >
+              {level.label}{level.value > 0 ? ` ${level.value}%` : ''}
+            </button>
+          )
+        })}
+        {/* Custom chip */}
+        {customMode || isCustom ? (
+          <div className="flex items-center gap-1 bg-green-50 dark:bg-green-950 border border-green-300 dark:border-green-700 rounded-lg px-2 py-0.5">
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium">Custom:</span>
+            <input
+              type="number"
+              min={1} max={100}
+              value={customVal}
+              onChange={handleCustomChange}
+              autoFocus
+              className="w-12 text-xs font-bold text-green-700 dark:text-green-300 bg-transparent border-none outline-none text-center"
+              placeholder="0"
+            />
+            <span className="text-xs text-green-600 dark:text-green-400">%</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setCustomMode(true); setCustomVal(value > 0 ? value : '') }}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-all"
+          >
+            Custom %
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const INITIAL_COMPANIES = [
   {
@@ -741,10 +830,27 @@ function AddCompanyModal({ onClose, onAdd }) {
 
 // ── Add Position Modal ────────────────────────────────────────────
 function AddPositionModal({ companyName, onClose, onAdd }) {
-  const [title, setTitle] = useState('')
-  const [slots, setSlots] = useState(1)
-  const [reqs, setReqs]   = useState(Object.fromEntries(SKILL_CATEGORIES.map(c => [c, 0])))
-  const [error, setError] = useState('')
+  const [title,       setTitle]       = useState('')
+  const [slots,       setSlots]       = useState(1)
+  const [reqs,        setReqs]        = useState({})
+  const [categories,  setCategories]  = useState(SKILL_CATEGORIES_FALLBACK)
+  const [loadingCats, setLoadingCats] = useState(true)
+  const [error,       setError]       = useState('')
+
+  // Load real categories from API on mount; fall back to hardcoded list if API not yet wired
+  useEffect(() => {
+    const api = { get: (url) => fetch('http://127.0.0.1:8000' + url, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('sb-token')}` }
+    }).then(r => r.json()) }
+    api.get('/api/categories/').then(data => {
+      const names = Array.isArray(data) ? data.map(c => c.name) : []
+      const cats  = names.length > 0 ? names : SKILL_CATEGORIES_FALLBACK
+      setCategories(cats)
+      setReqs(Object.fromEntries(cats.map(c => [c, 0])))
+    }).catch(() => {
+      setReqs(Object.fromEntries(SKILL_CATEGORIES_FALLBACK.map(c => [c, 0])))
+    }).finally(() => setLoadingCats(false))
+  }, [])
 
   function handleSubmit() {
     if (!title.trim()) { setError('Position title is required.'); return }
@@ -756,7 +862,7 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">Add Position</h2>
@@ -767,37 +873,56 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
 
         {error && <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 border border-rose-100 dark:border-rose-900 rounded-lg px-3 py-2">{error}</p>}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Title */}
           <div>
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Position Title <span className="text-rose-500">*</span></label>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Frontend Developer Intern"
               className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"/>
           </div>
+
+          {/* Slots */}
           <div>
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Available Slots <span className="text-rose-500">*</span></label>
             <input type="number" min={1} value={slots} onChange={e => setSlots(e.target.value)}
               className="w-28 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
           </div>
+
+          {/* Skill level selectors */}
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-2">
-              Minimum Skill Requirements
-              <span className="text-gray-400 dark:text-gray-600 font-normal ml-1">(0 = not required)</span>
-            </label>
-            <div className="space-y-3">
-              {SKILL_CATEGORIES.map(cat => (
-                <div key={cat}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{cat}</span>
-                    <span className={`text-xs font-semibold ${reqs[cat] > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-300 dark:text-gray-700'}`}>
-                      {reqs[cat] > 0 ? `${reqs[cat]}%` : 'Not required'}
-                    </span>
-                  </div>
-                  <input type="range" min={0} max={100} step={5} value={reqs[cat]}
-                    onChange={e => setReqs(r => ({ ...r, [cat]: Number(e.target.value) }))}
-                    className="w-full accent-green-600"/>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Minimum Skill Requirements</label>
+              <span className="text-[10px] text-gray-400 dark:text-gray-600">tap a level to set requirement</span>
             </div>
+
+            {loadingCats ? (
+              <div className="flex items-center gap-2 py-3 text-xs text-gray-400">
+                <span className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin inline-block"/>
+                Loading skill categories…
+              </div>
+            ) : (
+              <div className="space-y-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                {categories.map(cat => (
+                  <SkillLevelSelector
+                    key={cat}
+                    category={cat}
+                    value={reqs[cat] ?? 0}
+                    onChange={v => setReqs(r => ({ ...r, [cat]: v }))}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Summary tags */}
+            {Object.values(reqs).some(v => v > 0) && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {Object.entries(reqs).filter(([, v]) => v > 0).map(([cat, v]) => (
+                  <span key={cat} className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-full font-medium">
+                    {cat.split(' ')[0]} ≥{v}%
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -809,6 +934,8 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
     </div>
   )
 }
+
+
 
 // ════════════════════════════════════════════════════════════════
 // Main Page

@@ -106,7 +106,11 @@ class Assessment(models.Model):
 
 # ── Question ─────────────────────────────────────────────────────────────────
 class Question(models.Model):
-    TYPE_CHOICES = [('mcq', 'Multiple Choice'), ('truefalse', 'True/False')]
+    TYPE_CHOICES = [
+        ('mcq',            'Multiple Choice'),
+        ('truefalse',      'True/False'),
+        ('identification', 'Identification'),
+    ]
 
     assessment      = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='questions')
     skill_category  = models.ForeignKey(SkillCategory, on_delete=models.SET_NULL, null=True)
@@ -135,7 +139,8 @@ class AnswerChoice(models.Model):
 class StudentResponse(models.Model):
     student         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='responses')
     assessment      = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='responses')
-    submitted_at    = models.DateTimeField(auto_now_add=True)
+    started_at      = models.DateTimeField(null=True, blank=True)   # set on first question load (timer anti-cheat)
+    submitted_at    = models.DateTimeField(null=True, blank=True)   # set on submit (null = in progress)
     retake_allowed  = models.BooleanField(default=False)
 
     class Meta:
@@ -149,7 +154,8 @@ class StudentResponse(models.Model):
 class ResponseAnswer(models.Model):
     response        = models.ForeignKey(StudentResponse, on_delete=models.CASCADE, related_name='answers')
     question        = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_choice = models.ForeignKey(AnswerChoice, on_delete=models.SET_NULL, null=True)
+    selected_choice = models.ForeignKey(AnswerChoice, on_delete=models.SET_NULL, null=True, blank=True)
+    text_answer     = models.TextField(blank=True, default='')     # used for identification questions
 
 
 # ── Skill Score (auto-computed after submit) ──────────────────────────────────
