@@ -587,7 +587,7 @@ export default function InstructorDashboard() {
 
       {selectedStudent && <StudentModal student={selectedStudent} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
 
-      <InstructorNav instructor={INSTRUCTOR} />
+      <InstructorNav instructor={instructor} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
 
@@ -596,7 +596,7 @@ export default function InstructorDashboard() {
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Student performance</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {INSTRUCTOR.subject} · OJT Assessment 2025–2026
+              {instructor.subject} · OJT Assessment 2025–2026
             </p>
           </div>
           <button
@@ -613,7 +613,7 @@ export default function InstructorDashboard() {
         {/* ── STAT CARDS ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: 'Enrolled',  value: students.length,    icon: '👤', sub: 'total students' },
+            { label: 'Enrolled',  value: studentsList.length,    icon: '👤', sub: 'total students' },
             { label: 'Completed', value: completed.length,   icon: '✓',  sub: 'took the assessment', green: true },
             { label: 'Pending',   value: pending.length,     icon: '…',  sub: 'have not started',    amber: pending.length > 0 },
             { label: 'Avg score', value: `${avgOverall}%`,   icon: '★',  sub: 'across all skills' },
