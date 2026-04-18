@@ -345,7 +345,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav admin={ADMIN} />
+      <AdminNav admin={admin} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
 

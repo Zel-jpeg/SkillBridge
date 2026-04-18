@@ -613,7 +613,7 @@ export default function InstructorDashboard() {
         {/* ── STAT CARDS ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: 'Enrolled',  value: STUDENTS.length,    icon: '👤', sub: 'total students' },
+            { label: 'Enrolled',  value: students.length,    icon: '👤', sub: 'total students' },
             { label: 'Completed', value: completed.length,   icon: '✓',  sub: 'took the assessment', green: true },
             { label: 'Pending',   value: pending.length,     icon: '…',  sub: 'have not started',    amber: pending.length > 0 },
             { label: 'Avg score', value: `${avgOverall}%`,   icon: '★',  sub: 'across all skills' },
