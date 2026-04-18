@@ -55,6 +55,15 @@ export default function LoginPage() {
 
         if (code === 'not_dnsc') {
           setError('Only @dnsc.edu.ph Google accounts are allowed. Please switch accounts and try again.')
+        } else if (code === 'pending') {
+          navigate('/instructor/pending', { state: { type: 'instructor_waiting' } })
+        } else if (code === 'role_selection_required') {
+          sessionStorage.setItem('sb_google_token', tokenResponse.access_token)
+          navigate('/account/choose-role')
+        } else if (code === 'student_not_enrolled' || code === 'student_pending') {
+          navigate('/instructor/pending', {
+            state: { type: 'student_waiting' }
+          })
         } else if (err.response?.status === 401) {
           setError('Google token was invalid or expired. Please try signing in again.')
         } else if (err.response?.status === 500) {

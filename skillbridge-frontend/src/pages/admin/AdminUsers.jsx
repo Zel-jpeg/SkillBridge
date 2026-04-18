@@ -10,8 +10,9 @@
 // TODO Week 5: replace DUMMY_* with real API data
 //   GET /api/admin/students/    → paginated list with filters
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApi } from '../../hooks/useApi'
 
 const PAGE_SIZE = 10
 
@@ -152,34 +153,13 @@ function ViewToggle({ view, setView }) {
 // ================================================================
 const ADMIN = { name: 'System Administrator', initials: 'SA' }
 
-const STUDENTS = [
-  { id: 1,  name: 'David Rey Bali-os',          studentId: '2023-01031', email: 'drbali-os@dnsc.edu.ph',     course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 79,   position: 'Web Developer Intern',     company: 'Azeus Systems'        },
-  { id: 2,  name: 'Lemuel Brion',               studentId: '2023-01045', email: 'lpbrion@dnsc.edu.ph',       course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 83,   position: 'Database Analyst Intern',  company: 'LGU-Panabo MIS'       },
-  { id: 3,  name: 'Azel Villanueva',            studentId: '2023-01058', email: 'amvillanueva@dnsc.edu.ph',  course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 94,   position: 'Frontend Developer',       company: 'Azeus Systems'        },
-  { id: 4,  name: 'Kristine Mae Delos Santos',  studentId: '2023-01062', email: 'kmdelossantos@dnsc.edu.ph', course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 88,   position: 'IT Support Specialist',    company: 'LGU-Panabo MIS'       },
-  { id: 5,  name: 'Reymark Tabang',             studentId: '2023-01075', email: 'rjtabang@dnsc.edu.ph',      course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 91,   position: 'Network Technician',       company: 'DNSC ICT Office'      },
-  { id: 6,  name: 'Jonalyn Caballero',          studentId: '2023-01089', email: 'jcaballero@dnsc.edu.ph',    course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 72,   position: 'UI/UX Intern',             company: 'Azeus Systems'        },
-  { id: 7,  name: 'Elmar Patalinghug',          studentId: '2023-01094', email: 'epatalinghug@dnsc.edu.ph',  course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'pending',   retakeAllowed: false, match: null, position: null,                       company: null                   },
-  { id: 8,  name: 'Mary Grace Oabel',           studentId: '2023-01101', email: 'mgoabel@dnsc.edu.ph',       course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'pending',   retakeAllowed: false, match: null, position: null,                       company: null                   },
-  { id: 9,  name: 'Justin Marc Rosario',        studentId: '2023-01115', email: 'jmrosario@dnsc.edu.ph',     course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', retakeAllowed: false, match: 86,   position: 'Backend Intern',           company: 'Accenture CDO'        },
-  { id: 10, name: 'Sheila Abella',              studentId: '2023-01122', email: 'sabella@dnsc.edu.ph',       course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'pending',   retakeAllowed: false, match: null, position: null,                       company: null                   },
-  { id: 11, name: 'Renaldo Magpantay',          studentId: '2022-00881', email: 'rmagpantay@dnsc.edu.ph',    course: 'BSIT', instructor: 'Roberto G. Cruz',   status: 'completed', retakeAllowed: false, match: 65,   position: 'Network Technician',       company: 'DNSC ICT Office'      },
-  { id: 12, name: 'Patricia Lim',               studentId: '2022-00892', email: 'pglim@dnsc.edu.ph',         course: 'BSIS', instructor: 'Roberto G. Cruz',   status: 'completed', retakeAllowed: false, match: 77,   position: 'IT Support Specialist',    company: 'LGU-Panabo MIS'       },
-  { id: 13, name: 'Franz Aldrin Umali',         studentId: '2022-00905', email: 'faumali@dnsc.edu.ph',       course: 'BSIT', instructor: 'Roberto G. Cruz',   status: 'pending',   retakeAllowed: false, match: null, position: null,                       company: null                   },
-  { id: 14, name: 'Hannah Buenaventura',        studentId: '2022-00918', email: 'hbuenaventura@dnsc.edu.ph', course: 'BSIS', instructor: 'Roberto G. Cruz',   status: 'completed', retakeAllowed: false, match: 58,   position: 'Database Encoder Intern',  company: 'LGU-Panabo MIS'       },
-  { id: 15, name: 'Gerald Esguerra',            studentId: '2022-00933', email: 'gesguerra@dnsc.edu.ph',     course: 'BSIT', instructor: 'Roberto G. Cruz',   status: 'completed', retakeAllowed: false, match: 80,   position: 'Backend Intern',           company: 'Accenture CDO'        },
-]
-
-const INITIAL_INSTRUCTORS = [
-  { id: 1, name: 'Ma. Lourdes T. Reyes', instructorId: '2018-00042', email: 'mtreyes@dnsc.edu.ph',    department: 'Institute of Computing', courses: 'BSIT / BSIS' },
-  { id: 2, name: 'Roberto G. Cruz',      instructorId: '2015-00019', email: 'rgcruz@dnsc.edu.ph',     department: 'Institute of Computing', courses: 'BSIT' },
-]
+const STUDENTS = []
+const INITIAL_INSTRUCTORS = []
 
 let _nextInstructorId = 10
 // ================================================================
 
-const COURSES       = ['BSIT', 'BSIS']
-const INSTRUCTORS_LIST = [...new Set(STUDENTS.map(s => s.instructor))]
+const COURSES = ['BSIT', 'BSIS']
 
 function matchColor(pct) {
   if (pct === null) return 'text-gray-300 dark:text-gray-700'
@@ -676,16 +656,14 @@ function PendingDetailModal({ user, onClose, onApprove, onReject }) {
 
 // ── Main Component ───────────────────────────────────────────────
 export default function AdminUsers() {
-  const navigate = useNavigate()
+  const { data: usersData, request } = useApi('/api/admin/users/')
   const [activeTab,          setActiveTab]      = useState('students')
   const [studentsList,       setStudentsList]   = useState(STUDENTS)
   const [instructors,        setInstructors]    = useState(INITIAL_INSTRUCTORS)
   const [showAddInstr,       setShowAddInstr]   = useState(false)
   const [confirmRemoveInstr, setConfirmRemoveInstr] = useState(null)
 
-  const [pendingInstructors, setPendingInstructors] = useState([
-    { id: 102, name: 'Alice Walker', instructorId: '2024-00001', email: 'awalker@dnsc.edu.ph', department: 'Institute of Computing', courses: 'BSIT' }
-  ])
+  const [pendingInstructors, setPendingInstructors] = useState([])
 
   // User detail modal state
   const [selectedUser,     setSelectedUser]     = useState(null)
@@ -705,9 +683,93 @@ export default function AdminUsers() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 3000) }
 
-  function handleAddInstructor(instr) { setInstructors(prev => [...prev, instr]); showToast(`"${instr.name}" added as instructor.`) }
+  useEffect(() => {
+    if (!usersData) return
+    const students = Array.isArray(usersData.students) ? usersData.students : []
+    const approved = Array.isArray(usersData.instructors) ? usersData.instructors : []
+    const pending = Array.isArray(usersData.pending_instructors) ? usersData.pending_instructors : []
+
+    setStudentsList(students.map(s => ({
+      id: s.id,
+      name: s.name,
+      studentId: s.student_id || '',
+      email: s.email || '',
+      course: s.course || '',
+      instructor: s.instructor || 'TBD',
+      status: s.status || 'pending',
+      retakeAllowed: !!s.retake_allowed,
+      match: s.top_match_score ?? null,
+      position: s.top_position_name ?? null,
+      company: s.top_company_name ?? null,
+      archived: false,
+    })))
+    setInstructors(approved.map(i => ({
+      id: i.id,
+      name: i.name,
+      instructorId: i.instructor_id || '',
+      email: i.email || '',
+      department: i.department || 'Institute of Computing',
+      courses: i.courses || 'BSIT / BSIS',
+      archived: false,
+      status: 'active',
+    })))
+    setPendingInstructors(pending.map(i => ({
+      id: i.id,
+      name: i.name,
+      instructorId: i.instructor_id || '',
+      email: i.email || '',
+      department: i.department || 'Institute of Computing',
+      courses: i.courses || 'BSIT / BSIS',
+    })))
+  }, [usersData])
+
+  async function handleAddInstructor(instr) {
+    const res = await request('post', '/api/admin/instructors/', {
+      name: instr.name,
+      email: instr.email,
+      instructor_id: instr.instructorId,
+      department: instr.department,
+      courses: instr.courses,
+    })
+    if (!res.ok) return
+    const newInstructor = {
+      ...instr,
+      id: res.data?.id ?? instr.id,
+      archived: false,
+      status: 'active',
+    }
+    if (res.data?.is_approved) {
+      setInstructors(prev => [...prev, newInstructor])
+      showToast(`"${instr.name}" added and approved.`)
+    } else {
+      setPendingInstructors(prev => [...prev, newInstructor])
+      showToast(
+        res.data?.email_sent
+          ? `"${instr.name}" added as pending. Notification email sent.`
+          : `"${instr.name}" added as pending. Email not sent (check SMTP settings).`
+      )
+    }
+  }
 
   function handleDeleteInstructor(instr) { setConfirmRemoveInstr(instr); setSelectedUser(null) }
+
+  async function approvePendingInstructor(instr) {
+    const res = await request('post', `/api/admin/instructors/${instr.id}/approve/`)
+    if (!res.ok) return
+    setPendingInstructors(p => p.filter(x => x.id !== instr.id))
+    setInstructors(p => [...p, { ...instr, archived: false, status: 'active' }])
+    showToast(
+      res.data?.email_sent
+        ? `${instr.name} approved and notified.`
+        : `${instr.name} approved, but email was not sent (check SMTP settings).`
+    )
+  }
+
+  function rejectPendingInstructor(instr) {
+    // Rejection endpoint not yet implemented; keep frontend cleanup for now.
+    setPendingInstructors(p => p.filter(x => x.id !== instr.id))
+    showToast(`${instr.name} rejected.`)
+  }
 
   function confirmDeleteInstructor() {
     setInstructors(prev => prev.map(i => i.id === confirmRemoveInstr.id ? { ...i, archived: true } : i))
@@ -809,6 +871,7 @@ export default function AdminUsers() {
 
   const completedCount = studentsList.filter(s => s.status === 'completed').length
   const pendingCount   = studentsList.filter(s => s.status === 'pending').length
+  const instructorsList = [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
 
   // Filtered instructors (non-archived)
   const activeInstructors = instructors.filter(i => !i.archived)
@@ -834,15 +897,12 @@ export default function AdminUsers() {
         <PendingDetailModal
           user={selectedPending}
           onClose={() => setSelectedPending(null)}
-          onApprove={() => {
-            setPendingInstructors(p => p.filter(x => x.id !== selectedPending.id))
-            setInstructors(p => [...p, { ...selectedPending, archived: false, status: 'active' }])
-            showToast(`${selectedPending.name} approved.`)
+          onApprove={async () => {
+            await approvePendingInstructor(selectedPending)
             setSelectedPending(null)
           }}
           onReject={() => {
-            setPendingInstructors(p => p.filter(x => x.id !== selectedPending.id))
-            showToast(`${selectedPending.name} rejected.`)
+            rejectPendingInstructor(selectedPending)
             setSelectedPending(null)
           }}
         />
@@ -1271,11 +1331,11 @@ export default function AdminUsers() {
                       <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{instr.courses}</p>
                     </div>
                     <div className="flex gap-2 mt-1">
-                      <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); showToast(`${instr.name} rejected.`) }}
+                      <button onClick={e => { e.stopPropagation(); rejectPendingInstructor(instr) }}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 dark:bg-gray-800 dark:hover:bg-rose-900 dark:text-gray-400 dark:hover:text-rose-400 transition-colors">
                         Reject
                       </button>
-                      <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); setInstructors(p => [...p, { ...instr, archived: false, status: 'active' }]); showToast(`${instr.name} approved.`) }}
+                      <button onClick={e => { e.stopPropagation(); approvePendingInstructor(instr) }}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors">
                         Approve
                       </button>
@@ -1322,9 +1382,9 @@ export default function AdminUsers() {
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); showToast(`${instr.name} rejected.`) }}
+                            <button onClick={e => { e.stopPropagation(); rejectPendingInstructor(instr) }}
                               className="px-3 py-1.5 bg-gray-100 hover:bg-rose-100 text-gray-700 hover:text-rose-600 rounded-lg text-xs font-semibold transition-colors">Reject</button>
-                            <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); setInstructors(p => [...p, { ...instr, archived: false, status: 'active' }]); showToast(`${instr.name} approved.`) }}
+                            <button onClick={e => { e.stopPropagation(); approvePendingInstructor(instr) }}
                               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors">Approve</button>
                           </div>
                         </td>
@@ -1355,9 +1415,9 @@ export default function AdminUsers() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); showToast(`${instr.name} rejected.`) }}
+                      <button onClick={e => { e.stopPropagation(); rejectPendingInstructor(instr) }}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 transition-colors">Reject</button>
-                      <button onClick={e => { e.stopPropagation(); setPendingInstructors(p => p.filter(x => x.id !== instr.id)); setInstructors(p => [...p, { ...instr, archived: false, status: 'active' }]); showToast(`${instr.name} approved.`) }}
+                      <button onClick={e => { e.stopPropagation(); approvePendingInstructor(instr) }}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-green-600 text-white transition-colors">Approve</button>
                     </div>
                   </div>
@@ -1430,7 +1490,7 @@ export default function AdminUsers() {
                 className="text-xs px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer max-w-48 truncate"
               >
                 <option value="all">All Instructors</option>
-                {INSTRUCTORS_LIST.map(i => <option key={i} value={i}>{i}</option>)}
+                {instructorsList.map(i => <option key={i} value={i}>{i}</option>)}
               </select>
             </div>
 

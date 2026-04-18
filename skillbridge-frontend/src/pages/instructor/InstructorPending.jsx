@@ -1,7 +1,16 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function InstructorPending() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const isStudentWaiting = location.state?.type === 'student_waiting'
+
+  const title = isStudentWaiting
+    ? 'Student Account Pending Enrollment'
+    : 'Account Pending Verification'
+  const description = isStudentWaiting
+    ? 'Your DNSC account is recognized as a Student, but you are not enrolled in a batch yet. Please wait for your instructor to enroll you first before you can access SkillBridge.'
+    : 'Your request to access SkillBridge as an Instructor has been received and is waiting for administrator approval.'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4 relative overflow-hidden">
@@ -22,9 +31,9 @@ export default function InstructorPending() {
           </svg>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Account Pending Verification</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-          Your request to access SkillBridge as an <strong className="text-gray-700 dark:text-gray-300">Instructor</strong> has been received and is waiting for administrator approval. This usually takes between 1-24 hours.
+          {description}
         </p>
 
         <div className="space-y-3">

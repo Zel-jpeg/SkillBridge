@@ -7,6 +7,9 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db.models import Sum
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
@@ -18,6 +21,20 @@ from .serializers import UserSerializer
 
 class LoginRateThrottle(AnonRateThrottle):
     scope = 'login'
+
+
+def send_instructor_email(user, subject, body):
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception:
+        return False
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -112,21 +129,26 @@ def google_login(request):
     if not email.endswith('@dnsc.edu.ph'):
         return Response({'error': 'not_dnsc'}, status=status.HTTP_403_FORBIDDEN)
 
-    user, created = User.objects.get_or_create(
-        email=email,
-        defaults={
-            'name':        name,
-            'role':        'student',
-            'photo_url':   photo_url,
-            'is_approved': True,
-            'is_active':   True,
-        }
-    )
-
-    if not created:
-        user.name      = name
+    try:
+        user = User.objects.get(email=email)
+        user.name = name
         user.photo_url = photo_url
         user.save(update_fields=['name', 'photo_url'])
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'role_selection_required', 'email': email, 'name': name},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if user.role == 'instructor' and not user.is_approved:
+        return Response({'error': 'pending'}, status=status.HTTP_403_FORBIDDEN)
+    if user.role == 'student':
+        # Student must be approved AND enrolled by instructor first.
+        if not user.is_approved:
+            return Response({'error': 'student_pending'}, status=status.HTTP_403_FORBIDDEN)
+        has_enrollment = BatchEnrollment.objects.filter(student=user).exists()
+        if not has_enrollment:
+            return Response({'error': 'student_not_enrolled'}, status=status.HTTP_403_FORBIDDEN)
 
     refresh = RefreshToken.for_user(user)
     return Response({
@@ -134,6 +156,63 @@ def google_login(request):
         'refresh': str(refresh),
         'user':    UserSerializer(user).data,
     })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_role(request):
+    access_token = request.data.get('token')
+    role = request.data.get('role', '').strip().lower()
+
+    if not access_token:
+        return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
+    if role not in ('student', 'instructor'):
+        return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
+
+    google_response = http_requests.get(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+    if google_response.status_code != 200:
+        return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    idinfo = google_response.json()
+    email = idinfo.get('email', '')
+    name = idinfo.get('name', '')
+    photo_url = idinfo.get('picture', '')
+
+    if not email.endswith('@dnsc.edu.ph'):
+        return Response({'error': 'not_dnsc'}, status=status.HTTP_403_FORBIDDEN)
+
+    existing = User.objects.filter(email=email).first()
+    if existing:
+        existing.name = name or existing.name
+        existing.photo_url = photo_url or existing.photo_url
+        existing.save(update_fields=['name', 'photo_url'])
+        return Response({
+            'ok': True,
+            'already_exists': True,
+            'role': existing.role,
+            'is_approved': existing.is_approved,
+        })
+
+    user = User.objects.create(
+        email=email,
+        name=name or email.split('@')[0],
+        role=role,
+        photo_url=photo_url,
+        is_approved=False,
+        is_active=True,
+    )
+    user.set_unusable_password()
+    user.save(update_fields=['password'])
+
+    return Response({
+        'ok': True,
+        'role': user.role,
+        'is_approved': user.is_approved,
+        'message': 'Account created and pending approval/enrollment.',
+    }, status=201)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -333,6 +412,10 @@ def instructor_batch_enroll(request, batch_id):
 
         try:
             student = User.objects.get(email=email, role='student')
+            # If student self-registered but is still pending, auto-approve when enrolled.
+            if not student.is_approved:
+                student.is_approved = True
+                student.save(update_fields=['is_approved'])
         except User.DoesNotExist:
             # Auto-create student account (will log in via Google)
             student = User.objects.create(
@@ -856,7 +939,17 @@ def admin_student_recommendations(request):
             .select_related('position', 'position__company')
             .order_by('-match_score')[:3]
         )
+        top_one = top_recs[0] if top_recs else None
         results.append({
+            'id': student.id,
+            'student_name': student.name,
+            'email': student.email,
+            'school_id': student.school_id,
+            'course': student.course,
+            'has_submitted': bool(top_one),
+            'top_match_score': round(top_one.match_score, 2) if top_one else None,
+            'top_position_name': top_one.position.title if top_one else None,
+            'top_company_name': top_one.position.company.name if top_one else None,
             'student': {
                 'id':        student.id,
                 'name':      student.name,
@@ -875,6 +968,170 @@ def admin_student_recommendations(request):
         })
 
     return Response(results)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ADMIN — Dashboard / Users
+# ════════════════════════════════════════════════════════════════════════════
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_stats(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    total_students = User.objects.filter(role='student', is_active=True).count()
+    total_companies = Company.objects.count()
+    open_positions = Position.objects.aggregate(total=Sum('slots_available')).get('total') or 0
+    recommendations_made = Recommendation.objects.count()
+
+    return Response({
+        'total_students': total_students,
+        'total_companies': total_companies,
+        'open_positions': open_positions,
+        'recommendations_made': recommendations_made,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_users(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    students = User.objects.filter(role='student', is_active=True).order_by('name')
+    instructors = User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name')
+    pending_instructors = User.objects.filter(role='instructor', is_active=True, is_approved=False).order_by('name')
+
+    students_out = []
+    for s in students:
+        top_rec = (
+            Recommendation.objects
+            .filter(student=s)
+            .select_related('position', 'position__company')
+            .order_by('-match_score')
+            .first()
+        )
+        students_out.append({
+            'id': s.id,
+            'name': s.name,
+            'email': s.email,
+            'student_id': s.school_id or '',
+            'course': s.course or '',
+            'status': 'completed' if top_rec else 'pending',
+            'top_match_score': round(top_rec.match_score, 2) if top_rec else None,
+            'top_position_name': top_rec.position.title if top_rec else None,
+            'top_company_name': top_rec.position.company.name if top_rec else None,
+            'retake_allowed': False,
+        })
+
+    def serialize_instructor(user):
+        return {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'instructor_id': user.school_id or '',
+            'department': 'Institute of Computing',
+            'courses': user.course or 'BSIT / BSIS',
+            'is_approved': user.is_approved,
+        }
+
+    return Response({
+        'students': students_out,
+        'instructors': [serialize_instructor(i) for i in instructors],
+        'pending_instructors': [serialize_instructor(i) for i in pending_instructors],
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_instructors(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    email = request.data.get('email', '').strip().lower()
+    name = request.data.get('name', '').strip()
+    instructor_id = request.data.get('instructor_id', '').strip()
+    department = request.data.get('department', 'Institute of Computing').strip()
+    courses = request.data.get('courses', 'BSIT / BSIS').strip()
+
+    if not email.endswith('@dnsc.edu.ph'):
+        return Response({'error': 'Instructor email must use @dnsc.edu.ph'}, status=400)
+    if not name:
+        return Response({'error': 'name is required'}, status=400)
+    if not instructor_id:
+        return Response({'error': 'instructor_id is required'}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({'error': 'Email already exists'}, status=409)
+    if User.objects.filter(role='instructor', school_id=instructor_id).exists():
+        return Response({'error': 'Instructor ID already exists'}, status=409)
+
+    user = User.objects.create(
+        email=email,
+        name=name,
+        role='instructor',
+        school_id=instructor_id,
+        course=courses,
+        is_approved=True,
+        is_active=True,
+    )
+    user.set_unusable_password()
+    user.save(update_fields=['password'])
+
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
+    email_sent = send_instructor_email(
+        user,
+        subject='SkillBridge Instructor Access Approved',
+        body=(
+            f'Hello {name},\n\n'
+            'You were added as an instructor in SkillBridge.\n'
+            'You can now log in using your DNSC Google account.\n\n'
+            f'Login page: {frontend_url}/login\n'
+            f'Instructor ID: {instructor_id}\n'
+            f'Department: {department}\n'
+        )
+    )
+
+    return Response({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'instructor_id': user.school_id,
+        'department': department,
+        'courses': user.course,
+        'is_approved': user.is_approved,
+        'email_sent': email_sent,
+    }, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_approve_instructor(request, user_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    try:
+        user = User.objects.get(id=user_id, role='instructor')
+    except User.DoesNotExist:
+        return Response({'error': 'Instructor not found'}, status=404)
+
+    user.is_approved = True
+    user.save(update_fields=['is_approved'])
+
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
+    email_sent = send_instructor_email(
+        user,
+        subject='SkillBridge Instructor Access Approved',
+        body=(
+            f'Hello {user.name},\n\n'
+            'Your instructor access has been approved in SkillBridge.\n'
+            'You can now log in using your DNSC Google account.\n\n'
+            f'Login: {frontend_url}/login\n'
+        )
+    )
+
+    return Response({'ok': True, 'email_sent': email_sent})
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -937,6 +1194,19 @@ def admin_companies(request):
     return Response({'id': company.id, 'name': company.name}, status=201)
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_company_detail(request, company_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+    try:
+        company = Company.objects.get(id=company_id)
+    except Company.DoesNotExist:
+        return Response({'error': 'Company not found'}, status=404)
+    company.delete()
+    return Response(status=204)
+
+
 # ── POST /api/admin/companies/{id}/positions/ ─────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -981,3 +1251,16 @@ def admin_company_positions(request, company_id):
         'title': position.title,
         'slots': position.slots_available,
     }, status=201)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_position_detail(request, position_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+    try:
+        position = Position.objects.get(id=position_id)
+    except Position.DoesNotExist:
+        return Response({'error': 'Position not found'}, status=404)
+    position.delete()
+    return Response(status=204)

@@ -16,7 +16,7 @@ import { Navigate } from 'react-router-dom'
 
 const ROLE_REDIRECTS = {
   admin:      '/admin/login',
-  instructor: '/admin/login',  // same login page, different role
+  instructor: '/login',
   student:    '/login',
 }
 

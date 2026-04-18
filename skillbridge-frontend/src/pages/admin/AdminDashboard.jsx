@@ -288,10 +288,10 @@ export default function AdminDashboard() {
 
   // Build stat cards from live data
   const STATS = [
-    { label: 'Total Students',       Icon: IconStudents,  color: 'bg-blue-50   dark:bg-blue-950   text-blue-700   dark:text-blue-300   border-blue-100   dark:border-blue-900',   value: statsData?.total_students       ?? '—' },
-    { label: 'Companies Listed',     Icon: IconCompany,   color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: statsData?.total_companies       ?? '—' },
-    { label: 'Open Positions',       Icon: IconPositions, color: 'bg-amber-50  dark:bg-amber-950  text-amber-700  dark:text-amber-300  border-amber-100  dark:border-amber-900',  value: statsData?.open_positions         ?? '—' },
-    { label: 'Recommendations Made', Icon: IconCheck,     color: 'bg-green-50  dark:bg-green-950  text-green-700  dark:text-green-300  border-green-100  dark:border-green-900',  value: statsData?.recommendations_made   ?? '—' },
+    { label: 'Total Students',       Icon: IconStudents,  color: 'bg-blue-50   dark:bg-blue-950   text-blue-700   dark:text-blue-300   border-blue-100   dark:border-blue-900',   value: statsData?.total_students ?? 0 },
+    { label: 'Companies Listed',     Icon: IconCompany,   color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: statsData?.total_companies ?? 0 },
+    { label: 'Open Positions',       Icon: IconPositions, color: 'bg-amber-50  dark:bg-amber-950  text-amber-700  dark:text-amber-300  border-amber-100  dark:border-amber-900',  value: statsData?.open_positions ?? 0 },
+    { label: 'Recommendations Made', Icon: IconCheck,     color: 'bg-green-50  dark:bg-green-950  text-green-700  dark:text-green-300  border-green-100  dark:border-green-900',  value: statsData?.recommendations_made ?? 0 },
   ]
 
   // Normalize student list from API

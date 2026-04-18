@@ -27,6 +27,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
+import { useApi } from '../../hooks/useApi'
 
 // ────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN, no npm package needed.
@@ -433,51 +434,6 @@ function SkillLevelSelector({ category, value, onChange }) {
   )
 }
 
-const INITIAL_COMPANIES = [
-  {
-    id: 1,
-    name: 'Azeus Systems Philippines',
-    address: 'IT Park, Lanang, Davao City, Davao del Sur',
-    lat: 7.0933,
-    lng: 125.6341,
-    positions: [
-      { id: 101, title: 'Frontend Developer Intern',  slots: 3, requirements: { 'Web Development': 70, 'Design': 60, 'Backend': 40 } },
-      { id: 102, title: 'Backend Developer Intern',   slots: 2, requirements: { 'Backend': 70, 'Database': 65, 'Web Development': 50 } },
-    ],
-  },
-  {
-    id: 2,
-    name: 'LGU-Panabo City MIS Office',
-    address: 'Panabo City, Davao del Norte',
-    lat: 7.3072,
-    lng: 125.6839,
-    positions: [
-      { id: 201, title: 'IT Support Specialist',    slots: 2, requirements: { 'Networking': 65, 'Database': 60 } },
-      { id: 202, title: 'Database Encoder Intern',  slots: 1, requirements: { 'Database': 75, 'Web Development': 40 } },
-    ],
-  },
-  {
-    id: 3,
-    name: 'DNSC ICT Office',
-    address: 'Panabo City, Davao del Norte',
-    lat: 7.3167,
-    lng: 125.6847,
-    positions: [
-      { id: 301, title: 'Network Technician Intern', slots: 4, requirements: { 'Networking': 80, 'Backend': 30 } },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Accenture CDO',
-    address: 'Cagayan de Oro City, Misamis Oriental',
-    lat: 8.4869,
-    lng: 124.6475,
-    positions: [
-      { id: 401, title: 'Backend Intern',      slots: 5, requirements: { 'Backend': 70, 'Database': 60, 'Web Development': 50 } },
-      { id: 402, title: 'UI/UX Design Intern', slots: 2, requirements: { 'Design': 75, 'Web Development': 55 } },
-    ],
-  },
-]
 // ════════════════════════════════════════════════════════════════
 
 let nextCompanyId  = 10
@@ -663,6 +619,7 @@ function AddCompanyModal({ onClose, onAdd }) {
       id:       ++nextCompanyId,
       name:     name.trim(),
       address:  fullAddress,
+      addressParts: addrParts,
       lat:      pinned?.lat ?? null,
       lng:      pinned?.lng ?? null,
       positions: [],
@@ -830,6 +787,7 @@ function AddCompanyModal({ onClose, onAdd }) {
 
 // ── Add Position Modal ────────────────────────────────────────────
 function AddPositionModal({ companyName, onClose, onAdd }) {
+  const { request } = useApi()
   const [title,       setTitle]       = useState('')
   const [slots,       setSlots]       = useState(1)
   const [reqs,        setReqs]        = useState({})
@@ -839,10 +797,8 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
 
   // Load real categories from API on mount; fall back to hardcoded list if API not yet wired
   useEffect(() => {
-    const api = { get: (url) => fetch('http://127.0.0.1:8000' + url, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('sb-token')}` }
-    }).then(r => r.json()) }
-    api.get('/api/categories/').then(data => {
+    request('get', '/api/categories/').then(res => {
+      const data = res.ok ? res.data : []
       const names = Array.isArray(data) ? data.map(c => c.name) : []
       const cats  = names.length > 0 ? names : SKILL_CATEGORIES_FALLBACK
       setCategories(cats)
@@ -850,7 +806,7 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
     }).catch(() => {
       setReqs(Object.fromEntries(SKILL_CATEGORIES_FALLBACK.map(c => [c, 0])))
     }).finally(() => setLoadingCats(false))
-  }, [])
+  }, [request])
 
   function handleSubmit() {
     if (!title.trim()) { setError('Position title is required.'); return }
@@ -941,7 +897,8 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
 // Main Page
 // ════════════════════════════════════════════════════════════════
 export default function AdminCompanies() {
-  const [companies,      setCompanies]      = useState(INITIAL_COMPANIES)
+  const { data: companiesData, request } = useApi('/api/admin/companies/')
+  const [companies,      setCompanies]      = useState([])
   const [showAddCompany, setShowAddCompany] = useState(false)
   const [addPositionFor, setAddPositionFor] = useState(null)
   const [search,         setSearch]         = useState('')
@@ -963,8 +920,38 @@ export default function AdminCompanies() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 3000) }
 
-  function handleAddCompany(company) {
-    setCompanies(c => [...c, company])
+  function normalizeCompany(co) {
+    const addressText = typeof co.address === 'string'
+      ? co.address
+      : [co.address?.barangay, co.address?.city, co.address?.province].filter(Boolean).join(', ')
+    return {
+      ...co,
+      address: addressText || 'No address yet',
+      addressParts: typeof co.address === 'object' && co.address !== null
+        ? co.address
+        : { province: '', city: '', barangay: '' },
+      positions: Array.isArray(co.positions) ? co.positions : [],
+    }
+  }
+
+  useEffect(() => {
+    if (!Array.isArray(companiesData)) return
+    setCompanies(companiesData.map(normalizeCompany))
+  }, [companiesData])
+
+  async function handleAddCompany(company) {
+    const res = await request('post', '/api/admin/companies/', {
+      name: company.name,
+      address: company.addressParts || null,
+      lat: company.lat,
+      lng: company.lng,
+    })
+    if (!res.ok) return
+    const created = {
+      ...company,
+      id: res.data?.id ?? company.id,
+    }
+    setCompanies(c => [...c, created])
     showToast(`"${company.name}" added.`)
   }
 
@@ -976,12 +963,16 @@ export default function AdminCompanies() {
     setConfirmDelete({ type: 'position', companyId, positionId: pos.id, label: pos.title })
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!confirmDelete) return
     if (confirmDelete.type === 'company') {
+      const res = await request('delete', `/api/admin/companies/${confirmDelete.companyId}/`)
+      if (!res.ok) return
       setCompanies(c => c.filter(co => co.id !== confirmDelete.companyId))
       showToast('Company deleted.')
     } else {
+      const res = await request('delete', `/api/admin/positions/${confirmDelete.positionId}/`)
+      if (!res.ok) return
       setCompanies(c => c.map(co => co.id === confirmDelete.companyId
         ? { ...co, positions: co.positions.filter(p => p.id !== confirmDelete.positionId) } : co))
       showToast('Position deleted.')
@@ -989,8 +980,18 @@ export default function AdminCompanies() {
     setConfirmDelete(null)
   }
 
-  function handleAddPosition(companyId, position) {
-    setCompanies(c => c.map(co => co.id === companyId ? { ...co, positions: [...co.positions, position] } : co))
+  async function handleAddPosition(companyId, position) {
+    const res = await request('post', `/api/admin/companies/${companyId}/positions/`, {
+      title: position.title,
+      slots: position.slots,
+      requirements: position.requirements,
+    })
+    if (!res.ok) return
+    const newPos = {
+      ...position,
+      id: res.data?.id ?? position.id,
+    }
+    setCompanies(c => c.map(co => co.id === companyId ? { ...co, positions: [...co.positions, newPos] } : co))
     showToast(`"${position.title}" added.`)
   }
 

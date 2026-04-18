@@ -7,6 +7,7 @@ urlpatterns = [
     path('auth/refresh/',        views.refresh,         name='refresh'),
     path('auth/me/',             views.me,              name='me'),
     path('auth/google/',         views.google_login,    name='google_login'),
+    path('auth/register-role/',  views.register_role,   name='register_role'),
 
     # ── Student ───────────────────────────────────────────────────────────────
     path('students/me/',              views.student_me,      name='student_me'),
@@ -36,7 +37,13 @@ urlpatterns = [
     path('assessments/<int:assessment_id>/submit/', views.assessment_submit,  name='assessment_submit'),
 
     # ── Admin ─────────────────────────────────────────────────────────────────
+    path('admin/stats/',                                  views.admin_stats,              name='admin_stats'),
+    path('admin/users/',                                  views.admin_users,              name='admin_users'),
+    path('admin/instructors/',                            views.admin_instructors,        name='admin_instructors'),
+    path('admin/instructors/<int:user_id>/approve/',      views.admin_approve_instructor, name='admin_approve_instructor'),
     path('admin/companies/',                              views.admin_companies,          name='admin_companies'),
+    path('admin/companies/<int:company_id>/',             views.admin_company_detail,     name='admin_company_detail'),
     path('admin/companies/<int:company_id>/positions/',   views.admin_company_positions,  name='admin_company_positions'),
+    path('admin/positions/<int:position_id>/',            views.admin_position_detail,    name='admin_position_detail'),
     path('admin/students/recommendations/',               views.admin_student_recommendations, name='admin_student_recommendations'),
 ]
