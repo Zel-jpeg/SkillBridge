@@ -1,53 +1,19 @@
 // src/pages/instructor/EnrolledStudents.jsx
-// TODO Week 4: replace DUMMY_STUDENTS with real API data
-//   GET  /api/instructor/students/
-//   POST /api/instructor/students/
+// Wired to real API (Week 4):
+//   GET    /api/instructor/batches/              → list batches + students
+//   POST   /api/instructor/batches/              → create new batch
+//   POST   /api/instructor/batches/{id}/enroll/  → enroll students
+//   PATCH  /api/instructor/students/{id}/retake/ → toggle retake
+//   DELETE /api/instructor/students/{id}/        → remove student
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 
-// ── Dummy data ────────────────────────────────────────────────────
-const INSTRUCTOR = { name: 'Ma. Lourdes T. Reyes', initials: 'LR', subject: 'OJT Coordinator · BSIT / BSIS' }
 const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
 const PAGE_SIZE  = 10
-
-// Each batch = one graduating school-year cohort.
-// When 'archived', all data is preserved read-only. A new active batch is then created.
-const INITIAL_BATCHES = [
-  {
-    id: 1,
-    name: 'AY 2022–2023',
-    status: 'archived',  // 'active' | 'archived'
-    archivedAt: '2023-06-15',
-    students: [
-      { id: 101, name: 'Renaldo Magpantay', studentId: '2022-00881', email: 'rmagpantay@dnsc.edu.ph', course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 72, 'Database': 65, 'Design': 58, 'Networking': 80, 'Backend': 55 } },
-      { id: 102, name: 'Patricia Lim',      studentId: '2022-00892', email: 'pglim@dnsc.edu.ph',      course: 'BSIS', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 60, 'Database': 77, 'Design': 85, 'Networking': 50, 'Backend': 68 } },
-      { id: 103, name: 'Franz Aldrin Umali',studentId: '2022-00905', email: 'faumali@dnsc.edu.ph',    course: 'BSIT', status: 'pending',   retakeAllowed: false, scores: {} },
-    ],
-  },
-  {
-    id: 2,
-    name: 'AY 2023–2024',
-    status: 'active',
-    archivedAt: null,
-    students: [
-      { id: 1,  name: 'David Rey Bali-os',        studentId: '2023-01031', email: 'drbali-os@dnsc.edu.ph',      course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 82, 'Database': 70, 'Design': 60, 'Networking': 55, 'Backend': 48 } },
-      { id: 2,  name: 'Lemuel Brion',             studentId: '2023-01045', email: 'lpbrion@dnsc.edu.ph',        course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 75, 'Database': 88, 'Design': 45, 'Networking': 62, 'Backend': 70 } },
-      { id: 3,  name: 'Azel Villanueva',          studentId: '2023-01058', email: 'amvillanueva@dnsc.edu.ph',   course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 91, 'Database': 65, 'Design': 80, 'Networking': 40, 'Backend': 55 } },
-      { id: 4,  name: 'Kristine Mae Delos Santos',studentId: '2023-01062', email: 'kmdelossantos@dnsc.edu.ph',  course: 'BSIS', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 60, 'Database': 78, 'Design': 72, 'Networking': 85, 'Backend': 66 } },
-      { id: 5,  name: 'Reymark Tabang',           studentId: '2023-01075', email: 'rjtabang@dnsc.edu.ph',       course: 'BSIT', status: 'completed', retakeAllowed: true,  scores: { 'Web Development': 55, 'Database': 60, 'Design': 50, 'Networking': 92, 'Backend': 80 } },
-      { id: 6,  name: 'Jonalyn Caballero',        studentId: '2023-01089', email: 'jcaballero@dnsc.edu.ph',     course: 'BSIS', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 78, 'Database': 55, 'Design': 88, 'Networking': 48, 'Backend': 42 } },
-      { id: 7,  name: 'Elmar Patalinghug',        studentId: '2023-01094', email: 'epatalinghug@dnsc.edu.ph',   course: 'BSIT', status: 'pending',   retakeAllowed: false, scores: {} },
-      { id: 8,  name: 'Mary Grace Oabel',         studentId: '2023-01101', email: 'mgoabel@dnsc.edu.ph',        course: 'BSIS', status: 'pending',   retakeAllowed: false, scores: {} },
-      { id: 9,  name: 'Justin Marc Rosario',      studentId: '2023-01115', email: 'jmrosario@dnsc.edu.ph',      course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 68, 'Database': 74, 'Design': 58, 'Networking': 70, 'Backend': 90 } },
-      { id: 10, name: 'Sheila Abella',            studentId: '2023-01122', email: 'sabella@dnsc.edu.ph',        course: 'BSIS', status: 'pending',   retakeAllowed: false, scores: {} },
-      { id: 11, name: 'Mark Anthony Daguio',      studentId: '2023-01130', email: 'madaguio@dnsc.edu.ph',       course: 'BSIT', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 88, 'Database': 62, 'Design': 55, 'Networking': 74, 'Backend': 66 } },
-      { id: 12, name: 'Nica Florentino',          studentId: '2023-01138', email: 'nflorentino@dnsc.edu.ph',    course: 'BSIS', status: 'completed', retakeAllowed: false, scores: { 'Web Development': 50, 'Database': 90, 'Design': 68, 'Networking': 58, 'Backend': 72 } },
-    ],
-  },
-]
-let _nextBatchId      = 3
-let _nextStudentIdRef = { v: 200 }
+// Fallback batches shown before API loads
+const FALLBACK_BATCHES = []
 
 // ── Helpers ───────────────────────────────────────────────────────
 function avg(scores) {
@@ -772,12 +738,45 @@ function EnrollModal({ existingStudents, onClose, onEnroll }) {
 export default function EnrolledStudents() {
   const navigate = useNavigate()
 
-  // ── Batch state ─────────────────────────────────────────────────
-  const [batches,         setBatches]         = useState(INITIAL_BATCHES)
-  const [activeBatchId,   setActiveBatchId]   = useState(() => INITIAL_BATCHES.find(b => b.status === 'active')?.id ?? INITIAL_BATCHES[INITIAL_BATCHES.length - 1].id)
+  // ── Batch state — loaded from API ───────────────────────────────
+  const [batches,         setBatches]         = useState(FALLBACK_BATCHES)
+  const [loadingBatches,  setLoadingBatches]  = useState(true)
+  const [activeBatchId,   setActiveBatchId]   = useState(null)
   const [showArchiveConf, setShowArchiveConf] = useState(false)
   const [showNewBatch,    setShowNewBatch]    = useState(false)
   const [newBatchName,    setNewBatchName]    = useState('')
+
+  // Load batches from API on mount
+  useEffect(() => {
+    api.get('/api/instructor/batches/')
+      .then(res => {
+        const apiData = res.data
+        // Normalize API shape → { id, name, status, archivedAt, students[] }
+        const normalized = apiData.map(b => ({
+          id:         b.id,
+          name:       b.name,
+          status:     b.is_active ? 'active' : 'archived',
+          archivedAt: b.archived_at ?? null,
+          students:   (b.students || []).map(s => ({
+            id:            s.id,
+            name:          s.name,
+            studentId:     s.school_id || s.student_id || '',
+            email:         s.email,
+            course:        s.course,
+            status:        s.has_submitted ? 'completed' : 'pending',
+            retakeAllowed: s.retake_allowed ?? false,
+            scores:        s.skill_scores ?? {},
+          }))
+        }))
+        setBatches(normalized)
+        const active = normalized.find(b => b.status === 'active')
+        setActiveBatchId(active?.id ?? normalized[normalized.length - 1]?.id ?? null)
+      })
+      .catch(() => {
+        // API not yet wired — keep empty list, show "no batch" state
+      })
+      .finally(() => setLoadingBatches(false))
+  }, []) // eslint-disable-line
 
   const viewedBatch   = batches.find(b => b.id === activeBatchId)
   const isArchived    = viewedBatch?.status === 'archived'
@@ -790,7 +789,10 @@ export default function EnrolledStudents() {
     ))
   }
 
-  function handleArchiveBatch() {
+  async function handleArchiveBatch() {
+    try {
+      await api.post(`/api/instructor/batches/${activeBatchId}/archive/`)
+    } catch { /* fall through to local update */ }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId ? { ...b, status: 'archived', archivedAt: new Date().toISOString().slice(0, 10) } : b
     ))
@@ -798,9 +800,14 @@ export default function EnrolledStudents() {
     setShowNewBatch(true)
   }
 
-  function handleCreateBatch() {
+  async function handleCreateBatch() {
     const name = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
-    const nb = { id: ++_nextBatchId, name, status: 'active', archivedAt: null, students: [] }
+    let newId = Date.now()
+    try {
+      const res = await api.post('/api/instructor/batches/', { name })
+      newId = res.data.id
+    } catch { /* use temp ID */ }
+    const nb = { id: newId, name, status: 'active', archivedAt: null, students: [] }
     setBatches(prev => [...prev, nb])
     setActiveBatchId(nb.id)
     setShowNewBatch(false)
@@ -808,15 +815,17 @@ export default function EnrolledStudents() {
     showToast(`New batch "${name}" created.`)
   }
 
-  function handleToggleRetake(studentId) {
+  async function handleToggleRetake(studentId) {
+    const st = students.find(s => s.id === studentId)
+    try {
+      await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !st?.retakeAllowed })
+    } catch { /* optimistic update still applied */ }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
         ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s) }
         : b
     ))
-    // Also update the selected student for instant UI feedback
     setSelectedStudent(prev => prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev)
-    const st = students.find(s => s.id === studentId)
     if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
   }
 
@@ -839,11 +848,29 @@ export default function EnrolledStudents() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 4000) }
 
-  function handleEnroll(newStudents) {
-    const toAdd = newStudents.map(s => ({ id: ++_nextStudentIdRef.v, ...s, status: 'pending', retakeAllowed: false, scores: {} }))
-    setStudents(p => [...p, ...toAdd])
+
+  async function handleEnroll(newStudents) {
+    if (!activeBatchId) { showToast('No active batch. Create one first.'); return }
+    try {
+      const res = await api.post(`/api/instructor/batches/${activeBatchId}/enroll/`, { students: newStudents })
+      // API returns the newly created student records
+      const added = (res.data.enrolled || newStudents).map(s => ({
+        id:            s.id || Date.now() + Math.random(),
+        name:          s.name,
+        studentId:     s.school_id || s.student_id || newStudents.find(n => n.email === s.email)?.studentId || '',
+        email:         s.email,
+        course:        s.course,
+        status:        'pending',
+        retakeAllowed: false,
+        scores:        {},
+      }))
+      setStudents(p => [...p, ...added])
+      showToast(`${added.length} student${added.length > 1 ? 's' : ''} enrolled successfully`)
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Enrollment failed. Please try again.'
+      showToast(`❌ ${msg}`)
+    }
     setShowModal(false)
-    showToast(`${toAdd.length} student${toAdd.length > 1 ? 's' : ''} enrolled successfully`)
     setPage(1)
   }
 

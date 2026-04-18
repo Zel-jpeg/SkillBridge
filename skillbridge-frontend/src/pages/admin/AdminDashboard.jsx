@@ -1,9 +1,7 @@
 // src/pages/admin/AdminDashboard.jsx
-//
-// TODO Week 5: replace DUMMY_* with real API data
-//   GET /api/admin/stats/               → summary numbers
-//   GET /api/admin/recommendations/     → ranked student–position pairs
-//   GET /api/admin/students/            → all students across all instructors
+// Wired to real API (Week 4):
+//   GET /api/admin/stats/                    → summary numbers
+//   GET /api/admin/students/recommendations/ → student list + top match
 
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12,6 +10,7 @@ import StatusBadge from '../../components/StatusBadge'
 import PageHeader  from '../../components/PageHeader'
 import SearchBar   from '../../components/SearchBar'
 import EmptyState  from '../../components/EmptyState'
+import { useApi }  from '../../hooks/useApi'
 
 const PAGE_SIZE = 10
 
@@ -75,38 +74,6 @@ const IconTrophy = () => (
     <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
   </svg>
 )
-
-// ── Dummy data ─────────────────────────────────────────────────────
-const ADMIN = { name: 'System Administrator', initials: 'SA' }
-
-const STATS = [
-  { label: 'Total Students',       value: 48,  Icon: IconStudents,  color: 'bg-blue-50   dark:bg-blue-950   text-blue-700   dark:text-blue-300   border-blue-100   dark:border-blue-900'   },
-  { label: 'Companies Listed',     value: 12,  Icon: IconCompany,   color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900' },
-  { label: 'Open Positions',       value: 34,  Icon: IconPositions, color: 'bg-amber-50  dark:bg-amber-950  text-amber-700  dark:text-amber-300  border-amber-100  dark:border-amber-900'  },
-  { label: 'Recommendations Made', value: 132, Icon: IconCheck,     color: 'bg-green-50  dark:bg-green-950  text-green-700  dark:text-green-300  border-green-100  dark:border-green-900'  },
-]
-
-const TOP_MATCHES = [
-  { student: 'Azel Villanueva',            studentId: '2023-01058', course: 'BSIT', company: 'Azeus Systems',   position: 'Frontend Developer',    match: 94 },
-  { student: 'Reymark Tabang',             studentId: '2023-01075', course: 'BSIT', company: 'DNSC ICT Office', position: 'Network Technician',    match: 91 },
-  { student: 'Kristine Mae Delos Santos',  studentId: '2023-01062', course: 'BSIS', company: 'LGU-Panabo MIS',  position: 'IT Support Specialist', match: 88 },
-  { student: 'Justin Marc Rosario',        studentId: '2023-01115', course: 'BSIT', company: 'Accenture CDO',   position: 'Backend Intern',        match: 86 },
-]
-
-const STUDENTS = [
-  { id: 1,  name: 'David Rey Bali-os',         studentId: '2023-01031', email: 'drbali-os@dnsc.edu.ph',     course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 79,   position: 'Web Developer Intern',    company: 'Azeus Systems'   },
-  { id: 2,  name: 'Lemuel Brion',              studentId: '2023-01045', email: 'lpbrion@dnsc.edu.ph',       course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 83,   position: 'Database Analyst Intern', company: 'LGU-Panabo MIS'  },
-  { id: 3,  name: 'Azel Villanueva',           studentId: '2023-01058', email: 'amvillanueva@dnsc.edu.ph',  course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 94,   position: 'Frontend Developer',      company: 'Azeus Systems'   },
-  { id: 4,  name: 'Kristine Mae Delos Santos', studentId: '2023-01062', email: 'kmdelossantos@dnsc.edu.ph', course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 88,   position: 'IT Support Specialist',   company: 'LGU-Panabo MIS'  },
-  { id: 5,  name: 'Reymark Tabang',            studentId: '2023-01075', email: 'rjtabang@dnsc.edu.ph',      course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 91,   position: 'Network Technician',      company: 'DNSC ICT Office' },
-  { id: 6,  name: 'Jonalyn Caballero',         studentId: '2023-01089', email: 'jcaballero@dnsc.edu.ph',    course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 72,   position: 'UI/UX Intern',            company: 'Azeus Systems'   },
-  { id: 7,  name: 'Elmar Patalinghug',         studentId: '2023-01094', email: 'epatalinghug@dnsc.edu.ph',  course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'pending',   match: null, position: null,                      company: null              },
-  { id: 8,  name: 'Mary Grace Oabel',          studentId: '2023-01101', email: 'mgoabel@dnsc.edu.ph',       course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'pending',   match: null, position: null,                      company: null              },
-  { id: 9,  name: 'Justin Marc Rosario',       studentId: '2023-01115', email: 'jmrosario@dnsc.edu.ph',     course: 'BSIT', instructor: 'Ma. Lourdes Reyes', status: 'completed', match: 86,   position: 'Backend Intern',          company: 'Accenture CDO'   },
-  { id: 10, name: 'Sheila Abella',             studentId: '2023-01122', email: 'sabella@dnsc.edu.ph',       course: 'BSIS', instructor: 'Ma. Lourdes Reyes', status: 'pending',   match: null, position: null,                      company: null              },
-  { id: 11, name: 'Renaldo Magpantay',         studentId: '2022-00881', email: 'rmagpantay@dnsc.edu.ph',    course: 'BSIT', instructor: 'Roberto G. Cruz',   status: 'completed', match: 65,   position: 'Network Technician',      company: 'DNSC ICT Office' },
-  { id: 12, name: 'Patricia Lim',              studentId: '2022-00892', email: 'pglim@dnsc.edu.ph',         course: 'BSIS', instructor: 'Roberto G. Cruz',   status: 'completed', match: 77,   position: 'IT Support Specialist',   company: 'LGU-Panabo MIS'  },
-]
 
 // ── Helpers ───────────────────────────────────────────────────────
 function matchColor(pct) {
@@ -307,6 +274,51 @@ function AdminNav({ admin }) {
 // ── Main Component ────────────────────────────────────────────────
 export default function AdminDashboard() {
   const navigate = useNavigate()
+
+  // ── Load real data ────────────────────────────────────────────────
+  const { data: statsData }    = useApi('/api/admin/stats/')
+  const { data: studentsData } = useApi('/api/admin/students/recommendations/')
+
+  // Read cached admin info for NavBar
+  const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
+  const admin = {
+    name:     cachedUser?.name || 'Administrator',
+    initials: (cachedUser?.name || 'AD').split(' ').map(n => n[0]).slice(0, 2).join(''),
+  }
+
+  // Build stat cards from live data
+  const STATS = [
+    { label: 'Total Students',       Icon: IconStudents,  color: 'bg-blue-50   dark:bg-blue-950   text-blue-700   dark:text-blue-300   border-blue-100   dark:border-blue-900',   value: statsData?.total_students       ?? '—' },
+    { label: 'Companies Listed',     Icon: IconCompany,   color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: statsData?.total_companies       ?? '—' },
+    { label: 'Open Positions',       Icon: IconPositions, color: 'bg-amber-50  dark:bg-amber-950  text-amber-700  dark:text-amber-300  border-amber-100  dark:border-amber-900',  value: statsData?.open_positions         ?? '—' },
+    { label: 'Recommendations Made', Icon: IconCheck,     color: 'bg-green-50  dark:bg-green-950  text-green-700  dark:text-green-300  border-green-100  dark:border-green-900',  value: statsData?.recommendations_made   ?? '—' },
+  ]
+
+  // Normalize student list from API
+  const STUDENTS = useMemo(() => {
+    if (!studentsData || !Array.isArray(studentsData)) return []
+    return studentsData.map(s => ({
+      id:         s.id,
+      name:       s.student_name || s.name,
+      studentId:  s.school_id    || s.student_id || '',
+      email:      s.email        || '',
+      course:     s.course       || '',
+      instructor: s.instructor_name || s.instructor || '',
+      status:     s.has_submitted ? 'completed' : 'pending',
+      match:      s.top_match_score   ?? null,
+      position:   s.top_position_name ?? null,
+      company:    s.top_company_name  ?? null,
+    }))
+  }, [studentsData])
+
+  // Top 4 matches derived from student list
+  const TOP_MATCHES = useMemo(() =>
+    [...STUDENTS]
+      .filter(s => s.match !== null)
+      .sort((a, b) => (b.match ?? 0) - (a.match ?? 0))
+      .slice(0, 4)
+      .map(s => ({ student: s.name, studentId: s.studentId, course: s.course, company: s.company, position: s.position, match: s.match }))
+  , [STUDENTS])
 
   const [search,       setSearch]  = useState('')
   const [filterStatus, setFilter]  = useState('all')

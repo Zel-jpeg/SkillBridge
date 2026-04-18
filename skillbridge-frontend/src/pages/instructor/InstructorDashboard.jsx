@@ -1,8 +1,6 @@
 // src/pages/instructor/InstructorDashboard.jsx
-//
-// TODO Week 4: replace DUMMY_* with real API data
-//   GET /api/instructor/students/     → list of enrolled students + their scores
-//   GET /api/instructor/stats/        → summary numbers
+// Wired to real API (Week 4):
+//   GET /api/instructor/students/recommendations/ → students + scores + top recommendation
 
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -10,31 +8,15 @@ import Pagination  from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import SearchBar   from '../../components/SearchBar'
 import EmptyState  from '../../components/EmptyState'
+import { useApi }  from '../../hooks/useApi'
 
-// ================================================================
-// DUMMY DATA — replace with API in Week 4
-// ================================================================
 const INSTRUCTOR = {
-  name:     'Ma. Lourdes T. Reyes',
-  initials: 'LR',
-  subject:  'OJT Coordinator · BSIT / BSIS',
+  name:     'Instructor',
+  initials: 'IN',
+  subject:  'OJT Coordinator',
 }
 
 const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
-
-const STUDENTS = [
-  { id: 1,  name: 'David Rey Bali-os',         studentId: '2023-01031', email: 'drbali-os@dnsc.edu.ph',      course: 'BSIT', status: 'completed', scores: { 'Web Development': 82, 'Database': 70, 'Design': 60, 'Networking': 55, 'Backend': 48 } },
-  { id: 2,  name: 'Lemuel Brion',              studentId: '2023-01045', email: 'lpbrion@dnsc.edu.ph',        course: 'BSIT', status: 'completed', scores: { 'Web Development': 75, 'Database': 88, 'Design': 45, 'Networking': 62, 'Backend': 70 } },
-  { id: 3,  name: 'Azel Villanueva',           studentId: '2023-01058', email: 'amvillanueva@dnsc.edu.ph',   course: 'BSIT', status: 'completed', scores: { 'Web Development': 91, 'Database': 65, 'Design': 80, 'Networking': 40, 'Backend': 55 } },
-  { id: 4,  name: 'Kristine Mae Delos Santos', studentId: '2023-01062', email: 'kmdelossantos@dnsc.edu.ph',  course: 'BSIS', status: 'completed', scores: { 'Web Development': 60, 'Database': 78, 'Design': 72, 'Networking': 85, 'Backend': 66 } },
-  { id: 5,  name: 'Reymark Tabang',            studentId: '2023-01075', email: 'rjtabang@dnsc.edu.ph',       course: 'BSIT', status: 'completed', scores: { 'Web Development': 55, 'Database': 60, 'Design': 50, 'Networking': 92, 'Backend': 80 } },
-  { id: 6,  name: 'Jonalyn Caballero',         studentId: '2023-01089', email: 'jcaballero@dnsc.edu.ph',     course: 'BSIS', status: 'completed', scores: { 'Web Development': 78, 'Database': 55, 'Design': 88, 'Networking': 48, 'Backend': 42 } },
-  { id: 7,  name: 'Elmar Patalinghug',         studentId: '2023-01094', email: 'epatalinghug@dnsc.edu.ph',   course: 'BSIT', status: 'pending',   scores: {} },
-  { id: 8,  name: 'Mary Grace Oabel',          studentId: '2023-01101', email: 'mgoabel@dnsc.edu.ph',        course: 'BSIS', status: 'pending',   scores: {} },
-  { id: 9,  name: 'Justin Marc Rosario',       studentId: '2023-01115', email: 'jmrosario@dnsc.edu.ph',      course: 'BSIT', status: 'completed', scores: { 'Web Development': 68, 'Database': 74, 'Design': 58, 'Networking': 70, 'Backend': 90 } },
-  { id: 10, name: 'Sheila Abella',             studentId: '2023-01122', email: 'sabella@dnsc.edu.ph',        course: 'BSIS', status: 'pending',   scores: {} },
-]
-// ================================================================
 
 const PAGE_SIZE = 6
 
@@ -466,7 +448,32 @@ function InstructorNav({ instructor }) {
 export default function InstructorDashboard() {
   const navigate = useNavigate()
 
-  const [studentsList,    setStudentsList]    = useState(STUDENTS)
+  // ── Load real data from API ──────────────────────────────────
+  const { data: apiData, loading: apiLoading } = useApi('/api/instructor/students/recommendations/')
+
+  // Read cached instructor info for NavBar
+  const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
+  const instructor = {
+    name:     cachedUser?.name    || 'Instructor',
+    initials: (cachedUser?.name || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
+    subject:  cachedUser?.subject || 'OJT Coordinator',
+  }
+
+  // Normalize API response to the shape the rest of the component expects
+  const studentsList = useMemo(() => {
+    if (!apiData || !Array.isArray(apiData)) return []
+    return apiData.map(s => ({
+      id:        s.id,
+      name:      s.student_name || s.name,
+      studentId: s.school_id    || s.student_id || '',
+      email:     s.email        || '',
+      course:    s.course       || '',
+      status:    s.has_submitted ? 'completed' : 'pending',
+      scores:    s.skill_scores  || {},
+      retakeAllowed: s.retake_allowed ?? false,
+    }))
+  }, [apiData])
+
   const [search,          setSearch]          = useState('')
   const [filterStatus,    setFilter]          = useState('all')
   const [sortBy,          setSortBy]          = useState('name')
