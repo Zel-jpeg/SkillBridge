@@ -747,8 +747,15 @@ export default function EnrolledStudents() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
+    const cached = sessionStorage.getItem('sb_me')
+    if (cached) {
+      try { setUser(JSON.parse(cached)) } catch {}
+    }
     api.get('/api/auth/me/')
-      .then(res => setUser(res.data))
+      .then(res => {
+        setUser(res.data)
+        sessionStorage.setItem('sb_me', JSON.stringify(res.data))
+      })
       .catch(() => { /* keep null; nav will show fallback initials */ })
   }, []) // eslint-disable-line
 
@@ -767,28 +774,44 @@ export default function EnrolledStudents() {
   const [showNewBatch,    setShowNewBatch]    = useState(false)
   const [newBatchName,    setNewBatchName]    = useState('')
 
-  // Load batches + their students from API on mount
   useEffect(() => {
+    const CACHE_KEY = 'sb_batches'
+    const cached = sessionStorage.getItem(CACHE_KEY)
+
+    // ── Seed from cache immediately (instant render, no spinner) ───
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        setBatches(parsed)
+        const active = parsed.find(b => b.status === 'active')
+        setActiveBatchId(active?.id ?? parsed[parsed.length - 1]?.id ?? null)
+        setLoadingBatches(false)
+      } catch {}
+    }
+
+    // ── Always refresh in background ───────────────────────────────
     api.get('/api/instructor/batches/')
       .then(async res => {
         const apiData = res.data
 
-        // ── FIX: API already returns b.status ('active'|'archived')
-        //         Previous code used b.is_active (undefined) → everything became 'archived'
         const normalized = apiData.map(b => ({
           id:         b.id,
           name:       b.name,
-          status:     b.status,               // ← was: b.is_active ? 'active' : 'archived'
+          status:     b.status,
           archivedAt: b.archived_at ?? null,
-          students:   [],                     // filled below
+          students:   [],
         }))
 
         setBatches(normalized)
         const active = normalized.find(b => b.status === 'active')
-        setActiveBatchId(active?.id ?? normalized[normalized.length - 1]?.id ?? null)
+        setActiveBatchId(prev => {
+          // Keep current selection if still valid, else switch to active/last
+          if (prev && normalized.some(b => b.id === prev)) return prev
+          return active?.id ?? normalized[normalized.length - 1]?.id ?? null
+        })
 
         // Fetch students for every batch in parallel
-        await Promise.all(normalized.map(async b => {
+        const withStudents = await Promise.all(normalized.map(async b => {
           try {
             const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
             const students = (r.data.students || []).map(s => ({
@@ -802,11 +825,17 @@ export default function EnrolledStudents() {
               scores:        s.skill_scores   ?? {},
             }))
             setBatches(prev => prev.map(pb => pb.id === b.id ? { ...pb, students } : pb))
-          } catch { /* keep empty students for this batch on error */ }
+            return { ...b, students }
+          } catch {
+            return { ...b, students: [] }
+          }
         }))
+
+        // Persist fully-loaded data to cache
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(withStudents))
       })
       .catch(() => {
-        // API not yet reachable — keep empty list, show "no batch" state
+        // API not yet reachable — keep empty list / cached list
       })
       .finally(() => setLoadingBatches(false))
   }, []) // eslint-disable-line
