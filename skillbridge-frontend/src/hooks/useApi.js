@@ -50,7 +50,7 @@ export function _setCache(url, data) {
   _cache.set(url, { data, fetchedAt: Date.now() })
 }
 
-function fetchWithDedup(url) {
+export function fetchWithDedup(url) {
   if (_inflight.has(url)) return _inflight.get(url)
   const promise = api.get(url)
     .then(res => {

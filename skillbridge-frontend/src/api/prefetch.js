@@ -9,7 +9,7 @@
 // Called from PrivateRoute.jsx on every protected route render.
 
 import api from './axios'
-import { _setCache } from '../hooks/useApi'
+import { fetchWithDedup } from '../hooks/useApi'
 
 // ── Endpoints to prefetch per role ──────────────────────────────────
 const PREFETCH_URLS = {
@@ -44,13 +44,7 @@ export function prefetchForRole(role) {
 
   const urls = PREFETCH_URLS[role] ?? []
   urls.forEach(url => {
-    api.get(url)
-      .then(res => {
-        _setCache(url, res.data)
-      })
-      .catch(() => {
-        // Silently ignore — the page will fetch normally if prefetch fails
-      })
+    fetchWithDedup(url).catch(() => {})
   })
 }
 
