@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
 import axios from 'axios'
-import { prefetchForRole } from '../api/prefetch'
+import { prefetchForRole } from '../../api/prefetch'
 
 const SYSTEM_NAME        = "SkillBridge"
 const SCHOOL_NAME        = "Davao del Norte State College"
