@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
 import axios from 'axios'
+import { prefetchForRole } from '../api/prefetch'
 
 const SYSTEM_NAME        = "SkillBridge"
 const SCHOOL_NAME        = "Davao del Norte State College"
@@ -40,6 +41,8 @@ export default function LoginPage() {
         localStorage.setItem('sb-refresh', refresh)
         localStorage.setItem('sb-role',    user.role)
         localStorage.setItem('sb-user',    JSON.stringify(user))
+
+        prefetchForRole(user.role) 
 
         if (user.role === 'student')         navigate(user.course ? '/student/dashboard' : '/student/setup')
         else if (user.role === 'instructor') {

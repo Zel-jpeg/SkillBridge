@@ -23,8 +23,8 @@ import api from '../api/axios'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 
-// ── Module-level cache (survives page navigation, cleared on sign-out) ──
 const _cache    = new Map()  // url → { data, fetchedAt }
+const _inflight = new Map()  // url → Promise (deduplicates simultaneous requests)
 const CACHE_TTL = 60_000     // 60 s — stale after this; background-refresh kicks in
 
 /** Call after mutations to force the next GET to bypass the cache. */
@@ -35,6 +35,7 @@ export function invalidateCache(url) {
 /** Wipe the entire cache — call on logout. */
 export function clearAllCache() {
   _cache.clear()
+  _inflight.clear() 
 }
 
 /**
@@ -47,6 +48,22 @@ export function _setCache(url, data) {
   // Don't overwrite fresh entries — whichever resolved first wins
   if (existing && (Date.now() - existing.fetchedAt < CACHE_TTL)) return
   _cache.set(url, { data, fetchedAt: Date.now() })
+}
+
+function fetchWithDedup(url) {
+  if (_inflight.has(url)) return _inflight.get(url)
+  const promise = api.get(url)
+    .then(res => {
+      _cache.set(url, { data: res.data, fetchedAt: Date.now() })
+      _inflight.delete(url)
+      return res
+    })
+    .catch(err => {
+      _inflight.delete(url)
+      throw err
+    })
+  _inflight.set(url, promise)
+  return promise
 }
 
 
@@ -102,30 +119,28 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
     }
     setError(null)
 
-    api.get(url)
-      .then(res => {
-        if (cancelled) return
-        _cache.set(url, { data: res.data, fetchedAt: Date.now() })
-        setData(res.data)
-        setLoading(false)
-        isBg.current = false
-      })
-      .catch(err => {
-        if (cancelled) return
-        setLoading(false)
-        isBg.current = false
-        const status = err.response?.status
+    fetchWithDedup(url)
+    .then(res => {
+      if (cancelled) return
+      setData(res.data)
+      setLoading(false)
+      isBg.current = false
+    })
+    .catch(err => {
+      if (cancelled) return
+      setLoading(false)
+      isBg.current = false
+      const status = err.response?.status
 
-        if (status === 401) {
-          triggerSessionExpired()
-          return
-        }
+      if (status === 401) {
+        triggerSessionExpired()
+        return
+      }
 
-        const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
-        setError(msg)
-        // Don't show a toast for background revalidations — stale data is still visible
-        if (!entry) showToast(msg, 'error')
-      })
+      const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
+      setError(msg)
+      if (!entry) showToast(msg, 'error')
+    })
 
     return () => { cancelled = true }
   }, [url, skip]) // eslint-disable-line

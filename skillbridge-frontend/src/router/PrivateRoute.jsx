@@ -17,7 +17,6 @@
 // Public routes (login pages) need NO wrapper.
 
 import { Navigate } from 'react-router-dom'
-import { prefetchForRole } from '../api/prefetch'
 
 const ROLE_REDIRECTS = {
   admin:      '/admin/login',
@@ -40,11 +39,6 @@ export default function PrivateRoute({ children, role }) {
     const loginPage = ROLE_REDIRECTS[role] ?? '/login'
     return <Navigate to={loginPage} replace />
   }
-
-  // ── Auth passed: kick off background prefetch for this role ──────
-  // prefetchForRole is idempotent — safe to call on every route render;
-  // it only fires once per session per role.
-  prefetchForRole(userRole)
 
   return children
 }

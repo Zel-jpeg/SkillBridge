@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import { prefetchForRole } from '../../api/prefetch'
 
 // ================================================================
 const SYSTEM_NAME    = "SkillBridge"
@@ -48,6 +49,8 @@ export default function AdminLogin() {
         localStorage.setItem('sb-refresh', refresh)
         localStorage.setItem('sb-role',    user.role)
         localStorage.setItem('sb-user',    JSON.stringify(user))
+
+        prefetchForRole(user.role)
 
         if (user.role === 'admin')       navigate('/admin/dashboard')
         else if (user.role === 'instructor') {
