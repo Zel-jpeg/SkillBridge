@@ -9,6 +9,22 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import { _setCache } from '../../hooks/useApi'
+
+// Read from the useApi module-level cache (written by prefetch.js)
+function getApiCache(url) {
+  // Access the same Map that useApi uses, via the exported _setCache marker
+  // We expose a parallel read via sessionStorage as a fallback
+  const ss = sessionStorage.getItem('sb_apicache_' + url.replace(/\/+/g, '_'))
+  if (ss) { try { return JSON.parse(ss) } catch {} }
+  return null
+}
+
+// Write to both layers so EnrolledStudents cache stays in sync
+function setApiCache(url, data) {
+  _setCache(url, data)
+  try { sessionStorage.setItem('sb_apicache_' + url.replace(/\/+/g, '_'), JSON.stringify(data)) } catch {}
+}
 
 const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
 const PAGE_SIZE  = 10
@@ -747,14 +763,14 @@ export default function EnrolledStudents() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    const cached = sessionStorage.getItem('sb_me')
-    if (cached) {
-      try { setUser(JSON.parse(cached)) } catch {}
-    }
+    // Seed user from cache immediately
+    const cachedMe = getApiCache('/api/auth/me/')
+    if (cachedMe) setUser(cachedMe)
+
     api.get('/api/auth/me/')
       .then(res => {
         setUser(res.data)
-        sessionStorage.setItem('sb_me', JSON.stringify(res.data))
+        setApiCache('/api/auth/me/', res.data)
       })
       .catch(() => { /* keep null; nav will show fallback initials */ })
   }, []) // eslint-disable-line
@@ -775,24 +791,27 @@ export default function EnrolledStudents() {
   const [newBatchName,    setNewBatchName]    = useState('')
 
   useEffect(() => {
-    const CACHE_KEY = 'sb_batches'
-    const cached = sessionStorage.getItem(CACHE_KEY)
+    const CACHE_URL = '/api/instructor/batches/'
 
-    // ── Seed from cache immediately (instant render, no spinner) ───
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached)
-        setBatches(parsed)
-        const active = parsed.find(b => b.status === 'active')
-        setActiveBatchId(active?.id ?? parsed[parsed.length - 1]?.id ?? null)
-        setLoadingBatches(false)
-      } catch {}
+    // ── Seed from cache immediately (zero-flash render) ───────────────
+    const cached = getApiCache(CACHE_URL)
+    if (cached && Array.isArray(cached)) {
+      // cached is the raw batch list from API (before student enrichment)
+      const normalized = cached.map(b => ({
+        id: b.id, name: b.name, status: b.status,
+        archivedAt: b.archived_at ?? null, students: b.students ?? [],
+      }))
+      setBatches(normalized)
+      const active = normalized.find(b => b.status === 'active')
+      setActiveBatchId(active?.id ?? normalized[normalized.length - 1]?.id ?? null)
+      setLoadingBatches(false)
     }
 
     // ── Always refresh in background ───────────────────────────────
-    api.get('/api/instructor/batches/')
+    api.get(CACHE_URL)
       .then(async res => {
         const apiData = res.data
+        setApiCache(CACHE_URL, apiData)  // update cache with fresh list
 
         const normalized = apiData.map(b => ({
           id:         b.id,
@@ -803,15 +822,14 @@ export default function EnrolledStudents() {
         }))
 
         setBatches(normalized)
-        const active = normalized.find(b => b.status === 'active')
         setActiveBatchId(prev => {
-          // Keep current selection if still valid, else switch to active/last
           if (prev && normalized.some(b => b.id === prev)) return prev
+          const active = normalized.find(b => b.status === 'active')
           return active?.id ?? normalized[normalized.length - 1]?.id ?? null
         })
 
         // Fetch students for every batch in parallel
-        const withStudents = await Promise.all(normalized.map(async b => {
+        await Promise.all(normalized.map(async b => {
           try {
             const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
             const students = (r.data.students || []).map(s => ({

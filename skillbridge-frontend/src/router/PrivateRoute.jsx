@@ -5,6 +5,10 @@
 //   2. Wrong-role access (student on admin page) → redirect to correct login
 //   3. Back button after logout → replace: true means back goes to login, not the protected page
 //
+// Also fires prefetchForRole() so all API data for the user's role is
+// requested immediately — before any page component mounts.
+// By the time a page's useEffect runs, the cache is already warm.
+//
 // Usage in App.jsx:
 //   <Route path="/admin/dashboard" element={
 //     <PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>
@@ -13,6 +17,7 @@
 // Public routes (login pages) need NO wrapper.
 
 import { Navigate } from 'react-router-dom'
+import { prefetchForRole } from '../api/prefetch'
 
 const ROLE_REDIRECTS = {
   admin:      '/admin/login',
@@ -21,7 +26,7 @@ const ROLE_REDIRECTS = {
 }
 
 export default function PrivateRoute({ children, role }) {
-  const token = localStorage.getItem('sb-token')
+  const token    = localStorage.getItem('sb-token')
   const userRole = localStorage.getItem('sb-role')
 
   // No token at all → send to login
@@ -35,6 +40,11 @@ export default function PrivateRoute({ children, role }) {
     const loginPage = ROLE_REDIRECTS[role] ?? '/login'
     return <Navigate to={loginPage} replace />
   }
+
+  // ── Auth passed: kick off background prefetch for this role ──────
+  // prefetchForRole is idempotent — safe to call on every route render;
+  // it only fires once per session per role.
+  prefetchForRole(userRole)
 
   return children
 }

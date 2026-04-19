@@ -37,6 +37,19 @@ export function clearAllCache() {
   _cache.clear()
 }
 
+/**
+ * Write a value directly into the cache (used by the prefetch service).
+ * Skips the write if the URL already has a fresh entry so a fast component
+ * useEffect response doesn't get overwritten by a slow prefetch.
+ */
+export function _setCache(url, data) {
+  const existing = _cache.get(url)
+  // Don't overwrite fresh entries — whichever resolved first wins
+  if (existing && (Date.now() - existing.fetchedAt < CACHE_TTL)) return
+  _cache.set(url, { data, fetchedAt: Date.now() })
+}
+
+
 // Friendly error messages for common HTTP status codes
 function friendlyError(status) {
   switch (status) {

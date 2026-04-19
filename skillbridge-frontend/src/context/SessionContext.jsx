@@ -10,6 +10,8 @@
 
 import { createContext, useContext, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clearAllCache } from '../hooks/useApi'
+import { resetPrefetch } from '../api/prefetch'
 
 const SessionContext = createContext(null)
 
@@ -28,9 +30,13 @@ export function SessionProvider({ children }) {
     localStorage.removeItem('sb-refresh')
     localStorage.removeItem('sb-role')
     localStorage.removeItem('sb-user')
+    // Clear API cache and prefetch state so next login re-fetches fresh data
+    clearAllCache()
+    resetPrefetch()
     // Replace history so back button can't go back to the protected page
     navigate('/login', { replace: true })
   }
+
 
   return (
     <SessionContext.Provider value={{ triggerSessionExpired }}>
