@@ -33,7 +33,9 @@ def send_instructor_email(user, subject, body):
             fail_silently=False,
         )
         return True
-    except Exception:
+    except Exception as e:
+        # Print to server logs so Railway/local console shows the exact SMTP error
+        print(f'[SkillBridge] Email send FAILED for {user.email}: {e}')
         return False
 
 
@@ -446,37 +448,36 @@ def instructor_batch_students(request, batch_id):
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
 
-    enrollments = BatchEnrollment.objects.filter(batch=batch).select_related('student')
-    students    = []
+    enrollments = list(BatchEnrollment.objects.filter(batch=batch).select_related('student'))
+    student_objs = [e.student for e in enrollments]
+    student_ids  = [s.id for s in student_objs]
 
-    # Preload the batch's assessment once (avoids per-student queries)
+    # Preload the batch's assessment once
     try:
         batch_assessment = Assessment.objects.get(batch=batch)
     except Assessment.DoesNotExist:
         batch_assessment = None
 
+    # ── Bulk-load responses and scores for all students ──────────────
+    response_map = {}   # student_id -> StudentResponse
+    scores_map   = {}   # student_id -> { category_name: percentage }
+
+    if batch_assessment:
+        for resp in StudentResponse.objects.filter(
+            assessment=batch_assessment, student_id__in=student_ids
+        ):
+            response_map[resp.student_id] = resp
+
+        for score in SkillScore.objects.filter(
+            assessment=batch_assessment, student_id__in=student_ids
+        ).select_related('skill_category'):
+            scores_map.setdefault(score.student_id, {})
+            scores_map[score.student_id][score.skill_category.name] = round(score.percentage, 1)
+
+    students = []
     for e in enrollments:
-        s = e.student
-
-        # Submission + retake status
-        has_submitted  = False
-        retake_allowed = False
-        if batch_assessment:
-            response = StudentResponse.objects.filter(
-                student=s, assessment=batch_assessment
-            ).first()
-            if response:
-                has_submitted  = response.submitted_at is not None
-                retake_allowed = response.retake_allowed
-
-        # Skill scores — { "Web Development": 82.5, "Database": 67.0, … }
-        skill_scores = {}
-        if batch_assessment:
-            for score in SkillScore.objects.filter(
-                student=s, assessment=batch_assessment
-            ).select_related('skill_category'):
-                skill_scores[score.skill_category.name] = round(score.percentage, 1)
-
+        s    = e.student
+        resp = response_map.get(s.id)
         students.append({
             'id':             s.id,
             'name':           s.name,
@@ -484,9 +485,9 @@ def instructor_batch_students(request, batch_id):
             'school_id':      s.school_id,
             'course':         s.course,
             'photo_url':      s.photo_url,
-            'has_submitted':  has_submitted,
-            'retake_allowed': retake_allowed,
-            'skill_scores':   skill_scores,
+            'has_submitted':  bool(resp and resp.submitted_at is not None),
+            'retake_allowed': resp.retake_allowed if resp else False,
+            'skill_scores':   scores_map.get(s.id, {}),
             'enrolled_at':    e.enrolled_at,
         })
 
@@ -859,34 +860,52 @@ def instructor_student_recommendations(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    batches = Batch.objects.filter(instructor=request.user)
-    enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('student', 'batch')
+    batches     = Batch.objects.filter(instructor=request.user)
+    enrollments = list(BatchEnrollment.objects.filter(batch__in=batches).select_related('student', 'batch'))
+    student_ids = list({e.student_id for e in enrollments})
 
+    # ── Bulk-load all recommendations ─────────────────────────────
+    from collections import defaultdict
+    all_recs = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids)
+        .select_related('position', 'position__company')
+        .order_by('student_id', '-match_score')
+    )
+    recs_by_student = defaultdict(list)
+    for r in all_recs:
+        if len(recs_by_student[r.student_id]) < 3:
+            recs_by_student[r.student_id].append(r)
+
+    # ── Bulk-load all skill scores ─────────────────────────────────
+    all_scores = (
+        SkillScore.objects
+        .filter(student_id__in=student_ids)
+        .select_related('skill_category')
+    )
+    scores_by_student = defaultdict(list)
+    for sc in all_scores:
+        scores_by_student[sc.student_id].append({'category': sc.skill_category.name, 'percentage': sc.percentage})
+
+    # ── Build the result using pre-loaded data ─────────────────────
     results = []
     for e in enrollments:
-        student = e.student
-        top_recs = (
-            Recommendation.objects
-            .filter(student=student)
-            .select_related('position', 'position__company')
-            .order_by('-match_score')[:3]
-        )
-        # Latest skill scores
-        skill_scores = SkillScore.objects.filter(student=student).select_related('skill_category')
+        student  = e.student
+        top_recs = recs_by_student.get(student.id, [])
+        # Normalise to the shape InstructorDashboard expects
+        top_one  = top_recs[0] if top_recs else None
         results.append({
-            'student': {
-                'id':        student.id,
-                'name':      student.name,
-                'email':     student.email,
-                'school_id': student.school_id,
-                'course':    student.course,
-                'photo_url': student.photo_url,
-            },
-            'batch': {'id': e.batch.id, 'name': e.batch.name},
-            'skill_scores': [
-                {'category': ss.skill_category.name, 'percentage': ss.percentage}
-                for ss in skill_scores
-            ],
+            'id':          student.id,
+            'student_id':  student.id,
+            'student_name': student.name,
+            'name':        student.name,
+            'email':       student.email,
+            'school_id':   student.school_id,
+            'course':      student.course,
+            'photo_url':   student.photo_url,
+            'has_submitted': bool(top_one),
+            'skill_scores': {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])},
+            'batch':       {'id': e.batch.id, 'name': e.batch.name},
             'top_recommendations': [
                 {
                     'position':    r.position.title,
@@ -947,27 +966,50 @@ def admin_student_recommendations(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
-    students = User.objects.filter(role='student', is_active=True)
-    results  = []
+    students = list(User.objects.filter(role='student', is_active=True))
+    student_ids = [s.id for s in students]
 
+    # ── Bulk-load ALL recommendations in ONE query ────────────────────
+    all_recs = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids)
+        .select_related('position', 'position__company', 'student')
+        .order_by('student_id', '-match_score')
+    )
+
+    # Group top-3 per student
+    from collections import defaultdict
+    recs_by_student = defaultdict(list)
+    for r in all_recs:
+        if len(recs_by_student[r.student_id]) < 3:
+            recs_by_student[r.student_id].append(r)
+
+    # Also get instructor names via batch enrollments
+    enrollments = (
+        BatchEnrollment.objects
+        .filter(student_id__in=student_ids)
+        .select_related('batch', 'batch__instructor')
+    )
+    instructor_by_student = {}
+    for e in enrollments:
+        if e.student_id not in instructor_by_student:
+            instructor_by_student[e.student_id] = e.batch.instructor.name if e.batch.instructor else ''
+
+    results = []
     for student in students:
-        top_recs = (
-            Recommendation.objects
-            .filter(student=student)
-            .select_related('position', 'position__company')
-            .order_by('-match_score')[:3]
-        )
-        top_one = top_recs[0] if top_recs else None
+        top_recs = recs_by_student.get(student.id, [])
+        top_one  = top_recs[0] if top_recs else None
         results.append({
-            'id': student.id,
-            'student_name': student.name,
-            'email': student.email,
-            'school_id': student.school_id,
-            'course': student.course,
-            'has_submitted': bool(top_one),
-            'top_match_score': round(top_one.match_score, 2) if top_one else None,
+            'id':               student.id,
+            'student_name':     student.name,
+            'email':            student.email,
+            'school_id':        student.school_id,
+            'course':           student.course,
+            'instructor_name':  instructor_by_student.get(student.id, ''),
+            'has_submitted':    bool(top_one),
+            'top_match_score':  round(top_one.match_score, 2) if top_one else None,
             'top_position_name': top_one.position.title if top_one else None,
-            'top_company_name': top_one.position.company.name if top_one else None,
+            'top_company_name':  top_one.position.company.name if top_one else None,
             'student': {
                 'id':        student.id,
                 'name':      student.name,
@@ -1017,46 +1059,65 @@ def admin_users(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
-    students = User.objects.filter(role='student', is_active=True).order_by('name')
-    instructors = User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name')
-    pending_instructors = User.objects.filter(role='instructor', is_active=True, is_approved=False).order_by('name')
+    students            = list(User.objects.filter(role='student', is_active=True).order_by('name'))
+    instructors         = list(User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name'))
+    pending_instructors = list(User.objects.filter(role='instructor', is_active=True, is_approved=False).order_by('name'))
+
+    # ── Bulk-load top recs for all students in ONE query ─────────────
+    student_ids = [s.id for s in students]
+    all_recs = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids)
+        .select_related('position', 'position__company')
+        .order_by('student_id', '-match_score')
+    )
+    top_rec_by_student = {}
+    for r in all_recs:
+        if r.student_id not in top_rec_by_student:
+            top_rec_by_student[r.student_id] = r
+
+    # ── Bulk-load instructor names for students ──────────────────────
+    enrollments = (
+        BatchEnrollment.objects
+        .filter(student_id__in=student_ids)
+        .select_related('batch', 'batch__instructor')
+    )
+    instructor_by_student = {}
+    for e in enrollments:
+        if e.student_id not in instructor_by_student and e.batch.instructor:
+            instructor_by_student[e.student_id] = e.batch.instructor.name
 
     students_out = []
     for s in students:
-        top_rec = (
-            Recommendation.objects
-            .filter(student=s)
-            .select_related('position', 'position__company')
-            .order_by('-match_score')
-            .first()
-        )
+        top_rec = top_rec_by_student.get(s.id)
         students_out.append({
-            'id': s.id,
-            'name': s.name,
-            'email': s.email,
-            'student_id': s.school_id or '',
-            'course': s.course or '',
-            'status': 'completed' if top_rec else 'pending',
-            'top_match_score': round(top_rec.match_score, 2) if top_rec else None,
+            'id':               s.id,
+            'name':             s.name,
+            'email':            s.email,
+            'student_id':       s.school_id or '',
+            'course':           s.course or '',
+            'instructor':       instructor_by_student.get(s.id, 'TBD'),
+            'status':           'completed' if top_rec else 'pending',
+            'top_match_score':  round(top_rec.match_score, 2) if top_rec else None,
             'top_position_name': top_rec.position.title if top_rec else None,
-            'top_company_name': top_rec.position.company.name if top_rec else None,
-            'retake_allowed': False,
+            'top_company_name':  top_rec.position.company.name if top_rec else None,
+            'retake_allowed':    False,
         })
 
     def serialize_instructor(user):
         return {
-            'id': user.id,
-            'name': user.name,
-            'email': user.email,
+            'id':           user.id,
+            'name':         user.name,
+            'email':        user.email,
             'instructor_id': user.school_id or '',
-            'department': 'Institute of Computing',
-            'courses': user.course or 'BSIT / BSIS',
-            'is_approved': user.is_approved,
+            'department':   'Institute of Computing',
+            'courses':      user.course or 'BSIT / BSIS',
+            'is_approved':  user.is_approved,
         }
 
     return Response({
-        'students': students_out,
-        'instructors': [serialize_instructor(i) for i in instructors],
+        'students':            students_out,
+        'instructors':         [serialize_instructor(i) for i in instructors],
         'pending_instructors': [serialize_instructor(i) for i in pending_instructors],
     })
 
