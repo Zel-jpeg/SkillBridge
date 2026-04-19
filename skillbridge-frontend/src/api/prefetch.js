@@ -8,7 +8,6 @@
 //
 // Called from PrivateRoute.jsx on every protected route render.
 
-import api from './axios'
 import { fetchWithDedup } from '../hooks/useApi'
 
 // ── Endpoints to prefetch per role ──────────────────────────────────

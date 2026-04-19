@@ -740,7 +740,11 @@ export default function AdminUsers() {
     }
     if (res.data?.is_approved) {
       setInstructors(prev => [...prev, newInstructor])
-      showToast(`"${instr.name}" added and approved.`)
+      showToast(
+        res.data?.email_sent
+          ? `"${instr.name}" added. Welcome email sent to ${instr.email}.`
+          : `"${instr.name}" added, but email was not sent — check SMTP settings.`
+      )
     } else {
       setPendingInstructors(prev => [...prev, newInstructor])
       showToast(
