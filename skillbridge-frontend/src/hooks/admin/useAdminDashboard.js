@@ -3,28 +3,22 @@
 // Data hook for AdminDashboard.
 // Fetches stats + student recommendations and derives UI state.
 //
-// Returns:
-//   stats        — { total_students, total_companies, open_positions, recommendations_made }
-//   students     — normalized student array
-//   topMatches   — top 4 students by match score
-//   loading      — bool
-//   search       — string
-//   setSearch    — setter
-//   filterStatus — 'all' | 'completed' | 'pending'
-//   setFilter    — setter (aliases setFilterStatus)
-//   view         — 'grid' | 'list'
-//   setView      — setter
-//   page         — number
-//   setPage      — setter
-//   filtered     — filtered student list
-//   paginated    — current page slice
+// Real-time updates via SSE:
+//   useSSE() keeps a singleton EventSource connection open.
+//   When the server detects DB changes it sends invalidate URLs →
+//   useApi re-fetches silently → components re-render automatically.
 
 import { useState, useMemo } from 'react'
 import { useApi } from '../useApi'
+import { useSSE } from '../useSSE'
 
 const PAGE_SIZE = 10
+const SSE_PATH  = '/api/admin/events/'
 
 export function useAdminDashboard() {
+  // ── Real-time SSE connection ──────────────────────────────────────
+  useSSE(SSE_PATH)
+
   const { data: statsData }    = useApi('/api/admin/stats/')
   const { data: studentsData } = useApi('/api/admin/students/recommendations/')
 
@@ -96,7 +90,6 @@ export function useAdminDashboard() {
     students,
     topMatches,
     loading: !statsData && !studentsData,
-    // search/filter/page/view
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
     view, setView,

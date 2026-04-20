@@ -4,14 +4,17 @@
 // When any API call returns 401, call triggerSessionExpired().
 // The modal appears on top of everything and forces the user to re-login.
 //
-// Usage:
-//   const { triggerSessionExpired } = useSession()
-//   triggerSessionExpired()   // called from useApi hook on 401
+// On logout / re-login:
+//   - Clears auth tokens from localStorage
+//   - Wipes the API cache (useApi)
+//   - Resets prefetch state
+//   - Closes the SSE connection (useSSE) so it doesn't reconnect after logout
 
 import { createContext, useContext, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clearAllCache } from '../hooks/useApi'
 import { resetPrefetch } from '../api/prefetch'
+import { closeSSE } from '../hooks/useSSE'    // ← close SSE on logout
 
 const SessionContext = createContext(null)
 
@@ -33,10 +36,11 @@ export function SessionProvider({ children }) {
     // Clear API cache and prefetch state so next login re-fetches fresh data
     clearAllCache()
     resetPrefetch()
+    // Close SSE so the singleton doesn't try to reconnect after logout
+    closeSSE()
     // Replace history so back button can't go back to the protected page
     navigate('/login', { replace: true })
   }
-
 
   return (
     <SessionContext.Provider value={{ triggerSessionExpired }}>

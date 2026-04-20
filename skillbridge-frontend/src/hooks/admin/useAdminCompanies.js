@@ -3,6 +3,16 @@
 // Data hook for AdminCompanies.
 // Fetches companies + categories and handles all CRUD actions.
 //
+// Real-time updates via SSE:
+//   useSSE() keeps a singleton EventSource connection open.
+//   When the server detects DB changes it sends invalidate URLs →
+//   useApi re-fetches /api/admin/companies/ silently → useEffect re-normalizes.
+//
+// Fix applied vs original:
+//   The original used an `_initialized` guard inside render to seed companies.
+//   This meant SSE re-fetches (or any subsequent companiesData change) would
+//   never update the list. Replaced with a proper useEffect.
+//
 // API:
 //   GET    /api/admin/companies/               → list + positions
 //   POST   /api/admin/companies/               → create
@@ -10,22 +20,27 @@
 //   POST   /api/admin/companies/:id/positions/
 //   DELETE /api/admin/positions/:id/
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useApi } from '../useApi'
+import { useSSE } from '../useSSE'
 
 const SKILL_CATEGORIES_FALLBACK = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
+const SSE_PATH = '/api/admin/events/'
 
 export function useAdminCompanies() {
+  // ── Real-time SSE connection ──────────────────────────────────────
+  useSSE(SSE_PATH)
+
   const { data: companiesData, request } = useApi('/api/admin/companies/')
   const { data: categoriesData }         = useApi('/api/categories/')
 
-  // Normalize companies from API, or use local state for optimistic updates
   const [companies, setCompanies] = useState([])
-  const [_initialized, setInit]  = useState(false)
 
-  // Sync from API once
-  if (companiesData && !_initialized) {
-    setInit(true)
+  // ── Normalize API response ────────────────────────────────────────
+  // Runs whenever companiesData changes — including SSE-triggered re-fetches.
+  // (Previously used an _initialized guard inside render which blocked updates.)
+  useEffect(() => {
+    if (!companiesData) return
     const raw = Array.isArray(companiesData) ? companiesData : []
     setCompanies(raw.map(c => ({
       id:        c.id,
@@ -42,7 +57,7 @@ export function useAdminCompanies() {
         skills:      p.skill_requirements ?? {},
       })) : [],
     })))
-  }
+  }, [companiesData])
 
   const categories = Array.isArray(categoriesData)
     ? categoriesData.map(c => c.name)
@@ -50,9 +65,9 @@ export function useAdminCompanies() {
 
   // ── Modal state ───────────────────────────────────────────────────
   const [showAddCompany,    setShowAddCompany]    = useState(false)
-  const [addPositionFor,    setAddPositionFor]    = useState(null) // company object
+  const [addPositionFor,    setAddPositionFor]    = useState(null)
   const [confirmDeleteComp, setConfirmDeleteComp] = useState(null)
-  const [confirmDeletePos,  setConfirmDeletePos]  = useState(null) // { company, position }
+  const [confirmDeletePos,  setConfirmDeletePos]  = useState(null)
   const [mapOpen,           setMapOpen]           = useState(false)
 
   // ── Toast ─────────────────────────────────────────────────────────
@@ -119,18 +134,15 @@ export function useAdminCompanies() {
 
   return {
     companies, categories,
-    // modal state
     showAddCompany, setShowAddCompany,
     addPositionFor, setAddPositionFor,
     confirmDeleteComp, setConfirmDeleteComp,
     confirmDeletePos,  setConfirmDeletePos,
     mapOpen, setMapOpen,
-    // actions
     handleAddCompany,
     confirmDeleteCompany,
     handleAddPosition,
     confirmDeletePosition,
-    // toast
     toast,
     SKILL_CATEGORIES_FALLBACK,
   }

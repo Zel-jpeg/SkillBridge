@@ -4,14 +4,22 @@
 // Handles all user data fetching, normalization, filtering, sorting,
 // and mutation actions (add/approve/reject/delete instructor, toggle retake, update user).
 //
-// Returns everything the AdminUsers page needs to render and act.
+// Real-time updates via SSE:
+//   useSSE() keeps a singleton EventSource connection open.
+//   When the server detects DB changes it sends invalidate URLs →
+//   useApi re-fetches /api/admin/users/ silently → useEffect re-normalizes.
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useApi } from '../useApi'
+import { useSSE } from '../useSSE'
 
 const PAGE_SIZE = 10
+const SSE_PATH  = '/api/admin/events/'
 
 export function useAdminUsers() {
+  // ── Real-time SSE connection ──────────────────────────────────────
+  useSSE(SSE_PATH)
+
   const { data: usersData, request } = useApi('/api/admin/users/')
 
   // ── Raw data state ────────────────────────────────────────────────
@@ -45,11 +53,12 @@ export function useAdminUsers() {
   }, [])
 
   // ── Normalize API response ────────────────────────────────────────
+  // Runs whenever usersData changes — including SSE-triggered re-fetches.
   useEffect(() => {
     if (!usersData) return
-    const students = Array.isArray(usersData.students)              ? usersData.students              : []
-    const approved = Array.isArray(usersData.instructors)           ? usersData.instructors           : []
-    const pending  = Array.isArray(usersData.pending_instructors)   ? usersData.pending_instructors   : []
+    const students = Array.isArray(usersData.students)            ? usersData.students            : []
+    const approved = Array.isArray(usersData.instructors)         ? usersData.instructors         : []
+    const pending  = Array.isArray(usersData.pending_instructors) ? usersData.pending_instructors : []
 
     setStudentsList(students.map(s => ({
       id:             s.id,
@@ -138,7 +147,6 @@ export function useAdminUsers() {
   }
 
   function rejectPendingInstructor(instr) {
-    // Rejection endpoint pending backend implementation
     setPendingInstructors(p => p.filter(x => x.id !== instr.id))
     showToast(`${instr.name} rejected.`)
     setSelectedPending(null)
@@ -189,15 +197,14 @@ export function useAdminUsers() {
 
     if (activeTab === 'students') {
       list = studentsList.filter(s => !s.archived)
-      if (filterStatus    !== 'all') list = list.filter(s => s.status     === filterStatus)
-      if (filterCourse    !== 'all') list = list.filter(s => s.course     === filterCourse)
+      if (filterStatus     !== 'all') list = list.filter(s => s.status     === filterStatus)
+      if (filterCourse     !== 'all') list = list.filter(s => s.course     === filterCourse)
       if (filterInstructor !== 'all') list = list.filter(s => s.instructor === filterInstructor)
     } else if (activeTab === 'instructors') {
       list = instructors.filter(i => !i.archived)
     } else if (activeTab === 'pending') {
       return pendingInstructors
     } else {
-      // 'all' or 'archived'
       const combined = [
         ...studentsList.map(s => ({ ...s, role: 'student' })),
         ...instructors.map(i =>  ({ ...i, role: 'instructor' })),
@@ -235,7 +242,6 @@ export function useAdminUsers() {
 
   const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // ── Counts for tab labels ─────────────────────────────────────────
   const counts = {
     all:         [...studentsList, ...instructors].filter(u => !u.archived).length,
     students:    studentsList.filter(s => !s.archived).length,
@@ -247,15 +253,12 @@ export function useAdminUsers() {
   const instructorsList = [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
 
   return {
-    // Data
     studentsList, instructors, pendingInstructors,
-    // Modal state
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser,
     selectedUserType, setSelectedUserType,
     selectedPending, setSelectedPending,
     confirmRemoveInstr, setConfirmRemoveInstr,
-    // Table state
     activeTab, setActiveTab: (v) => { setActiveTab(v); setPage(1) },
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilterStatus: (v) => { setFilterStatus(v); setPage(1) },
@@ -264,10 +267,8 @@ export function useAdminUsers() {
     sortCol, sortDir, toggleSort,
     page, setPage,
     view, setView,
-    // Derived
     filtered, displayed, counts, instructorsList,
     PAGE_SIZE,
-    // Actions
     handleAddInstructor,
     handleDeleteInstructor,
     confirmDeleteInstructor,
@@ -276,7 +277,6 @@ export function useAdminUsers() {
     handleToggleRetake,
     handleUpdateUser,
     handleRemoveUser,
-    // Toast
     toast,
   }
 }
