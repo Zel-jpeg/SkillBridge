@@ -1,3 +1,4 @@
+import threading
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
 from rest_framework.decorators import api_view, permission_classes
@@ -61,20 +62,59 @@ def get_instructor_email_html(name, frontend_url, instructor_id=None, department
     </div>
     """
 
+import os
+
 def send_instructor_email(user, subject, body, html_body=None):
+    def _send():
+        try:
+            api_key = os.getenv('BREVO_API_KEY')
+            from_email = os.getenv('EMAIL_HOST_USER', 'azelmv14@gmail.com')
+            
+            if api_key:
+                # -------------------------------------------------------------
+                # 100% FREE HTTP API ROUTE (Bypasses Railway SMTP Block on Port 443)
+                # -------------------------------------------------------------
+                payload = {
+                    "sender": {"name": "SkillBridge OJT", "email": from_email},
+                    "to": [{"email": user.email, "name": user.name}],
+                    "subject": subject,
+                    "htmlContent": html_body if html_body else f"<p>{body}</p>"
+                }
+                headers = {
+                    "accept": "application/json",
+                    "api-key": api_key,
+                    "content-type": "application/json"
+                }
+                
+                # http_requests is imported as `import requests as http_requests` at the top of views.py
+                res = http_requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                res.raise_for_status() 
+                print(f'[SkillBridge] Async HTTP API email successfully sent to {user.email}')
+            
+            else:
+                # -------------------------------------------------------------
+                # STANDARD SMTP ROUTE (Fails gracefully on Railway free tier)
+                # -------------------------------------------------------------
+                send_mail(
+                    subject=subject,
+                    message=body,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                    html_message=html_body,
+                )
+                print(f'[SkillBridge] Async SMTP email successfully sent to {user.email}')
+                
+        except Exception as e:
+            print(f'[SkillBridge] Async email send FAILED for {user.email}: {e}')
+
     try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
-            recipient_list=[user.email],
-            fail_silently=False,
-            html_message=html_body,
-        )
+        t = threading.Thread(target=_send)
+        t.daemon = True
+        t.start()
         return True
     except Exception as e:
-        # Print to server logs so Railway/local console shows the exact SMTP error
-        print(f'[SkillBridge] Email send FAILED for {user.email}: {e}')
+        print(f"[SkillBridge] Failed to start email thread: {e}")
         return False
 
 
