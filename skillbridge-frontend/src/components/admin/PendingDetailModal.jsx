@@ -9,10 +9,24 @@
 //   onApprove — called when admin approves the request
 //   onReject  — called when admin rejects the request
 
+import { useState } from 'react'
 import { XIcon } from '../Icons'
 import { getInitials } from '../../utils/formatters'
 
 export default function PendingDetailModal({ user, onClose, onApprove, onReject }) {
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleApprove() {
+    setSubmitting(true)
+    try {
+      await onApprove()
+    } finally {
+      if (typeof window !== 'undefined') {
+        // Only set false if it wasn't unmounted by the parent
+        setSubmitting(false)
+      }
+    }
+  }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
@@ -68,10 +82,11 @@ export default function PendingDetailModal({ user, onClose, onApprove, onReject 
               Reject
             </button>
             <button
-              onClick={onApprove}
-              className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors"
+              onClick={handleApprove}
+              disabled={submitting}
+              className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Approve
+              {submitting ? 'Approving...' : 'Approve'}
             </button>
           </div>
         </div>

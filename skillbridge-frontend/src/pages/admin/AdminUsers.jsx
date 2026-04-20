@@ -2,6 +2,7 @@
 // All data + logic now in useAdminUsers.js
 // All modals now in components/admin/
 
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminNav          from '../../components/admin/AdminNav'
 import ConfirmModal      from '../../components/admin/ConfirmModal'
@@ -30,6 +31,7 @@ function RolePill({ role }) {
 
 export default function AdminUsers() {
   const navigate = useNavigate()
+  const [approvingId, setApprovingId] = useState(null)
   const {
     studentsList, instructors, pendingInstructors,
     showAddInstr, setShowAddInstr,
@@ -60,6 +62,16 @@ export default function AdminUsers() {
   function openUser(user, type) {
     setSelectedUser(user)
     setSelectedUserType(type || user.role || 'student')
+  }
+
+  async function handleInlineApprove(e, p) {
+    e.stopPropagation()
+    setApprovingId(p.id)
+    try {
+      await approvePendingInstructor(p)
+    } finally {
+      if (typeof window !== 'undefined') setApprovingId(null)
+    }
   }
 
   return (
@@ -149,8 +161,11 @@ export default function AdminUsers() {
               <div key={p.id} className="bg-white dark:bg-gray-900 border border-amber-100 dark:border-amber-900/30 rounded-2xl px-5 py-4 flex items-center gap-4 hover:shadow-sm transition cursor-pointer" onClick={() => setSelectedPending(p)}>
                 <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-amber-700 dark:text-amber-300 text-sm font-bold shrink-0">{getInitials(p.name)}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{p.name}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">{p.email} · {p.instructorId}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{p.name}</p>
+                    <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Requested Instructor Access</span>
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{p.email} · {p.instructorId}</p>
                 </div>
                 <div className="hidden sm:block text-xs text-gray-400 dark:text-gray-500">{p.department}</div>
                 <div className="flex gap-2 shrink-0">
@@ -158,9 +173,10 @@ export default function AdminUsers() {
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-rose-100 dark:hover:bg-rose-900 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                     Reject
                   </button>
-                  <button onClick={e => { e.stopPropagation(); approvePendingInstructor(p) }}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-                    Approve
+                  <button onClick={e => handleInlineApprove(e, p)}
+                    disabled={approvingId === p.id}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                    {approvingId === p.id ? 'Approving...' : 'Approve'}
                   </button>
                 </div>
               </div>
