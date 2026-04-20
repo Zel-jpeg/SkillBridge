@@ -4,6 +4,20 @@
 // Handles batch management, student enrollment, retake toggling,
 // and student removal — all with optimistic local state.
 //
+// ── Caching fix vs original ──────────────────────────────────────────────────
+//   The original used a custom cache (sb_apicache_ prefix) that was inconsistent
+//   with useApi's sessionStorage keys (sb_api_ prefix). This meant the cache was
+//   written under one key and never read back — causing flicker on every refresh.
+//   Fixed by switching the batch list to useApi, which handles sessionStorage
+//   persistence, TTL, and SSE invalidation automatically.
+//
+// ── Real-time updates ────────────────────────────────────────────────────────
+//   useSSE() opens a singleton EventSource to /api/instructor/events/.
+//   When a student submits an assessment the server detects the submission
+//   count change and sends { invalidate: ['/api/instructor/batches/', ...] }.
+//   useApi re-fetches the batch list silently, which triggers a useEffect
+//   that re-fetches per-batch student data → statuses update automatically.
+//
 // API:
 //   GET  /api/instructor/batches/                       → list batches
 //   GET  /api/instructor/batches/:id/students/          → batch students
@@ -13,37 +27,53 @@
 //   PATCH /api/instructor/students/:id/retake/          → toggle retake
 //   DELETE /api/instructor/students/:id/                → remove student
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
-import { _setCache } from '../useApi'
+import { useApi, invalidateCache } from '../useApi'
+import { useSSE } from '../useSSE'
 
-const PAGE_SIZE  = 10
-const CACHE_URL  = '/api/instructor/batches/'
+const PAGE_SIZE = 10
+const SSE_PATH  = '/api/instructor/events/'
 
-function getApiCache(url) {
-  const ss = sessionStorage.getItem('sb_apicache_' + url.replace(/\/+/g, '_'))
-  if (ss) { try { return JSON.parse(ss) } catch {} }
-  return null
-}
-
-function setApiCache(url, data) {
-  _setCache(url, data)
-  try { sessionStorage.setItem('sb_apicache_' + url.replace(/\/+/g, '_'), JSON.stringify(data)) } catch {}
+// ── Normalize raw API student → local shape ───────────────────────────────────
+function normalizeStudent(s) {
+  return {
+    id:            s.id,
+    name:          s.name,
+    studentId:     s.school_id || '',
+    email:         s.email,
+    course:        s.course,
+    status:        s.has_submitted ? 'completed' : 'pending',
+    retakeAllowed: s.retake_allowed ?? false,
+    scores:        s.skill_scores   ?? {},
+  }
 }
 
 export function useEnrolledStudents() {
+  // ── Real-time SSE connection ──────────────────────────────────────
+  // Singleton — shared with useInstructorDashboard if both are mounted.
+  useSSE(SSE_PATH)
+
   // ── Instructor info from localStorage ────────────────────────────
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
   const instructor = {
-    name:     cachedUser?.name    || 'Instructor',
-    initials: (cachedUser?.name || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
-    subject:  cachedUser?.course  || 'OJT Coordinator',
+    name:     cachedUser?.name   || 'Instructor',
+    initials: (cachedUser?.name  || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
+    subject:  cachedUser?.course || 'OJT Coordinator',
   }
 
-  // ── Batch / student state ─────────────────────────────────────────
+  // ── Batch list via useApi ─────────────────────────────────────────
+  // useApi handles sessionStorage persistence (survives page refresh)
+  // and SSE-triggered re-fetches automatically.
+  const { data: batchesRaw, loading: loadingBatches } = useApi('/api/instructor/batches/')
+
+  // ── Local state ───────────────────────────────────────────────────
+  // batches = batch metadata + students array per batch
   const [batches,       setBatches]       = useState([])
   const [activeBatchId, setActiveBatchId] = useState(null)
-  const [loadingBatches, setLoadingBatches] = useState(true)
+
+  // Track whether per-batch student fetches are running
+  const fetchingRef = useRef(false)
 
   // ── Modal / UI state ──────────────────────────────────────────────
   const [search,          setSearch]          = useState('')
@@ -77,57 +107,76 @@ export function useEnrolledStudents() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // ── Load batches on mount ─────────────────────────────────────────
-  useEffect(() => {
-    // Instant render from cache
-    const cached = getApiCache(CACHE_URL)
-    if (cached) {
-      const normalized = cached.map(b => ({
-        id: b.id, name: b.name, status: b.status,
-        archivedAt: b.archived_at ?? null, students: b.students ?? [],
+  // ── Fetch per-batch students ──────────────────────────────────────
+  // Called whenever the batch list changes (initial load OR SSE re-fetch).
+  // Preserves existing optimistic student state where possible so actions
+  // like retake-toggle don't flicker back on a background refresh.
+  const fetchStudentsForBatches = useCallback(async (batchList) => {
+    if (fetchingRef.current) return
+    fetchingRef.current = true
+    try {
+      await Promise.all(batchList.map(async (b) => {
+        try {
+          const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
+          const fresh = (r.data.students || []).map(normalizeStudent)
+          setBatches(prev => prev.map(pb =>
+            pb.id === b.id ? { ...pb, students: fresh } : pb
+          ))
+        } catch {
+          // Keep existing student data if a per-batch fetch fails
+        }
       }))
-      setBatches(normalized)
-      const active = normalized.find(b => b.status === 'active')
-      setActiveBatchId(active?.id ?? normalized[normalized.length - 1]?.id ?? null)
-      setLoadingBatches(false)
+    } finally {
+      fetchingRef.current = false
     }
+  }, [])
 
-    // Background API refresh
-    api.get(CACHE_URL)
-      .then(async res => {
-        const apiData = res.data
-        setApiCache(CACHE_URL, apiData)
-        const normalized = apiData.map(b => ({
-          id: b.id, name: b.name, status: b.status,
-          archivedAt: b.archived_at ?? null, students: [],
-        }))
-        setBatches(normalized)
-        setActiveBatchId(prev => {
-          if (prev && normalized.some(b => b.id === prev)) return prev
-          const active = normalized.find(b => b.status === 'active')
-          return active?.id ?? normalized[normalized.length - 1]?.id ?? null
-        })
-        // Fetch students per batch in parallel
-        await Promise.all(normalized.map(async b => {
-          try {
-            const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
-            const students = (r.data.students || []).map(s => ({
-              id:            s.id,
-              name:          s.name,
-              studentId:     s.school_id || '',
-              email:         s.email,
-              course:        s.course,
-              status:        s.has_submitted ? 'completed' : 'pending',
-              retakeAllowed: s.retake_allowed ?? false,
-              scores:        s.skill_scores   ?? {},
-            }))
-            setBatches(prev => prev.map(pb => pb.id === b.id ? { ...pb, students } : pb))
-          } catch {}
-        }))
-      })
-      .catch(() => {})
-      .finally(() => setLoadingBatches(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // ── React to batch list changes (initial load + SSE re-fetches) ──────
+  useEffect(() => {
+    if (!batchesRaw || !Array.isArray(batchesRaw)) return
+
+    const normalized = batchesRaw.map(b => ({
+      id:         b.id,
+      name:       b.name,
+      status:     b.status,
+      archivedAt: b.archived_at ?? null,
+      students:   [],   // populated by fetchStudentsForBatches below
+    }))
+
+    // Preserve existing student arrays during SSE background refreshes
+    // so the UI doesn't flash empty while we re-fetch
+    setBatches(prev => normalized.map(nb => {
+      const existing = prev.find(pb => pb.id === nb.id)
+      return existing ? { ...nb, students: existing.students } : nb
+    }))
+
+    // Preserve active batch selection across re-renders
+    setActiveBatchId(prev => {
+      if (prev && normalized.some(b => b.id === prev)) return prev
+      const active = normalized.find(b => b.status === 'active')
+      return active?.id ?? normalized[normalized.length - 1]?.id ?? null
+    })
+
+    fetchStudentsForBatches(normalized)
+  }, [batchesRaw, fetchStudentsForBatches])
+
+  // ── SSE: re-fetch students when submissions change ────────────────
+  // useApi already handles re-fetching /api/instructor/batches/ when SSE
+  // fires (which triggers the useEffect above). This listener catches the
+  // same event to also refresh per-batch student statuses (pending→completed)
+  // independently in case the batch list hasn't changed but a student's
+  // submission status has.
+  useEffect(() => {
+    const handler = (e) => {
+      const urls = e.detail?.urls
+      if (!Array.isArray(urls)) return
+      const relevant = urls.some(u => u.includes('/api/instructor/'))
+      if (!relevant || !batches.length) return
+      fetchStudentsForBatches(batches)
+    }
+    window.addEventListener('sse:data_changed', handler)
+    return () => window.removeEventListener('sse:data_changed', handler)
+  }, [batches, fetchStudentsForBatches])
 
   // ── Derived: active batch + students ─────────────────────────────
   const viewedBatch = batches.find(b => b.id === activeBatchId)
@@ -144,6 +193,7 @@ export function useEnrolledStudents() {
   }
 
   // ── Actions ───────────────────────────────────────────────────────
+
   async function handleArchiveBatch() {
     try { await api.post(`/api/instructor/batches/${activeBatchId}/archive/`) } catch {}
     setBatches(prev => prev.map(b =>
@@ -151,6 +201,8 @@ export function useEnrolledStudents() {
         ? { ...b, status: 'archived', archivedAt: new Date().toISOString().slice(0, 10) }
         : b
     ))
+    // Invalidate cache so next navigation sees the updated status
+    invalidateCache('/api/instructor/batches/')
     setShowArchiveConf(false)
     setShowNewBatch(true)
   }
@@ -162,6 +214,8 @@ export function useEnrolledStudents() {
     const nb = { id: newId, name, status: 'active', archivedAt: null, students: [] }
     setBatches(prev => [...prev, nb])
     setActiveBatchId(nb.id)
+    // Invalidate so cache reflects the new batch on next visit
+    invalidateCache('/api/instructor/batches/')
     setShowNewBatch(false)
     setNewBatchName('')
     showToast(`New batch "${name}" created.`)
@@ -177,7 +231,9 @@ export function useEnrolledStudents() {
         ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s) }
         : b
     ))
-    setSelectedStudent(prev => prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev)
+    setSelectedStudent(prev =>
+      prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev
+    )
     if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
   }
 

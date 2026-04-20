@@ -1,6 +1,6 @@
 # api/sse.py
 #
-# Server-Sent Events (SSE) endpoint for the admin panel.
+# Server-Sent Events (SSE) endpoint for admin and instructor panels.
 #
 # How it works:
 #   1. Client connects via EventSource with JWT in query param
@@ -11,7 +11,9 @@
 # Requires gunicorn with gevent workers so time.sleep() is non-blocking:
 #   gunicorn core.wsgi:application --worker-class gevent --workers 2 --timeout 120
 #
-# Railway: set Start Command in dashboard or via Procfile (see Procfile).
+# Two SSE endpoints:
+#   GET /api/admin/events/?token=<jwt>       → admin panel real-time updates
+#   GET /api/instructor/events/?token=<jwt>  → instructor panel real-time updates
 
 import json
 import time
@@ -22,9 +24,9 @@ from django.http import StreamingHttpResponse, HttpResponse, HttpResponseNotAllo
 logger = logging.getLogger(__name__)
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# ── Auth helpers ──────────────────────────────────────────────────────────────
 
-def _validate_admin(request):
+def _get_user_from_token(request, allowed_roles):
     """
     Validate the JWT passed as ?token=<jwt> query param.
     EventSource doesn't support custom headers, so we use a query param.
@@ -37,29 +39,40 @@ def _validate_admin(request):
         from rest_framework_simplejwt.tokens import AccessToken
         payload = AccessToken(token_str)
         from .models import User
-        return User.objects.get(id=payload['user_id'], role='admin', is_active=True)
+        user = User.objects.get(id=payload['user_id'], is_active=True)
+        if user.role not in allowed_roles:
+            return None
+        return user
     except Exception:
         return None
 
 
-# ── DB snapshot ───────────────────────────────────────────────────────────────
+def _validate_admin(request):
+    return _get_user_from_token(request, ['admin'])
 
-def _snapshot():
+
+def _validate_instructor(request):
+    return _get_user_from_token(request, ['instructor'])
+
+
+# ── Admin DB snapshot ─────────────────────────────────────────────────────────
+
+def _admin_snapshot():
     """
-    Read lightweight aggregate counts from the DB.
+    Lightweight aggregate counts for the admin panel.
     Comparing two snapshots tells us which cache URLs are stale.
     """
     from .models import User, Company, StudentResponse
     return {
-        'students':            User.objects.filter(role='student',     is_active=True).count(),
-        'instructors_active':  User.objects.filter(role='instructor',  is_approved=True,  is_active=True).count(),
-        'instructors_pending': User.objects.filter(role='instructor',  is_approved=False, is_active=True).count(),
+        'students':            User.objects.filter(role='student',    is_active=True).count(),
+        'instructors_active':  User.objects.filter(role='instructor', is_approved=True,  is_active=True).count(),
+        'instructors_pending': User.objects.filter(role='instructor', is_approved=False, is_active=True).count(),
         'companies':           Company.objects.count(),
         'submissions':         StudentResponse.objects.filter(submitted_at__isnull=False).count(),
     }
 
 
-def _diff_urls(old, new):
+def _admin_diff_urls(old, new):
     """Return list of frontend cache URLs to invalidate based on what changed."""
     urls = set()
     if old['students'] != new['students'] or old['submissions'] != new['submissions']:
@@ -76,14 +89,48 @@ def _diff_urls(old, new):
     return list(urls)
 
 
-# ── SSE stream generator ──────────────────────────────────────────────────────
+# ── Instructor DB snapshot ────────────────────────────────────────────────────
 
-def _event_stream():
+def _instructor_snapshot():
+    """
+    Lightweight aggregate counts for the instructor panel.
+    Tracks student submissions and active student count.
+    """
+    from .models import User, StudentResponse
+    return {
+        'submissions':     StudentResponse.objects.filter(submitted_at__isnull=False).count(),
+        'active_students': User.objects.filter(role='student', is_active=True).count(),
+    }
+
+
+def _instructor_diff_urls(old, new):
+    """
+    Return frontend cache URLs to invalidate for instructors.
+    Fires when a student submits an assessment or student count changes.
+    Also invalidates /api/instructor/batches/ so useEnrolledStudents
+    re-fetches per-batch student statuses (pending → completed).
+    """
+    urls = set()
+    if (old['submissions']     != new['submissions'] or
+            old['active_students'] != new['active_students']):
+        urls.update([
+            '/api/instructor/students/recommendations/',
+            '/api/instructor/batches/',
+        ])
+    return list(urls)
+
+
+# ── Generic SSE stream generator ─────────────────────────────────────────────
+
+def _event_stream(snapshot_fn, diff_fn):
     """
     Infinite generator that yields SSE-formatted strings.
     gevent makes time.sleep() non-blocking so this doesn't block a worker.
+
+    snapshot_fn: callable → dict of current DB counts
+    diff_fn:     callable(old, new) → list of stale URLs
     """
-    last = _snapshot()
+    last = snapshot_fn()
     heartbeat_tick = 0
 
     # Immediately confirm the connection is live
@@ -94,8 +141,8 @@ def _event_stream():
         heartbeat_tick += 1
 
         try:
-            current = _snapshot()
-            stale_urls = _diff_urls(last, current)
+            current    = snapshot_fn()
+            stale_urls = diff_fn(last, current)
 
             if stale_urls:
                 last = current
@@ -110,31 +157,46 @@ def _event_stream():
             break
         except Exception as exc:
             logger.error("SSE stream error: %s", exc)
-            # Send a comment so the client knows we're still alive
             yield ": error\n\n"
 
 
-# ── View ──────────────────────────────────────────────────────────────────────
+def _make_response(stream):
+    """Wrap a stream generator in a properly configured StreamingHttpResponse."""
+    response = StreamingHttpResponse(
+        streaming_content=stream,
+        content_type='text/event-stream; charset=utf-8',
+    )
+    response['Cache-Control']    = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'   # disable Railway/Nginx buffering
+    return response
+
+
+# ── Views ─────────────────────────────────────────────────────────────────────
 
 def admin_events(request):
     """
     GET /api/admin/events/?token=<jwt>
-
     Streams SSE to authenticated admin users.
     """
     if request.method != 'GET':
         return HttpResponseNotAllowed(['GET'])
 
-    user = _validate_admin(request)
-    if not user:
+    if not _validate_admin(request):
         return HttpResponse('Unauthorized', status=401)
 
-    response = StreamingHttpResponse(
-        streaming_content=_event_stream(),
-        content_type='text/event-stream; charset=utf-8',
-    )
-    # Prevent caching
-    response['Cache-Control'] = 'no-cache'
-    # Disable proxy / Nginx buffering so events arrive immediately
-    response['X-Accel-Buffering'] = 'no'
-    return response
+    return _make_response(_event_stream(_admin_snapshot, _admin_diff_urls))
+
+
+def instructor_events(request):
+    """
+    GET /api/instructor/events/?token=<jwt>
+    Streams SSE to authenticated (approved) instructor users.
+    Fires when students submit assessments or student roster changes.
+    """
+    if request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+
+    if not _validate_instructor(request):
+        return HttpResponse('Unauthorized', status=401)
+
+    return _make_response(_event_stream(_instructor_snapshot, _instructor_diff_urls))

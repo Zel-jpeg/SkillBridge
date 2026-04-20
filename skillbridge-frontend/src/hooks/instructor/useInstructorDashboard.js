@@ -3,13 +3,21 @@
 // Data hook for InstructorDashboard.
 // Fetches student recommendations and derives all display state.
 //
+// Real-time updates via SSE:
+//   useSSE() keeps a singleton EventSource connection open.
+//   When a student submits an assessment, the server detects the change
+//   and sends invalidate URLs → useApi re-fetches silently →
+//   components re-render automatically with updated statuses.
+//
 // API: GET /api/instructor/students/recommendations/
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useApi } from '../useApi'
+import { useSSE } from '../useSSE'
 
 const PAGE_SIZE  = 6
 const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
+const SSE_PATH   = '/api/instructor/events/'
 
 function average(scores) {
   const vals = Object.values(scores)
@@ -18,6 +26,10 @@ function average(scores) {
 }
 
 export function useInstructorDashboard() {
+  // ── Real-time SSE connection ──────────────────────────────────────
+  // Singleton — shared with useEnrolledStudents if both are mounted.
+  useSSE(SSE_PATH)
+
   const { data: apiData, loading: apiLoading } = useApi('/api/instructor/students/recommendations/')
 
   // ── Normalize API → student shape ─────────────────────────────────

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .sse import admin_events 
+from .sse import admin_events, instructor_events   # ← SSE views
 
 urlpatterns = [
     # ── Auth ─────────────────────────────────────────────────────────────────
@@ -52,4 +52,8 @@ urlpatterns = [
     # EventSource connects here with ?token=<jwt>
     # Streams data-change events so the frontend re-fetches stale cache keys.
     path('admin/events/',                                 admin_events,                   name='admin_events'),
+
+    # ── Instructor — Real-time SSE ────────────────────────────────────────────
+    # Fires when students submit assessments or student roster changes.
+    path('instructor/events/', instructor_events, name='instructor_events'),
 ]
