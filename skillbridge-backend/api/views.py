@@ -105,6 +105,8 @@ def send_instructor_email(user, subject, body, html_body=None):
                 )
                 print(f'[SkillBridge] Async SMTP email successfully sent to {user.email}')
                 
+        except http_requests.exceptions.HTTPError as e:
+            print(f'[SkillBridge] Brevo HTTP Error for {user.email}: {e.response.status_code} | {e.response.text}')
         except Exception as e:
             print(f'[SkillBridge] Async email send FAILED for {user.email}: {e}')
 
