@@ -68,9 +68,23 @@ export function useEnrolledStudents() {
   const { data: batchesRaw, loading: loadingBatches } = useApi('/api/instructor/batches/')
 
   // ── Local state ───────────────────────────────────────────────────
-  // batches = batch metadata + students array per batch
-  const [batches,       setBatches]       = useState([])
-  const [activeBatchId, setActiveBatchId] = useState(null)
+  // IMPORTANT: seed batches + activeBatchId directly from batchesRaw in the
+  // useState initializer. useApi already returns cached data synchronously on
+  // mount, so batchesRaw is available here. Without this, batches starts as []
+  // for one render even when cache exists → the stats show 0 for one frame → flicker.
+  const [batches, setBatches] = useState(() => {
+    if (!batchesRaw || !Array.isArray(batchesRaw)) return []
+    return batchesRaw.map(b => ({
+      id: b.id, name: b.name, status: b.status,
+      archivedAt: b.archived_at ?? null, students: [],
+    }))
+  })
+
+  const [activeBatchId, setActiveBatchId] = useState(() => {
+    if (!batchesRaw || !Array.isArray(batchesRaw)) return null
+    const active = batchesRaw.find(b => b.status === 'active')
+    return active?.id ?? batchesRaw[batchesRaw.length - 1]?.id ?? null
+  })
 
   // Track whether per-batch student fetches are running
   const fetchingRef = useRef(false)
