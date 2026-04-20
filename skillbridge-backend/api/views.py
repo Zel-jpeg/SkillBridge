@@ -75,7 +75,7 @@ def send_instructor_email(user, subject, body, html_body=None):
                 # 100% FREE HTTP API ROUTE (Bypasses Railway SMTP Block on Port 443)
                 # -------------------------------------------------------------
                 payload = {
-                    "sender": {"name": "SkillBridge OJT", "email": from_email},
+                    "sender": {"name": "Skill Bridge", "email": from_email},
                     "to": [{"email": user.email, "name": user.name}],
                     "subject": subject,
                     "htmlContent": html_body if html_body else f"<p>{body}</p>"
