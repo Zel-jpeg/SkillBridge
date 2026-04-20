@@ -23,7 +23,45 @@ class LoginRateThrottle(AnonRateThrottle):
     scope = 'login'
 
 
-def send_instructor_email(user, subject, body):
+def get_instructor_email_html(name, frontend_url, instructor_id=None, department=None):
+    details_html = ""
+    if instructor_id and department:
+        details_html = f"""
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; color: #4b5563; font-size: 14px;"><strong>Instructor ID:</strong> {instructor_id}</p>
+            <p style="margin: 5px 0 0; color: #4b5563; font-size: 14px;"><strong>Department:</strong> {department}</p>
+        </div>
+        """
+
+    return f"""
+    <div style="font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        <div style="background-color: #16a34a; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">SkillBridge</h1>
+            <p style="color: #dcfce7; margin: 5px 0 0; font-size: 14px;">Davao del Norte State College</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #111827; margin: 0 0 20px; font-size: 20px;">Welcome, {name}!</h2>
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Your instructor access has been successfully approved for the SkillBridge OJT Placement System.
+            </p>
+            {details_html}
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
+                You can now log in securely using your DNSC Google account.
+            </p>
+            <div style="text-align: center;">
+                <a href="{frontend_url}/login" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 14px 28px; border-radius: 8px;">
+                    Sign in to SkillBridge
+                </a>
+            </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">Institute of Computing • Panabo City, Davao del Norte</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0 0;">Please do not reply to this automated email.</p>
+        </div>
+    </div>
+    """
+
+def send_instructor_email(user, subject, body, html_body=None):
     try:
         send_mail(
             subject=subject,
@@ -31,12 +69,14 @@ def send_instructor_email(user, subject, body):
             from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
             recipient_list=[user.email],
             fail_silently=False,
+            html_message=html_body,
         )
         return True
     except Exception as e:
         # Print to server logs so Railway/local console shows the exact SMTP error
         print(f'[SkillBridge] Email send FAILED for {user.email}: {e}')
         return False
+
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1159,6 +1199,7 @@ def admin_instructors(request):
     user.save(update_fields=['password'])
 
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
+    html_body = get_instructor_email_html(name, frontend_url, instructor_id, department)
     email_sent = send_instructor_email(
         user,
         subject='SkillBridge Instructor Access Approved',
@@ -1169,7 +1210,8 @@ def admin_instructors(request):
             f'Login page: {frontend_url}/login\n'
             f'Instructor ID: {instructor_id}\n'
             f'Department: {department}\n'
-        )
+        ),
+        html_body=html_body
     )
 
     return Response({
@@ -1199,6 +1241,7 @@ def admin_approve_instructor(request, user_id):
     user.save(update_fields=['is_approved'])
 
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
+    html_body = get_instructor_email_html(user.name, frontend_url)
     email_sent = send_instructor_email(
         user,
         subject='SkillBridge Instructor Access Approved',
@@ -1207,7 +1250,8 @@ def admin_approve_instructor(request, user_id):
             'Your instructor access has been approved in SkillBridge.\n'
             'You can now log in using your DNSC Google account.\n\n'
             f'Login: {frontend_url}/login\n'
-        )
+        ),
+        html_body=html_body
     )
 
     return Response({'ok': True, 'email_sent': email_sent})

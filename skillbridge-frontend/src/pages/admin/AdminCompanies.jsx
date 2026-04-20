@@ -27,6 +27,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
+import AdminNav        from '../../components/admin/AdminNav'
+import ConfirmModal   from '../../components/admin/ConfirmModal'
 import { useApi } from '../../hooks/useApi'
 
 // ────────────────────────────────────────────────────────────────
@@ -315,28 +317,6 @@ const ChevronDown = ({ open }) => (
   </svg>
 )
 
-// ── Confirm Modal ─────────────────────────────────────────────────
-function ConfirmModal({ title, message, confirmLabel = 'Delete', onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center shrink-0 text-rose-500">
-            <TrashIcon size={18}/>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{message}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors">{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ════════════════════════════════════════════════════════════════
 // DUMMY DATA — replace with API in Week 4
@@ -439,131 +419,7 @@ function SkillLevelSelector({ category, value, onChange }) {
 let nextCompanyId  = 10
 let nextPositionId = 1000
 
-// ── Admin Nav ────────────────────────────────────────────────────
-function AdminNav({ admin }) {
-  const navigate = useNavigate()
-  const [open,   setOpen]   = useState(false)
-  const [notifOpen, setNotifOpen] = useState(false)
-  const [mobile, setMobile] = useState(false)
-  const [dark,   setDark]   = useState(() => localStorage.getItem('sb-theme') === 'dark')
-
-  function toggleDark() {
-    const next = !dark; setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('sb-theme', next ? 'dark' : 'light')
-  }
-
-  const links = [
-    { label: 'Dashboard', path: '/admin/dashboard' },
-    { label: 'Companies', path: '/admin/companies', active: true },
-    { label: 'Users',     path: '/admin/users'  },
-  ]
-
-  return (
-    <>
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 h-14 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center shrink-0">
-            <svg width="16" height="16" viewBox="0 0 26 26" fill="none">
-              <path d="M3 18 Q3 10 13 10 Q23 10 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M7 18 L7 14M13 18 L13 12M19 18 L19 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <circle cx="7" cy="8" r="2.5" fill="white" opacity="0.85"/><circle cx="19" cy="8" r="2.5" fill="white" opacity="0.85"/>
-            </svg>
-          </div>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">SkillBridge</span>
-          <span className="hidden sm:inline text-gray-300 dark:text-gray-700">/</span>
-          <span className="hidden sm:inline text-sm text-gray-500 dark:text-gray-400">Admin</span>
-        </div>
-        <div className="hidden md:flex items-center gap-1">
-          {links.map(l => (
-            <button key={l.label} onClick={() => navigate(l.path)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${l.active ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            >{l.label}</button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          
-          <div className="relative hidden sm:block">
-            <button onClick={() => { setNotifOpen(p => !p); setOpen(false) }} className="relative p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors delay-100">
-              <BellIcon />
-              <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-900 pointer-events-none"></span>
-            </button>
-            {notifOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden z-20">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">Notifications</p>
-                  <span className="text-[10px] uppercase font-bold text-gray-400">3 New</span>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  <div onClick={() => { navigate('/admin/users?tab=pending'); setNotifOpen(false) }} className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors bg-blue-50/30 dark:bg-blue-900/10">
-                    <div className="mt-0.5 w-2 h-2 bg-blue-500 rounded-full shrink-0"></div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">New Instructor Request</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Alice Walker has requested instructor access.</p>
-                      <p className="text-[10px] text-gray-400 mt-1">2 mins ago</p>
-                    </div>
-                  </div>
-                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
-                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">Azeus Systems Registered</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A new company profile was created.</p>
-                      <p className="text-[10px] text-gray-400 mt-1">1 hour ago</p>
-                    </div>
-                  </div>
-                  <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
-                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">System Update</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Assessment matching engine updated to v2.0.</p>
-                      <p className="text-[10px] text-gray-400 mt-1">1 day ago</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 text-center border-t border-gray-100 dark:border-gray-800">
-                  <button onClick={() => { navigate('/admin/notifications'); setNotifOpen(false) }} className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">View All activity</button>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <button onClick={() => setMobile(p => !p)} className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            {mobile ? <XIcon size={20}/> : <MenuIcon/>}
-          </button>
-          <div className="relative ml-1">
-            <button onClick={() => { setOpen(p => !p); setNotifOpen(false) }} className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all">
-              {admin.initials}
-            </button>
-            {open && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden z-20">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{admin.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
-                </div>
-                <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{dark ? 'Dark mode' : 'Light mode'}</span>
-                  <button onClick={toggleDark} className={`relative w-9 h-5 rounded-full transition-colors ${dark ? 'bg-green-600' : 'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0'}`}/>
-                  </button>
-                </div>
-                <button onClick={() => navigate('/login')} className="w-full text-left px-4 py-3 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors">Sign out</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
-      {mobile && (
-        <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex flex-col gap-1 sticky top-14 z-10 shadow-sm">
-          {links.map(l => (
-            <button key={l.label} onClick={() => { navigate(l.path); setMobile(false) }}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors ${l.active ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            >{l.label}</button>
-          ))}
-        </div>
-      )}
-    </>
-  )
-}
+// ── AdminNav and ConfirmModal are now shared components ───────────
 
 // ════════════════════════════════════════════════════════════════
 // AddCompanyModal — 2-step: address dropdowns → pin on map
@@ -1006,7 +862,7 @@ export default function AdminCompanies() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav admin={ADMIN} />
+      <AdminNav activePath="/admin/companies" />
 
       {showAddCompany && <AddCompanyModal onClose={() => setShowAddCompany(false)} onAdd={handleAddCompany} />}
       {addPositionFor && (
@@ -1016,9 +872,11 @@ export default function AdminCompanies() {
       {confirmDelete && (
         <ConfirmModal
           title={confirmDelete.type === 'company' ? 'Delete company?' : 'Delete position?'}
-          message={confirmDelete.type === 'company'
-            ? `"${confirmDelete.label}" and all its positions will be permanently removed.`
-            : `"${confirmDelete.label}" will be permanently removed.`}
+          message={
+            confirmDelete.type === 'company'
+              ? `"${confirmDelete.label}" and all its positions will be permanently removed.`
+              : `"${confirmDelete.label}" will be permanently removed.`
+          }
           confirmLabel="Delete"
           onConfirm={handleConfirmDelete}
           onCancel={() => setConfirmDelete(null)}

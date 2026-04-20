@@ -26,9 +26,6 @@ export default function LoginPage() {
       localStorage.removeItem('sb-token')
       localStorage.removeItem('sb-refresh')
 
-      console.log('Google token response:', tokenResponse)
-      console.log('Access token:', tokenResponse.access_token)
-
       try {
         // Use plain axios so no stale JWT gets attached to this request
         const res = await axios.post(
@@ -42,7 +39,14 @@ export default function LoginPage() {
         localStorage.setItem('sb-role',    user.role)
         localStorage.setItem('sb-user',    JSON.stringify(user))
 
-        prefetchForRole(user.role) 
+        // ── KEY CHANGE ────────────────────────────────────────────────
+        // Await ALL prefetch requests before navigating.
+        // The sign-in button spinner covers this wait (~200–400 ms on a
+        // warm connection). By the time navigate() runs, every endpoint
+        // for this role is already in the useApi cache, so the dashboard
+        // renders immediately with no loading spinners of its own.
+        await prefetchForRole(user.role)
+        // ─────────────────────────────────────────────────────────────
 
         if (user.role === 'student')         navigate(user.course ? '/student/dashboard' : '/student/setup')
         else if (user.role === 'instructor') {
@@ -51,9 +55,6 @@ export default function LoginPage() {
         } else if (user.role === 'admin')    navigate('/admin/dashboard')
 
       } catch (err) {
-        console.log('Login error full:', err)
-        console.log('Login error response:', err.response?.data)
-
         const code = err.response?.data?.error
 
         if (code === 'not_dnsc') {

@@ -5,10 +5,6 @@
 // instead of Google OAuth.
 //
 // Route: /admin/login
-//
-// TODO Week 3: Replace handleLogin with real API call
-//   POST /api/auth/admin/login/  { username, password }
-//   → returns JWT token + role confirmation
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -16,24 +12,27 @@ import api from '../../api/axios'
 import { prefetchForRole } from '../../api/prefetch'
 
 // ================================================================
-const SYSTEM_NAME    = "SkillBridge"
-const SCHOOL_NAME    = "Davao del Norte State College"
+const SYSTEM_NAME     = "SkillBridge"
+const SCHOOL_NAME     = "Davao del Norte State College"
 const SCHOOL_LOCATION = "Panabo City, Davao del Norte · Institute of Computing"
 // ================================================================
 
 export default function AdminLogin() {
   const navigate = useNavigate()
 
-  const [username,    setUsername]    = useState('')
-  const [password,    setPassword]    = useState('')
-  const [showPass,    setShowPass]    = useState(false)
-  const [loading,     setLoading]     = useState(false)
-  const [error,       setError]       = useState('')
-  const [forgotSent,  setForgotSent]  = useState(false)  // for the forgot-password flow
+  const [username,   setUsername]   = useState('')
+  const [password,   setPassword]   = useState('')
+  const [showPass,   setShowPass]   = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [error,      setError]      = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
 
-  // ── Login handler ────────────────────────────────────────────
-  
-  function handleLogin(e) {
+  // ── Login handler ─────────────────────────────────────────────
+  // Converted to async so we can await prefetchForRole() before
+  // navigating. The button spinner covers the entire wait, meaning
+  // by the time navigate() fires the cache is already warm and the
+  // destination page renders instantly without its own loading state.
+  async function handleLogin(e) {
     e.preventDefault()
     setError('')
 
@@ -42,85 +41,48 @@ export default function AdminLogin() {
 
     setLoading(true)
 
-    api.post('/api/auth/login/', { email: username, password })
-      .then(res => {
-        const { access, refresh, user } = res.data
-        localStorage.setItem('sb-token',   access)
-        localStorage.setItem('sb-refresh', refresh)
-        localStorage.setItem('sb-role',    user.role)
-        localStorage.setItem('sb-user',    JSON.stringify(user))
+    try {
+      const res = await api.post('/api/auth/login/', { email: username, password })
+      const { access, refresh, user } = res.data
 
-        prefetchForRole(user.role)
+      localStorage.setItem('sb-token',   access)
+      localStorage.setItem('sb-refresh', refresh)
+      localStorage.setItem('sb-role',    user.role)
+      localStorage.setItem('sb-user',    JSON.stringify(user))
 
-        if (user.role === 'admin')       navigate('/admin/dashboard')
-        else if (user.role === 'instructor') {
-          if (!user.is_approved) navigate('/instructor/pending')
-          else                   navigate('/instructor/dashboard')
-        }
-      })
-      .catch(err => {
-        const msg = err.response?.data?.error
+      // ── KEY CHANGE ──────────────────────────────────────────────
+      // Await ALL prefetch requests before navigating.
+      // The sign-in spinner covers this wait. Dashboard gets data
+      // instantly from cache — no loading states needed there.
+      await prefetchForRole(user.role)
+      // ────────────────────────────────────────────────────────────
+
+      if (user.role === 'admin') navigate('/admin/dashboard')
+      else if (user.role === 'instructor') {
+        if (!user.is_approved) navigate('/instructor/pending')
+        else                   navigate('/instructor/dashboard')
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error
+
       // =========================================================================
       // ⚠️ TEMPORARY DEMO LOGIN (DELETE BEFORE FINAL DEFENSE)
       // =========================================================================
-      if (
-        username === 'instructor@dnsc.edu.ph' &&
-        password === 'instructor123'
-      ) {
+      if (username === 'instructor@dnsc.edu.ph' && password === 'instructor123') {
         localStorage.setItem('sb-token', 'demo-instructor-token')
         localStorage.setItem('sb-role',  'instructor')
+        // No real token so prefetch would fail — skip it for demo
         navigate('/instructor/dashboard')
         return
       }
-      //------------------
-        
-        if (msg === 'pending') navigate('/instructor/pending')
-        else setError('Invalid username or password.')
-      })
-      .finally(() => setLoading(false))
-  }
-  
- /*
-  function handleLogin(e) {
-    e.preventDefault()
-    setError('')
+      // =========================================================================
 
-    if (!username.trim()) { setError('Username is required.'); return }
-    if (!password)        { setError('Password is required.'); return }
-
-    setLoading(true)
-
-    // TODO Week 3: POST /api/auth/admin/login/
-    // Simulated delay — remove when real API is wired
-    setTimeout(() => {
+      if (msg === 'pending') navigate('/instructor/pending')
+      else setError('Invalid username or password.')
+    } finally {
       setLoading(false)
-      
-      // =========================================================================
-      // [ADJUSTED PART START]: Added dummy data validation and conditional routing
-      // =========================================================================
-      if (username === 'admin' && password === 'admin01031') {
-        // Fake success for admin → go to admin dashboard
-        localStorage.setItem('sb-token', 'admin-placeholder-token')
-        localStorage.setItem('sb-role',  'admin')
-        navigate('/admin/dashboard')
-      } 
-      else if (username === 'instructor' && password === 'instructor01031') {
-        // Fake success for instructor → go to instructor dashboard
-        localStorage.setItem('sb-token', 'instructor-placeholder-token')
-        localStorage.setItem('sb-role',  'instructor')
-        navigate('/instructor/dashboard')
-      } 
-      else {
-        // Invalid credentials fallback
-        setError('Invalid username or password.')
-      }
-      // =========================================================================
-      // [ADJUSTED PART END]
-      // =========================================================================
-
-    }, 800)
+    }
   }
-  */
 
   // ── Forgot password ──────────────────────────────────────────
   function handleForgotPassword() {
@@ -232,14 +194,12 @@ export default function AdminLogin() {
                 tabIndex={-1}
               >
                 {showPass ? (
-                  /* Eye-off icon */
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 ) : (
-                  /* Eye icon */
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
