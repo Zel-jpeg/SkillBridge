@@ -16,7 +16,7 @@ import { useState }                from 'react'
 import { useNavigate }             from 'react-router-dom'
 import InstructorNav               from '../../components/instructor/InstructorNav'
 import { useInstructorAssessments } from '../../hooks/instructor/useInstructorAssessments'
-import { useAssessmentUpload }      from '../../hooks/instructor/useAssessmentUpload'
+import { useAssessmentUpload } from "../../hooks/instructor/useInstructorAssessments";
 
 // ── Type badge config ─────────────────────────────────────────────────────────
 const TYPE_META = {
