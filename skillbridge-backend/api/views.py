@@ -10,11 +10,11 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Sum, Max
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
-    StudentResponse, SkillScore,
+    StudentResponse, ResponseAnswer, SkillScore,
     Company, Position, PositionRequirement, Recommendation,
 )
 from .serializers import UserSerializer
@@ -588,9 +588,7 @@ def instructor_assessments(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     if request.method == 'GET':
-        assessments = Assessment.objects.filter(
-            created_by=request.user
-        ).prefetch_related('questions').order_by('-created_at')
+        assessments = Assessment.objects.all().prefetch_related('questions').order_by('-created_at')
 
         return Response([{
             'id':               a.id,
@@ -730,7 +728,7 @@ def instructor_assessment_questions(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        assessment = Assessment.objects.get(id=assessment_id, created_by=request.user)
+        assessment = Assessment.objects.get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
@@ -760,6 +758,130 @@ def instructor_assessment_questions(request, assessment_id):
         'questions': data,
     })
 
+
+# ── POST /api/instructor/assessments/{id}/questions/add/ ──────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def instructor_assessment_add_questions(request, assessment_id):
+    """
+    Append new questions (from a parsed file upload) to an existing assessment.
+    Also clears all student submissions so everyone retakes with the full set.
+ 
+    Body:
+    {
+      "questions": [
+        {
+          "question_text": "What does HTML stand for?",
+          "question_type": "mcq",
+          "category":      "Web Development",
+          "choices":       [
+            { "text": "HyperText Markup Language", "is_correct": true  },
+            { "text": "High Text Machine Language", "is_correct": false }
+          ]
+        },
+        {
+          "question_text": "What does CPU stand for?",
+          "question_type": "identification",
+          "category":      "Computer Hardware",
+          "correct_answer": "Central Processing Unit"
+        }
+      ],
+      "clear_submissions": true    // default true — resets student progress
+    }
+ 
+    Returns:
+    {
+      "added":                5,
+      "total":                30,
+      "submissions_cleared":  true
+    }
+    """
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+ 
+    try:
+        assessment = Assessment.objects.get(id=assessment_id)
+    except Assessment.DoesNotExist:
+        return Response({'error': 'Assessment not found'}, status=404)
+ 
+    questions_data    = request.data.get('questions', [])
+    clear_submissions = request.data.get('clear_submissions', True)
+ 
+    if not questions_data:
+        return Response({'error': 'at least one question is required'}, status=400)
+ 
+    # Append after the last existing question
+    from django.db.models import Max
+    current_max = (
+        assessment.questions.aggregate(max_order=Max('question_order'))['max_order'] or 0
+    )
+ 
+    created_count = 0
+    for i, q_data in enumerate(questions_data, start=1):
+        q_text         = q_data.get('question_text', '').strip()
+        q_type         = q_data.get('question_type', 'mcq').lower()
+        cat_name       = q_data.get('category', '').strip()
+        choices        = q_data.get('choices', [])
+        correct_answer = q_data.get('correct_answer', '')
+ 
+        if not q_text:
+            continue
+        if q_type not in ('mcq', 'truefalse', 'identification'):
+            q_type = 'mcq'
+ 
+        # Auto-create category if needed (same pattern as assessment creation)
+        cat = None
+        if cat_name:
+            cat, _ = SkillCategory.objects.get_or_create(
+                name__iexact=cat_name,
+                defaults={'name': cat_name, 'created_by': request.user}
+            )
+ 
+        question = Question.objects.create(
+            assessment=assessment,
+            skill_category=cat,
+            question_text=q_text,
+            question_type=q_type,
+            question_order=current_max + i,
+        )
+ 
+        if q_type == 'identification':
+            if correct_answer:
+                AnswerChoice.objects.create(
+                    question=question,
+                    choice_text=correct_answer.strip(),
+                    is_correct=True,
+                )
+        else:
+            for c in choices:
+                text = c.get('text', '').strip()
+                if text:
+                    AnswerChoice.objects.create(
+                        question=question,
+                        choice_text=text,
+                        is_correct=bool(c.get('is_correct', False)),
+                    )
+ 
+        created_count += 1
+ 
+    # Clear all student submissions so everyone retakes with the full question set
+    submissions_cleared = False
+    if clear_submissions and created_count > 0:
+        response_ids = list(
+            StudentResponse.objects.filter(assessment=assessment).values_list('id', flat=True)
+        )
+        if response_ids:
+            ResponseAnswer.objects.filter(response_id__in=response_ids).delete()
+            StudentResponse.objects.filter(assessment=assessment).delete()
+            SkillScore.objects.filter(assessment=assessment).delete()
+            submissions_cleared = True
+ 
+    total = assessment.questions.count()
+    return Response({
+        'added':               created_count,
+        'total':               total,
+        'submissions_cleared': submissions_cleared,
+    }, status=201)
 
 # ════════════════════════════════════════════════════════════════════════════
 # STUDENT — Assessment Flow

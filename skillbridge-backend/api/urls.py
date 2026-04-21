@@ -36,6 +36,9 @@ urlpatterns = [
     path('assessments/active/',                  views.assessment_active,  name='assessment_active'),
     path('assessments/<int:assessment_id>/start/',  views.assessment_start,   name='assessment_start'),
     path('assessments/<int:assessment_id>/submit/', views.assessment_submit,  name='assessment_submit'),
+    path('instructor/assessments/<int:assessment_id>/questions/add/', views.instructor_assessment_add_questions, name='instructor_assessment_add_questions'),
+
+    
 
     # ── Admin ─────────────────────────────────────────────────────────────────
     path('admin/stats/',                                  views.admin_stats,              name='admin_stats'),

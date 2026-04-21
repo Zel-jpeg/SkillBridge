@@ -321,7 +321,7 @@ export default function StudentDashboard() {
                 {greeting}, {firstName} 👋
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {displayCourse} · {displayId} · OJT Assessment Portal
+                {displayCourse} · {displayId} · Skill Assessment Portal
               </p>
             </div>
             {hasTakenAssessment && (
