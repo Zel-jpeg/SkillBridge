@@ -15,7 +15,7 @@
 import { useState }                from 'react'
 import { useNavigate }             from 'react-router-dom'
 import InstructorNav               from '../../components/instructor/InstructorNav'
-import { useInstructorUpload} from '../../hooks/instructor/useInstructorUpload'
+import { useInstructorAssessments } from '../../hooks/instructor/useInstructorAssessments'
 import { useAssessmentUpload }      from '../../hooks/instructor/useAssessmentUpload'
 
 // ── Type badge config ─────────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ export default function InstructorAssessments() {
     editActive, setEditActive,
     saving, handleSave,
     toast,
-  } = useInstructorUpload()
+  } = useInstructorAssessments()
 
   // ── Upload modal ──────────────────────────────────────────────────────────//
   const [showUpload, setShowUpload] = useState(false)
