@@ -1591,7 +1591,9 @@ def admin_companies(request):
     return Response({'id': company.id, 'name': company.name}, status=201)
 
 
-@api_view(['DELETE'])
+# ── PATCH + DELETE  /api/admin/companies/{id}/ ────────────────────────────────
+# Replace the existing admin_company_detail function (was DELETE-only)
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def admin_company_detail(request, company_id):
     if request.user.role != 'admin':
@@ -1600,8 +1602,38 @@ def admin_company_detail(request, company_id):
         company = Company.objects.get(id=company_id)
     except Company.DoesNotExist:
         return Response({'error': 'Company not found'}, status=404)
-    company.delete()
-    return Response(status=204)
+ 
+    if request.method == 'DELETE':
+        company.delete()
+        return Response(status=204)
+ 
+    # ── PATCH ─────────────────────────────────────────────────────────────────
+    if 'name' in request.data:
+        name = (request.data['name'] or '').strip()
+        if name:
+            company.name = name
+ 
+    if 'address' in request.data:
+        # Store the structured PSGC JSON object { street, barangay, city, province }
+        company.address = request.data['address']
+ 
+    if 'lat' in request.data:
+        val = request.data.get('lat')
+        company.location_lat = float(val) if val is not None else None
+ 
+    if 'lng' in request.data:
+        val = request.data.get('lng')
+        company.location_lng = float(val) if val is not None else None
+ 
+    company.save()
+ 
+    return Response({
+        'id':      company.id,
+        'name':    company.name,
+        'address': company.address,
+        'lat':     company.location_lat,
+        'lng':     company.location_lng,
+    })
 
 
 # ── POST /api/admin/companies/{id}/positions/ ─────────────────────
@@ -1650,7 +1682,9 @@ def admin_company_positions(request, company_id):
     }, status=201)
 
 
-@api_view(['DELETE'])
+# ── PATCH + DELETE  /api/admin/positions/{id}/ ───────────────────────────────
+# Replace the existing admin_position_detail function (was DELETE-only)
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def admin_position_detail(request, position_id):
     if request.user.role != 'admin':
@@ -1659,5 +1693,55 @@ def admin_position_detail(request, position_id):
         position = Position.objects.get(id=position_id)
     except Position.DoesNotExist:
         return Response({'error': 'Position not found'}, status=404)
-    position.delete()
-    return Response(status=204)
+ 
+    if request.method == 'DELETE':
+        position.delete()
+        return Response(status=204)
+ 
+    # ── PATCH ─────────────────────────────────────────────────────────────────
+    if 'title' in request.data:
+        title = (request.data['title'] or '').strip()
+        if title:
+            position.title = title
+ 
+    if 'slots' in request.data:
+        try:
+            position.slots_available = max(1, int(request.data['slots']))
+        except (TypeError, ValueError):
+            pass
+ 
+    position.save()
+ 
+    # Replace skill requirements atomically when the caller sends 'requirements'
+    if 'requirements' in request.data:
+        reqs = request.data.get('requirements') or {}
+        # Wipe existing, then re-create from the new dict
+        position.requirements.all().delete()
+        for cat_name, pct in reqs.items():
+            try:
+                pct_float = float(pct)
+            except (TypeError, ValueError):
+                continue
+            if pct_float <= 0:
+                continue
+            try:
+                cat = SkillCategory.objects.get(name__iexact=cat_name)
+                PositionRequirement.objects.create(
+                    position=position,
+                    skill_category=cat,
+                    required_percentage=pct_float,
+                )
+            except SkillCategory.DoesNotExist:
+                pass  # skip unknown categories silently
+ 
+    # Return the refreshed position so the frontend can reconcile local state
+    updated_reqs = {
+        r.skill_category.name: r.required_percentage
+        for r in position.requirements.select_related('skill_category').all()
+    }
+    return Response({
+        'id':           position.id,
+        'title':        position.title,
+        'slots':        position.slots_available,
+        'requirements': updated_reqs,
+    })

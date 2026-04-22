@@ -1,83 +1,63 @@
 // src/pages/admin/AdminCompanies.jsx
 //
-// Shows:
-//   1. Collapsible partner-locations overview map (Leaflet / OpenStreetMap, free)
-//   2. Company cards — name, address, slot count, positions list
-//   3. "Add company" → 2-step modal:
-//        Step 1: company name + PSGC AddressDropdowns + street/building field
-//        Step 2: pin exact location on interactive map (tap to place, drag to adjust)
-//   4. Per-company "Add position" modal (skill sliders)
-//   5. Delete company / delete position
+// Refactored to use useAdminCompanies hook for all state + API logic.
 //
-// PERFORMANCE NOTES (production):
-//   - CompaniesMap is lazy-mounted: Leaflet JS + CSS (~150 KB) is only fetched
-//     the first time the user clicks "Partner Locations". Subsequent open/close
-//     cycles reuse the already-loaded script — no re-download.
-//   - The overview map panel is closed by default so the page loads instantly.
-//   - PinMap (inside Add Company modal) shares the same loadLeaflet() singleton,
-//     so if the user opened the overview map first, the modal map is free.
-//
-// TODO Week 4: replace local state with real API calls
-//   GET    /api/admin/companies/               → list + positions
-//   POST   /api/admin/companies/               → create (send lat/lng too)
-//   DELETE /api/admin/companies/:id/
-//   POST   /api/admin/companies/:id/positions/
-//   DELETE /api/admin/positions/:id/
+// Features:
+//   1. Collapsible partner-locations map (Leaflet / OpenStreetMap)
+//   2. Company cards — name, address, pin indicator, positions list
+//   3. CompanyModal (add + edit mode):
+//        Step 1: company name + PSGC AddressDropdowns + optional street
+//        Step 2: pin exact location on interactive map
+//   4. PositionModal (add + edit mode) — title, slots, skill sliders
+//   5. Edit buttons on every company card and position row
+//   6. Delete confirmations with optimistic local state
+//   7. Loading spinners on all submit buttons
+//   8. Real-time updates via SSE (handled in hook)
 
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
 import AdminNav        from '../../components/admin/AdminNav'
-import ConfirmModal   from '../../components/admin/ConfirmModal'
-import { useApi } from '../../hooks/useApi'
+import ConfirmModal    from '../../components/admin/ConfirmModal'
+import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 
-// ────────────────────────────────────────────────────────────────
-// Leaflet — loaded once from CDN, no npm package needed.
-// The singleton promise guarantees the script is injected only
-// once even if loadLeaflet() is called multiple times.
-// ────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// Leaflet — loaded once from CDN, singleton promise prevents duplicate injection
+// ────────────────────────────────────────────────────────────────────────────
 let _leafletPromise = null
 function loadLeaflet() {
   if (_leafletPromise) return _leafletPromise
   _leafletPromise = new Promise(resolve => {
     if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+    const link = Object.assign(document.createElement('link'), {
+      rel:  'stylesheet',
+      href: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
+    })
     document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
+    const script = Object.assign(document.createElement('script'), {
+      src:    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
+      onload: () => resolve(window.L),
+    })
     document.head.appendChild(script)
   })
   return _leafletPromise
 }
 
-// ── Nominatim geocoder (free, no key) ────────────────────────────
-// Nominatim usage policy: 1 req/sec max, valid User-Agent required.
-// For higher traffic consider a backend proxy or a paid geocoder.
-//
-// Geocodes the most specific address available:
-//   barangay → zoom 17 (street level — ideal for pinning)
-//   city only → zoom 15 (neighbourhood level)
-//   province only → zoom 12 (city overview)
+// ── Nominatim geocoder (free, no key) ────────────────────────────────────────
 async function geocodeAddress({ barangay, city, province }) {
-  // Build query from most specific to least specific
-  const q = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
+  const q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
   const zoom = barangay ? 17 : city ? 15 : 12
-
   try {
-    const res = await fetch(
+    const res   = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
       { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
     )
     const [hit] = await res.json()
     if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
   } catch {}
-  return { lat: 7.1907, lng: 125.4553, zoom } // fallback: Davao City
+  return { lat: 7.1907, lng: 125.4553, zoom }  // fallback: Davao City
 }
 
-// ── Company pin icon with hoverable name label ───────────────────
+// ── Map icons ─────────────────────────────────────────────────────────────────
 function makeCompanyIcon(L, name) {
   return L.divIcon({
     className:   '',
@@ -85,32 +65,26 @@ function makeCompanyIcon(L, name) {
     iconAnchor:  [14, 36],
     popupAnchor: [0, -42],
     html: `
-      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none"
-           style="position:relative;z-index:100">
-        <div style="
-          position:absolute;bottom:40px;white-space:nowrap;
-          background:#111827;color:white;
-          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
-          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
-          pointer-events:none;transition:all .18s;
-          transform:translateX(-50%);left:50%;
-        ">
+      <div style="position:relative;z-index:100">
+        <div style="position:absolute;bottom:40px;white-space:nowrap;background:#111827;color:white;
+          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;padding:3px 8px;
+          border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);pointer-events:none;
+          transform:translateX(-50%);left:50%;">
           ${name}
           <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
             width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
             border-top:6px solid #111827"></div>
         </div>
-        <div style="transition:transform .18s" class="group-hover:scale-110">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));display:block">
-            <path fill="#16a34a" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-            <circle fill="white" cx="14" cy="13" r="5"/>
-          </svg>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"
+          style="filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));display:block">
+          <path fill="#16a34a" stroke="white" stroke-width="2"
+            d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
+          <circle fill="white" cx="14" cy="13" r="5"/>
+        </svg>
       </div>`,
   })
 }
 
-// ── Simple pin icon (for PinMap placement marker only) ────────────
 function makePinIcon(L) {
   return L.divIcon({
     className:   '',
@@ -125,20 +99,14 @@ function makePinIcon(L) {
   })
 }
 
-// ════════════════════════════════════════════════════════════════
-// PinMap — interactive drop-pin map inside the Add Company modal
-//
-// `center` → { lat, lng, zoom } from geocodeAddress.
-//   Zoom levels: 17 = barangay, 15 = city, 12 = province.
-//   The map re-centers at exactly this zoom whenever center changes,
-//   so the user lands precisely where they need to drop the pin.
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// PinMap — interactive drop-pin map inside modals
+// ════════════════════════════════════════════════════════════════════════════
 function PinMap({ center, pinned, onPin }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
-  // Initialise Leaflet once on mount
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
@@ -153,8 +121,6 @@ function PinMap({ center, pinned, onPin }) {
         maxZoom: 19,
       }).addTo(map)
       map.zoomControl.setPosition('bottomright')
-
-      // Give the DOM a moment to settle, then fix tile gaps
       setTimeout(() => map.invalidateSize(), 150)
 
       function placeMk(lat, lng) {
@@ -182,23 +148,18 @@ function PinMap({ center, pinned, onPin }) {
       mapRef.current = null
       mkRef.current  = null
     }
-  }, []) // intentional — only mount/unmount
+  }, []) // eslint-disable-line
 
-  // Re-center + re-zoom whenever address selection changes.
-  // zoom comes from geocodeAddress so it matches the specificity:
-  //   selected barangay → 17, city → 15, province → 12.
+  // Re-center whenever address selection changes
   useEffect(() => {
     if (mapRef.current && center) {
-      mapRef.current.setView(
-        [center.lat, center.lng],
-        center.zoom ?? 15,
-        { animate: true }
-      )
+      mapRef.current.setView([center.lat, center.lng], center.zoom ?? 15, { animate: true })
     }
-  }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 248, isolation: 'isolate' }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
+      style={{ height: 248, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
@@ -210,9 +171,9 @@ function PinMap({ center, pinned, onPin }) {
   )
 }
 
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 // CompaniesMap — overview map showing all partner locations
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 function CompaniesMap({ companies }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
@@ -242,9 +203,6 @@ function CompaniesMap({ companies }) {
     }
   }
 
-  // Init map once — only runs when this component is first mounted.
-  // Because of the lazy-mount pattern in the parent, this only happens
-  // when the user first opens the "Partner Locations" panel.
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
@@ -263,40 +221,35 @@ function CompaniesMap({ companies }) {
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // intentional
+  }, []) // eslint-disable-line
 
-  // Rebuild markers whenever companies list changes (add / delete)
   useEffect(() => {
     if (!mapRef.current || !window.L) return
     buildMarkers(window.L, mapRef.current, companies)
-  }, [companies]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [companies]) // eslint-disable-line
 
   return (
-    <div ref={elRef} className="w-full rounded-2xl overflow-hidden" style={{ height: 340, isolation: 'isolate' }} />
+    <div ref={elRef} className="w-full rounded-2xl overflow-hidden"
+      style={{ height: 340, isolation: 'isolate' }} />
   )
 }
 
-// ── Icons ────────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 const TrashIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
     <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
   </svg>
 )
+const PencilIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+)
 const XIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M18 6L6 18M6 6l12 12"/>
-  </svg>
-)
-const BellIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-  </svg>
-)
-const MenuIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M3 12h18M3 6h18M3 18h18"/>
   </svg>
 )
 const MapIcon = () => (
@@ -316,17 +269,28 @@ const ChevronDown = ({ open }) => (
     <path d="M6 9l6 6 6-6"/>
   </svg>
 )
+const ArrowRight = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <path d="M5 12h14M12 5l7 7-7 7"/>
+  </svg>
+)
+const ArrowLeft = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <path d="M19 12H5M12 19l-7-7 7-7"/>
+  </svg>
+)
 
+// ── Spinner ───────────────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+  )
+}
 
-// ════════════════════════════════════════════════════════════════
-// DUMMY DATA — replace with API in Week 4
-// ════════════════════════════════════════════════════════════════
-const ADMIN = { name: 'System Administrator', initials: 'SA' }
-
-// Skill categories are loaded from /api/categories/ — this is the fallback
-const SKILL_CATEGORIES_FALLBACK = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
-
-// ── Skill Level Presets ───────────────────────────────────────────
+// ── Skill level presets ───────────────────────────────────────────────────────
 const SKILL_LEVELS = [
   { label: 'Not Required', value: 0,  color: 'gray'   },
   { label: 'Basic',        value: 25, color: 'blue'   },
@@ -334,7 +298,6 @@ const SKILL_LEVELS = [
   { label: 'Advanced',     value: 75, color: 'orange' },
   { label: 'Expert',       value: 90, color: 'green'  },
 ]
-
 const LEVEL_COLORS = {
   gray:   { btn: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',   active: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 ring-1 ring-gray-400 dark:ring-gray-500' },
   blue:   { btn: 'bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400',    active: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 ring-1 ring-blue-400 dark:ring-blue-500' },
@@ -343,7 +306,6 @@ const LEVEL_COLORS = {
   green:  { btn: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400', active: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 ring-1 ring-green-400 dark:ring-green-500' },
 }
 
-// ── Level Selector Row (per skill category) ───────────────────────
 function SkillLevelSelector({ category, value, onChange }) {
   const [customMode, setCustomMode] = useState(false)
   const [customVal,  setCustomVal]  = useState(value || '')
@@ -366,46 +328,31 @@ function SkillLevelSelector({ category, value, onChange }) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{category}</span>
-        {value > 0 && (
-          <span className="text-xs font-bold text-green-600 dark:text-green-400">{value}%</span>
-        )}
+        {value > 0 && <span className="text-xs font-bold text-green-600 dark:text-green-400">{value}%</span>}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {SKILL_LEVELS.map(level => {
           const isActive = !isCustom && !customMode && value === level.value
           const colors   = LEVEL_COLORS[level.color]
           return (
-            <button
-              key={level.label}
-              type="button"
-              onClick={() => selectPreset(level)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? colors.active : colors.btn} hover:scale-105 active:scale-95`}
-            >
+            <button key={level.label} type="button" onClick={() => selectPreset(level)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
+                ${isActive ? colors.active : colors.btn} hover:scale-105 active:scale-95`}>
               {level.label}{level.value > 0 ? ` ${level.value}%` : ''}
             </button>
           )
         })}
-        {/* Custom chip */}
         {customMode || isCustom ? (
           <div className="flex items-center gap-1 bg-green-50 dark:bg-green-950 border border-green-300 dark:border-green-700 rounded-lg px-2 py-0.5">
             <span className="text-xs text-green-600 dark:text-green-400 font-medium">Custom:</span>
-            <input
-              type="number"
-              min={1} max={100}
-              value={customVal}
-              onChange={handleCustomChange}
-              autoFocus
+            <input type="number" min={1} max={100} value={customVal} onChange={handleCustomChange} autoFocus
               className="w-12 text-xs font-bold text-green-700 dark:text-green-300 bg-transparent border-none outline-none text-center"
-              placeholder="0"
-            />
+              placeholder="0"/>
             <span className="text-xs text-green-600 dark:text-green-400">%</span>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => { setCustomMode(true); setCustomVal(value > 0 ? value : '') }}
-            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-all"
-          >
+          <button type="button" onClick={() => { setCustomMode(true); setCustomVal(value > 0 ? value : '') }}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-all">
             Custom %
           </button>
         )}
@@ -414,42 +361,53 @@ function SkillLevelSelector({ category, value, onChange }) {
   )
 }
 
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// CompanyModal — unified add + edit, 2-step flow
+//
+// mode='add'  → blank form, "Add Company" submit
+// mode='edit' → pre-filled from initialData, "Save Changes" submit
+//   • Step 1: name, optional street, PSGC address (edit: show current + "Change" toggle)
+//   • Step 2: interactive pin map (edit: pre-centered on existing pin)
+// ════════════════════════════════════════════════════════════════════════════
+function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
+  const isEdit = mode === 'edit'
 
-let nextCompanyId  = 10
-let nextPositionId = 1000
+  const [step,    setStep]    = useState(1)
+  const [name,    setName]    = useState(initialData?.name || '')
+  const [street,  setStreet]  = useState(initialData?.addressParts?.street || '')
 
-// ── AdminNav and ConfirmModal are now shared components ───────────
+  // addrParts is the "new" address when user selects from dropdowns
+  const [addrParts,  setAddrParts]  = useState({ province: '', city: '', barangay: '' })
+  // changeAddr: edit-mode toggle — show PSGC dropdowns to change address
+  const [changeAddr, setChangeAddr] = useState(false)
 
-// ════════════════════════════════════════════════════════════════
-// AddCompanyModal — 2-step: address dropdowns → pin on map
-// ════════════════════════════════════════════════════════════════
-function AddCompanyModal({ onClose, onAdd }) {
-  const [step,         setStep]         = useState(1)
-  const [name,         setName]         = useState('')
-  const [street,       setStreet]       = useState('')
-  const [addrParts,    setAddrParts]    = useState({ province: '', city: '', barangay: '' })
-  const [pinned,       setPinned]       = useState(null)   // { lat, lng }
-  const [mapCenter,    setMapCenter]    = useState(null)   // geocoded city center
-  const [geocoding,    setGeocoding]    = useState(false)
-  const [nameErr,      setNameErr]      = useState('')
-  const [addrErr,      setAddrErr]      = useState('')
+  // Pin state — pre-seed from initialData in edit mode
+  const [pinned, setPinned] = useState(
+    (initialData?.lat != null && initialData?.lng != null)
+      ? { lat: initialData.lat, lng: initialData.lng }
+      : null
+  )
+  const [mapCenter, setMapCenter] = useState(
+    (initialData?.lat != null && initialData?.lng != null)
+      ? { lat: initialData.lat, lng: initialData.lng, zoom: 15 }
+      : null
+  )
 
+  const [geocoding,     setGeocoding]     = useState(false)
   const [geocodingLabel, setGeocodingLabel] = useState('')
+  const [nameErr,       setNameErr]       = useState('')
+  const [addrErr,       setAddrErr]       = useState('')
+  const [saving,        setSaving]        = useState(false)
 
+  // Geocode whenever PSGC selection changes (add mode or changeAddr edit mode)
   async function handleAddressChange(addr) {
     setAddrParts(addr)
     setAddrErr('')
-
-    // Geocode whenever we have at least a city.
-    // If barangay is also selected we pass it for a more precise zoom.
     if (addr.city) {
       setGeocoding(true)
-      setGeocodingLabel(
-        addr.barangay
-          ? `Locating ${addr.barangay} on map…`
-          : `Locating ${addr.city} on map…`
-      )
+      setGeocodingLabel(addr.barangay
+        ? `Locating ${addr.barangay} on map…`
+        : `Locating ${addr.city} on map…`)
       const coords = await geocodeAddress({
         barangay: addr.barangay,
         city:     addr.city,
@@ -462,26 +420,45 @@ function AddCompanyModal({ onClose, onAdd }) {
   }
 
   function handleNextStep() {
-    if (!name.trim())                              { setNameErr('Company name is required.'); return }
-    if (!addrParts.province || !addrParts.city)   { setAddrErr('Please select at least a province and city.'); return }
+    if (!name.trim()) { setNameErr('Company name is required.'); return }
+    // Address validation: required in add mode, or in edit mode when changing address
+    if (!isEdit || changeAddr) {
+      if (!addrParts.province || !addrParts.city) {
+        setAddrErr('Please select at least a province and city.')
+        return
+      }
+    }
     setNameErr(''); setAddrErr('')
     setStep(2)
   }
 
-  function handleSubmit() {
-    const parts      = [street, addrParts.barangay, addrParts.city, addrParts.province].filter(Boolean)
-    const fullAddress = parts.join(', ')
-    onAdd({
-      id:       ++nextCompanyId,
-      name:     name.trim(),
-      address:  fullAddress,
-      addressParts: addrParts,
-      lat:      pinned?.lat ?? null,
-      lng:      pinned?.lng ?? null,
-      positions: [],
+  async function handleSubmit() {
+    // Build the final addressParts to submit
+    const finalAddrParts = (isEdit && !changeAddr)
+      ? { ...(initialData?.addressParts || {}), street: street.trim() }
+      : { ...addrParts, street: street.trim() }
+
+    setSaving(true)
+    const result = await onSubmit({
+      ...(initialData || {}),
+      name:         name.trim(),
+      addressParts: finalAddrParts,
+      lat:          pinned?.lat ?? null,
+      lng:          pinned?.lng ?? null,
     })
-    onClose()
+    setSaving(false)
+    if (result?.ok) onClose()
   }
+
+  // Address preview string shown in Step 2
+  const previewAddress = (isEdit && !changeAddr)
+    ? (initialData?.address || '')
+    : [street, addrParts.barangay, addrParts.city, addrParts.province].filter(Boolean).join(', ')
+
+  const inputCls = (err) =>
+    `w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+     placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
+     ${err ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700'}`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
@@ -490,12 +467,15 @@ function AddCompanyModal({ onClose, onAdd }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Add Company / Institution</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {isEdit ? 'Edit Company' : 'Add Company / Institution'}
+            </h2>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               {step === 1 ? 'Fill in the company details and address.' : 'Pin the exact location on the map.'}
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
             <XIcon size={16}/>
           </button>
         </div>
@@ -510,10 +490,14 @@ function AddCompanyModal({ onClose, onAdd }) {
                   ${step >= s ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600'}`}>
                   {step > s ? '✓' : s}
                 </div>
-                <span className={`text-xs transition-colors ${step === s ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
+                <span className={`text-xs transition-colors
+                  ${step === s ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
                   {label}
                 </span>
-                {s < 2 && <div className={`h-0.5 w-6 rounded-full mx-1 transition-colors ${step > s ? 'bg-green-600' : 'bg-gray-100 dark:bg-gray-800'}`} />}
+                {s < 2 && (
+                  <div className={`h-0.5 w-6 rounded-full mx-1 transition-colors
+                    ${step > s ? 'bg-green-600' : 'bg-gray-100 dark:bg-gray-800'}`} />
+                )}
               </div>
             )
           })}
@@ -528,14 +512,9 @@ function AddCompanyModal({ onClose, onAdd }) {
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
                 Company / Institution Name <span className="text-rose-500">*</span>
               </label>
-              <input
-                value={name}
-                onChange={e => { setName(e.target.value); setNameErr('') }}
+              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
                 placeholder="e.g. Azeus Systems Philippines"
-                className={`w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                  placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
-                  ${nameErr ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700'}`}
-              />
+                className={inputCls(nameErr)} />
               {nameErr && <p className="text-xs text-rose-500 mt-1">{nameErr}</p>}
             </div>
 
@@ -545,30 +524,48 @@ function AddCompanyModal({ onClose, onAdd }) {
                 Street / Building / Unit
                 <span className="text-gray-400 dark:text-gray-600 font-normal ml-1">(optional)</span>
               </label>
-              <input
-                value={street}
-                onChange={e => setStreet(e.target.value)}
+              <input value={street} onChange={e => setStreet(e.target.value)}
                 placeholder="e.g. IT Park, Km 7, 3rd Floor"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800
-                  text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600
-                  focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+                className={inputCls('')} />
             </div>
 
-            {/* PSGC address dropdowns */}
+            {/* Address — readonly preview in edit mode, with "Change" toggle */}
             <div>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Address <span className="text-rose-500">*</span>
-              </p>
-              <AddressDropdowns
-                onChange={handleAddressChange}
-                error={addrErr}
-              />
-              {geocoding && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 flex items-center gap-1">
-                  <span className="inline-block w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin"/>
-                  {geocodingLabel}
-                </p>
+              {isEdit && !changeAddr ? (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Address</p>
+                    <button type="button" onClick={() => setChangeAddr(true)}
+                      className="text-xs font-medium text-green-600 dark:text-green-400 hover:underline">
+                      Change
+                    </button>
+                  </div>
+                  <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300">
+                    {initialData?.address || 'No address set'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Address <span className="text-rose-500">*</span>
+                    </p>
+                    {isEdit && (
+                      <button type="button" onClick={() => { setChangeAddr(false); setAddrErr('') }}
+                        className="text-xs text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
+                        ← Keep current address
+                      </button>
+                    )}
+                  </div>
+                  <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
+                  {geocoding && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 flex items-center gap-1">
+                      <span className="inline-block w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin"/>
+                      {geocodingLabel}
+                    </p>
+                  )}
+                  {addrErr && <p className="text-xs text-rose-500 mt-1">{addrErr}</p>}
+                </>
               )}
             </div>
 
@@ -579,8 +576,7 @@ function AddCompanyModal({ onClose, onAdd }) {
               </button>
               <button onClick={handleNextStep}
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center gap-1.5">
-                Next: Pin Location
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Next: Pin Location <ArrowRight />
               </button>
             </div>
           </div>
@@ -597,9 +593,7 @@ function AddCompanyModal({ onClose, onAdd }) {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {[street, addrParts.barangay, addrParts.city, addrParts.province].filter(Boolean).join(', ')}
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{previewAddress || 'Address not specified'}</p>
               </div>
             </div>
 
@@ -617,7 +611,7 @@ function AddCompanyModal({ onClose, onAdd }) {
                   </p>
                 ) : (
                   <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
-                    No pin yet — you can still add the company without one.
+                    No pin yet — you can still save without one.
                   </p>
                 )}
               </div>
@@ -626,12 +620,15 @@ function AddCompanyModal({ onClose, onAdd }) {
             <div className="flex gap-2 pt-1">
               <button onClick={() => setStep(1)}
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                Back
+                <ArrowLeft /> Back
               </button>
-              <button onClick={handleSubmit}
-                className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
-                {pinned ? 'Add Company' : 'Add Without Pin'}
+              <button onClick={handleSubmit} disabled={saving}
+                className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-1.5">
+                {saving
+                  ? <><Spinner /> Saving…</>
+                  : isEdit
+                    ? 'Save Changes'
+                    : pinned ? 'Add Company' : 'Add Without Pin'}
               </button>
             </div>
           </div>
@@ -641,95 +638,131 @@ function AddCompanyModal({ onClose, onAdd }) {
   )
 }
 
-// ── Add Position Modal ────────────────────────────────────────────
-function AddPositionModal({ companyName, onClose, onAdd }) {
-  const { request } = useApi()
-  const [title,       setTitle]       = useState('')
-  const [slots,       setSlots]       = useState(1)
-  const [reqs,        setReqs]        = useState({})
-  const [categories,  setCategories]  = useState(SKILL_CATEGORIES_FALLBACK)
-  const [loadingCats, setLoadingCats] = useState(true)
-  const [error,       setError]       = useState('')
+// ════════════════════════════════════════════════════════════════════════════
+// PositionModal — unified add + edit
+//
+// mode='add'  → blank form, "Add Position" submit
+// mode='edit' → pre-filled from initialData, "Save Changes" submit
+//   categories prop comes from hook (already loaded, no internal fetch needed)
+// ════════════════════════════════════════════════════════════════════════════
+function PositionModal({ mode = 'add', companyName, initialData = null, categories, onClose, onSubmit }) {
+  const isEdit = mode === 'edit'
 
-  // Load real categories from API on mount; fall back to hardcoded list if API not yet wired
+  const [title,  setTitle]  = useState(initialData?.title || '')
+  const [slots,  setSlots]  = useState(initialData?.slots ?? 1)
+  const [error,  setError]  = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Initialize requirements: all categories at 0, then overlay existing values
+  const [reqs, setReqs] = useState(() => {
+    const base = Object.fromEntries(categories.map(c => [c, 0]))
+    if (initialData?.requirements) {
+      Object.entries(initialData.requirements).forEach(([cat, pct]) => {
+        base[cat] = pct  // includes cats not in current list (keeps data integrity)
+      })
+    }
+    return base
+  })
+
+  // Safely add any new categories loaded after modal opens (without resetting existing values)
   useEffect(() => {
-    request('get', '/api/categories/').then(res => {
-      const data = res.ok ? res.data : []
-      const names = Array.isArray(data) ? data.map(c => c.name) : []
-      const cats  = names.length > 0 ? names : SKILL_CATEGORIES_FALLBACK
-      setCategories(cats)
-      setReqs(Object.fromEntries(cats.map(c => [c, 0])))
-    }).catch(() => {
-      setReqs(Object.fromEntries(SKILL_CATEGORIES_FALLBACK.map(c => [c, 0])))
-    }).finally(() => setLoadingCats(false))
-  }, [request])
+    setReqs(prev => {
+      const next = { ...prev }
+      categories.forEach(c => { if (!(c in next)) next[c] = 0 })
+      return next
+    })
+  }, [categories]) // eslint-disable-line
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!title.trim()) { setError('Position title is required.'); return }
-    if (slots < 1)     { setError('Slots must be at least 1.'); return }
-    const filteredReqs = Object.fromEntries(Object.entries(reqs).filter(([, v]) => v > 0))
-    onAdd({ id: ++nextPositionId, title: title.trim(), slots: Number(slots), requirements: filteredReqs })
-    onClose()
+    if (Number(slots) < 1) { setError('Slots must be at least 1.'); return }
+
+    const filteredReqs = Object.fromEntries(
+      Object.entries(reqs).filter(([, v]) => v > 0)
+    )
+
+    setSaving(true)
+    const result = await onSubmit({
+      ...(initialData || {}),
+      title:        title.trim(),
+      slots:        Number(slots),
+      requirements: filteredReqs,
+    })
+    setSaving(false)
+    if (result?.ok) onClose()
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Add Position</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {isEdit ? 'Edit Position' : 'Add Position'}
+            </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">{companyName}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><XIcon size={16}/></button>
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <XIcon size={16}/>
+          </button>
         </div>
 
-        {error && <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 border border-rose-100 dark:border-rose-900 rounded-lg px-3 py-2">{error}</p>}
+        {error && (
+          <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 border border-rose-100 dark:border-rose-900 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
 
         <div className="space-y-4">
           {/* Title */}
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Position Title <span className="text-rose-500">*</span></label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Frontend Developer Intern"
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+              Position Title <span className="text-rose-500">*</span>
+            </label>
+            <input value={title} onChange={e => { setTitle(e.target.value); setError('') }}
+              placeholder="e.g. Frontend Developer Intern"
               className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"/>
           </div>
 
           {/* Slots */}
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Available Slots <span className="text-rose-500">*</span></label>
-            <input type="number" min={1} value={slots} onChange={e => setSlots(e.target.value)}
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+              Available Slots <span className="text-rose-500">*</span>
+            </label>
+            <input type="number" min={1} value={slots}
+              onChange={e => { setSlots(e.target.value); setError('') }}
               className="w-28 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
           </div>
 
           {/* Skill level selectors */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Minimum Skill Requirements</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                Minimum Skill Requirements
+              </label>
               <span className="text-[10px] text-gray-400 dark:text-gray-600">tap a level to set requirement</span>
             </div>
 
-            {loadingCats ? (
-              <div className="flex items-center gap-2 py-3 text-xs text-gray-400">
-                <span className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin inline-block"/>
-                Loading skill categories…
-              </div>
-            ) : (
-              <div className="space-y-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-                {categories.map(cat => (
-                  <SkillLevelSelector
-                    key={cat}
-                    category={cat}
-                    value={reqs[cat] ?? 0}
-                    onChange={v => setReqs(r => ({ ...r, [cat]: v }))}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="space-y-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              {Object.keys(reqs).map(cat => (
+                <SkillLevelSelector
+                  key={cat}
+                  category={cat}
+                  value={reqs[cat] ?? 0}
+                  onChange={v => setReqs(r => ({ ...r, [cat]: v }))}
+                />
+              ))}
+            </div>
 
             {/* Summary tags */}
             {Object.values(reqs).some(v => v > 0) && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {Object.entries(reqs).filter(([, v]) => v > 0).map(([cat, v]) => (
-                  <span key={cat} className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-full font-medium">
+                  <span key={cat}
+                    className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-full font-medium">
                     {cat.split(' ')[0]} ≥{v}%
                   </span>
                 ))}
@@ -739,116 +772,51 @@ function AddPositionModal({ companyName, onClose, onAdd }) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-          <button onClick={handleSubmit} className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">Add Position</button>
+          <button onClick={onClose}
+            className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={saving}
+            className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-1.5">
+            {saving
+              ? <><Spinner /> Saving…</>
+              : isEdit ? 'Save Changes' : 'Add Position'}
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 // Main Page
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 export default function AdminCompanies() {
-  const { data: companiesData, request } = useApi('/api/admin/companies/')
-  const [companies,      setCompanies]      = useState([])
-  const [showAddCompany, setShowAddCompany] = useState(false)
-  const [addPositionFor, setAddPositionFor] = useState(null)
-  const [search,         setSearch]         = useState('')
-  const [toast,          setToast]          = useState(null)
-  const [confirmDelete,  setConfirmDelete]  = useState(null)
+  const {
+    companies,
+    categories,
+    showAddCompany,    setShowAddCompany,
+    addPositionFor,    setAddPositionFor,
+    editCompanyFor,    setEditCompanyFor,
+    editPositionFor,   setEditPositionFor,
+    confirmDeleteComp, setConfirmDeleteComp,
+    confirmDeletePos,  setConfirmDeletePos,
+    handleAddCompany,
+    handleSaveCompany,
+    confirmDeleteCompany,
+    handleAddPosition,
+    handleSavePosition,
+    confirmDeletePosition,
+    toast,
+  } = useAdminCompanies()
 
-  // ── Map lazy-mount state ─────────────────────────────────────────
-  // showMap      → controls open/close (CSS animation)
-  // mapEverOpened → once true, keeps <CompaniesMap> in the DOM so the
-  //                 Leaflet instance isn't destroyed on collapse.
-  //                 Leaflet JS is only fetched the very first time.
-  const [showMap,       setShowMap]       = useState(false)  // closed by default → faster initial load
+  const [search,        setSearch]        = useState('')
+  const [showMap,       setShowMap]       = useState(false)
   const [mapEverOpened, setMapEverOpened] = useState(false)
 
   function toggleMap() {
     if (!mapEverOpened) setMapEverOpened(true)
     setShowMap(prev => !prev)
-  }
-
-  function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 3000) }
-
-  function normalizeCompany(co) {
-    const addressText = typeof co.address === 'string'
-      ? co.address
-      : [co.address?.barangay, co.address?.city, co.address?.province].filter(Boolean).join(', ')
-    return {
-      ...co,
-      address: addressText || 'No address yet',
-      addressParts: typeof co.address === 'object' && co.address !== null
-        ? co.address
-        : { province: '', city: '', barangay: '' },
-      positions: Array.isArray(co.positions) ? co.positions : [],
-    }
-  }
-
-  useEffect(() => {
-    if (!Array.isArray(companiesData)) return
-    setCompanies(companiesData.map(normalizeCompany))
-  }, [companiesData])
-
-  async function handleAddCompany(company) {
-    const res = await request('post', '/api/admin/companies/', {
-      name: company.name,
-      address: company.addressParts || null,
-      lat: company.lat,
-      lng: company.lng,
-    })
-    if (!res.ok) return
-    const created = {
-      ...company,
-      id: res.data?.id ?? company.id,
-    }
-    setCompanies(c => [...c, created])
-    showToast(`"${company.name}" added.`)
-  }
-
-  function handleDeleteCompany(co) {
-    setConfirmDelete({ type: 'company', companyId: co.id, label: co.name })
-  }
-
-  function handleDeletePosition(companyId, pos) {
-    setConfirmDelete({ type: 'position', companyId, positionId: pos.id, label: pos.title })
-  }
-
-  async function handleConfirmDelete() {
-    if (!confirmDelete) return
-    if (confirmDelete.type === 'company') {
-      const res = await request('delete', `/api/admin/companies/${confirmDelete.companyId}/`)
-      if (!res.ok) return
-      setCompanies(c => c.filter(co => co.id !== confirmDelete.companyId))
-      showToast('Company deleted.')
-    } else {
-      const res = await request('delete', `/api/admin/positions/${confirmDelete.positionId}/`)
-      if (!res.ok) return
-      setCompanies(c => c.map(co => co.id === confirmDelete.companyId
-        ? { ...co, positions: co.positions.filter(p => p.id !== confirmDelete.positionId) } : co))
-      showToast('Position deleted.')
-    }
-    setConfirmDelete(null)
-  }
-
-  async function handleAddPosition(companyId, position) {
-    const res = await request('post', `/api/admin/companies/${companyId}/positions/`, {
-      title: position.title,
-      slots: position.slots,
-      requirements: position.requirements,
-    })
-    if (!res.ok) return
-    const newPos = {
-      ...position,
-      id: res.data?.id ?? position.id,
-    }
-    setCompanies(c => c.map(co => co.id === companyId ? { ...co, positions: [...co.positions, newPos] } : co))
-    showToast(`"${position.title}" added.`)
   }
 
   const displayed = search.trim()
@@ -864,35 +832,79 @@ export default function AdminCompanies() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <AdminNav activePath="/admin/companies" />
 
-      {showAddCompany && <AddCompanyModal onClose={() => setShowAddCompany(false)} onAdd={handleAddCompany} />}
-      {addPositionFor && (
-        <AddPositionModal companyName={addPositionFor.name} onClose={() => setAddPositionFor(null)}
-          onAdd={pos => handleAddPosition(addPositionFor.id, pos)} />
-      )}
-      {confirmDelete && (
-        <ConfirmModal
-          title={confirmDelete.type === 'company' ? 'Delete company?' : 'Delete position?'}
-          message={
-            confirmDelete.type === 'company'
-              ? `"${confirmDelete.label}" and all its positions will be permanently removed.`
-              : `"${confirmDelete.label}" will be permanently removed.`
-          }
-          confirmLabel="Delete"
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete(null)}
+      {/* ── Modals ───────────────────────────────────────────────────── */}
+
+      {showAddCompany && (
+        <CompanyModal
+          mode="add"
+          onClose={() => setShowAddCompany(false)}
+          onSubmit={handleAddCompany}
         />
       )}
 
+      {editCompanyFor && (
+        <CompanyModal
+          mode="edit"
+          initialData={editCompanyFor}
+          onClose={() => setEditCompanyFor(null)}
+          onSubmit={handleSaveCompany}
+        />
+      )}
+
+      {addPositionFor && (
+        <PositionModal
+          mode="add"
+          companyName={addPositionFor.name}
+          categories={categories}
+          onClose={() => setAddPositionFor(null)}
+          onSubmit={pos => handleAddPosition(addPositionFor, pos)}
+        />
+      )}
+
+      {editPositionFor && (
+        <PositionModal
+          mode="edit"
+          companyName={editPositionFor.company.name}
+          initialData={editPositionFor.position}
+          categories={categories}
+          onClose={() => setEditPositionFor(null)}
+          onSubmit={pos => handleSavePosition(editPositionFor.company.id, pos)}
+        />
+      )}
+
+      {confirmDeleteComp && (
+        <ConfirmModal
+          title="Delete company?"
+          message={`"${confirmDeleteComp.name}" and all its positions will be permanently removed.`}
+          confirmLabel="Delete"
+          onConfirm={confirmDeleteCompany}
+          onCancel={() => setConfirmDeleteComp(null)}
+        />
+      )}
+
+      {confirmDeletePos && (
+        <ConfirmModal
+          title="Delete position?"
+          message={`"${confirmDeletePos.position.title}" will be permanently removed from ${confirmDeletePos.company.name}.`}
+          confirmLabel="Delete"
+          onConfirm={confirmDeletePosition}
+          onCancel={() => setConfirmDeletePos(null)}
+        />
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 pointer-events-none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           {toast}
         </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 
-        {/* ── Page header ──────────────────────────────────────── */}
+        {/* ── Page header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Companies & Positions</h1>
@@ -905,29 +917,21 @@ export default function AdminCompanies() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
               </svg>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search companies…"
-                className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
-              />
+                className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
             </div>
-            <button
-              onClick={() => setShowAddCompany(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
-            >
+            <button onClick={() => setShowAddCompany(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
               <span className="text-base leading-none">+</span> Add Company
             </button>
           </div>
         </div>
 
-        {/* ── Partner Locations Map ─────────────────────────────── */}
+        {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-          {/* Collapsible header */}
-          <button
-            onClick={toggleMap}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-          >
+          <button onClick={toggleMap}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center text-green-600 dark:text-green-400">
                 <MapIcon />
@@ -945,21 +949,13 @@ export default function AdminCompanies() {
           </button>
 
           {/*
-            LAZY MOUNT — <CompaniesMap> only enters the DOM when the user
-            first clicks the header. After that it stays mounted so Leaflet
-            isn't destroyed on collapse; the CSS max-height handles show/hide.
-            This prevents Leaflet from being downloaded on every page load.
-
-            isolation: isolate — creates a new CSS stacking context so that
-            Leaflet's internal z-indices (tile pane, marker pane, etc.) are
-            fully contained inside this element and never bleed above modals
-            on the page, regardless of what z-index the modal uses.
+            LAZY MOUNT — CompaniesMap only enters the DOM when the user first
+            opens the panel. Isolation: isolate prevents Leaflet z-indices from
+            bleeding above modals.
           */}
           {mapEverOpened && (
-            <div
-              className={`transition-all duration-300 overflow-hidden ${showMap ? 'max-h-380px' : 'max-h-0'}`}
-              style={{ isolation: 'isolate' }}
-            >
+            <div className={`transition-all duration-300 overflow-hidden ${showMap ? 'max-h-400px' : 'max-h-0'}`}
+              style={{ isolation: 'isolate' }}>
               <div className="px-4 pb-4">
                 <CompaniesMap companies={companies} />
               </div>
@@ -967,10 +963,10 @@ export default function AdminCompanies() {
           )}
         </div>
 
-        {/* ── Company cards grid ───────────────────────────────── */}
+        {/* ── Company cards grid ────────────────────────────────────── */}
         {displayed.length === 0 && (
           <div className="text-center py-20 text-gray-400 dark:text-gray-600 text-sm">
-            No companies match your search.
+            {companies.length === 0 ? 'No companies yet — click "Add Company" to get started.' : 'No companies match your search.'}
           </div>
         )}
 
@@ -994,13 +990,19 @@ export default function AdminCompanies() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteCompany(company)}
-                  className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors shrink-0 mt-0.5"
-                  title="Delete company"
-                >
-                  <TrashIcon size={14}/>
-                </button>
+                {/* Edit + Delete buttons */}
+                <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                  <button onClick={() => setEditCompanyFor(company)}
+                    className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
+                    title="Edit company">
+                    <PencilIcon size={13}/>
+                  </button>
+                  <button onClick={() => setConfirmDeleteComp(company)}
+                    className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
+                    title="Delete company">
+                    <TrashIcon size={14}/>
+                  </button>
+                </div>
               </div>
 
               {/* Positions list */}
@@ -1009,7 +1011,8 @@ export default function AdminCompanies() {
                   <p className="text-xs text-gray-400 dark:text-gray-600 py-2 text-center">No positions yet.</p>
                 )}
                 {company.positions.map(pos => (
-                  <div key={pos.id} className="flex items-start justify-between gap-2 rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
+                  <div key={pos.id}
+                    className="flex items-start justify-between gap-2 rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{pos.title}</p>
@@ -1019,7 +1022,8 @@ export default function AdminCompanies() {
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {Object.entries(pos.requirements).map(([cat, pct]) => (
-                          <span key={cat} className="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                          <span key={cat}
+                            className="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
                             {cat.split(' ')[0]} ≥{pct}%
                           </span>
                         ))}
@@ -1028,23 +1032,29 @@ export default function AdminCompanies() {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeletePosition(company.id, pos)}
-                      className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors shrink-0"
-                      title="Delete position"
-                    >
-                      <XIcon size={13}/>
-                    </button>
+                    {/* Edit + Delete buttons for position */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => setEditPositionFor({ company, position: pos })}
+                        className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
+                        title="Edit position">
+                        <PencilIcon size={12}/>
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeletePos({ company, position: pos })}
+                        className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
+                        title="Delete position">
+                        <XIcon size={13}/>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
 
               {/* Add position */}
               <div className="px-5 pb-4">
-                <button
-                  onClick={() => setAddPositionFor(company)}
-                  className="w-full py-2 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-colors"
-                >
+                <button onClick={() => setAddPositionFor(company)}
+                  className="w-full py-2 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-colors">
                   + Add Position
                 </button>
               </div>
