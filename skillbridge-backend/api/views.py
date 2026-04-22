@@ -883,6 +883,116 @@ def instructor_assessment_add_questions(request, assessment_id):
         'submissions_cleared': submissions_cleared,
     }, status=201)
 
+# ── PATCH / DELETE  /api/instructor/questions/{id}/ ──────────────────────────
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def instructor_question_detail(request, question_id):
+    """
+    PATCH  → update question text, type, choices, category.
+    DELETE → permanently remove the question.
+ 
+    PATCH body (all fields optional — only provided fields are updated):
+    {
+      "question_text":  "Updated question?",
+      "question_type":  "mcq",               // mcq | truefalse | identification
+      "category":       "Database",           // auto-created if new; "" to clear
+      "choices": [                            // for mcq / truefalse
+        { "text": "Option A", "is_correct": true  },
+        { "text": "Option B", "is_correct": false }
+      ],
+      "correct_answer": "Central Processing Unit"  // identification only
+    }
+ 
+    When 'choices' OR 'correct_answer' is present all existing choices are
+    replaced atomically.
+    """
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+ 
+    # Admins can edit any question; instructors only questions in their own assessments
+    try:
+        if request.user.role == 'admin':
+            question = Question.objects.select_related(
+                'assessment', 'skill_category'
+            ).prefetch_related('choices').get(id=question_id)
+        else:
+            question = Question.objects.select_related(
+                'assessment', 'skill_category'
+            ).prefetch_related('choices').get(
+                id=question_id,
+                assessment__created_by=request.user
+            )
+    except Question.DoesNotExist:
+        return Response({'error': 'Question not found'}, status=404)
+ 
+    # ── DELETE ────────────────────────────────────────────────────────────────
+    if request.method == 'DELETE':
+        question.delete()
+        return Response({'ok': True})
+ 
+    # ── PATCH ─────────────────────────────────────────────────────────────────
+    data = request.data
+ 
+    if 'question_text' in data:
+        question.question_text = (data['question_text'] or '').strip()
+ 
+    if 'question_type' in data:
+        new_type = (data['question_type'] or '').lower()
+        if new_type in ('mcq', 'truefalse', 'identification'):
+            question.question_type = new_type
+ 
+    if 'category' in data:
+        cat_name = (data['category'] or '').strip()
+        if cat_name:
+            cat, _ = SkillCategory.objects.get_or_create(
+                name__iexact=cat_name,
+                defaults={'name': cat_name, 'created_by': request.user}
+            )
+            question.skill_category = cat
+        else:
+            question.skill_category = None
+ 
+    question.save()
+ 
+    # Replace choices only when caller explicitly sends choice data
+    if 'choices' in data or 'correct_answer' in data:
+        question.choices.all().delete()
+ 
+        if question.question_type == 'identification':
+            correct_answer = (data.get('correct_answer') or '').strip()
+            if correct_answer:
+                AnswerChoice.objects.create(
+                    question=question,
+                    choice_text=correct_answer,
+                    is_correct=True,
+                )
+        else:
+            for c in (data.get('choices') or []):
+                text = (c.get('text') or '').strip()
+                if text:
+                    AnswerChoice.objects.create(
+                        question=question,
+                        choice_text=text,
+                        is_correct=bool(c.get('is_correct', False)),
+                    )
+ 
+    # Return refreshed question so the frontend can reconcile its local state
+    choices_out = [
+        {'id': c.id, 'text': c.choice_text, 'is_correct': c.is_correct}
+        for c in question.choices.order_by('id').all()
+    ]
+    return Response({
+        'id':             question.id,
+        'question_text':  question.question_text,
+        'question_type':  question.question_type,
+        'question_order': question.question_order,
+        'category': (
+            {'id': question.skill_category.id, 'name': question.skill_category.name}
+            if question.skill_category else None
+        ),
+        'choices': choices_out,
+    })
+
 # ════════════════════════════════════════════════════════════════════════════
 # STUDENT — Assessment Flow
 # ════════════════════════════════════════════════════════════════════════════

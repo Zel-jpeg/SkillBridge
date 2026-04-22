@@ -28,6 +28,7 @@ urlpatterns = [
     path('instructor/assessments/',                                   views.instructor_assessments,           name='instructor_assessments'),
     path('instructor/assessments/<int:assessment_id>/',               views.instructor_assessment_detail,     name='instructor_assessment_detail'),
     path('instructor/assessments/<int:assessment_id>/questions/',     views.instructor_assessment_questions,  name='instructor_assessment_questions'),
+    path('instructor/questions/<int:question_id>/', views.instructor_question_detail, name='instructor_question_detail'),
 
     # ── Instructor — Recommendations ──────────────────────────────────────────
     path('instructor/students/recommendations/', views.instructor_student_recommendations, name='instructor_student_recommendations'),
