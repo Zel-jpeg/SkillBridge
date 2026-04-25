@@ -11,24 +11,13 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
+import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
 
 // Read the user object saved by the login response
 // This lets pages render instantly without a skeleton on every navigation.
 function getCachedUser() {
   try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
 }
-
-// ================================================================
-// Week 5: these will come from GET /api/students/me/results/
-// Until assessment is built, hasTakenAssessment is false so the
-// locked state renders instead. These are left as empty [] so
-// the hasTakenAssessment===true branch doesn't crash if triggered.
-// ================================================================
-const SKILL_SCORES  = []   // [{ label, pct }]
-const ALL_COMPANIES = []   // [{ id, name, position, match, address, lat, lng }]
-const TOP_MATCHES   = []   // top 3 by match score
-const BAR_COLORS    = ['bg-green-500', 'bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500']
-// ================================================================
 
 
 // ── Haversine distance ────────────────────────────────────────────
@@ -103,7 +92,7 @@ function makeStudentIcon(L) {
 // ════════════════════════════════════════════════════════════════
 // NearbyMap — fills its container height, no fixed px height
 // ════════════════════════════════════════════════════════════════
-function NearbyMap({ companies, studentPin }) {
+function NearbyMap({ companies, studentPin, initialCenter }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
 
@@ -112,7 +101,13 @@ function NearbyMap({ companies, studentPin }) {
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
-      const map = L.map(elRef.current).setView([7.3072, 125.6839], 11)
+      // Center on student's pinned location if available, otherwise Panabo City
+      const center = initialCenter
+        ? [initialCenter.lat, initialCenter.lng]
+        : [7.3072, 125.6839]
+      const zoom = initialCenter ? 13 : 11
+
+      const map = L.map(elRef.current).setView(center, zoom)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
@@ -131,13 +126,13 @@ function NearbyMap({ companies, studentPin }) {
           ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
           : ''
         const mk = L.marker([co.lat, co.lng], {
-          icon: makeCompanyIcon(L, co.name, isTopMatch),
+          icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
           zIndexOffset: isTopMatch ? 1000 : idx * -10,
         })
           .addTo(map)
           .bindPopup(`
             <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
-              <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.name}</p>
+              <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.company ?? co.name ?? 'Company'}</p>
               <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
               <div style="display:flex;gap:8px;font-size:11px;margin:0">
                 <span style="color:#16a34a;font-weight:600">${co.match}% match</span>
@@ -224,18 +219,20 @@ export default function StudentDashboard() {
     photoUrl:  photoUrl,
   }
 
-  // ── Student pin (still from localStorage) ─────────────────────
-  const studentPin = (() => {
-    try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
-  })()
+  // ── Results data (cached — same key as StudentResults, zero duplicate fetch if visited) ──
+  const {
+    skillScores,
+    overallScore,
+    topMatches,
+    recommendations: allRecs,
+    studentPin,
+  } = useStudentResults()
 
-  const enrichedCompanies = studentPin
-    ? ALL_COMPANIES
-        .map(c => ({ ...c, distKm: haversineKm(studentPin.lat, studentPin.lng, c.lat, c.lng) }))
-        .sort((a, b) => a.distKm - b.distKm)
-    : ALL_COMPANIES
+  const enrichedCompanies = allRecs.filter(r => r.lat != null && r.lng != null)
 
-  const nearestThree = enrichedCompanies.slice(0, 3)
+  const nearestThree = studentPin
+    ? [...enrichedCompanies].sort((a, b) => (a.distKm ?? Infinity) - (b.distKm ?? Infinity)).slice(0, 3)
+    : enrichedCompanies.slice(0, 3)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -383,10 +380,10 @@ export default function StudentDashboard() {
             <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top matches</p>
             {hasTakenAssessment ? (
               <div className="flex flex-col gap-2">
-                {TOP_MATCHES.map(m => (
-                  <div key={m.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
+                {topMatches.map((m, idx) => (
+                  <div key={m.id ?? idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
                     <div className="min-w-0 mr-2">
-                      <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{m.name}</p>
+                      <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{m.company}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.position}</p>
                     </div>
                     <span className={`text-xs font-semibold shrink-0 ${
@@ -434,18 +431,16 @@ export default function StudentDashboard() {
                 {/* Summary score badge */}
                 <div className="flex items-center gap-3 mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-xl border border-green-100 dark:border-green-900">
                   <div className="w-9 h-9 rounded-full bg-green-600 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-white">
-                      {Math.round(SKILL_SCORES.reduce((a, s) => a + s.pct, 0) / SKILL_SCORES.length)}
-                    </span>
+                    <span className="text-xs font-bold text-white">{overallScore}</span>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-green-800 dark:text-green-200">Overall skill score</p>
-                    <p className="text-xs text-green-600 dark:text-green-400">Top skill: {SKILL_SCORES[0].label}</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">Top skill: {skillScores[0]?.label ?? '—'}</p>
                   </div>
                 </div>
                 {/* 2-column bar grid on desktop */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-3">
-                  {SKILL_SCORES.map((s, i) => (
+                  {skillScores.map((s, i) => (
                     <div key={s.label}>
                       <div className="flex justify-between mb-1">
                         <span className="text-xs text-gray-600 dark:text-gray-400">{s.label}</span>
@@ -495,9 +490,9 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Nearby Companies</p>
-                  {hasTakenAssessment && studentPin && (
+                  {hasTakenAssessment && studentPin && enrichedCompanies.length > 0 && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">
-                      Closest: {enrichedCompanies[0].name} · {enrichedCompanies[0].distKm.toFixed(1)} km
+                      Closest: {enrichedCompanies[0]?.company ?? enrichedCompanies[0]?.name} · {enrichedCompanies[0]?.distKm?.toFixed(1) ?? '?'} km
                     </p>
                   )}
                 </div>
@@ -550,7 +545,7 @@ export default function StudentDashboard() {
                   On mobile/tablet it falls back to a fixed min-height.
                 */}
                 <div className="flex-1 min-h-0" style={{ minHeight: 320 }}>
-                  <NearbyMap companies={enrichedCompanies} studentPin={studentPin} />
+                  <NearbyMap companies={enrichedCompanies} studentPin={studentPin} initialCenter={studentPin} />
                 </div>
               </div>
             ) : (

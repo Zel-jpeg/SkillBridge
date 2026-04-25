@@ -51,10 +51,11 @@ export default function InstructorNav({ activePath }) {
   }
 
   const links = [
-    { label: 'Dashboard',      path: '/instructor/dashboard'          },
-    { label: 'Students',       path: '/instructor/students'           },
+    { label: 'Dashboard',      path: '/instructor/dashboard'         },
+    { label: 'Students',       path: '/instructor/students'          },
     { label: 'Assessments',    path: '/instructor/assessments'       },
-    { label: 'New assessment', path: '/instructor/assessment/create'  },
+    { label: 'New assessment', path: '/instructor/assessment/create' },
+    { label: 'Companies',      path: '/instructor/companies'         },
   ]
 
   const linkClass = (path) =>

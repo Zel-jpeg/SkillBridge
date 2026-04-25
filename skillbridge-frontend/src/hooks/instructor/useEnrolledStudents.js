@@ -31,6 +31,8 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
 import { useApi, invalidateCache } from '../useApi'
 import { useSSE } from '../useSSE'
+import { getPalette } from './useInstructorDashboard'
+export { getPalette }
 
 const PAGE_SIZE = 10
 const SSE_PATH  = '/api/instructor/events/'
@@ -38,14 +40,15 @@ const SSE_PATH  = '/api/instructor/events/'
 // ── Normalize raw API student → local shape ───────────────────────────────────
 function normalizeStudent(s) {
   return {
-    id:            s.id,
-    name:          s.name,
-    studentId:     s.school_id || '',
-    email:         s.email,
-    course:        s.course,
-    status:        s.has_submitted ? 'completed' : 'pending',
-    retakeAllowed: s.retake_allowed ?? false,
-    scores:        s.skill_scores   ?? {},
+    id:                  s.id,
+    name:                s.name,
+    studentId:           s.school_id || '',
+    email:               s.email,
+    course:              s.course,
+    status:              s.has_submitted ? 'completed' : 'pending',
+    retakeAllowed:       s.retake_allowed ?? false,
+    scores:              s.skill_scores   ?? {},
+    top_recommendations: s.top_recommendations ?? [],
   }
 }
 
@@ -275,12 +278,32 @@ export function useEnrolledStudents() {
   }
 
   function handleRemove(s) {
+    // Optimistic removal
     setStudents(p => p.filter(x => x.id !== s.id))
     setConfirmRemove(null)
+    // Persist to backend
+    api.delete(`/api/instructor/students/${s.id}/`)
+      .then(() => {
+        invalidateCache('/api/instructor/batches/')
+        showToast(`${s.name} has been removed from the batch.`)
+      })
+      .catch(() => {
+        // Roll back if API call fails
+        setStudents(p => [...p, s])
+        showToast('❌ Failed to remove student. Please try again.')
+      })
   }
 
   // ── Derived stats ─────────────────────────────────────────────────
   const completed = students.filter(s => s.status === 'completed')
+
+  // Derive categories dynamically from actual score keys
+  const categories = useMemo(() => {
+    const seen = new Set()
+    for (const s of completed) Object.keys(s.scores).forEach(k => seen.add(k))
+    if (seen.size === 0) for (const s of students) Object.keys(s.scores).forEach(k => seen.add(k))
+    return Array.from(seen).sort()
+  }, [completed, students])
 
   // ── Filters ───────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -322,7 +345,7 @@ export function useEnrolledStudents() {
     view, setView,
     page, setPage,
     // Derived
-    filtered, paginated,
+    filtered, paginated, categories,
     // Toast
     toast, showToast,
     PAGE_SIZE,

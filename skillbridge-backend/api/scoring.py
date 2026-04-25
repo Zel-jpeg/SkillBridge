@@ -192,8 +192,18 @@ def generate_recommendations(student, assessment, categories):
             'position_title': position.title,
             'company_id':     position.company.id,
             'company_name':   position.company.name,
+            'company':        position.company.name,
+            'position':       position.title,
             'slots':          position.slots_available,
             'match_score':    round(score * 100, 2),
+            'lat':            position.company.location_lat,
+            'lng':            position.company.location_lng,
+            'address': ', '.join(filter(None, [
+                (position.company.address or {}).get('barangay', ''),
+                (position.company.address or {}).get('city', ''),
+                (position.company.address or {}).get('province', ''),
+            ])) or None,
+            'tags': [req.skill_category.name for req in position.requirements.select_related('skill_category').all()],
         })
 
     results.sort(key=lambda x: x['match_score'], reverse=True)

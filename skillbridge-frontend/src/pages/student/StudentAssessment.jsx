@@ -225,11 +225,39 @@ export default function StudentAssessment() {
       const cached = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
       if (cached) localStorage.setItem('sb-user', JSON.stringify({ ...cached, has_submitted: true, retake_allowed: false }))
 
+      // Build reviewData — enrich questions with correct answers from submit response
+      // (backend only exposes is_correct post-submit for security)
+      const correctAnswers = res.data.correct_answers ?? {}
+      const enrichedQuestions = questions.map(q => {
+        const correct = correctAnswers[String(q.id)] ?? correctAnswers[q.id]
+        if (!correct) return { ...q }
+        if (correct.type === 'identification') {
+          return { ...q, correct_text: correct.text }
+        }
+        // MCQ / True-False: mark the correct choice
+        return {
+          ...q,
+          choices: (q.choices || []).map(c => ({
+            ...c,
+            is_correct: c.id === correct.id,
+          })),
+        }
+      })
+
+      const reviewData = {
+        questions: enrichedQuestions,
+        answers,  // { [questionId]: { selected_choice_id, text_answer } }
+      }
+
       setTimeout(() =>
         navigate('/student/results', {
-          state: { scores: res.data.scores, recommendations: res.data.recommendations },
+          state: {
+            scores:          res.data.scores,
+            recommendations: res.data.recommendations,
+            reviewData,
+          },
         })
-      , 1200)
+      , 800)
     } catch (err) {
       setSubmitting(false)
       const msg = err.response?.data?.error || 'Submission failed. Please try again.'
@@ -238,6 +266,26 @@ export default function StudentAssessment() {
   }
 
   // ── Render guards ──────────────────────────────────────────────
+  if (submitting) return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center gap-6 px-4">
+      <div className="w-16 h-16 rounded-2xl bg-green-600 flex items-center justify-center shadow-lg animate-pulse">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <div className="text-center">
+        <p className="text-lg font-bold text-gray-900 dark:text-white">Analyzing your answers…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
+          Our system is scoring your responses and finding your best company matches. This may take a few seconds.
+        </p>
+      </div>
+      <div className="flex gap-1.5">
+        {[0,1,2].map(i => (
+          <div key={i} className="w-2 h-2 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+        ))}
+      </div>
+    </div>
+  )
   if (checkingActive || starting) return <AssessmentLoading />
   if (activeError)                return <AssessmentError message={activeError} />
   if (startError)                 return <AssessmentError message={startError} />

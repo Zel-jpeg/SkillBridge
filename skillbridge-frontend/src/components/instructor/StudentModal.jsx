@@ -4,7 +4,7 @@
 // Extracted from EnrolledStudents.jsx.
 //
 // Props:
-//   student         — student object { name, studentId, course, email, status, scores, retakeAllowed }
+//   student         — student object { name, studentId, course, email, status, scores, top_recommendations, retakeAllowed }
 //   isArchived      — bool — hides retake toggle if batch is archived
 //   onClose         — close handler
 //   onToggleRetake(studentId) — toggle retake permission
@@ -19,17 +19,9 @@ import {
 } from '../../utils/formatters'
 import { getInitials } from '../../utils/formatters'
 
-const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
-
-const SUGGESTIONS = {
-  'Web Development': 'Review HTML, CSS, and JavaScript fundamentals. Practice building simple responsive layouts.',
-  'Database':        'Reinforce SQL query writing — focus on JOINs, GROUP BY, and subqueries. Try SQLZoo or W3Schools SQL.',
-  'Design':          'Study UI/UX design principles: color theory, typography, spacing, and component hierarchy.',
-  'Networking':      'Review the OSI model, IP addressing, subnetting, and common network protocols (TCP/IP, DNS, HTTP).',
-  'Backend':         'Strengthen server-side programming concepts: REST APIs, request/response cycles, and authentication.',
-}
+// Generic suggestion fallback — avoids hardcoding specific categories
 function getSuggestion(cat) {
-  return SUGGESTIONS[cat] || `Focus on strengthening ${cat} skills through practice exercises and review materials.`
+  return `Focus on strengthening ${cat} skills through practice exercises, review materials, and hands-on projects.`
 }
 
 export default function StudentModal({ student, isArchived, onClose, onToggleRetake }) {
@@ -38,6 +30,10 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
   const bottom  = bottomSkill(student.scores || {})
   const gaps    = Object.entries(student.scores || {}).filter(([, v]) => v < 60)
   const tier    = overall !== null ? tierLabel(overall) : null
+  const recs    = student.top_recommendations ?? []
+
+  // Skill rows — derived from actual score keys, sorted alphabetically
+  const skillEntries = Object.entries(student.scores || {}).sort(([a], [b]) => a.localeCompare(b))
 
   return (
     <div
@@ -102,8 +98,10 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
 
                 <div className="sm:col-span-3 flex flex-col gap-2.5">
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Skill Breakdown</p>
-                  {CATEGORIES.map(cat => {
-                    const sc = student.scores[cat] ?? null
+                  {skillEntries.length === 0 && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 italic">No skill scores available.</p>
+                  )}
+                  {skillEntries.map(([cat, sc]) => {
                     const StatusIcon = sc >= 80 ? CheckCircleIcon : sc >= 60 ? WarnIcon : CrossCircleIcon
                     return (
                       <div key={cat} className={`px-3 py-2.5 rounded-xl border ${
@@ -144,7 +142,55 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                 )}
               </div>
 
-              {/* Suggestions */}
+              {/* ── Company Recommendations ───────────────── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Company Matches</p>
+                  {recs.length > 0 && (
+                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">Top {recs.length} match{recs.length > 1 ? 'es' : ''}</span>
+                  )}
+                </div>
+                {recs.length === 0 ? (
+                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">
+                    No company matches yet. Recommendations are generated after submission.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {recs.map((r, i) => (
+                      <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
+                        i === 0
+                          ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-800'
+                          : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                      }`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                          i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                        }`}>{i + 1}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{r.company}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{r.position}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className={`text-sm font-bold ${
+                            r.match_score >= 80 ? 'text-green-600 dark:text-green-400'
+                            : r.match_score >= 60 ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-rose-500 dark:text-rose-400'
+                          }`}>{r.match_score}%</span>
+                          <div className="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
+                            <div className={`h-full rounded-full ${
+                              r.match_score >= 80 ? 'bg-green-500' : r.match_score >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                            }`} style={{ width: `${r.match_score}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Suggestions for weak areas */}
               {gaps.length > 0 ? (
                 <div>
                   <div className="flex items-center gap-2 mb-3">

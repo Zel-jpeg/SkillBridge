@@ -329,56 +329,59 @@ export default function InstructorUpload() {
         </div>
 
         {/* ── SECTION 3: Questions ── */}
-        <div className="flex flex-col gap-4">
-          {/* Section header + mode tabs */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              Questions
-              <span className="text-gray-400 dark:text-gray-600 font-normal ml-1">({questions.length})</span>
-              {/* Type breakdown badges */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+
+          {/* Card header */}
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex-wrap gap-y-3">
+            {/* Title + type badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Questions
+                <span className="text-gray-400 dark:text-gray-600 font-normal ml-1">({questions.length})</span>
+              </p>
               {questions.length > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1">
                   {countByType.mcq > 0 && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_COLORS.mcq}`}>{countByType.mcq} MCQ</span>}
                   {countByType.truefalse > 0 && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_COLORS.truefalse}`}>{countByType.truefalse} T/F</span>}
                   {countByType.identification > 0 && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_COLORS.identification}`}>{countByType.identification} IDENT</span>}
                 </span>
               )}
-            </p>
-            <div className="flex items-center gap-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+            </div>
+            {/* Mode toggle — segmented control */}
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shrink-0">
               {[{ key: 'manual', label: 'Manual entry' }, { key: 'upload', label: 'Upload file' }].map(m => (
                 <button key={m.key} onClick={() => setQuestionMode(m.key)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${questionMode === m.key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ease-out ${
+                    questionMode === m.key
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}>
                   {m.label}
                 </button>
               ))}
             </div>
           </div>
 
+          <div className="flex flex-col gap-4 p-6">
+
           {errors.questions && <p className="text-xs text-red-500">{errors.questions}</p>}
 
           {/* ── UPLOAD PANEL ── */}
           {questionMode === 'upload' && (
-            <div className="flex flex-col gap-4">
-
-              {/* Tab: Excel vs Text */}
-              <div className="flex gap-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
-                {/* We'll use a simple local toggle here */}
-                <UploadTabPanel
-                  xlsxRef={xlsxRef}
-                  xlsxRows={xlsxRows} xlsxErrors={xlsxErrors}
-                  xlsxFileName={xlsxFileName} xlsxLoading={xlsxLoading} xlsxImported={xlsxImported}
-                  parseExcelQuestions={parseExcelQuestions}
-                  importExcelQuestions={importExcelQuestions}
-                  downloadExcelTemplate={downloadExcelTemplate}
-                  txtRef={txtRef}
-                  txtRows={txtRows} txtErrors={txtErrors}
-                  txtFileName={txtFileName} txtLoading={txtLoading} txtImported={txtImported}
-                  parseTxtFile={parseTxtFile}
-                  importTxtQuestions={importTxtQuestions}
-                  downloadTextTemplate={downloadTextTemplate}
-                />
-              </div>
-            </div>
+            <UploadTabPanel
+              xlsxRef={xlsxRef}
+              xlsxRows={xlsxRows} xlsxErrors={xlsxErrors}
+              xlsxFileName={xlsxFileName} xlsxLoading={xlsxLoading} xlsxImported={xlsxImported}
+              parseExcelQuestions={parseExcelQuestions}
+              importExcelQuestions={importExcelQuestions}
+              downloadExcelTemplate={downloadExcelTemplate}
+              txtRef={txtRef}
+              txtRows={txtRows} txtErrors={txtErrors}
+              txtFileName={txtFileName} txtLoading={txtLoading} txtImported={txtImported}
+              parseTxtFile={parseTxtFile}
+              importTxtQuestions={importTxtQuestions}
+              downloadTextTemplate={downloadTextTemplate}
+            />
           )}
 
           {/* ── QUESTION CARDS ── */}
@@ -593,7 +596,8 @@ export default function InstructorUpload() {
               Collapse all
             </button>
           )}
-        </div>
+          </div>{/* end p-6 inner wrapper */}
+        </div>{/* end Questions card */}
 
         {/* ── SECTION 4: Summary + Publish ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
@@ -681,13 +685,35 @@ function UploadTabPanel({
   return (
     <div className="w-full flex flex-col gap-0">
       {/* Sub-tabs */}
-      <div className="flex gap-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit mb-4">
-        {[{ key: 'excel', label: '📊 Excel / CSV' }, { key: 'text', label: '📄 Text file (.txt)' }].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === t.key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-            {t.label}
-          </button>
-        ))}
+      <div className="flex gap-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 w-fit mb-4">
+        <button onClick={() => setTab('excel')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ease-out ${
+            tab === 'excel'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}>
+          {/* spreadsheet icon */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M3 15h18M9 3v18"/>
+          </svg>
+          Excel / CSV
+        </button>
+        <button onClick={() => setTab('text')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ease-out ${
+            tab === 'text'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}>
+          {/* text-file icon */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="14" y2="17"/>
+          </svg>
+          Text file (.txt)
+        </button>
       </div>
 
       {/* Excel tab */}

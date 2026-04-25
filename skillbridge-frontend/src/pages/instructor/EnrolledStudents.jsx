@@ -8,7 +8,7 @@ import StudentModal            from '../../components/instructor/StudentModal'
 import EnrollModal             from '../../components/instructor/EnrollModal'
 import ConfirmModal            from '../../components/admin/ConfirmModal'
 import Pagination              from '../../components/Pagination'
-import { useEnrolledStudents } from '../../hooks/instructor/useEnrolledStudents'
+import { useEnrolledStudents, getPalette } from '../../hooks/instructor/useEnrolledStudents'
 import { getInitials }         from '../../utils/formatters'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
@@ -18,7 +18,6 @@ const TrashIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const GridIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
 const ListIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
 
-const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
 
 function scoreColor(pct) {
   if (pct == null) return 'text-gray-300 dark:text-gray-700'
@@ -57,6 +56,7 @@ export default function EnrolledStudents() {
     view, setView, page, setPage,
     filtered, paginated,
     toast, PAGE_SIZE,
+    categories,
   } = useEnrolledStudents()
 
   const bsit = students.filter(s => s.course === 'BSIT')
@@ -261,24 +261,49 @@ export default function EnrolledStudents() {
                       </div>
                     </div>
                     {s.status === 'completed' ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
+                        {/* Overall bar */}
                         <div>
                           <div className="flex justify-between mb-1"><span className="text-xs text-gray-500 dark:text-gray-400">Overall</span><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall}%</span></div>
                           <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(overall)}`} style={{ width: `${overall}%` }} /></div>
                         </div>
-                        {CATEGORIES.map(cat => { const sc = s.scores[cat]; return (
-                          <div key={cat} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-24 truncate shrink-0">{cat}</span>
-                            <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(sc)}`} style={{ width: `${sc}%` }} /></div>
-                            <span className={`text-xs font-medium w-9 text-right ${scoreColor(sc)}`}>{sc}%</span>
+                        {/* Compact 2-col skill chips */}
+                        <div className="grid grid-cols-2 gap-1">
+                          {categories.map(cat => {
+                            const sc = s.scores[cat]
+                            return (
+                              <div key={cat} className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-2 py-1">
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  sc >= 80 ? 'bg-green-500' : sc >= 60 ? 'bg-amber-400' : 'bg-rose-400'
+                                }`} />
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate flex-1 min-w-0">{cat.split(' ')[0]}</span>
+                                <span className={`text-[11px] font-semibold shrink-0 ${scoreColor(sc)}`}>{sc}%</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {/* Best skill */}
+                        {top && <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg><span className="text-xs text-gray-500 dark:text-gray-400">Best in</span><span className="text-xs font-semibold text-gray-900 dark:text-white">{top[0]}</span><span className="ml-auto text-xs font-bold text-green-600 dark:text-green-400">{top[1]}%</span></div>}
+                        {s.top_recommendations?.[0] && (
+                          <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-lg px-2.5 py-1.5">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">{s.top_recommendations[0].company}</span>
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{s.top_recommendations[0].match_score}%</span>
                           </div>
-                        )})}
-                        {top && <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2 mt-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg><span className="text-xs text-gray-500 dark:text-gray-400">Best in</span><span className="text-xs font-semibold text-gray-900 dark:text-white">{top[0]}</span><span className="ml-auto text-xs font-bold text-green-600 dark:text-green-400">{top[1]}%</span></div>}
+                        )}
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2">
-                        {CATEGORIES.map(c => <div key={c} className="flex items-center gap-2"><span className="text-xs text-gray-300 dark:text-gray-700 w-24 truncate shrink-0">{c}</span><div className="flex-1 h-1 bg-gray-100 dark:bg-gray-800 rounded-full" /><span className="text-xs text-gray-300 dark:text-gray-700 w-9 text-right">--%</span></div>)}
-                        <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">Waiting for assessment</p>
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-gray-600">Waiting for assessment</p>
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {categories.slice(0, 4).map(c => (
+                            <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">{c.split(' ')[0]}</span>
+                          ))}
+                          {categories.length > 4 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">+{categories.length - 4}</span>}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -289,34 +314,49 @@ export default function EnrolledStudents() {
             {/* List */}
             {view === 'list' && (
               <div className="hidden sm:block bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Student</th>
-                      <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
-                      {CATEGORIES.map(c => <th key={c} className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">{c.split(' ')[0]}</th>)}
-                      <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Overall</th>
-                      <th className="px-3 py-3.5" />
-                    </tr></thead>
-                    <tbody>
-                      {paginated.map((s, i) => { const overall = avg(s.scores); return (
-                        <tr key={s.id} onClick={() => setSelectedStudent(s)}
-                          className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i%2?'bg-gray-50/30 dark:bg-gray-800/20':''}`}>
-                          <td className="px-5 py-4"><div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
-                            <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
-                          </div></td>
-                          <td className="px-3 py-4">{s.status==='completed'?<span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500"/>Done</span>:<span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500"/>Pending</span>}</td>
-                          {CATEGORIES.map(c => { const sc = s.scores[c] ?? null; return <td key={c} className="px-3 py-4 text-center"><span className={`text-sm font-semibold ${scoreColor(sc)}`}>{sc!==null?`${sc}%`:'—'}</span></td> })}
-                          <td className="px-4 py-4 text-center"><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall!==null?`${overall}%`:'—'}</span></td>
-                          <td className="px-3 py-4 text-center">
-                            {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Remove"><TrashIcon /></button>}
-                          </td>
-                        </tr>
-                      )})}
-                    </tbody>
-                  </table>
-                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Student</th>
+                    <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
+                    <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
+                    <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Overall</th>
+                    <th className="px-3 py-3.5" />
+                  </tr></thead>
+                  <tbody>
+                    {paginated.map((s, i) => { const overall = avg(s.scores); return (
+                      <tr key={s.id} onClick={() => setSelectedStudent(s)}
+                        className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i%2?'bg-gray-50/30 dark:bg-gray-800/20':''}`}>
+                        <td className="px-5 py-4"><div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                          <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
+                        </div></td>
+                        <td className="px-3 py-4">{s.status==='completed'?<span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500"/>Done</span>:<span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500"/>Pending</span>}</td>
+                        <td className="px-3 py-4 max-w-xs">
+                          {s.status === 'completed' ? (
+                            <div className="flex flex-wrap gap-1">
+                              {categories.map(c => { const sc = s.scores[c] ?? null; return (
+                                <span key={c} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                  sc === null ? 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                                  : sc >= 80 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                                  : sc >= 60 ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300'
+                                  : 'bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400'
+                                }`}>{c.split(' ')[0]} {sc !== null ? `${sc}%` : '—'}</span>
+                              )})}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-300 dark:text-gray-700 italic">Not assessed</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{s.top_recommendations[0].company}<br/><span className="font-normal text-gray-400">{s.top_recommendations[0].match_score}%</span></span> : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
+                        <td className="px-4 py-4 text-center"><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall!==null?`${overall}%`:'—'}</span></td>
+                        <td className="px-3 py-4 text-center">
+                          {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Remove"><TrashIcon /></button>}
+                        </td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
               </div>
             )}
 

@@ -19,6 +19,7 @@ import InstructorUpload from './pages/instructor/InstructorUpload'
 import EnrolledStudents from './pages/instructor/EnrolledStudents'
 import InstructorPending from './pages/instructor/InstructorPending'
 import InstructorAssessments from './pages/instructor/InstructorAssessments'
+import InstructorCompanies from './pages/instructor/InstructorCompanies'
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -75,6 +76,9 @@ function App() {
       } />
       <Route path="/instructor/assessments" element={
         <PrivateRoute role="instructor"><InstructorAssessments /></PrivateRoute>
+      } />
+      <Route path="/instructor/companies" element={
+        <PrivateRoute role="instructor"><InstructorCompanies /></PrivateRoute>
       } />
 
       {/* ── Admin routes (requires role="admin") ───────────────────── */}

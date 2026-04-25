@@ -16,8 +16,22 @@ import { useApi } from '../useApi'
 import { useSSE } from '../useSSE'
 
 const PAGE_SIZE  = 6
-const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
 const SSE_PATH   = '/api/instructor/events/'
+
+// Dynamic color palette — cycles for any number of categories
+const PALETTE = [
+  { pill: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',       bar: 'bg-blue-500'   },
+  { pill: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
+  { pill: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',        bar: 'bg-pink-500'   },
+  { pill: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',    bar: 'bg-amber-500'  },
+  { pill: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',    bar: 'bg-green-500'  },
+  { pill: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',        bar: 'bg-cyan-500'   },
+  { pill: 'bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300',        bar: 'bg-rose-500'   },
+  { pill: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300', bar: 'bg-indigo-500' },
+  { pill: 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300',        bar: 'bg-teal-500'   },
+  { pill: 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300', bar: 'bg-orange-500' },
+]
+export function getPalette(idx) { return PALETTE[idx % PALETTE.length] }
 
 function average(scores) {
   const vals = Object.values(scores)
@@ -36,14 +50,15 @@ export function useInstructorDashboard() {
   const studentsList = useMemo(() => {
     if (!apiData || !Array.isArray(apiData)) return []
     return apiData.map(s => ({
-      id:           s.id,
-      name:         s.student_name || s.name,
-      studentId:    s.school_id    || s.student_id || '',
-      email:        s.email        || '',
-      course:       s.course       || '',
-      status:       s.has_submitted ? 'completed' : 'pending',
-      scores:       s.skill_scores  || {},
-      retakeAllowed: s.retake_allowed ?? false,
+      id:                  s.id,
+      name:                s.student_name || s.name,
+      studentId:           s.school_id    || s.student_id || '',
+      email:               s.email        || '',
+      course:              s.course       || '',
+      status:              s.has_submitted ? 'completed' : 'pending',
+      scores:              s.skill_scores  || {},
+      retakeAllowed:       s.retake_allowed ?? false,
+      top_recommendations: s.top_recommendations ?? [],
     }))
   }, [apiData])
 
@@ -77,8 +92,24 @@ export function useInstructorDashboard() {
     completed.reduce((sum, s) => sum + (average(s.scores) ?? 0), 0) / (completed.length || 1)
   )
 
+  // Derive categories dynamically from actual score keys in completed students
+  // This ensures we always show exactly the skill categories from the assessment.
+  const categories = useMemo(() => {
+    const seen = new Set()
+    for (const s of completed) {
+      Object.keys(s.scores).forEach(k => seen.add(k))
+    }
+    // Fallback: if no one has submitted yet, check pending too
+    if (seen.size === 0) {
+      for (const s of studentsList) {
+        Object.keys(s.scores).forEach(k => seen.add(k))
+      }
+    }
+    return Array.from(seen).sort()
+  }, [completed, studentsList])
+
   // Top scorer per category
-  const leaders = CATEGORIES.map(cat => {
+  const leaders = categories.map(cat => {
     const top = completed.reduce((best, s) => {
       const score = s.scores[cat] ?? 0
       return score > (best?.scores[cat] ?? -1) ? s : best
@@ -131,7 +162,7 @@ export function useInstructorDashboard() {
     // Derived
     completed, pending, avgOverall, leaders,
     displayed, paginated,
-    PAGE_SIZE, CATEGORIES,
+    PAGE_SIZE, categories,
     average,
   }
 }

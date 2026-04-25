@@ -518,6 +518,58 @@ def instructor_batch_enroll(request, batch_id):
     return Response({'enrolled': enrolled, 'errors': errors}, status=200)
 
 
+# ── POST /api/instructor/batches/{id}/archive/ ───────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def instructor_batch_archive(request, batch_id):
+    """Mark a batch as archived (read-only). Only the owning instructor can do this."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    try:
+        batch = Batch.objects.get(id=batch_id, instructor=request.user)
+    except Batch.DoesNotExist:
+        return Response({'error': 'Batch not found'}, status=404)
+    batch.status      = 'archived'
+    batch.archived_at = timezone.now()
+    batch.save(update_fields=['status', 'archived_at'])
+    return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at})
+
+
+# ── PATCH /api/instructor/students/{id}/retake/ ──────────────────
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def instructor_student_retake(request, student_id):
+    """Toggle retake_allowed for the student's latest submission."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    retake_allowed = request.data.get('retake_allowed', False)
+    # Verify the student belongs to this instructor's batch
+    batches     = Batch.objects.filter(instructor=request.user)
+    enrolled_ids = BatchEnrollment.objects.filter(batch__in=batches).values_list('student_id', flat=True)
+    if int(student_id) not in list(enrolled_ids):
+        return Response({'error': 'Student not in your batches'}, status=403)
+    updated = StudentResponse.objects.filter(student_id=student_id).update(retake_allowed=retake_allowed)
+    if updated == 0:
+        return Response({'error': 'No submission found for this student'}, status=404)
+    return Response({'student_id': student_id, 'retake_allowed': retake_allowed})
+
+
+# ── DELETE /api/instructor/students/{id}/ ────────────────────────
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def instructor_student_remove(request, student_id):
+    """Unenroll a student from all of this instructor's batches."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    batches = Batch.objects.filter(instructor=request.user)
+    deleted, _ = BatchEnrollment.objects.filter(
+        batch__in=batches, student_id=student_id
+    ).delete()
+    if deleted == 0:
+        return Response({'error': 'Student not found in your batches'}, status=404)
+    return Response({'deleted': True, 'student_id': student_id})
+
+
 # ── GET /api/instructor/batches/{id}/students/ ───────────────────
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -556,6 +608,19 @@ def instructor_batch_students(request, batch_id):
             scores_map.setdefault(score.student_id, {})
             scores_map[score.student_id][score.skill_category.name] = round(score.percentage, 1)
 
+    # ── Bulk-load top-3 company recommendations per student ──────────
+    from collections import defaultdict
+    all_recs = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids)
+        .select_related('position', 'position__company')
+        .order_by('student_id', '-match_score')
+    )
+    recs_by_student = defaultdict(list)
+    for r in all_recs:
+        if len(recs_by_student[r.student_id]) < 3:
+            recs_by_student[r.student_id].append(r)
+
     students = []
     for e in enrollments:
         s    = e.student
@@ -571,6 +636,14 @@ def instructor_batch_students(request, batch_id):
             'retake_allowed': resp.retake_allowed if resp else False,
             'skill_scores':   scores_map.get(s.id, {}),
             'enrolled_at':    e.enrolled_at,
+            'top_recommendations': [
+                {
+                    'position':    r.position.title,
+                    'company':     r.position.company.name,
+                    'match_score': round(r.match_score, 2),
+                }
+                for r in recs_by_student.get(s.id, [])
+            ],
         })
 
     return Response({'batch': {'id': batch.id, 'name': batch.name}, 'students': students})
@@ -1152,10 +1225,23 @@ def assessment_submit(request, assessment_id):
     # ── Generate recommendations (cosine similarity) ─────────────
     recommendations = generate_recommendations(user, assessment, categories)
 
+    # ── Build correct-answer map for frontend Answer Review ──────────
+    # Safe to expose now — exam is already locked (submitted_at is set).
+    correct_answers = {}
+    for q in assessment.questions.prefetch_related('choices').all():
+        correct_choice = q.choices.filter(is_correct=True).first()
+        if not correct_choice:
+            continue
+        if q.question_type == 'identification':
+            correct_answers[q.id] = {'type': 'identification', 'text': correct_choice.choice_text}
+        else:
+            correct_answers[str(q.id)] = {'type': 'choice', 'id': correct_choice.id, 'text': correct_choice.choice_text}
+
     return Response({
         'message':         'Assessment submitted successfully.',
         'scores':          score_results,
         'recommendations': recommendations[:5],   # top 5
+        'correct_answers': correct_answers,
     })
 
 
@@ -1217,7 +1303,7 @@ def instructor_student_recommendations(request):
             'school_id':   student.school_id,
             'course':      student.course,
             'photo_url':   student.photo_url,
-            'has_submitted': bool(top_one),
+            'has_submitted': StudentResponse.objects.filter(student_id=student.id, submitted_at__isnull=False).exists(),
             'skill_scores': {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])},
             'batch':       {'id': e.batch.id, 'name': e.batch.name},
             'top_recommendations': [
@@ -1231,6 +1317,113 @@ def instructor_student_recommendations(request):
         })
 
     return Response(results)
+
+
+# ── GET /api/instructor/companies/ ───────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instructor_companies(request):
+    """
+    Returns all companies with positions.
+    For each position, includes matched students from this instructor's batches,
+    sorted by match score descending.
+    """
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    # Students belonging to this instructor's batches
+    batches     = Batch.objects.filter(instructor=request.user)
+    student_ids = set(
+        BatchEnrollment.objects.filter(batch__in=batches).values_list('student_id', flat=True)
+    )
+
+    # Bulk-load all recommendations for those students
+    from collections import defaultdict
+    all_recs = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids)
+        .select_related('student', 'position')
+        .order_by('position_id', '-match_score')
+    )
+    recs_by_position = defaultdict(list)
+    for r in all_recs:
+        recs_by_position[r.position_id].append(r)
+
+    companies = (
+        Company.objects
+        .prefetch_related('positions')
+        .order_by('name')
+    )
+
+    result = []
+    for company in companies:
+        positions_data = []
+        for pos in company.positions.all().order_by('title'):
+            matched = [
+                {
+                    'id':          r.student.id,
+                    'name':        r.student.name,
+                    'school_id':   r.student.school_id,
+                    'course':      r.student.course,
+                    'match_score': round(float(r.match_score), 1),
+                }
+                for r in recs_by_position.get(pos.id, [])
+            ]
+            positions_data.append({
+                'id':              pos.id,
+                'title':           pos.title,
+                'slots':           pos.slots_available,
+                'matched_students': matched,
+                'matched_count':   len(matched),
+            })
+        result.append({
+            'id':            company.id,
+            'name':          company.name,
+            'address':       company.address or {},
+            'lat':           company.location_lat,
+            'lng':           company.location_lng,
+            'positions':     positions_data,
+            'total_matched': sum(p['matched_count'] for p in positions_data),
+        })
+
+    return Response(result)
+
+
+# ── PATCH /api/instructor/companies/<co_id>/ ────────────────────────
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def instructor_company_edit(request, co_id):
+    """
+    Allows instructors to edit company info and position details.
+    Accepts:
+      { name, address, lat, lng,
+        positions: [{ id, title, slots }] }
+    """
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    try:
+        company = Company.objects.get(id=co_id)
+    except Company.DoesNotExist:
+        return Response({'error': 'Not found'}, status=404)
+
+    data = request.data
+    if 'name'    in data: company.name         = data['name']
+    if 'address' in data: company.address      = data['address']
+    if 'lat'     in data: company.location_lat  = data['lat']
+    if 'lng'     in data: company.location_lng  = data['lng']
+    company.save()
+
+    for pos_data in data.get('positions', []):
+        try:
+            pos = company.positions.get(id=pos_data['id'])
+            if 'title' in pos_data: pos.title           = pos_data['title']
+            if 'slots' in pos_data: pos.slots_available = pos_data['slots']
+            pos.save()
+        except Position.DoesNotExist:
+            pass
+
+    return Response({'ok': True, 'id': company.id, 'name': company.name})
 
 
 # ── GET /api/student/results/ ─────────────────────────────────────
@@ -1250,26 +1443,186 @@ def student_results(request):
         .order_by('-match_score')
     )
 
+    # Auto-regenerate if student has scores but no recommendations
+    # (handles company/position added AFTER the student submitted)
+    if skill_scores.exists() and not recommendations.exists():
+        try:
+            from .scoring import generate_recommendations
+            latest = (
+                StudentResponse.objects
+                .filter(student=user, submitted_at__isnull=False)
+                .order_by('-submitted_at').first()
+            )
+            if latest:
+                cats = list(SkillCategory.objects.all())
+                generate_recommendations(user, latest.assessment, cats)
+                recommendations = (
+                    Recommendation.objects
+                    .filter(student=user)
+                    .select_related('position', 'position__company')
+                    .order_by('-match_score')
+                )
+        except Exception:
+            pass
+
     return Response({
         'skill_scores': [
             {
                 'category':   ss.skill_category.name,
                 'raw_score':  ss.raw_score,
                 'max_score':  ss.max_score,
-                'percentage': ss.percentage,
+                'percentage': round(ss.percentage, 1),
             }
-            for ss in skill_scores
+            for ss in skill_scores.order_by('-percentage')
         ],
         'recommendations': [
             {
+                'id':          r.id,
                 'position':    r.position.title,
                 'company':     r.position.company.name,
                 'slots':       r.position.slots_available,
-                'match_score': r.match_score,
+                'match_score': round(r.match_score, 1),
+                'lat':         r.position.company.location_lat,
+                'lng':         r.position.company.location_lng,
+                'address':     (
+                    ', '.join(filter(None, [
+                        (r.position.company.address or {}).get('barangay', ''),
+                        (r.position.company.address or {}).get('city', ''),
+                        (r.position.company.address or {}).get('province', ''),
+                    ])) or None
+                ),
+                'tags': [
+                    req.skill_category.name
+                    for req in r.position.requirements.select_related('skill_category').all()
+                ],
             }
             for r in recommendations
         ],
     })
+
+
+# ── GET /api/student/results/review/ ─────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_results_review(request):
+    """
+    Returns the student's submitted answers with correct answers from the DB.
+    Bypasses localStorage — always reflects DB truth for the Answer Review.
+    """
+    user = request.user
+    if user.role != 'student':
+        return Response({'error': 'Students only'}, status=403)
+
+    latest_response = (
+        StudentResponse.objects
+        .filter(student=user, submitted_at__isnull=False)
+        .order_by('-submitted_at')
+        .select_related('assessment')
+        .first()
+    )
+    if not latest_response:
+        return Response({'questions': [], 'answers': {}})
+
+    questions = (
+        latest_response.assessment.questions
+        .prefetch_related('choices')
+        .select_related('skill_category')
+        .order_by('question_order')
+    )
+    submitted = {
+        ra.question_id: ra
+        for ra in ResponseAnswer.objects.filter(response=latest_response)
+            .select_related('selected_choice')
+    }
+
+    q_list = []
+    answers = {}
+
+    for q in questions:
+        correct_choice = q.choices.filter(is_correct=True).first()
+        is_ident = q.question_type == 'identification'
+        ra = submitted.get(q.id)
+
+        q_dict = {
+            'id':            q.id,
+            'question_text': q.question_text,
+            'question_type': q.question_type,
+            'category':      q.skill_category.name if q.skill_category else '',
+        }
+        if is_ident:
+            q_dict['correct_text'] = correct_choice.choice_text if correct_choice else ''
+            q_dict['choices']      = []
+        else:
+            q_dict['choices'] = [
+                {'id': c.id, 'text': c.choice_text, 'is_correct': c.is_correct}
+                for c in q.choices.all()
+            ]
+        q_list.append(q_dict)
+
+        if ra:
+            answers[str(q.id)] = {
+                'selected_choice_id': ra.selected_choice_id if not is_ident else None,
+                'text_answer':        ra.text_answer if is_ident else '',
+            }
+
+    return Response({'questions': q_list, 'answers': answers})
+
+
+# ── GET /api/student/companies/ ───────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_companies(request):
+    """
+    Returns ALL partner companies with positions and match scores.
+    Used for the 'Browse all companies' tab on the Results page.
+    """
+    user = request.user
+    if user.role != 'student':
+        return Response({'error': 'Students only'}, status=403)
+
+    user_recs = {
+        r.position_id: r.match_score
+        for r in Recommendation.objects.filter(student=user)
+    }
+
+    companies = (
+        Company.objects
+        .prefetch_related(
+            'positions',
+            'positions__requirements',
+            'positions__requirements__skill_category',
+        )
+        .all()
+    )
+
+    result = []
+    for company in companies:
+        positions = [
+            {
+                'id':          p.id,
+                'title':       p.title,
+                'slots':       p.slots_available,
+                'match_score': round(user_recs.get(p.id, 0), 1),
+                'tags': [
+                    req.skill_category.name
+                    for req in p.requirements.all()
+                ],
+            }
+            for p in company.positions.all()
+        ]
+        result.append({
+            'id':       company.id,
+            'name':     company.name,
+            'address':  ', '.join(filter(None, [
+                (company.address or {}).get('barangay', ''),
+                (company.address or {}).get('city', ''),
+                (company.address or {}).get('province', ''),
+            ])) or None,
+            'lat':       company.location_lat,
+            'lng':       company.location_lng,
+            'positions': positions,
+        })
+    return Response(result)
 
 
 # ── GET /api/admin/students/recommendations/ ──────────────────────

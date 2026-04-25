@@ -18,7 +18,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import AddressDropdowns from '../../components/AddressDropdowns'
-import { useApi } from '../../hooks/useApi'
+import { useApi, invalidateCache } from '../../hooks/useApi'
+import api from '../../api/axios'
 
 function getCachedUser() {
   try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
@@ -215,15 +216,24 @@ export default function StudentProfile() {
   }, [apiStudent])
 
   // Pin map state
-  const [pinnedLoc,     setPinnedLoc]     = useState(() => {
+  const [pinnedLoc,   setPinnedLoc]   = useState(() => {
+    // Seed from API address (set during onboarding) or localStorage fallback
+    try {
+      const user = JSON.parse(localStorage.getItem('sb-user'))
+      const pl = user?.address?.pinLat
+      const pg = user?.address?.pinLng
+      if (pl != null && pg != null) return { lat: pl, lng: pg }
+    } catch {}
     try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
   })
-  const [mapCenter,     setMapCenter]     = useState(null)
-  const [geocoding,     setGeocoding]     = useState(false)
-  const [pinAddrType,   setPinAddrType]   = useState('primary') // 'primary' | 'home' (boarding toggle)
+  const [mapCenter,   setMapCenter]   = useState(null)
+  const [geocoding,   setGeocoding]   = useState(false)
+  const [pinAddrType, setPinAddrType] = useState('primary')
 
-  const [errors, setErrors] = useState({})
-  const [saved,  setSaved]  = useState(false)
+  const [errors,   setErrors]   = useState({})
+  const [saved,    setSaved]    = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const hasBoardingAddr = stayingAt === 'boarding' && boardingAddr.city
 
@@ -259,13 +269,13 @@ export default function StudentProfile() {
   }, [pinAddrType]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Save ─────────────────────────────────────────────────────
-  function handleSave() {
+  async function handleSave() {
     const e = {}
     const phonePattern = /^09\d{9}$/
-    if (!phone)                        e.phone = 'Phone number is required'
+    if (!phone)                         e.phone = 'Phone number is required'
     else if (!phonePattern.test(phone)) e.phone = 'Must be 11 digits starting with 09'
-    if (!travelWilling)                e.travelWilling = 'Please select your travel preference'
-    if (!stayingAt)                    e.stayingAt     = 'Please select where you will be staying'
+    if (!travelWilling)  e.travelWilling = 'Please select your travel preference'
+    if (!stayingAt)      e.stayingAt     = 'Please select where you will be staying'
     if (!homeAddr.province || !homeAddr.city || !homeAddr.barangay)
       e.homeAddress = 'Please complete your home address'
     if (stayingAt === 'boarding' && (!boardingAddr.province || !boardingAddr.city || !boardingAddr.barangay))
@@ -273,16 +283,44 @@ export default function StudentProfile() {
     setErrors(e)
     if (Object.keys(e).length > 0) return
 
-    // Save pin to localStorage (used by StudentResults for proximity)
-    if (pinnedLoc) {
-      localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
-    } else {
-      localStorage.removeItem('sb_pin_location')
-    }
+    setSaving(true)
+    setSaved(false)
+    setSaveError('')
 
-    // TODO Week 3: PATCH /api/students/me/profile/ with full payload
-    console.log('Saving profile:', { phone, stayingAt, homeAddr, boardingAddr, travelWilling, emailNotifications, pinnedLoc })
-    setSaved(true)
+    try {
+      const res = await api.patch('/api/students/me/profile/', {
+        phone,
+        stayingAt,
+        travelWilling,
+        homeProvince:     homeAddr.province,
+        homeCity:         homeAddr.city,
+        homeBarangay:     homeAddr.barangay,
+        boardingProvince: boardingAddr.province,
+        boardingCity:     boardingAddr.city,
+        boardingBarangay: boardingAddr.barangay,
+        pinLat: pinnedLoc?.lat ?? null,
+        pinLng: pinnedLoc?.lng ?? null,
+      })
+
+      // Update caches so the rest of the app sees fresh data instantly
+      localStorage.setItem('sb-user', JSON.stringify(res.data))
+      if (pinnedLoc) {
+        localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
+      } else {
+        localStorage.removeItem('sb_pin_location')
+      }
+      invalidateCache('/api/students/me/')
+      invalidateCache('/api/student/results/')
+
+      setSaved(true)
+    } catch (err) {
+      const msg = err.response?.data?.error
+        || err.response?.data?.detail
+        || 'Failed to save. Please try again.'
+      setSaveError(msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Formatted address strings (from live state)
@@ -614,12 +652,29 @@ export default function StudentProfile() {
         <div className="flex flex-col gap-2 pb-8">
           <button
             onClick={handleSave}
-            className="w-full py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 transition-colors"
+            disabled={saving}
+            className="w-full py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            Save changes
+            {saving ? (
+              <>
+                <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/>
+                </svg>
+                Saving…
+              </>
+            ) : 'Save changes'}
           </button>
 
-          {saved && (
+          {saveError && (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" className="shrink-0">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+              </svg>
+              <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>
+            </div>
+          )}
+
+          {!saveError && saved && (
             <div className="flex items-center justify-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>

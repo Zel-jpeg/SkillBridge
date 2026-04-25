@@ -9,19 +9,8 @@ import Pagination               from '../../components/Pagination'
 import StatusBadge              from '../../components/StatusBadge'
 import SearchBar                from '../../components/SearchBar'
 import EmptyState               from '../../components/EmptyState'
-import { useInstructorDashboard } from '../../hooks/instructor/useInstructorDashboard'
+import { useInstructorDashboard, getPalette } from '../../hooks/instructor/useInstructorDashboard'
 import { getInitials }          from '../../utils/formatters'
-
-// ── Page-scoped constants ─────────────────────────────────────────
-const CATEGORIES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend']
-
-const CAT_COLORS = {
-  'Web Development': { pill: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',       bar: 'bg-blue-500'   },
-  'Database':        { pill: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
-  'Design':          { pill: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',        bar: 'bg-pink-500'   },
-  'Networking':      { pill: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',    bar: 'bg-amber-500'  },
-  'Backend':         { pill: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',    bar: 'bg-green-500'  },
-}
 
 function scoreColor(pct) {
   if (pct == null) return 'text-gray-300 dark:text-gray-700'
@@ -64,7 +53,7 @@ export default function InstructorDashboard() {
     toast, showToast,
     completed, pending, avgOverall, leaders,
     displayed, paginated,
-    PAGE_SIZE, average,
+    PAGE_SIZE, categories, average,
   } = useInstructorDashboard()
 
   // Instructor from localStorage (read in hook, also readable here for nav)
@@ -136,15 +125,15 @@ export default function InstructorDashboard() {
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top performers by skill</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {leaders.map(({ category, student, score }) => (
+            {leaders.map(({ category, student, score }, idx) => (
               <div key={category} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${CAT_COLORS[category]?.pill}`}>{category.split(' ')[0]}</span>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getPalette(idx).pill}`}>{category.split(' ')[0]}</span>
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-gray-900 dark:text-white leading-tight mt-2">{student ? student.name.split(' ').slice(0, 2).join(' ') : '—'}</p>
                   <p className={`text-lg font-bold mt-0.5 ${scoreColor(score)}`}>{score}%</p>
                 </div>
                 <div className="mt-2 h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${CAT_COLORS[category]?.bar}`} style={{ width: `${score}%` }} />
+                  <div className={`h-full rounded-full ${getPalette(idx).bar}`} style={{ width: `${score}%` }} />
                 </div>
               </div>
             ))}
@@ -203,21 +192,33 @@ export default function InstructorDashboard() {
                       </div>
 
                       {s.status === 'completed' ? (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-3">
+                          {/* Overall bar */}
                           <div>
-                            <div className="flex justify-between mb-1"><span className="text-xs text-gray-500">Overall</span><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall}%</span></div>
-                            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(overall)}`} style={{ width: `${overall}%` }} /></div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-xs text-gray-500">Overall</span>
+                              <span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall}%</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${scoreBgBar(overall)}`} style={{ width: `${overall}%` }} />
+                            </div>
                           </div>
-                          {CATEGORIES.map(cat => {
-                            const sc = s.scores[cat]
-                            return (
-                              <div key={cat} className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 dark:text-gray-500 w-24 truncate shrink-0">{cat}</span>
-                                <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(sc)}`} style={{ width: `${sc}%` }} /></div>
-                                <span className={`text-xs font-medium w-9 text-right ${scoreColor(sc)}`}>{sc}%</span>
-                              </div>
-                            )
-                          })}
+                          {/* Compact 2-col skill chips */}
+                          <div className="grid grid-cols-2 gap-1">
+                            {categories.map(cat => {
+                              const sc = s.scores[cat]
+                              return (
+                                <div key={cat} className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-2 py-1">
+                                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                    sc >= 80 ? 'bg-green-500' : sc >= 60 ? 'bg-amber-400' : 'bg-rose-400'
+                                  }`} />
+                                  <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate flex-1 min-w-0">{cat.split(' ')[0]}</span>
+                                  <span className={`text-[11px] font-semibold shrink-0 ${scoreColor(sc)}`}>{sc}%</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                          {/* Best skill + company */}
                           {top && top[0] && (
                             <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -226,17 +227,26 @@ export default function InstructorDashboard() {
                               <span className="ml-auto text-xs font-bold text-green-600 dark:text-green-400">{top[1]}%</span>
                             </div>
                           )}
+                          {s.top_recommendations?.[0] && (
+                            <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-lg px-2.5 py-1.5">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">{s.top_recommendations[0].company}</span>
+                              <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{s.top_recommendations[0].match_score}%</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-2">
-                          {CATEGORIES.map(c => (
-                            <div key={c} className="flex items-center gap-2">
-                              <span className="text-xs text-gray-300 dark:text-gray-700 w-24 truncate shrink-0">{c}</span>
-                              <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-800 rounded-full" />
-                              <span className="text-xs text-gray-300 dark:text-gray-700 w-9 text-right">--%</span>
-                            </div>
-                          ))}
-                          <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">Waiting for assessment</p>
+                        <div className="flex flex-col items-center gap-2 py-2">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-gray-600">Waiting for assessment</p>
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {categories.slice(0, 4).map(c => (
+                              <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">{c.split(' ')[0]}</span>
+                            ))}
+                            {categories.length > 4 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">+{categories.length - 4}</span>}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -247,55 +257,66 @@ export default function InstructorDashboard() {
               {/* List view */}
               {view === 'list' && (
                 <div className="hidden sm:block bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                          <th onClick={() => toggleSort('name')} className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Student <SortIndicator col="name" sortBy={sortBy} sortDir={sortDir} /></th>
-                          <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
-                          {CATEGORIES.map(cat => (
-                            <th key={cat} onClick={() => toggleSort(cat)} className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none whitespace-nowrap">
-                              {cat.split(' ')[0]} <SortIndicator col={cat} sortBy={sortBy} sortDir={sortDir} />
-                            </th>
-                          ))}
-                          <th onClick={() => toggleSort('overall')} className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Overall <SortIndicator col="overall" sortBy={sortBy} sortDir={sortDir} /></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginated.map((s, i) => {
-                          const overall = avgOf(s.scores)
-                          return (
-                            <tr key={s.id} onClick={() => setSelectedStudent(s)}
-                              className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
-                                  <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                        <th onClick={() => toggleSort('name')} className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Student <SortIndicator col="name" sortBy={sortBy} sortDir={sortDir} /></th>
+                        <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                        <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
+                        <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
+                        <th onClick={() => toggleSort('overall')} className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Overall <SortIndicator col="overall" sortBy={sortBy} sortDir={sortDir} /></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map((s, i) => {
+                        const overall = avgOf(s.scores)
+                        return (
+                          <tr key={s.id} onClick={() => setSelectedStudent(s)}
+                            className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                                <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-4">
+                              {s.status === 'completed'
+                                ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500 inline-block" />Done</span>
+                                : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />Pending</span>
+                              }
+                            </td>
+                            <td className="px-3 py-4 max-w-xs">
+                              {s.status === 'completed' ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {categories.map(cat => {
+                                    const sc = s.scores[cat] ?? null
+                                    return (
+                                      <span key={cat} className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                        sc === null ? 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                                        : sc >= 80 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                                        : sc >= 60 ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300'
+                                        : 'bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400'
+                                      }`}>
+                                        {cat.split(' ')[0]} {sc !== null ? `${sc}%` : '—'}
+                                      </span>
+                                    )
+                                  })}
                                 </div>
-                              </td>
-                              <td className="px-3 py-4">
-                                {s.status === 'completed'
-                                  ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500 inline-block" />Done</span>
-                                  : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />Pending</span>
-                                }
-                              </td>
-                              {CATEGORIES.map(cat => {
-                                const score = s.scores[cat] ?? null
-                                return (
-                                  <td key={cat} className={`px-3 py-4 text-center ${score !== null ? scoreBg(score) : ''}`}>
-                                    <span className={`text-sm font-semibold ${scoreColor(score)}`}>{score !== null ? `${score}%` : '—'}</span>
-                                  </td>
-                                )
-                              })}
-                              <td className={`px-5 py-4 text-center ${overall !== null ? scoreBg(overall) : ''}`}>
-                                <span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall !== null ? `${overall}%` : '—'}</span>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                              ) : (
+                                <span className="text-xs text-gray-300 dark:text-gray-700 italic">Not assessed</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? (
+                              <div className="text-center"><p className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap truncate max-w-24">{s.top_recommendations[0].company}</p><p className="text-xs text-gray-400">{s.top_recommendations[0].match_score}%</p></div>
+                            ) : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
+                            <td className={`px-5 py-4 text-center ${overall !== null ? scoreBg(overall) : ''}`}>
+                              <span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall !== null ? `${overall}%` : '—'}</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
