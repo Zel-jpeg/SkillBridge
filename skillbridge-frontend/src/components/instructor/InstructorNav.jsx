@@ -20,9 +20,10 @@ export default function InstructorNav({ activePath }) {
   // ── User info — read from localStorage (set at login) ────────────
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
   const instructor = {
-    name:     cachedUser?.name    ?? 'Instructor',
+    name:     cachedUser?.name     ?? 'Instructor',
     initials: (cachedUser?.name ?? 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
     subject:  cachedUser?.course  ?? 'OJT Coordinator',
+    photoUrl: cachedUser?.photo_url ?? null,
   }
 
   // ── UI state ────────────────────────────────────────────────────
@@ -110,9 +111,18 @@ export default function InstructorNav({ activePath }) {
           <div className="relative">
             <button
               onClick={() => setProfileOpen(p => !p)}
-              className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 hover:ring-2 hover:ring-blue-400 transition-all"
+              className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 hover:ring-2 hover:ring-blue-400 transition-all overflow-hidden"
             >
-              {instructor.initials}
+              {instructor.photoUrl
+                ? <img
+                    src={instructor.photoUrl}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                : instructor.initials
+              }
             </button>
             {profileOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden z-20">

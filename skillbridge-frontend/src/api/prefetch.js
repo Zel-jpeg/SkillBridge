@@ -20,16 +20,21 @@ const PREFETCH_URLS = {
     '/api/admin/students/recommendations/',
     '/api/admin/users/',
     '/api/admin/companies/',
+    '/api/categories/',               // needed by Companies page position editor
   ],
   instructor: [
     '/api/instructor/students/recommendations/',
     '/api/instructor/batches/',
     '/api/auth/me/',
+    '/api/instructor/assessments/',   // Assessments list page
+    '/api/instructor/companies/',     // Companies page
+    '/api/categories/',               // assessment question editor
   ],
   student: [
     '/api/students/me/',
     '/api/assessments/active/',
     '/api/student/results/',
+    '/api/student/results/review/',   // answer-review panel on Results page
   ],
 }
 

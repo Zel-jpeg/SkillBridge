@@ -242,6 +242,9 @@ export function useEnrolledStudents() {
     const st = students.find(s => s.id === studentId)
     try {
       await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !st?.retakeAllowed })
+      // Invalidate so the next page visit re-fetches the updated retake status
+      invalidateCache('/api/instructor/batches/')
+      invalidateCache('/api/instructor/students/recommendations/')
     } catch {}
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
@@ -269,6 +272,9 @@ export function useEnrolledStudents() {
         scores:        {},
       }))
       setStudents(p => [...p, ...added])
+      // Invalidate cache so navigating away and back shows the new students
+      invalidateCache('/api/instructor/batches/')
+      invalidateCache('/api/instructor/students/recommendations/')
       showToast(`${added.length} student${added.length > 1 ? 's' : ''} enrolled successfully`)
     } catch (err) {
       showToast(`❌ ${err.response?.data?.error || 'Enrollment failed. Please try again.'}`)

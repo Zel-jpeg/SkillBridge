@@ -22,7 +22,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import api from '../../api/axios'
-import { useApi, invalidateCache } from '../useApi'
+import { useApi, invalidateCache, _setCache } from '../useApi'
 import { useSSE } from '../useSSE'
 
 const SSE_PATH = '/api/instructor/events/'
@@ -346,8 +346,12 @@ export function useInstructorAssessments() {
         ...patchResults.filter(r => r.status === 'rejected'),
       ].length
 
-      // 7 ── Invalidate list cache so question/submission counts refresh
+      // 7 ── Invalidate list cache + re-fetch so question/submission counts refresh on next visit
       invalidateCache('/api/instructor/assessments/')
+      try {
+        const listRes = await api.get('/api/instructor/assessments/')
+        if (listRes.data) _setCache('/api/instructor/assessments/', listRes.data)
+      } catch { /* non-critical — next mount will fetch fresh */ }
 
       // 8 ── Reload questions into clean state
       const qRes = await api.get(`/api/instructor/assessments/${selected.id}/questions/`)

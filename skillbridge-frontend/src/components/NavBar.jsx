@@ -68,7 +68,13 @@ export default function NavBar({ student }) {
           className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 hover:ring-2 hover:ring-green-400 transition-all overflow-hidden"
         >
           {student?.photoUrl
-            ? <img src={student.photoUrl} alt="avatar" className="w-full h-full object-cover" />
+            ? <img
+                src={student.photoUrl}
+                alt="avatar"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={e => { e.currentTarget.style.display = 'none' }}
+              />
             : student?.initials ?? 'S'
           }
         </button>

@@ -22,6 +22,7 @@ export default function AdminNav({ activePath }) {
   const admin = {
     name:     cachedUser?.name     ?? 'Administrator',
     initials: (cachedUser?.name ?? 'AD').split(' ').map(n => n[0]).slice(0, 2).join(''),
+    photoUrl: cachedUser?.photo_url ?? null,
   }
 
   // ── UI state ────────────────────────────────────────────────────
@@ -149,9 +150,18 @@ export default function AdminNav({ activePath }) {
           <div className="relative ml-1">
             <button
               onClick={() => { setProfileOpen(p => !p); setNotifOpen(false) }}
-              className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all"
+              className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all overflow-hidden"
             >
-              {admin.initials}
+              {admin.photoUrl
+                ? <img
+                    src={admin.photoUrl}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                : admin.initials
+              }
             </button>
             {profileOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden z-40">

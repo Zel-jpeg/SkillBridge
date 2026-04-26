@@ -10,7 +10,7 @@
 //   useApi re-fetches /api/admin/users/ silently → useEffect re-normalizes.
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useApi } from '../useApi'
+import { useApi, invalidateCache } from '../useApi'
 import { useSSE } from '../useSSE'
 
 const PAGE_SIZE = 10
@@ -121,6 +121,7 @@ export function useAdminUsers() {
         ? `"${instr.name}" added as pending. Notification email sent.`
         : `"${instr.name}" added as pending. Email not sent (check SMTP settings).`)
     }
+    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setShowAddInstr(false)
   }
 
@@ -143,12 +144,14 @@ export function useAdminUsers() {
     showToast(res.data?.email_sent
       ? `${instr.name} approved and notified.`
       : `${instr.name} approved, but email was not sent (check SMTP settings).`)
+    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setSelectedPending(null)
   }
 
   function rejectPendingInstructor(instr) {
     setPendingInstructors(p => p.filter(x => x.id !== instr.id))
     showToast(`${instr.name} rejected.`)
+    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setSelectedPending(null)
   }
 
@@ -157,6 +160,7 @@ export function useAdminUsers() {
     setSelectedUser(prev => prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev)
     const st = studentsList.find(s => s.id === studentId)
     if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
+    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
   }
 
   function handleUpdateUser(updatedUser, oldType, newType) {
@@ -181,6 +185,7 @@ export function useAdminUsers() {
     else {
       setStudentsList(prev => prev.map(s => s.id === user.id ? { ...s, archived: true } : s))
       setSelectedUser(null)
+      invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
       showToast(`Student ${user.name} archived.`)
     }
   }

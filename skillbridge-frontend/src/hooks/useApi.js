@@ -30,7 +30,7 @@ import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 
 // ── Cache constants ───────────────────────────────────────────────────────────
-const CACHE_TTL       = 300_000          // 5 minutes (SSE handles real-time updates)
+const CACHE_TTL       = 60_000           // 60 seconds — short enough that stale data after a missed invalidation expires quickly
 const STORAGE_PREFIX  = 'sb_api_'       // sessionStorage key prefix
 
 // ── In-memory cache (fast path) ───────────────────────────────────────────────
@@ -208,7 +208,9 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
 
         const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
         setError(msg)
-        if (!entry) showToast(msg, 'error')
+        // 409 = intentional "conflict" state (e.g. already submitted assessment)
+        // The consuming component handles this with its own UI — skip the generic toast.
+        if (!entry && status !== 409) showToast(msg, 'error')
       })
 
     return () => { cancelled = true }

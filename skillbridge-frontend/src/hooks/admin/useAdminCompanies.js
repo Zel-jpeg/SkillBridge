@@ -22,7 +22,7 @@
 //   DELETE /api/admin/positions/:id/
 
 import { useState, useCallback, useEffect } from 'react'
-import { useApi } from '../useApi'
+import { useApi, invalidateCache } from '../useApi'
 import { useSSE } from '../useSSE'
 
 export const SKILL_CATEGORIES_FALLBACK = [
@@ -124,6 +124,7 @@ export function useAdminCompanies() {
       positions:   [],
     }
     setCompanies(prev => [newCompany, ...prev])
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${company.name}" added.`)
     return { ok: true }
   }
@@ -148,6 +149,7 @@ export function useAdminCompanies() {
         lng:         company.lng  ?? null,
       }
     ))
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${company.name}" updated.`)
     return { ok: true }
   }
@@ -158,6 +160,7 @@ export function useAdminCompanies() {
     const { id, name } = confirmDeleteComp
     setCompanies(prev => prev.filter(c => c.id !== id))
     request('delete', `/api/admin/companies/${id}/`)
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${name}" removed.`)
     setConfirmDeleteComp(null)
   }
@@ -184,6 +187,7 @@ export function useAdminCompanies() {
         ? { ...c, positions: [...c.positions, newPos] }
         : c
     ))
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${position.title}" added to ${company.name}.`)
     return { ok: true }
   }
@@ -210,6 +214,7 @@ export function useAdminCompanies() {
         ),
       }
     ))
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${position.title}" updated.`)
     return { ok: true }
   }
@@ -225,6 +230,7 @@ export function useAdminCompanies() {
       }
     ))
     request('delete', `/api/admin/positions/${position.id}/`)
+    invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${position.title}" removed.`)
     setConfirmDeletePos(null)
   }

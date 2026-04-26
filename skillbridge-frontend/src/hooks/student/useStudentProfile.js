@@ -22,7 +22,7 @@
 //   } = useStudentProfile()
 
 import { useState, useEffect } from 'react'
-import { useApi, invalidateCache } from '../useApi'
+import { useApi, invalidateCache, _setCache } from '../useApi'
 import api from '../../api/axios'
 
 function getCachedUser() {
@@ -129,14 +129,17 @@ export function useStudentProfile() {
     try {
       const res = await api.patch('/api/students/me/profile/', payload)
 
-      // Update caches so the rest of the app sees fresh data instantly
+      // 1. Write fresh data into both localStorage and the useApi cache so
+      //    navigating back to this page (or Dashboard) shows updated data instantly.
       localStorage.setItem('sb-user', JSON.stringify(res.data))
+      _setCache('/api/students/me/', res.data)
+
       if (pinnedLoc) {
         localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
       } else {
         localStorage.removeItem('sb_pin_location')
       }
-      invalidateCache('/api/students/me/')
+      // Also invalidate results so any proximity-based recommendations re-calculate
       invalidateCache('/api/student/results/')
 
       setSaved(true)
