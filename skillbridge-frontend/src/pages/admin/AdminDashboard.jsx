@@ -1,7 +1,9 @@
 // src/pages/admin/AdminDashboard.jsx  (SLIMMED — 588 → ~170 lines)
 // All data + logic now in useAdminDashboard.js
 
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 import Pagination  from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import PageHeader  from '../../components/PageHeader'
@@ -42,6 +44,23 @@ export default function AdminDashboard() {
     filtered, paginated, PAGE_SIZE,
   } = useAdminDashboard()
 
+  const [rerunning,  setRerunning]  = useState(false)
+  const [rerunMsg,   setRerunMsg]   = useState('')
+
+  async function handleRerun() {
+    setRerunning(true)
+    setRerunMsg('')
+    try {
+      const res = await api.post('/api/admin/rerun-recommendations/')
+      setRerunMsg(res.data.message || 'Done!')
+    } catch {
+      setRerunMsg('Re-run failed. Try again.')
+    } finally {
+      setRerunning(false)
+      setTimeout(() => setRerunMsg(''), 4000)
+    }
+  }
+
   const STATS = [
     { label: 'Total Students',       Icon: IconStudents, color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900',       value: stats.total_students },
     { label: 'Companies Listed',     Icon: IconCompany,  color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: stats.total_companies },
@@ -59,6 +78,15 @@ export default function AdminDashboard() {
           title="Admin Dashboard"
           subtitle="System-wide overview of students, companies, and recommendations."
           action={<>
+            <button onClick={handleRerun} disabled={rerunning}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {rerunning
+                ? <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+              }
+              {rerunning ? 'Running…' : 'Re-run Recommendations'}
+            </button>
             <button onClick={() => navigate('/admin/companies')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <IconCompany /> Manage Companies
             </button>
@@ -67,6 +95,18 @@ export default function AdminDashboard() {
             </button>
           </>}
         />
+
+        {/* Re-run status message */}
+        {rerunMsg && (
+          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium ${
+            rerunMsg.includes('failed') ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+          }`}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              {rerunMsg.includes('failed') ? <><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
+            </svg>
+            {rerunMsg}
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

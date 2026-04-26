@@ -2028,11 +2028,82 @@ def admin_company_positions(request, company_id):
         except SkillCategory.DoesNotExist:
             pass  # Skip unknown categories
 
+    # Re-score all existing students against the new position
+    _rerun_recommendations_for_all_students()
+
     return Response({
         'id':    position.id,
         'title': position.title,
         'slots': position.slots_available,
     }, status=201)
+
+
+def _rerun_recommendations_for_all_students():
+    """
+    Called after a new position is added.
+    Re-runs generate_recommendations() for every student who has already
+    submitted so the new position gets scored against their existing skill
+    profile. Uses update_or_create internally — no duplicates created.
+    """
+    try:
+        from .scoring import generate_recommendations
+        cats = list(SkillCategory.objects.all())
+        submitted = (
+            StudentResponse.objects
+            .filter(submitted_at__isnull=False)
+            .order_by('student_id', '-submitted_at')
+            .distinct('student_id')
+            .select_related('student', 'assessment')
+        )
+        for resp in submitted:
+            try:
+                generate_recommendations(resp.student, resp.assessment, cats)
+            except Exception:
+                pass  # Never let one student's failure break the loop
+    except Exception:
+        pass  # Fail silently — position was still created successfully
+
+
+
+# ── POST /api/admin/rerun-recommendations/ ────────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_rerun_recommendations(request):
+    """
+    Manually re-run recommendation scoring for ALL students who have
+    already submitted an assessment. Useful after bulk company/position
+    changes or if scores look stale.
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    try:
+        from .scoring import generate_recommendations
+        cats = list(SkillCategory.objects.all())
+        submitted = (
+            StudentResponse.objects
+            .filter(submitted_at__isnull=False)
+            .order_by('student_id', '-submitted_at')
+            .distinct('student_id')
+            .select_related('student', 'assessment')
+        )
+        count = 0
+        errors = 0
+        for resp in submitted:
+            try:
+                generate_recommendations(resp.student, resp.assessment, cats)
+                count += 1
+            except Exception:
+                errors += 1
+
+        return Response({
+            'ok': True,
+            'students_processed': count,
+            'errors': errors,
+            'message': f'Recommendations re-run for {count} student(s).',
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 
 # ── PATCH + DELETE  /api/admin/positions/{id}/ ───────────────────────────────

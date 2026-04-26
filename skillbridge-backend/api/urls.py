@@ -60,6 +60,7 @@ urlpatterns = [
     path('admin/companies/<int:company_id>/positions/',   views.admin_company_positions,  name='admin_company_positions'),
     path('admin/positions/<int:position_id>/',            views.admin_position_detail,    name='admin_position_detail'),
     path('admin/students/recommendations/',               views.admin_student_recommendations, name='admin_student_recommendations'),
+    path('admin/rerun-recommendations/',                   views.admin_rerun_recommendations,   name='admin_rerun_recommendations'),
 
     # ── Admin — Real-time SSE ─────────────────────────────────────────────────
     # EventSource connects here with ?token=<jwt>
