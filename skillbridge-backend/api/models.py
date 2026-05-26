@@ -213,6 +213,7 @@ class Recommendation(models.Model):
 
     class Meta:
         ordering = ['-match_score']
+        unique_together = ('student', 'position')
 
     def __str__(self):
         return f'{self.student.name} → {self.position.title} ({self.match_score:.0%})'

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SkillBridge – JSON Schema Diagram</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #ffffff;
+      color: #333;
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 5px 0;
+    }
+    
+    p.subtitle {
+      font-size: 13px;
+      color: #666;
+      margin: 0 0 40px 0;
+      max-width: 600px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .diagram-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 60px;
+      width: 100%;
+      max-width: 800px;
+      align-items: center;
+      padding: 20px 0;
+    }
+
+    svg.lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .schema-block {
+      display: flex;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+      width: fit-content;
+    }
+
+    .level-1 {
+      margin-right: 80px;
+    }
+
+    .level-2 {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Node Styles */
+    .node {
+      width: 160px;
+      height: 42px;
+      border: 1px solid #b0b0b0;
+      background: #ffffff;
+      display: flex;
+    }
+
+    .node.root {
+      background: #dcf5f5;
+      border-color: #8bd2d2;
+    }
+    .node.root .node-left {
+      border-color: #8bd2d2;
+      color: #444;
+    }
+    .node.root .node-name {
+      border-color: #8bd2d2;
+      color: #2b88cc;
+    }
+
+    .node-left {
+      width: 48px;
+      border-right: 1px solid #b0b0b0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .node-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .node-name {
+      flex: 1;
+      border-bottom: 1px solid #b0b0b0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3da8f5;
+    }
+    
+    .node-type {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-style: italic;
+      color: #999;
+    }
+    
+    .required-star {
+      color: #ff3b3b;
+      margin-left: 4px;
+      font-size: 14px;
+      line-height: 1;
+    }
+    
+    .legend {
+      margin-top: 50px;
+      font-size: 12px;
+      color: #777;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>JSON Schema Diagram</h1>
+  <p class="subtitle">Figure 10. JSON Schema Diagram of SkillBridge.<br/>Shows flexible structured address data for User and Company entities.</p>
+
+  <div class="diagram-container" id="container">
+    <svg class="lines" id="svg-lines"></svg>
+
+    <!-- USER.ADDRESS -->
+    <div class="schema-block">
+      <div class="level-1">
+        <div class="node root" id="u-root">
+          <div class="node-left">{...}</div>
+          <div class="node-right">
+            <div class="node-name">User.address</div>
+            <div class="node-type">object</div>
+          </div>
+        </div>
+      </div>
+      <div class="level-2">
+        <div class="node" id="u-stayingAt">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">stayingAt</div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="u-travelWilling">
+          <div class="node-left">{bool}</div>
+          <div class="node-right">
+            <div class="node-name">travelWilling</div>
+            <div class="node-type">boolean</div>
+          </div>
+        </div>
+        <div class="node" id="u-province">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">province<span class="required-star">*</span></div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="u-city">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">city<span class="required-star">*</span></div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="u-barangay">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">barangay</div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="u-pinLat">
+          <div class="node-left">{123}</div>
+          <div class="node-right">
+            <div class="node-name">pinLat</div>
+            <div class="node-type">number</div>
+          </div>
+        </div>
+        <div class="node" id="u-pinLng">
+          <div class="node-left">{123}</div>
+          <div class="node-right">
+            <div class="node-name">pinLng</div>
+            <div class="node-type">number</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPANY.ADDRESS -->
+    <div class="schema-block">
+      <div class="level-1">
+        <div class="node root" id="c-root">
+          <div class="node-left">{...}</div>
+          <div class="node-right">
+            <div class="node-name">Company.address</div>
+            <div class="node-type">object</div>
+          </div>
+        </div>
+      </div>
+      <div class="level-2">
+        <div class="node" id="c-province">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">province<span class="required-star">*</span></div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="c-city">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">city<span class="required-star">*</span></div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+        <div class="node" id="c-barangay">
+          <div class="node-left">{vchar}</div>
+          <div class="node-right">
+            <div class="node-name">barangay</div>
+            <div class="node-type">string</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="required-star">*</span> Required Field</div>
+    <div class="legend-item"><strong>{vchar}</strong> String</div>
+    <div class="legend-item"><strong>{123}</strong> Number</div>
+    <div class="legend-item"><strong>{bool}</strong> Boolean</div>
+    <div class="legend-item"><strong>{...}</strong> Object</div>
+  </div>
+
+  <script>
+    function drawLines() {
+      const svg = document.getElementById('svg-lines');
+      const container = document.getElementById('container');
+      svg.innerHTML = '';
+      
+      const containerRect = container.getBoundingClientRect();
+      
+      function connect(parentId, childIds) {
+        const parent = document.getElementById(parentId);
+        const pr = parent.getBoundingClientRect();
+        
+        // parent right center relative to container
+        const px = pr.right - containerRect.left;
+        const py = pr.top + pr.height / 2 - containerRect.top;
+        
+        // Little minus box center
+        const mx = px + 18;
+        const my = py;
+        
+        // Draw line from parent to minus box
+        drawLine(px, py, mx - 6, my);
+        
+        // Draw the minus box
+        drawBox(mx, my);
+        
+        // Calculate vertical line span
+        let minY = Infinity, maxY = -Infinity;
+        const childCenters = childIds.map(id => {
+          const child = document.getElementById(id);
+          const cr = child.getBoundingClientRect();
+          const cx = cr.left - containerRect.left;
+          const cy = cr.top + cr.height / 2 - containerRect.top;
+          minY = Math.min(minY, cy);
+          maxY = Math.max(maxY, cy);
+          return { cx, cy };
+        });
+        
+        // Vertical line x position
+        const vx = mx + 20;
+        
+        // Line from minus box to vertical line
+        drawLine(mx + 6, my, vx, my);
+        
+        if (childCenters.length > 1) {
+           // Vertical line
+           drawLine(vx, minY, vx, maxY);
+        }
+        
+        // Lines from vertical line to children
+        childCenters.forEach(c => {
+           drawLine(vx, c.cy, c.cx, c.cy);
+        });
+      }
+      
+      function drawLine(x1, y1, x2, y2) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke', '#a0a0a0');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+      }
+
+      function drawBox(x, y) {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x - 6);
+        rect.setAttribute('y', y - 6);
+        rect.setAttribute('width', 12);
+        rect.setAttribute('height', 12);
+        rect.setAttribute('fill', '#ffffff');
+        rect.setAttribute('stroke', '#a0a0a0');
+        rect.setAttribute('stroke-width', '1');
+        svg.appendChild(rect);
+        
+        const minus = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        minus.setAttribute('x1', x - 3);
+        minus.setAttribute('y1', y);
+        minus.setAttribute('x2', x + 3);
+        minus.setAttribute('y2', y);
+        minus.setAttribute('stroke', '#a0a0a0');
+        minus.setAttribute('stroke-width', '1');
+        svg.appendChild(minus);
+      }
+
+      connect('u-root', ['u-stayingAt', 'u-travelWilling', 'u-province', 'u-city', 'u-barangay', 'u-pinLat', 'u-pinLng']);
+      connect('c-root', ['c-province', 'c-city', 'c-barangay']);
+    }
+
+    window.addEventListener('resize', drawLines);
+    window.addEventListener('load', drawLines);
+    // Add a slight delay to ensure fonts/layout are fully rendered
+    setTimeout(drawLines, 100);
+  </script>
+</body>
+</html>

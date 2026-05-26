@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillBridge – Data Dictionary</title>
+  <style>
+    /* ── Google Font ── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 48px 64px;
+      line-height: 1.55;
+    }
+
+    /* ── Cover / Header ── */
+    .cover {
+      text-align: center;
+      margin-bottom: 52px;
+      padding-bottom: 32px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .cover .sys-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .cover h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .cover .subtitle {
+      font-size: 15px;
+      color: #475569;
+      margin-bottom: 20px;
+    }
+    .cover .meta {
+      display: inline-flex;
+      gap: 32px;
+      font-size: 12px;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 10px 24px;
+      border-radius: 8px;
+    }
+    .cover .meta span strong { color: #1e293b; }
+
+    /* ── Intro prose ── */
+    .intro {
+      margin-bottom: 44px;
+      max-width: 860px;
+    }
+    .intro p {
+      font-size: 13px;
+      color: #475569;
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+
+    /* ── Section heading ── */
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 40px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #2563eb;
+    }
+
+    /* ── Table caption / label ── */
+    .tbl-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 28px 0 6px;
+    }
+    .tbl-label span { font-weight: 400; color: #475569; }
+
+    /* ── Overview summary table ── */
+    .overview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .overview-table thead tr {
+      background: #2563eb;
+      color: #fff;
+    }
+    .overview-table thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+    .overview-table tbody tr:nth-child(even)  { background: #f1f5f9; }
+    .overview-table tbody tr:nth-child(odd)   { background: #fff; }
+    .overview-table tbody tr:hover            { background: #dbeafe; }
+    .overview-table tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .overview-table tbody td:first-child { font-weight: 600; color: #2563eb; }
+    .group-tag {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .g-user  { background: #dbeafe; color: #1d4ed8; }
+    .g-assessment { background: #dcfce7; color: #166534; }
+    .g-response { background: #fef9c3; color: #854d0e; }
+    .g-placement { background: #fce7f3; color: #9d174d; }
+
+    /* ── Detail tables ── */
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+      font-size: 12.5px;
+    }
+    .detail-table thead tr {
+      background: #2563eb;
+      color: #fff;
+    }
+    .detail-table thead th {
+      padding: 9px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11.5px;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .detail-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .detail-table tbody tr:nth-child(odd)  { background: #fff; }
+    .detail-table tbody tr:hover           { background: #eff6ff; }
+    .detail-table tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    /* field name col */
+    .detail-table tbody td:first-child {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    /* data type col */
+    .detail-table tbody td:nth-child(2) {
+      font-family: 'Courier New', monospace;
+      font-size: 11.5px;
+      color: #7c3aed;
+    }
+    /* constraint badges */
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .b-pk   { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+    .b-fk   { background: #ede9fe; color: #5b21b6; border: 1px solid #7c3aed; }
+    .b-uk   { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+    .b-nn   { background: #f1f5f9; color: #475569; border: 1px solid #94a3b8; }
+    .b-null { background: #fff1f2; color: #9f1239; border: 1px solid #fb7185; }
+
+    /* ── Page break hint for print ── */
+    .page-break { page-break-before: always; margin-top: 40px; }
+
+    /* ── Footer note ── */
+    .footer-note {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════ COVER ════════════════════════════ -->
+<div class="cover">
+  <div class="sys-label">Capstone Project Documentation</div>
+  <h1>Data Dictionary</h1>
+  <div class="subtitle">SkillBridge — Web-Based OJT Placement Decision Support System</div>
+  <div class="meta">
+    <span><strong>Database:</strong> PostgreSQL (Supabase)</span>
+    <span><strong>Tables:</strong> 14</span>
+    <span><strong>Schema Groups:</strong> 4</span>
+    <span><strong>Version:</strong> 1.0</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════ INTRO ════════════════════════════ -->
+<div class="intro">
+  <p>
+    The Data Dictionary presents a detailed description of all data elements used in the proposed
+    <strong>SkillBridge Web-Based OJT Placement Decision Support System</strong>, serving as a reference for
+    the system's database structure and data organization. It defines the tables, fields, data types,
+    constraints, and descriptions to ensure consistency, accuracy, and proper understanding of how
+    data is stored and managed within the system.
+  </p>
+  <p>
+    This section is essential in guiding the implementation of the database and supporting system
+    development, maintenance, and future enhancements.
+  </p>
+  <p>
+    The system database is organized into <strong>four (4) logical schema groups</strong>: User Management,
+    Assessment Engine, Response &amp; Scoring, and Placement Matching — comprising a total of
+    <strong>14 application tables</strong> stored in a PostgreSQL instance hosted on Supabase.
+  </p>
+  <p>
+    <strong>Table 1</strong> provides an overview of all database tables utilized in the system.
+    Subsequent tables (Table 1.1 through Table 1.14) present the detailed structure of each table,
+    including field names, data types, field lengths, constraints, and descriptions.
+  </p>
+</div>
+
+<!-- ════════════════════════════ TABLE 1 – OVERVIEW ════════════════════════════ -->
+<div class="section-title">Database Tables Overview</div>
+
+<div class="tbl-label">Table 1. &nbsp;<span>Database Tables of the SkillBridge System</span></div>
+<table class="overview-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Table Name</th>
+      <th>Schema Group</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>User</td>
+      <td><span class="group-tag g-user">User Management</span></td>
+      <td>Stores account information, roles, and profile data for all system users (students, instructors, and administrators).</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Batch</td>
+      <td><span class="group-tag g-user">User Management</span></td>
+      <td>Represents instructor-managed student groups used to organize and assign assessments.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>BatchEnrollment</td>
+      <td><span class="group-tag g-user">User Management</span></td>
+      <td>Junction table linking students to their enrolled batches; enforces unique enrollment per student per batch.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>SkillCategory</td>
+      <td><span class="group-tag g-assessment">Assessment Engine</span></td>
+      <td>Defines skill taxonomy entries (e.g., Programming, Communication) used to categorize questions and score students.</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Assessment</td>
+      <td><span class="group-tag g-assessment">Assessment Engine</span></td>
+      <td>Stores assessments created by instructors, including title, duration, and batch assignment.</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Question</td>
+      <td><span class="group-tag g-assessment">Assessment Engine</span></td>
+      <td>Contains individual test questions belonging to an assessment, with type and skill category tags.</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>AnswerChoice</td>
+      <td><span class="group-tag g-assessment">Assessment Engine</span></td>
+      <td>Holds answer options for MCQ and True/False questions, including the correct-answer flag.</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>StudentResponse</td>
+      <td><span class="group-tag g-response">Response &amp; Scoring</span></td>
+      <td>Tracks a student's overall submission record for an assessment, including start/submit timestamps.</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>ResponseAnswer</td>
+      <td><span class="group-tag g-response">Response &amp; Scoring</span></td>
+      <td>Stores each individual answer submitted by a student for a specific question within a response session.</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>SkillScore</td>
+      <td><span class="group-tag g-response">Response &amp; Scoring</span></td>
+      <td>Records the computed raw score, max score, and percentage per skill category per student per assessment.</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Company</td>
+      <td><span class="group-tag g-placement">Placement Matching</span></td>
+      <td>Stores company profiles including name, geographic address, and GPS coordinates for OJT host matching.</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Position</td>
+      <td><span class="group-tag g-placement">Placement Matching</span></td>
+      <td>Represents specific job positions offered by companies, along with the number of available slots.</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>PositionRequirement</td>
+      <td><span class="group-tag g-placement">Placement Matching</span></td>
+      <td>Defines the minimum skill percentage required per skill category for each position.</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Recommendation</td>
+      <td><span class="group-tag g-placement">Placement Matching</span></td>
+      <td>Stores AI-generated cosine similarity match scores between a student's skill profile and a company position.</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ════════════════════════════ DETAIL TABLES ════════════════════════════ -->
+<div class="section-title page-break">Detailed Table Structures</div>
+
+<!-- ── 1.1 User ── -->
+<div class="tbl-label">Table 1.1 &nbsp;<span>User</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th>
+      <th>Data Type</th>
+      <th>Field Length</th>
+      <th>Constraint</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique user identifier; auto-generated serial.</td></tr>
+    <tr><td>email</td><td>VARCHAR</td><td>254</td><td><span class="badge b-uk">Unique</span> <span class="badge b-nn">Not Null</span></td><td>User's email address; used as login credential. Must be unique across all accounts.</td></tr>
+    <tr><td>password</td><td>VARCHAR</td><td>128</td><td><span class="badge b-nn">Not Null</span></td><td>Hashed password stored using Django's PBKDF2 algorithm.</td></tr>
+    <tr><td>name</td><td>VARCHAR</td><td>150</td><td><span class="badge b-nn">Not Null</span></td><td>Full name of the user.</td></tr>
+    <tr><td>role</td><td>VARCHAR</td><td>20</td><td><span class="badge b-nn">Not Null</span></td><td>Role designation: <em>student</em>, <em>instructor</em>, or <em>admin</em>. Controls access level and feature visibility.</td></tr>
+    <tr><td>school_id</td><td>VARCHAR</td><td>30</td><td><span class="badge b-null">Nullable</span></td><td>Institutional ID number assigned to students or faculty.</td></tr>
+    <tr><td>course</td><td>VARCHAR</td><td>100</td><td><span class="badge b-null">Nullable</span></td><td>Degree program or course of the student (e.g., BSIT, BSCS).</td></tr>
+    <tr><td>phone</td><td>VARCHAR</td><td>20</td><td><span class="badge b-null">Nullable</span></td><td>Contact phone number of the user.</td></tr>
+    <tr><td>address</td><td>JSONB</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Structured address in JSON format containing home/boarding location (province, city, barangay), travel preference, and GPS pin coordinates.</td></tr>
+    <tr><td>photo_url</td><td>TEXT</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>URL pointing to the user's profile photo stored in cloud storage.</td></tr>
+    <tr><td>is_approved</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Indicates whether an admin has approved the account. Defaults to FALSE.</td></tr>
+    <tr><td>is_active</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Indicates if the account is active. Inactive accounts cannot log in.</td></tr>
+    <tr><td>is_staff</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Grants access to the Django admin interface when TRUE.</td></tr>
+    <tr><td>is_superuser</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Grants full unrestricted system permissions when TRUE.</td></tr>
+    <tr><td>last_login</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Timestamp of the user's most recent login session.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the user account was created; auto-set on insert.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.2 Batch ── -->
+<div class="tbl-label">Table 1.2 &nbsp;<span>Batch</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique batch identifier; auto-generated serial.</td></tr>
+    <tr><td>name</td><td>VARCHAR</td><td>150</td><td><span class="badge b-nn">Not Null</span></td><td>Descriptive name of the batch (e.g., "BSIT 4A – 2nd Semester 2025").</td></tr>
+    <tr><td>status</td><td>VARCHAR</td><td>10</td><td><span class="badge b-nn">Not Null</span></td><td>Current batch lifecycle status: <em>active</em> or <em>archived</em>.</td></tr>
+    <tr><td>archived_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Timestamp recording when the batch was archived; NULL if still active.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the batch was created.</td></tr>
+    <tr><td>instructor_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the instructor who owns and manages this batch. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.3 BatchEnrollment ── -->
+<div class="tbl-label">Table 1.3 &nbsp;<span>BatchEnrollment</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique enrollment record identifier; auto-generated serial.</td></tr>
+    <tr><td>enrolled_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp recording when the student was enrolled into the batch.</td></tr>
+    <tr><td>batch_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Batch.id</em>. Identifies the batch the student belongs to. ON DELETE CASCADE.</td></tr>
+    <tr><td>student_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the enrolled student. ON DELETE CASCADE. Unique together with batch_id.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.4 SkillCategory ── -->
+<div class="tbl-label">Table 1.4 &nbsp;<span>SkillCategory</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique skill category identifier; auto-generated serial.</td></tr>
+    <tr><td>name</td><td>VARCHAR</td><td>100</td><td><span class="badge b-nn">Not Null</span></td><td>Name of the skill category (e.g., "Web Development", "Communication Skills").</td></tr>
+    <tr><td>description</td><td>TEXT</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Extended description of the skill category and its scope.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the skill category was created.</td></tr>
+    <tr><td>created_by_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-null">Nullable</span></td><td>References <em>User.id</em>. Records the admin or instructor who created the category. ON DELETE SET NULL.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.5 Assessment ── -->
+<div class="tbl-label">Table 1.5 &nbsp;<span>Assessment</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique assessment identifier; auto-generated serial.</td></tr>
+    <tr><td>title</td><td>VARCHAR</td><td>200</td><td><span class="badge b-nn">Not Null</span></td><td>Descriptive title of the assessment (e.g., "Midterm Skills Exam – Batch A").</td></tr>
+    <tr><td>duration_minutes</td><td>INTEGER</td><td>4</td><td><span class="badge b-nn">Not Null</span></td><td>Time limit for the assessment in minutes. Enforced on the frontend for anti-cheating.</td></tr>
+    <tr><td>is_active</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Indicates whether the assessment is currently open for student submissions.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the assessment was created.</td></tr>
+    <tr><td>batch_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-null">Nullable</span></td><td>References <em>Batch.id</em>. Restricts assessment access to a specific batch. ON DELETE SET NULL.</td></tr>
+    <tr><td>created_by_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the instructor who created the assessment. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.6 Question ── -->
+<div class="tbl-label">Table 1.6 &nbsp;<span>Question</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique question identifier; auto-generated serial.</td></tr>
+    <tr><td>question_text</td><td>TEXT</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>The full text content of the question as displayed to the student.</td></tr>
+    <tr><td>question_type</td><td>VARCHAR</td><td>20</td><td><span class="badge b-nn">Not Null</span></td><td>Format of the question: <em>mcq</em> (multiple choice), <em>truefalse</em>, or <em>identification</em> (short answer).</td></tr>
+    <tr><td>question_order</td><td>INTEGER</td><td>4</td><td><span class="badge b-nn">Not Null</span></td><td>Numeric ordering value that determines the display sequence of questions within an assessment.</td></tr>
+    <tr><td>assessment_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Assessment.id</em>. Links the question to its parent assessment. ON DELETE CASCADE.</td></tr>
+    <tr><td>skill_category_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-null">Nullable</span></td><td>References <em>SkillCategory.id</em>. Tags the question to a skill domain for scoring breakdown. ON DELETE SET NULL.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.7 AnswerChoice ── -->
+<div class="tbl-label">Table 1.7 &nbsp;<span>AnswerChoice</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique answer choice identifier; auto-generated serial.</td></tr>
+    <tr><td>choice_text</td><td>TEXT</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>The text content of the answer option presented to the student.</td></tr>
+    <tr><td>is_correct</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Flag indicating whether this choice is the correct answer. Used for auto-grading. Defaults to FALSE.</td></tr>
+    <tr><td>question_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Question.id</em>. Links the choice to its parent question. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.8 StudentResponse ── -->
+<div class="tbl-label">Table 1.8 &nbsp;<span>StudentResponse</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique student response session identifier; auto-generated serial.</td></tr>
+    <tr><td>started_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Timestamp recorded when the student begins the assessment. Used for timer-based anti-cheat enforcement.</td></tr>
+    <tr><td>submitted_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Timestamp of when the student submitted the assessment. A NULL value indicates the session is still in progress.</td></tr>
+    <tr><td>retake_allowed</td><td>BOOLEAN</td><td>1</td><td><span class="badge b-nn">Not Null</span></td><td>Flag set by the instructor to permit the student to retake the assessment. Defaults to FALSE.</td></tr>
+    <tr><td>student_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the student who took the assessment. ON DELETE CASCADE.</td></tr>
+    <tr><td>assessment_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Assessment.id</em>. Identifies the assessment that was taken. Unique together with student_id. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.9 ResponseAnswer ── -->
+<div class="tbl-label">Table 1.9 &nbsp;<span>ResponseAnswer</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique response answer identifier; auto-generated serial.</td></tr>
+    <tr><td>text_answer</td><td>TEXT</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Free-text answer provided by the student for identification-type questions. NULL for MCQ and True/False.</td></tr>
+    <tr><td>response_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>StudentResponse.id</em>. Links this answer to its parent response session. ON DELETE CASCADE.</td></tr>
+    <tr><td>question_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Question.id</em>. Identifies the question being answered. ON DELETE CASCADE.</td></tr>
+    <tr><td>selected_choice_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-null">Nullable</span></td><td>References <em>AnswerChoice.id</em>. Records the choice selected by the student for MCQ/True-False. NULL for identification questions. ON DELETE SET NULL.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.10 SkillScore ── -->
+<div class="tbl-label">Table 1.10 &nbsp;<span>SkillScore</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique skill score record identifier; auto-generated serial.</td></tr>
+    <tr><td>raw_score</td><td>INTEGER</td><td>4</td><td><span class="badge b-nn">Not Null</span></td><td>Number of correct answers the student achieved within the given skill category.</td></tr>
+    <tr><td>max_score</td><td>INTEGER</td><td>4</td><td><span class="badge b-nn">Not Null</span></td><td>Total number of questions in this skill category for the given assessment (maximum possible score).</td></tr>
+    <tr><td>percentage</td><td>FLOAT8</td><td>8</td><td><span class="badge b-nn">Not Null</span></td><td>Computed proficiency percentage: (raw_score / max_score) × 100. Used as the student's skill vector component for cosine similarity matching.</td></tr>
+    <tr><td>student_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the student whose score is recorded. ON DELETE CASCADE.</td></tr>
+    <tr><td>assessment_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Assessment.id</em>. Identifies the assessment from which this score was derived. ON DELETE CASCADE.</td></tr>
+    <tr><td>skill_category_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>SkillCategory.id</em>. Identifies the skill category being measured. Unique together with student_id and assessment_id. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.11 Company ── -->
+<div class="tbl-label">Table 1.11 &nbsp;<span>Company</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique company identifier; auto-generated serial.</td></tr>
+    <tr><td>name</td><td>VARCHAR</td><td>200</td><td><span class="badge b-nn">Not Null</span></td><td>Official name of the partner company or OJT host organization.</td></tr>
+    <tr><td>address</td><td>JSONB</td><td>—</td><td><span class="badge b-null">Nullable</span></td><td>Structured geographic address in JSON format containing province, city/municipality, and barangay fields.</td></tr>
+    <tr><td>location_lat</td><td>FLOAT8</td><td>8</td><td><span class="badge b-null">Nullable</span></td><td>Geographic latitude coordinate of the company. Used alongside location_lng for distance-based filtering in placement recommendations.</td></tr>
+    <tr><td>location_lng</td><td>FLOAT8</td><td>8</td><td><span class="badge b-null">Nullable</span></td><td>Geographic longitude coordinate of the company.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the company record was added to the system.</td></tr>
+    <tr><td>added_by_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-null">Nullable</span></td><td>References <em>User.id</em>. Identifies the administrator who registered the company. ON DELETE SET NULL.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.12 Position ── -->
+<div class="tbl-label">Table 1.12 &nbsp;<span>Position</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique position identifier; auto-generated serial.</td></tr>
+    <tr><td>title</td><td>VARCHAR</td><td>150</td><td><span class="badge b-nn">Not Null</span></td><td>Job title or designation of the OJT position (e.g., "Junior Web Developer", "IT Support Intern").</td></tr>
+    <tr><td>slots_available</td><td>INTEGER</td><td>4</td><td><span class="badge b-nn">Not Null</span></td><td>Number of OJT slots the company is currently offering for this position.</td></tr>
+    <tr><td>company_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Company.id</em>. Links the position to its hosting company. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.13 PositionRequirement ── -->
+<div class="tbl-label">Table 1.13 &nbsp;<span>PositionRequirement</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique position requirement record identifier; auto-generated serial.</td></tr>
+    <tr><td>required_percentage</td><td>FLOAT8</td><td>8</td><td><span class="badge b-nn">Not Null</span></td><td>Minimum proficiency percentage (0.00–100.00) required in the specified skill category for a student to qualify for this position. Forms the company's requirement vector used in cosine similarity computation.</td></tr>
+    <tr><td>position_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Position.id</em>. Identifies the position this requirement applies to. Unique together with skill_category_id. ON DELETE CASCADE.</td></tr>
+    <tr><td>skill_category_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>SkillCategory.id</em>. Specifies the skill domain being required. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ── 1.14 Recommendation ── -->
+<div class="tbl-label">Table 1.14 &nbsp;<span>Recommendation</span></div>
+<table class="detail-table">
+  <thead>
+    <tr>
+      <th>Field Name</th><th>Data Type</th><th>Field Length</th><th>Constraint</th><th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>id</td><td>BIGINT</td><td>8</td><td><span class="badge b-pk">Primary Key</span></td><td>Unique recommendation record identifier; auto-generated serial.</td></tr>
+    <tr><td>match_score</td><td>FLOAT8</td><td>8</td><td><span class="badge b-nn">Not Null</span></td><td>AI-generated cosine similarity score (0.00–100.00) representing the compatibility between a student's skill profile vector and a company position's requirement vector. Higher values indicate a stronger match.</td></tr>
+    <tr><td>generated_at</td><td>TIMESTAMPTZ</td><td>—</td><td><span class="badge b-nn">Not Null</span></td><td>Timestamp of when the recommendation was computed and stored by the system.</td></tr>
+    <tr><td>student_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>User.id</em>. Identifies the student for whom the recommendation was generated. Unique together with position_id. ON DELETE CASCADE.</td></tr>
+    <tr><td>position_id</td><td>BIGINT</td><td>8</td><td><span class="badge b-fk">Foreign Key</span> <span class="badge b-nn">Not Null</span></td><td>References <em>Position.id</em>. Identifies the company position the student is being matched against. ON DELETE CASCADE.</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════ FOOTER ════════════════════════════ -->
+<div class="footer-note">
+  SkillBridge — Data Dictionary v1.0 &nbsp;|&nbsp; PostgreSQL on Supabase &nbsp;|&nbsp; 14 Tables across 4 Schema Groups
+</div>
+
+</body>
+</html>

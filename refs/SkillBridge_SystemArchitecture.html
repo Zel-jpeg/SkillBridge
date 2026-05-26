@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SkillBridge – System Architecture Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --surface:   #161b27;
+      --border:    #2a3147;
+      --accent:    #3b82f6;
+      --accent2:   #8b5cf6;
+      --accent3:   #10b981;
+      --accent4:   #f59e0b;
+      --accent5:   #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --white:     #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 60px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 14px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.35);
+      border-radius: 999px;
+      color: #93c5fd;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+    }
+
+    /* ── Diagram wrapper ────────────────────────────────── */
+    .diagram {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ── Layer ──────────────────────────────────────────── */
+    .layer {
+      display: flex;
+      align-items: stretch;
+      position: relative;
+    }
+
+    .layer-label {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 12px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      background: rgba(255,255,255,0.02);
+      border-right: 1px solid var(--border);
+    }
+
+    .layer-content {
+      flex: 1;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .layer:last-child .layer-content { border-bottom: none; }
+
+    /* ── Section title inside layer ─────────────────────── */
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Cards ──────────────────────────────────────────── */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .card {
+      border-radius: 10px;
+      padding: 14px 18px;
+      border: 1px solid;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 130px;
+      flex: 1;
+      transition: transform 0.2s;
+    }
+    .card:hover { transform: translateY(-2px); }
+
+    .card-icon { font-size: 1.4rem; line-height: 1; }
+    .card-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .card-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .card-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+      width: fit-content;
+    }
+
+    /* Color variants */
+    .blue  { background: rgba(59,130,246,0.08);  border-color: rgba(59,130,246,0.3); }
+    .purple{ background: rgba(139,92,246,0.08);  border-color: rgba(139,92,246,0.3); }
+    .green { background: rgba(16,185,129,0.08);  border-color: rgba(16,185,129,0.3); }
+    .amber { background: rgba(245,158,11,0.08);  border-color: rgba(245,158,11,0.3); }
+    .red   { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.3);  }
+    .cyan  { background: rgba(6,182,212,0.08);   border-color: rgba(6,182,212,0.3);  }
+    .indigo{ background: rgba(99,102,241,0.08);  border-color: rgba(99,102,241,0.3); }
+    .slate { background: rgba(100,116,139,0.08); border-color: rgba(100,116,139,0.3);}
+    .teal  { background: rgba(20,184,166,0.08);  border-color: rgba(20,184,166,0.3); }
+    .rose  { background: rgba(244,63,94,0.08);   border-color: rgba(244,63,94,0.3);  }
+    .orange{ background: rgba(249,115,22,0.08);  border-color: rgba(249,115,22,0.3); }
+
+    .tag-blue  { background: rgba(59,130,246,0.2);  color: #93c5fd; }
+    .tag-purple{ background: rgba(139,92,246,0.2);  color: #c4b5fd; }
+    .tag-green { background: rgba(16,185,129,0.2);  color: #6ee7b7; }
+    .tag-amber { background: rgba(245,158,11,0.2);  color: #fcd34d; }
+    .tag-red   { background: rgba(239,68,68,0.2);   color: #fca5a5; }
+    .tag-cyan  { background: rgba(6,182,212,0.2);   color: #67e8f9; }
+    .tag-indigo{ background: rgba(99,102,241,0.2);  color: #a5b4fc; }
+    .tag-slate { background: rgba(100,116,139,0.2); color: #cbd5e1; }
+    .tag-teal  { background: rgba(20,184,166,0.2);  color: #5eead4; }
+    .tag-rose  { background: rgba(244,63,94,0.2);   color: #fda4af; }
+    .tag-orange{ background: rgba(249,115,22,0.2);  color: #fdba74; }
+
+    /* ── Connector arrows ───────────────────────────────── */
+    .connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 0;
+      gap: 32px;
+    }
+    .arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+    .arrow-line {
+      width: 2px;
+      height: 22px;
+      background: linear-gradient(to bottom, transparent, var(--border), transparent);
+      position: relative;
+    }
+    .arrow-line::after {
+      content: '▼';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      color: var(--border);
+    }
+    .arrow-both {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .arrow-both span { line-height: 1; }
+
+    /* ── Horizontal flow (inside backend) ──────────────── */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .flow-arrow {
+      font-size: 1.1rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* ── NLP detail box ─────────────────────────────────── */
+    .nlp-box {
+      background: rgba(139,92,246,0.06);
+      border: 1px dashed rgba(139,92,246,0.4);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 12px;
+    }
+    .nlp-box .nlp-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #c4b5fd;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .nlp-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .nlp-step {
+      background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.72rem;
+      color: #e0d9ff;
+      font-weight: 500;
+    }
+    .nlp-arrow { color: #7c3aed; font-size: 1rem; }
+
+    /* ── DB table list ──────────────────────────────────── */
+    .db-tables {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .db-table {
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 5px;
+      padding: 3px 9px;
+      font-size: 0.68rem;
+      font-family: 'Fira Code', monospace;
+      color: #6ee7b7;
+    }
+
+    /* ── Legend ─────────────────────────────────────────── */
+    .legend {
+      max-width: 1100px;
+      margin: 32px auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .legend-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      width: 100%;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Print button ───────────────────────────────────── */
+    .print-btn {
+      display: block;
+      margin: 28px auto 0;
+      padding: 10px 28px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s;
+    }
+    .print-btn:hover { opacity: 0.85; }
+
+    /* ── Outer border for the whole diagram ─────────────── */
+    .diagram-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    /* ── Layer color accents ────────────────────────────── */
+    .layer-users    .layer-label { color: #93c5fd; }
+    .layer-frontend .layer-label { color: #c4b5fd; }
+    .layer-backend  .layer-label { color: #6ee7b7; }
+    .layer-nlp      .layer-label { color: #a78bfa; }
+    .layer-db       .layer-label { color: #34d399; }
+    .layer-ext      .layer-label { color: #fcd34d; }
+    .layer-hardware .layer-label { color: #fca5a5; }
+
+    /* responsive */
+    @media(max-width: 700px) {
+      .cards { flex-direction: column; }
+      .layer-label { min-width: 28px; font-size: 0.6rem; }
+    }
+
+    @media print {
+      body { background: white; color: black; padding: 10px; }
+      .diagram-wrap { border-color: #ccc; background: white; }
+      .print-btn { display: none; }
+      .card { border-color: #ccc !important; background: #f9f9f9 !important; }
+      .layer-content { border-color: #ddd; }
+      .legend { border-color: #ccc; background: #f9f9f9; }
+      .nlp-box { border-color: #ccc; background: #f5f0ff; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<div class="header">
+  <h1>SkillBridge — System Architecture</h1>
+  <p>OJT Placement Decision Support System · Davao del Norte State College</p>
+  <span class="badge">Bachelor of Science in Information Technology · Capstone 2026</span>
+</div>
+
+<!-- ═══════════════════════════ DIAGRAM ══════════════════════════ -->
+<div class="diagram-wrap">
+  <div class="diagram">
+
+
+    <!-- ───── LAYER 0 · HARDWARE / INFRASTRUCTURE ───── -->
+    <div class="layer layer-hardware">
+      <div class="layer-label">Hardware</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#fca5a5">🖥️ Hardware & Infrastructure Components</div>
+
+        <div class="cards">
+
+          <div class="card slate">
+            <div class="card-icon">💻</div>
+            <div class="card-title">Client Devices</div>
+            <div class="card-sub">
+              Laptops · Desktop PCs · Smartphones · Tablets
+            </div>
+            <div class="card-tag tag-slate">Student / Instructor / Admin Access</div>
+          </div>
+
+          <div class="card cyan">
+            <div class="card-icon">☁️</div>
+            <div class="card-title">Cloud Infrastructure</div>
+            <div class="card-sub">
+              Railway Cloud Runtime · Vercel Edge CDN · Supabase Managed Servers
+            </div>
+            <div class="card-tag tag-cyan">Application Hosting</div>
+          </div>
+
+          <div class="card green">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">Network Infrastructure</div>
+            <div class="card-sub">
+              Internet · HTTPS Communication · REST API Requests
+            </div>
+            <div class="card-tag tag-green">Secure Data Transmission</div>
+          </div>
+
+          <div class="card teal">
+            <div class="card-icon">🗄️</div>
+            <div class="card-title">Database Server</div>
+            <div class="card-sub">
+              PostgreSQL Database Instance hosted through Supabase
+            </div>
+            <div class="card-tag tag-teal">Persistent Data Storage</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:16px; padding:6px 24px; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+        <div style="font-weight:700; color:#fca5a5;">Internet · HTTPS · Browser Access</div>
+        <div style="font-size:1.3rem; color:#334155;">⇕</div>
+        <div>Secure Client Communication</div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 1 · USERS ───── -->
+    <div class="layer layer-users">
+      <div class="layer-label">Users</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#93c5fd">👤 User Roles</div>
+        <div class="cards">
+
+          <div class="card blue">
+            <div class="card-icon">🎓</div>
+            <div class="card-title">Student</div>
+            <div class="card-sub">Google OAuth<br/>(@dnsc.edu.ph only)</div>
+            <div class="card-tag tag-blue">Take Assessment · View Results</div>
+          </div>
+
+          <div class="card purple">
+            <div class="card-icon">👩‍🏫</div>
+            <div class="card-title">Instructor / OJT Coordinator</div>
+            <div class="card-sub">Email + Password<br/>(Admin-created, approval required)</div>
+            <div class="card-tag tag-purple">Upload Questionnaires · Manage Batches</div>
+          </div>
+
+          <div class="card red">
+            <div class="card-icon">🛡️</div>
+            <div class="card-title">Administrator</div>
+            <div class="card-sub">Email + Password<br/>(Seeded via Django shell)</div>
+            <div class="card-tag tag-red">Manage Companies · Approve Instructors</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; padding:4px 0; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="display:flex; gap:60px; align-items:center;">
+        <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+          <div style="color:#34d399; font-weight:700;">HTTPS · REST API</div>
+          <div style="font-size:1.3rem; color:#334155;">⇕</div>
+          <div>Axios + JWT Bearer</div>
+        </div>
+        <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+          <div style="color:#34d399; font-weight:700;">HTTPS · REST API</div>
+          <div style="font-size:1.3rem; color:#334155;">⇕</div>
+          <div>Axios + JWT Bearer</div>
+        </div>
+        <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+          <div style="color:#34d399; font-weight:700;">HTTPS · REST API</div>
+          <div style="font-size:1.3rem; color:#334155;">⇕</div>
+          <div>Axios + JWT Bearer</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 2 · FRONTEND ───── -->
+    <div class="layer layer-frontend">
+      <div class="layer-label">Frontend</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#c4b5fd">🖥️ React 19 + Vite · Deployed on Vercel</div>
+        <div class="cards">
+
+          <div class="card blue">
+            <div class="card-icon">🔐</div>
+            <div class="card-title">Auth Pages</div>
+            <div class="card-sub">LoginPage<br/>AdminLogin</div>
+            <div class="card-tag tag-blue">Google OAuth · JWT Store</div>
+          </div>
+
+          <div class="card blue">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Student Pages</div>
+            <div class="card-sub">Dashboard · Assessment<br/>Results · Profile · Setup</div>
+            <div class="card-tag tag-blue">5 Pages · Wired</div>
+          </div>
+
+          <div class="card purple">
+            <div class="card-icon">📋</div>
+            <div class="card-title">Instructor Pages</div>
+            <div class="card-sub">Dashboard · Upload<br/>Enrolled Students</div>
+            <div class="card-tag tag-purple">3 Pages · Wired</div>
+          </div>
+
+          <div class="card red">
+            <div class="card-icon">⚙️</div>
+            <div class="card-title">Admin Pages</div>
+            <div class="card-sub">Dashboard · Companies<br/>Users · Notifications</div>
+            <div class="card-tag tag-red">4 Pages · Wired</div>
+          </div>
+
+          <div class="card slate">
+            <div class="card-icon">🧩</div>
+            <div class="card-title">Shared Components</div>
+            <div class="card-sub">NavBar · StatCard<br/>SearchBar · Pagination</div>
+            <div class="card-tag tag-slate">Reusable UI</div>
+          </div>
+
+        </div>
+
+        <!-- Frontend internals row -->
+        <div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <span style="font-size:0.68rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px;">Client-side:</span>
+          <span class="card-tag tag-purple" style="font-size:0.68rem;">React Router DOM v7</span>
+          <span class="card-tag tag-blue" style="font-size:0.68rem;">Tailwind CSS v4</span>
+          <span class="card-tag tag-teal" style="font-size:0.68rem;">Axios + JWT Interceptor</span>
+          <span class="card-tag tag-amber" style="font-size:0.68rem;">useApi Hook</span>
+          <span class="card-tag tag-green" style="font-size:0.68rem;">SheetJS (Excel Parse)</span>
+          <span class="card-tag tag-cyan" style="font-size:0.68rem;">Leaflet Map (CDN)</span>
+          <span class="card-tag tag-slate" style="font-size:0.68rem;">localStorage (JWT + Cache)</span>
+          <span class="card-tag tag-rose" style="font-size:0.68rem;">PrivateRoute Guard</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:16px; padding:6px 24px; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+        <div style="font-weight:700; color:#f59e0b;">HTTPS · REST · CORS</div>
+        <div style="font-size:1.3rem; color:#334155;">⇕</div>
+        <div>JSON · JWT Bearer Token</div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 3 · BACKEND ───── -->
+    <div class="layer layer-backend">
+      <div class="layer-label">Backend</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#6ee7b7">⚙️ Django 6.0.4 + DRF 3.17.1 + Gunicorn · Deployed on Railway.app</div>
+
+        <div class="cards">
+
+          <div class="card teal">
+            <div class="card-icon">🔑</div>
+            <div class="card-title">Auth Module</div>
+            <div class="card-sub">
+              JWT via simplejwt<br/>
+              Google OAuth verify<br/>
+              Custom EmailBackend
+            </div>
+            <div class="card-tag tag-teal">POST /api/auth/*</div>
+          </div>
+
+          <div class="card blue">
+            <div class="card-icon">🎓</div>
+            <div class="card-title">Student API</div>
+            <div class="card-sub">
+              Profile CRUD<br/>
+              Assessment flow<br/>
+              Results & recommendations
+            </div>
+            <div class="card-tag tag-blue">GET/PATCH /api/student*</div>
+          </div>
+
+          <div class="card purple">
+            <div class="card-icon">📝</div>
+            <div class="card-title">Assessment Engine</div>
+            <div class="card-sub">
+              Create questionnaires<br/>
+              Start / submit flow<br/>
+              Auto-grading logic
+            </div>
+            <div class="card-tag tag-purple">POST /api/assessments/*</div>
+          </div>
+
+          <div class="card indigo">
+            <div class="card-icon">👩‍🏫</div>
+            <div class="card-title">Instructor API</div>
+            <div class="card-sub">
+              Batch management<br/>
+              Student enrolment<br/>
+              Recommendation view
+            </div>
+            <div class="card-tag tag-indigo">GET/POST /api/instructor/*</div>
+          </div>
+
+          <div class="card red">
+            <div class="card-icon">🛡️</div>
+            <div class="card-title">Admin API</div>
+            <div class="card-sub">
+              Company / position CRUD<br/>
+              User management<br/>
+              Instructor approval
+            </div>
+            <div class="card-tag tag-red">GET/POST /api/admin/*</div>
+          </div>
+
+        </div>
+
+        <!-- Rate limiting note -->
+        <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <span style="font-size:0.68rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px;">Security:</span>
+          <span class="card-tag tag-amber" style="font-size:0.68rem;">Rate Limiting (60/min anon · 200/min user · 10/min login)</span>
+          <span class="card-tag tag-teal" style="font-size:0.68rem;">JWT (8h access · 7d refresh)</span>
+          <span class="card-tag tag-red" style="font-size:0.68rem;">CORS Whitelisted Origins</span>
+          <span class="card-tag tag-slate" style="font-size:0.68rem;">Role-Based Access Control</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:16px; padding:6px 24px; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+        <div style="font-weight:700; color:#a78bfa;">Internal Call · Python</div>
+        <div style="font-size:1.3rem; color:#334155;">↕</div>
+        <div>scoring.py module</div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 4 · NLP ENGINE ───── -->
+    <div class="layer layer-nlp">
+      <div class="layer-label">NLP Engine</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#a78bfa">🧠 NLP &amp; Matching Engine · api/scoring.py · scikit-learn + NumPy</div>
+
+        <div class="cards">
+
+          <div class="card purple">
+            <div class="card-icon">🏷️</div>
+            <div class="card-title">TF-IDF Category Suggestion</div>
+            <div class="card-sub">Matches question text to skill categories using TF-IDF vectorization</div>
+            <div class="card-tag tag-purple">TfidfVectorizer + cosine_similarity</div>
+          </div>
+
+          <div class="card indigo">
+            <div class="card-icon">✅</div>
+            <div class="card-title">Auto-Scoring Engine</div>
+            <div class="card-sub">MCQ / True-False: is_correct flag<br/>Identification: case-insensitive match<br/>Writes SkillScore rows per category</div>
+            <div class="card-tag tag-indigo">score_submission()</div>
+          </div>
+
+          <div class="card cyan">
+            <div class="card-icon">🎯</div>
+            <div class="card-title">Cosine Similarity Matching</div>
+            <div class="card-sub">Builds student skill vector → position vectors → match score (0–100%)<br/>Writes ranked Recommendation rows</div>
+            <div class="card-tag tag-cyan">generate_recommendations()</div>
+          </div>
+
+        </div>
+
+        <!-- NLP Pipeline -->
+        <div class="nlp-box">
+          <div class="nlp-title">🔄 Recommendation Pipeline</div>
+          <div class="nlp-steps">
+            <div class="nlp-step">Student submits assessment</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">Auto-grade per question</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">Compute % per skill category</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">Build skill vector [0.82, 0.55 …]</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">Compare vs position vectors</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">cosine_similarity() → match %</div>
+            <span class="nlp-arrow">→</span>
+            <div class="nlp-step">Rank &amp; write recommendations to DB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:16px; padding:6px 24px; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+        <div style="font-weight:700; color:#34d399;">PostgreSQL Wire Protocol · psycopg2</div>
+        <div style="font-size:1.3rem; color:#334155;">⇕</div>
+        <div>Django ORM · Connection Pooling (Session Mode)</div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 5 · DATABASE ───── -->
+    <div class="layer layer-db">
+      <div class="layer-label">Database</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#34d399">🗄️ PostgreSQL · Hosted on Supabase (Free Tier)</div>
+
+        <div class="cards">
+
+          <div class="card green">
+            <div class="card-icon">👥</div>
+            <div class="card-title">User &amp; Auth Tables</div>
+            <div class="card-sub">api_user, batches, batch_enrollments</div>
+            <div class="card-tag tag-green">3 tables</div>
+          </div>
+
+          <div class="card teal">
+            <div class="card-icon">📋</div>
+            <div class="card-title">Assessment Tables</div>
+            <div class="card-sub">skill_categories, assessments, questions, answer_choices</div>
+            <div class="card-tag tag-teal">4 tables</div>
+          </div>
+
+          <div class="card blue">
+            <div class="card-icon">📝</div>
+            <div class="card-title">Response Tables</div>
+            <div class="card-sub">student_responses, response_answers, skill_scores</div>
+            <div class="card-tag tag-blue">3 tables</div>
+          </div>
+
+          <div class="card amber">
+            <div class="card-icon">🏢</div>
+            <div class="card-title">Company Tables</div>
+            <div class="card-sub">companies, positions, position_requirements, recommendations</div>
+            <div class="card-tag tag-amber">4 tables</div>
+          </div>
+
+        </div>
+
+        <!-- DB tables quick ref -->
+        <div class="db-tables">
+          <span class="db-table">api_user</span>
+          <span class="db-table">batches</span>
+          <span class="db-table">batch_enrollments</span>
+          <span class="db-table">skill_categories</span>
+          <span class="db-table">assessments</span>
+          <span class="db-table">questions</span>
+          <span class="db-table">answer_choices</span>
+          <span class="db-table">student_responses</span>
+          <span class="db-table">response_answers</span>
+          <span class="db-table">skill_scores</span>
+          <span class="db-table">companies</span>
+          <span class="db-table">positions</span>
+          <span class="db-table">position_requirements</span>
+          <span class="db-table">recommendations</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:16px; padding:6px 24px; background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border);">
+      <div style="text-align:center; font-size:0.65rem; color:var(--muted);">
+        <div style="font-weight:700; color:#fcd34d;">HTTPS · External APIs</div>
+        <div style="font-size:1.3rem; color:#334155;">⇕</div>
+        <div>Frontend calls · Third-party services</div>
+      </div>
+    </div>
+
+    <!-- ───── LAYER 6 · EXTERNAL SERVICES ───── -->
+    <div class="layer layer-ext">
+      <div class="layer-label">External</div>
+      <div class="layer-content">
+        <div class="section-title" style="color:#fcd34d">🌐 External Services &amp; Third-Party APIs</div>
+        <div class="cards">
+
+          <div class="card amber">
+            <div class="card-icon">🔑</div>
+            <div class="card-title">Google OAuth 2.0</div>
+            <div class="card-sub">Google Cloud Console<br/>googleapis.com/oauth2/v3/userinfo</div>
+            <div class="card-tag tag-amber">Student Login · Token Verify</div>
+          </div>
+
+          <div class="card orange">
+            <div class="card-icon">🗺️</div>
+            <div class="card-title">Nominatim Geocoding</div>
+            <div class="card-sub">OpenStreetMap · Free<br/>Province/City → lat/lng</div>
+            <div class="card-tag tag-orange">Company Location Lookup</div>
+          </div>
+
+          <div class="card green">
+            <div class="card-icon">📍</div>
+            <div class="card-title">PSGC API</div>
+            <div class="card-sub">psgc.gitlab.io/api<br/>Official PH Gov. data</div>
+            <div class="card-tag tag-green">Province → City → Barangay</div>
+          </div>
+
+          <div class="card cyan">
+            <div class="card-icon">🚀</div>
+            <div class="card-title">Vercel</div>
+            <div class="card-sub">Frontend hosting<br/>SPA routing · CDN delivery</div>
+            <div class="card-tag tag-cyan">skill-bridge-six-psi.vercel.app</div>
+          </div>
+
+          <div class="card purple">
+            <div class="card-icon">🚂</div>
+            <div class="card-title">Railway.app</div>
+            <div class="card-sub">Backend hosting<br/>Auto-deploy from GitHub</div>
+            <div class="card-tag tag-purple">skillbridge-production…railway.app</div>
+          </div>
+
+          <div class="card teal">
+            <div class="card-icon">🐘</div>
+            <div class="card-title">Supabase</div>
+            <div class="card-sub">Managed PostgreSQL<br/>Connection pooling (IPv4)</div>
+            <div class="card-tag tag-teal">Database host · Free tier</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /diagram -->
+</div><!-- /diagram-wrap -->
+
+<!-- ═════════════════════════ LEGEND ═════════════════════════════ -->
+<div class="legend">
+  <div class="legend-title">Legend &amp; Key Technologies</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Student-facing features</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Instructor-facing features</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Admin-facing features</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Database / Data layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> NLP / ML engine</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> External services / APIs</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> Infrastructure / Hosting</div>
+  <div class="legend-item" style="margin-left:auto; font-size:0.7rem; color:var(--muted);">
+    React 19 · Django 6 · DRF 3.17 · PostgreSQL · scikit-learn · JWT · CORS
+  </div>
+</div>
+
+<!-- Caption for paper -->
+<div style="max-width:1100px; margin:16px auto 0; text-align:center; font-size:0.75rem; color:var(--muted); font-style:italic;">
+  Figure 1. System Architecture Diagram of the SkillBridge OJT Placement Decision Support System.
+  The system follows a three-tier web architecture composed of a React-based frontend,
+  a Django REST Framework backend, an NLP-based recommendation engine, and a PostgreSQL database
+  integrated with external APIs and cloud infrastructure services.
+</div>
+
+
+<!-- ═════════════════════════ SYSTEM ARCHITECTURE DISCUSSION ═════════════════════════════ -->
+<div style="max-width:1100px; margin:28px auto 0; line-height:1.8; color:var(--text);">
+  <h2 style="margin-bottom:16px; font-size:1.2rem;">System Architecture Discussion</h2>
+
+  <p style="margin-bottom:14px;">
+    The SkillBridge system follows a three-tier web-based architecture composed of the presentation layer,
+    application layer, and data layer. The presentation layer consists of a React-based frontend application
+    deployed through Vercel, which allows students, instructors, and administrators to interact with the system
+    using desktop and mobile devices. Users access the system through secure HTTPS communication and authenticated
+    REST API requests.
+  </p>
+
+  <p style="margin-bottom:14px;">
+    The application layer is composed of a Django REST Framework backend hosted on Railway.app.
+    This layer handles business logic, authentication, assessment management, recommendation generation,
+    and communication between the frontend and the database. The backend also contains the NLP-based
+    recommendation engine implemented using scikit-learn and NumPy libraries. The recommendation engine
+    processes assessment responses, computes skill scores, and applies cosine similarity matching to determine
+    the most suitable OJT positions for students.
+  </p>
+
+  <p style="margin-bottom:14px;">
+    The data layer uses a PostgreSQL database hosted on Supabase for persistent data storage and retrieval.
+    The database stores user records, assessments, responses, company information, positions,
+    recommendations, and skill scores. External APIs such as Google OAuth, PSGC API, and Nominatim
+    Geocoding API are integrated into the system to support authentication, address selection,
+    and geographic location services.
+  </p>
+
+  <p>
+    Overall, the architecture ensures scalability, maintainability, secure communication,
+    and efficient interaction among the system components.
+  </p>
+</div>
+
+
+<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
