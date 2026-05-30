@@ -167,13 +167,3 @@ export const UserIcon = ({ size = 15 }) => (
   </svg>
 )
 
-// ── SkillBridge Logo SVG (reusable) ───────────────────────────────
-
-export const SkillBridgeLogo = () => (
-  <svg width="16" height="16" viewBox="0 0 26 26" fill="none">
-    <path d="M3 18 Q3 10 13 10 Q23 10 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-    <path d="M7 18 L7 14M13 18 L13 12M19 18 L19 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-    <circle cx="7" cy="8" r="2.5" fill="white" opacity="0.85"/>
-    <circle cx="19" cy="8" r="2.5" fill="white" opacity="0.85"/>
-  </svg>
-)

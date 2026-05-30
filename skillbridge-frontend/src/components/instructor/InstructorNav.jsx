@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MenuIcon, XIcon, SkillBridgeLogo } from '../Icons'
+import { MenuIcon, XIcon } from '../Icons'
 
 export default function InstructorNav({ activePath }) {
   const navigate = useNavigate()
@@ -79,8 +79,12 @@ export default function InstructorNav({ activePath }) {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center shrink-0">
-            <SkillBridgeLogo />
+          <div className="w-7 h-7 shrink-0">
+            <img 
+              src="/SB-logov1.png" 
+              alt="SkillBridge Logo" 
+              className="w-full h-full rounded-md object-cover shadow-sm"
+            />
           </div>
           <span className="text-sm font-semibold text-gray-900 dark:text-white">SkillBridge</span>
           <span className="hidden sm:inline text-gray-300 dark:text-gray-700">/</span>
