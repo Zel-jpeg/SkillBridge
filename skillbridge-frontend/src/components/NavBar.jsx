@@ -48,15 +48,12 @@ export default function NavBar({ student }) {
 
       {/* Left — logo only */}
       <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center shrink-0">
-          <svg width="16" height="16" viewBox="0 0 26 26" fill="none">
-            <path d="M3 18 Q3 10 13 10 Q23 10 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            <path d="M7 18 L7 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            <path d="M13 18 L13 12" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            <path d="M19 18 L19 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            <circle cx="7" cy="8" r="2.5" fill="white" opacity="0.85"/>
-            <circle cx="19" cy="8" r="2.5" fill="white" opacity="0.85"/>
-          </svg>
+        <div className="w-7 h-7 shrink-0">
+          <img 
+            src="/SB-logov1.png" 
+            alt="SkillBridge Logo" 
+            className="w-full h-full rounded-md object-cover shadow-sm"
+          />
         </div>
         <span className="text-sm font-semibold text-gray-900 dark:text-white">SkillBridge</span>
       </div>

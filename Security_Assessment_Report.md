@@ -1,3 +1,566 @@
+# Security Assessment Report Draft - SkillBridge
+
+*Note: This markdown file contains all the required information for your final paper. You will need to copy this content into a word processor (like MS Word or Google Docs) to apply the specific Document Format requirements (Arial font, size 12, 1.5 line spacing, justified alignment, specific margins) before saving it as a PDF.*
+
+---
+
+## I. Title Page
+**IT322 – INFORMATION ASSURANCE AND SECURITY**
+**FINAL PROJECT**
+
+*(Insert DNSC Logo Here)*
+
+**Security Assessment Report**
+
+**Presented to**
+<Name of Instructor>
+
+**Faculty, Institute of Computing**
+**Davao del Norte State College**
+
+Student A
+Student B
+Student C
+Student D
+
+**Date**
+
+---
+
+## II. System Overview (Understand the System)
+
+### a. System Description
+SkillBridge is a web-based On-the-Job Training (OJT) placement decision support system developed for the Davao del Norte State College (DNSC). It streamlines the assessment of student skills before OJT deployment by replacing manual, paper-based methods and Google Forms with a structured digital platform. The system allows instructors to upload skill assessment questionnaires, enables students to take digitally auto-scored assessments, and uses Natural Language Processing (cosine similarity) to generate skill profiles and recommend ranked company and position matches based on student performance.
+
+### b. Users and Roles
+*   **Student:** Can take skill assessments, view their generated skill profile, and see ranked company and position recommendations. They use Google OAuth (DNSC account) to log in.
+*   **Instructor / OJT Coordinator:** Can upload questionnaires (questions, correct answers, skill tags) manually or via Excel/CSV, view all student scores, and see top performers per skill category.
+*   **Admin:** Manages companies and positions (including slots and required skills), views the full list of students and their recommendations, and manages user accounts (e.g., approving instructors).
+
+### c. Technologies Used
+*   **Frontend:** React.js (Vite), Tailwind CSS v4
+*   **Backend:** Python, Django 6.0.4, Django REST Framework (DRF)
+*   **Database:** PostgreSQL (hosted via Supabase)
+*   **Authentication:** JWT (JSON Web Tokens) via `djangorestframework-simplejwt`, Custom Email Auth, Google OAuth
+*   **Algorithm/NLP:** scikit-learn (cosine similarity)
+*   **Hosting:** Vercel (Frontend), Railway.app (Backend)
+
+---
+
+## III. Vulnerability Assessment (Identify Issues)
+
+| # | Vulnerability | Location | Possible Attack |
+|---|---|---|---|
+| 1 | Lack of Rate Limiting on Authentication Endpoints | Login module (`/api/auth/login/`) | Brute force or credential stuffing attacks |
+| 2 | Insecure Storage of Sensitive Tokens | Frontend LocalStorage (`sb-token`, `sb-refresh`) | Cross-Site Scripting (XSS) leading to token theft |
+| 3 | Unrestricted File Upload Risks | InstructorUpload module (Excel/CSV upload) | Malicious file execution or parsing exploits (e.g., XML External Entity - XXE if not properly secured during SheetJS parsing) |
+| 4 | Potential Insecure Direct Object Reference (IDOR) | API endpoints handling user profiles and assessments | Unauthorized access to other students' profiles or assessment scores by manipulating IDs |
+| 5 | Weak Password Policy | Admin/Instructor Registration & Login | Brute force attacks or password guessing |
+| 6 | Missing Security Headers | Global Application Configuration | Clickjacking, Man-in-the-Middle (MitM), and XSS (e.g., missing Strict-Transport-Security, Content-Security-Policy) |
+| 7 | Session Replay / Token Re-use Vulnerability | JWT Implementation | Attackers using intercepted or stolen JWTs before they expire, due to long token lifetimes or missing token revocation mechanisms |
+
+---
+
+## IV. Risk Analysis (Analyze Impact)
+
+### a. Asset Identification
+*   **Data:** User profiles, student assessment scores, school IDs, company requirements, address information (staying location, home, boarding), authentication tokens.
+*   **System:** Frontend application (Vercel), Backend API (Railway), PostgreSQL Database (Supabase), NLP Recommendation Engine.
+*   **Users:** Students, Instructors, Admins.
+
+### b. Threat and Impact Analysis
+*   Threats include unauthorized access, data breaches, data manipulation (altering assessment scores), and service disruption. Impacts range from privacy violations (exposing student data) and compromised OJT placements to reputational damage for the institution.
+
+### c. Risk Evaluation
+
+| Asset | Threat | Impact | Risk Level |
+|---|---|---|---|
+| User Database & Profiles | Brute Force on Admin/Instructor Accounts | Unauthorized access, data breach | High |
+| JWT Tokens in LocalStorage | XSS leading to Token Theft | Account takeover | High |
+| Assessment & Score Data | IDOR on API endpoints | Exposure or tampering of grades | Medium |
+| Uploaded Excel/CSV Files | Malicious File Upload | Denial of service, parsing exploits | Medium |
+| Application API | Lack of Rate Limiting | Resource exhaustion, system slowdown | Low |
+| System Communication | Missing Security Headers | Clickjacking, downgrading attacks | Medium |
+| User Passwords | Weak Password Policies | Unauthorized system access | Medium |
+
+---
+
+## V. Security Controls and Improvements (Apply Solutions)
+
+| Issue | Proposed Solution | Type of Control |
+|---|---|---|
+| Brute force attacks on login | Implement rate limiting (e.g., Django Ratelimit) and account lockout after failed attempts. | Technical |
+| Token Theft via XSS | Migrate JWT storage from LocalStorage to HTTPOnly Secure cookies to prevent JavaScript access. | Technical |
+| Malicious File Uploads | Implement strict file validation (MIME type checking, file size limits) and sanitize parsed data. | Technical / Administrative |
+| IDOR Vulnerabilities | Enforce strict object-level permissions in Django views to ensure users can only access their own data. | Technical |
+| Weak Passwords | Enforce a strong password policy (minimum length, complexity requirements) and consider Multi-Factor Authentication (MFA) for Admins. | Technical / Administrative |
+| Missing Security Headers | Configure Django security middleware and reverse proxy to include headers like CSP, HSTS, X-Frame-Options. | Technical |
+| Lack of Security Awareness | Conduct security training for instructors and admins on handling student data securely. | Administrative |
+
+---
+
+## VI. Security Design (System Protection Plan)
+
+### a. To-Be Security Design
+The improved system architecture will enforce a zero-trust approach at the application layer. All requests will pass through a Web Application Firewall (WAF) or rate-limiter before reaching the backend API. Authentication will be fortified by moving JWTs to HTTPOnly cookies, mitigating XSS risks.
+
+### b. Representation (Secured System Flow Explanation)
+1.  **Authentication is Secure:** When a user logs in, instead of sending the JWT back in the response body to be stored in LocalStorage, the server sets an `HttpOnly` and `Secure` cookie containing the token. Google OAuth provides an added layer of security for student accounts, reducing reliance on passwords.
+2.  **Data is Protected:** All endpoints accessing student records or assessments verify not just if the user is authenticated, but if they have the specific role and object-level permission to view that specific record (mitigating IDOR). Uploaded Excel/CSV files are scanned and strictly parsed in a sandboxed environment without executing arbitrary macros.
+3.  **Communication is Safe:** The system enforces HTTPS (HSTS) across all connections. Cross-Origin Resource Sharing (CORS) is strictly configured to only allow the Vercel frontend URL, and Content Security Policy (CSP) headers restrict script execution.
+
+---
+
+## VII. Justification (Explain Your Design)
+
+### a. CIA Triad
+*   **Confidentiality:** Moving JWTs to HTTPOnly cookies and enforcing strict object-level authorization ensures that sensitive student data (like addresses and assessment scores) is only visible to authorized individuals.
+*   **Integrity:** Proper validation of file uploads and input sanitization prevents malicious users from altering system data or injecting malicious scripts (XSS).
+*   **Availability:** Implementing rate limiting on authentication and API endpoints protects the Railway.app backend from resource exhaustion and Denial of Service (DoS) attacks, ensuring the system remains available for legitimate users.
+
+### b. Defense-in-Depth
+The proposed design applies multiple layers of security. Instead of relying solely on a login screen, security is applied at the network edge (rate limiting, HSTS), the application layer (CORS, CSP, HTTPOnly cookies), the authorization layer (role-based access control, object-level permissions), and the data layer (input validation, secure file parsing). If one layer (e.g., the frontend) is compromised, secondary layers (e.g., backend object-level permissions) prevent the attacker from accessing unauthorized data.
+
+---
+
+## VIII. References
+*(Add your references here in APA format. Examples below:)*
+*   Bejtlich, R. (2013). *The practice of network security monitoring: Understanding incident detection and response.* No Starch Press.
+*   OWASP Foundation. (2021). *OWASP Top 10:2021.* Retrieved from https://owasp.org/Top10/
+*   Stuttard, D., & Pinto, M. (2011). *The Web Application Hacker's Handbook: Finding and Exploiting Security Flaws* (2nd ed.). Wiley.
+
+
+
+
+
+
+---
+
+# Appendix A: Backend Context File
+
+# SkillBridge — Backend Context File
+
+> **Single source of truth for all backend work.**
+> Paste this file + `SKILLBRIDGE_CONTEXT.md` from `skillbridge-frontend/` at the start of any AI chat.
+> Update `## Current Status` every work session before closing.
+
+---
+
+## Quick Reference
+
+| Item | Value |
+|---|---|
+| Backend framework | Django 6.0.4 + Django REST Framework 3.17.1 |
+| Database | PostgreSQL via Supabase (free tier) |
+| Auth | JWT via `djangorestframework-simplejwt` 5.5.1 |
+| Auth backend | Custom `EmailBackend` (email replaces username) |
+| Hosting (planned) | Railway.app (free tier, does not sleep) |
+| Local dev server | `http://127.0.0.1:8000` |
+| Frontend URL (Vercel) | `https://skill-bridge-six-psi.vercel.app` |
+| Monorepo structure | `SkillBridge/skillbridge-backend/` + `SkillBridge/skillbridge-frontend/` |
+| Python version | 3.13.x |
+
+---
+
+## Folder Structure (verified)
+
+```
+skillbridge-backend/
+├── core/                  ← Django project settings
+│   ├── settings.py        ✅ JWT, CORS, DRF, PostgreSQL configured
+│   ├── urls.py            ✅ includes api.urls at /api/
+│   └── wsgi.py
+├── api/                   ← Single Django app (all models, views, serializers, urls)
+│   ├── migrations/
+│   │   └── 0001_initial.py  ✅ all 14 models migrated
+│   ├── backends.py        ✅ Custom EmailBackend
+│   ├── models.py          ✅ All DB models (14 tables)
+│   ├── serializers.py     ✅ UserSerializer
+│   ├── views.py           ✅ 5 endpoint handlers
+│   └── urls.py            ✅ 5 URL routes
+├── venv/                  ← Virtual environment (never commit)
+├── manage.py
+├── requirements.txt       ← pip freeze output
+└── .env                   ← secrets (never commit)
+```
+
+---
+
+## Installed Packages (from requirements.txt — verified)
+
+```
+Django==6.0.4
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+django-cors-headers==4.9.0
+psycopg2-binary==2.9.11
+python-dotenv==1.2.2
+requests==2.33.1
+google-auth==2.49.2
+```
+
+Run to restore: `pip install -r requirements.txt`
+
+---
+
+## Environment Variables (`.env`)
+
+```env
+SECRET_KEY=django-insecure-changethislater-skillbridge2026
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=<your-supabase-db-password>
+DB_HOST=db.<your-supabase-ref>.supabase.co
+DB_PORT=5432
+```
+
+> `.env` is in `.gitignore` — never committed to GitHub.
+> Get `DB_HOST` and `DB_PASSWORD` from Supabase → Database → Settings → Connection parameters.
+
+---
+
+## `core/settings.py` — Working Config (verified)
+
+```python
+from pathlib import Path
+from dotenv import load_dotenv
+from datetime import timedelta
+import os
+
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+AUTH_USER_MODEL = 'api.User'   # ← CRITICAL — must be set before first migrate
+                                # ✅ Confirmed present in actual settings.py at line 21
+
+SECRET_KEY = 'django-insecure-h0v%7...'  # use env var in production
+DEBUG = True
+ALLOWED_HOSTS = []
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'corsheaders',
+    'api',
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # must be first
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'core.urls'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
+    }
+}
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',                          # Vite dev server
+    'https://skill-bridge-six-psi.vercel.app',        # Vercel production
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME':  timedelta(hours=8),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+AUTHENTICATION_BACKENDS = [
+    'api.backends.EmailBackend',
+]
+```
+
+> ✅ `AUTH_USER_MODEL = 'api.User'` is confirmed present in `core/settings.py` at line 21.
+> This is the critical setting that makes SimpleJWT look users up in `api_user` instead of the built-in `auth_user` table.
+> **Never remove this line.** Without it, all authenticated requests return `401 user_not_found`.
+
+---
+
+## `api/models.py` — All 14 Models (verified)
+
+### User
+```python
+class User(AbstractBaseUser, PermissionsMixin):
+    email        = EmailField(unique=True)
+    name         = CharField(max_length=255)
+    role         = CharField(choices=['student', 'instructor', 'admin'])
+    school_id    = CharField(max_length=20, blank=True)   # format YYYY-NNNNN
+    course       = CharField(max_length=100, blank=True)
+    phone        = CharField(max_length=20, blank=True)
+    address      = JSONField(blank=True, null=True)        # { stayingAt, travelWilling, home, boarding, pinLat, pinLng }
+    photo_url    = TextField(blank=True)                   # Google profile photo URL
+    is_approved  = BooleanField(default=False)             # instructors start False
+    is_active    = BooleanField(default=True)
+    is_staff     = BooleanField(default=False)
+    created_at   = DateTimeField(auto_now_add=True)
+
+    groups            = ManyToManyField('auth.Group', related_name='api_users')
+    user_permissions  = ManyToManyField('auth.Permission', related_name='api_users')
+
+    USERNAME_FIELD  = 'email'
+    REQUIRED_FIELDS = ['name', 'role']
+```
+
+### Other 13 models (all migrated ✅)
+`Batch`, `BatchEnrollment`, `SkillCategory`, `Assessment` (has `batch` FK), `Question` (has `question_type`), `AnswerChoice`, `StudentResponse`, `ResponseAnswer`, `SkillScore`, `Company` (address is JSONField), `Position`, `PositionRequirement`, `Recommendation`
+
+---
+
+## `api/backends.py` — Custom Auth Backend (verified)
+
+```python
+from django.contrib.auth.backends import ModelBackend
+from .models import User
+
+class EmailBackend(ModelBackend):
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        try:
+            user = User.objects.get(email=username)
+        except User.DoesNotExist:
+            return None
+        if user.check_password(password):
+            return user
+        return None
+```
+
+---
+
+## `api/urls.py` — All Registered Endpoints (verified)
+
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('auth/login/',          views.login,           name='login'),
+    path('auth/refresh/',        views.refresh,         name='refresh'),
+    path('auth/me/',             views.me,              name='me'),
+    path('auth/google/',         views.google_login,    name='google_login'),
+    path('students/me/profile/', views.student_profile, name='student_profile'),
+]
+```
+
+All routes are prefixed with `/api/` via `core/urls.py`.
+
+---
+
+## `api/serializers.py` (verified)
+
+```python
+from rest_framework import serializers
+from .models import User
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = User
+        fields = ['id', 'email', 'name', 'role', 'school_id',
+                  'course', 'phone', 'address', 'photo_url', 'is_approved']
+```
+
+---
+
+## API Endpoints — Built & Working ✅
+
+### Auth
+
+| Method | URL | Auth | What it does |
+|--------|-----|------|--------------|
+| POST | `/api/auth/login/` | No | Email + password → JWT access + refresh + user object |
+| POST | `/api/auth/refresh/` | No | Refresh token → new access token |
+| GET | `/api/auth/me/` | Yes | Returns logged-in user's profile |
+| POST | `/api/auth/google/` | No | Google OAuth token → finds/creates student user → JWT |
+| PATCH | `/api/students/me/profile/` | Yes (student) | Saves student ID, course, phone, address, pin |
+
+### Assessment & Core
+
+| Method | URL | Auth | What it does |
+|--------|-----|------|--------------|
+| GET | `/api/students/me/` | Yes (student) | Returns full student profile + assessment status |
+| POST | `/api/instructor/assessments/` | Yes (instructor) | Instructor creates assessment + questions |
+| GET | `/api/assessments/` | Yes (student) | Student lists available assessments |
+| POST | `/api/assessments/{id}/start/` | Yes (student) | Starts assessment |
+| POST | `/api/assessments/{id}/submit/` | Yes (student) | Submits responses, triggers auto-scoring + vector gen |
+| GET | `/api/admin/events/` | Yes (admin) | SSE stream for real-time dashboard updates |
+| GET | `/api/instructor/events/` | Yes (instructor) | SSE stream for real-time dashboard updates |
+
+### Google Login — how it works
+
+1. Frontend sends Google `access_token` to `/api/auth/google/`
+2. Backend calls `https://www.googleapis.com/oauth2/v3/userinfo` to verify
+3. Rejects non-`@dnsc.edu.ph` emails with `403 { error: 'not_dnsc' }`
+4. Calls `User.objects.get_or_create(email=email, defaults={...})` — creates student if new
+5. Updates `name` and `photo_url` on every login (keeps Google profile photo fresh)
+6. Returns `{ access, refresh, user }` — same shape as email login
+
+### Login — instructor pending check
+
+If an instructor logs in via `/api/auth/login/` and `user.is_approved` is `False`, the backend returns:
+```json
+{ "error": "pending" }   HTTP 403
+```
+The frontend `AdminLogin.jsx` catches this and redirects to `/instructor/pending`.
+
+### Student Profile PATCH — field mapping
+
+| Request field | Model field | Stored in |
+|---|---|---|
+| `studentId` | `school_id` | top-level column |
+| `course` | `course` | top-level column |
+| `phone` | `phone` | top-level column |
+| `stayingAt`, `travelWilling`, `homeProvince/City/Barangay`, `boardingProvince/City/Barangay`, `pinLat`, `pinLng` | `address` | JSONField |
+
+---
+
+## Frontend Integration
+
+### localStorage keys set on login:
+
+| Key | Value |
+|-----|-------|
+| `sb-token` | JWT access token |
+| `sb-refresh` | JWT refresh token |
+| `sb-role` | `admin` / `instructor` / `student` |
+| `sb-user` | Full user object (JSON string) |
+
+### Files wired to real auth (Week 3):
+- `LoginPage.jsx` — real Google OAuth → `/api/auth/google/`, stores token + redirects
+- `AdminLogin.jsx` — real email/password → `/api/auth/login/`, handles pending instructor
+- `StudentSetup.jsx` — real `api.patch('/api/students/me/profile/')` on finish
+
+---
+
+## Seed Data
+
+| Email | Password | Role | Notes |
+|-------|----------|------|-------|
+| `admin@dnsc.edu.ph` | `admin123` | admin | Created via Django shell |
+
+> Create via Django shell:
+> ```python
+> from api.models import User
+> u = User(email='admin@dnsc.edu.ph', name='Administrator', role='admin', is_approved=True, is_staff=True, is_superuser=True)
+> u.set_password('admin123')
+> u.save()
+> ```
+
+Student users are auto-created on first Google login. No pre-seeding needed.
+
+---
+
+## Migrations Log
+
+| Migration | What it created |
+|-----------|----------------|
+| `api.0001_initial` | All 14 tables: User (with school_id, photo_url, address JSONField), Batch, BatchEnrollment, SkillCategory, Assessment (with batch FK, question_type), Question, AnswerChoice, StudentResponse, ResponseAnswer, SkillScore, Company (address JSONField), Position, PositionRequirement, Recommendation |
+
+---
+
+## Current Status
+
+**Current week:** Week 4 — ✅ COMPLETE
+**Last completed:** Assessment flow, auto-scoring, recommendations, and real-time SSE stream fully working end-to-end. ✅
+
+**What's working end-to-end:**
+- Django project setup ✅
+- Supabase PostgreSQL connected ✅
+- All 14 models migrated ✅
+- `POST /api/auth/login/` → JWT ✅
+- `POST /api/auth/refresh/` → new access ✅
+- `GET /api/auth/me/` → user profile ✅
+- `POST /api/auth/google/` → Google OAuth + auto-create student ✅
+- `PATCH /api/students/me/profile/` → save to Supabase ✅
+
+**Next tasks (Week 5):**
+
+1. Wire remaining edge cases in frontend dashboards.
+2. Prepare presentation and review algorithm matching accuracy.
+
+---
+
+## Common Commands
+
+```bash
+# Activate venv (Windows)
+venv\Scripts\activate
+
+# Run dev server
+python manage.py runserver
+
+# Make and apply migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Open Django shell
+python manage.py shell
+
+# Save dependencies
+pip freeze > requirements.txt
+```
+
+---
+
+## Known Issues / Watch Out For
+
+| Issue | Fix |
+|-------|-----|
+| `401 user_not_found` on all JWT-authenticated requests | `AUTH_USER_MODEL = 'api.User'` missing from settings.py — Django queries wrong table. ✅ Already present at line 21 in actual settings.py. |
+| `corsheaders.E014` — trailing slash in CORS origin | Remove trailing slash from URL in `CORS_ALLOWED_ORIGINS` |
+| `authenticate()` returns None even with correct password | Custom `EmailBackend` required — Django defaults to `username` field |
+| `groups`/`user_permissions` reverse accessor clash | `related_name='api_users'` on both fields in `User` model ✅ already fixed |
+| `AUTH_USER_MODEL` must be set BEFORE first migrate | If already migrated without it, delete migrations and re-migrate |
+| Red squiggles on Django imports in VS Code | Select venv interpreter: Ctrl+Shift+P → "Python: Select Interpreter" → choose venv |
+| settings.py shows `Django==6.0.4` not `5.x` | Context files previously said Django 5.x — actual version is 6.0.4 |
+
+---
+
+## How to Use This File With Any AI
+
+Paste both this file and `SKILLBRIDGE_CONTEXT.md` from `skillbridge-frontend/` at the start of your message, then add your question.
+
+Example:
+> [paste skillbridge-backend/SKILLBRIDGE_CONTEXT.md]
+> [paste skillbridge-frontend/SKILLBRIDGE_CONTEXT.md]
+> I'm on Week 4. I need to build the assessment submission endpoint with auto-scoring. What should it look like?
+
+**Works with:** Claude, ChatGPT, Gemini, Copilot, or any AI assistant.
+
+
+---
+
+# Appendix B: Frontend Context File
+
 # SkillBridge — Project Context File (Frontend)
 
 > **Single source of truth.** Paste this file at the start of any new AI chat.

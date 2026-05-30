@@ -92,15 +92,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-10">
 
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center shrink-0">
-            <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-              <path d="M3 18 Q3 10 13 10 Q23 10 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M7 18 L7 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M13 18 L13 12" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M19 18 L19 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <circle cx="7" cy="8" r="2.5" fill="white" opacity="0.85"/>
-              <circle cx="19" cy="8" r="2.5" fill="white" opacity="0.85"/>
-            </svg>
+          <div className="w-12 h-12 shrink-0">
+            <img 
+              src="/SB-logov1.png" 
+              alt="SkillBridge Logo" 
+              className="w-full h-full rounded-xl object-cover shadow-sm"
+            />
           </div>
           <div>
             <p className="text-lg font-bold text-gray-900 leading-tight">{SYSTEM_NAME}</p>

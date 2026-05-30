@@ -263,6 +263,18 @@ class UserSerializer(serializers.ModelSerializer):
 | POST | `/api/auth/google/` | No | Google OAuth token → finds/creates student user → JWT |
 | PATCH | `/api/students/me/profile/` | Yes (student) | Saves student ID, course, phone, address, pin |
 
+### Assessment & Core
+
+| Method | URL | Auth | What it does |
+|--------|-----|------|--------------|
+| GET | `/api/students/me/` | Yes (student) | Returns full student profile + assessment status |
+| POST | `/api/instructor/assessments/` | Yes (instructor) | Instructor creates assessment + questions |
+| GET | `/api/assessments/` | Yes (student) | Student lists available assessments |
+| POST | `/api/assessments/{id}/start/` | Yes (student) | Starts assessment |
+| POST | `/api/assessments/{id}/submit/` | Yes (student) | Submits responses, triggers auto-scoring + vector gen |
+| GET | `/api/admin/events/` | Yes (admin) | SSE stream for real-time dashboard updates |
+| GET | `/api/instructor/events/` | Yes (instructor) | SSE stream for real-time dashboard updates |
+
 ### Google Login — how it works
 
 1. Frontend sends Google `access_token` to `/api/auth/google/`
@@ -337,8 +349,8 @@ Student users are auto-created on first Google login. No pre-seeding needed.
 
 ## Current Status
 
-**Current week:** Week 3 — ✅ COMPLETE (ahead of schedule)
-**Last completed:** Full auth flow working end-to-end. Google OAuth login + email/password login + student profile setup all saving to Supabase. ✅
+**Current week:** Week 4 — ✅ COMPLETE
+**Last completed:** Assessment flow, auto-scoring, recommendations, and real-time SSE stream fully working end-to-end. ✅
 
 **What's working end-to-end:**
 - Django project setup ✅
@@ -350,16 +362,10 @@ Student users are auto-created on first Google login. No pre-seeding needed.
 - `POST /api/auth/google/` → Google OAuth + auto-create student ✅
 - `PATCH /api/students/me/profile/` → save to Supabase ✅
 
-**Next tasks (Week 4):**
+**Next tasks (Week 5):**
 
-1. `GET /api/students/me/` — return current student's full profile + assessment status
-2. Assessment CRUD endpoints:
-   - `POST /api/instructor/assessments/` — instructor creates assessment + questions
-   - `GET /api/assessments/` — student lists available assessments
-   - `POST /api/assessments/{id}/submit/` — student submits responses, triggers auto-scoring
-3. Auto-scoring logic: compare `ResponseAnswer.selected_choice.is_correct`, aggregate per category, write to `SkillScore`
-4. Wire `StudentDashboard.jsx` to real user data (replace mock `STUDENT` constant)
-5. Wire `StudentAssessment.jsx` to real assessment data from API
+1. Wire remaining edge cases in frontend dashboards.
+2. Prepare presentation and review algorithm matching accuracy.
 
 ---
 
