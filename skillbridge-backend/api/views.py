@@ -622,6 +622,8 @@ def instructor_batch_archive(request, batch_id):
     batch.status      = 'archived'
     batch.archived_at = timezone.now()
     batch.save(update_fields=['status', 'archived_at'])
+    # Deactivate all assessments linked to this batch so students can no longer take them
+    Assessment.objects.filter(batch=batch).update(is_active=False)
     return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at})
 
 
@@ -639,6 +641,8 @@ def instructor_batch_unarchive(request, batch_id):
     batch.status      = 'active'
     batch.archived_at = None
     batch.save(update_fields=['status', 'archived_at'])
+    # Re-activate assessments linked to this batch
+    Assessment.objects.filter(batch=batch).update(is_active=True)
     return Response({'id': batch.id, 'status': 'active', 'archived_at': None})
 
 
@@ -1361,14 +1365,23 @@ def assessment_submit(request, assessment_id):
 @permission_classes([IsAuthenticated])
 def instructor_student_recommendations(request):
     """
-    Returns all students in instructor's batches with their top 3 recommended positions.
-    Used by InstructorDashboard Recommendations tab.
+    Returns students in the instructor's ACTIVE batch with their top 3 recommended positions.
+    Only shows the current cohort so the dashboard reflects live progress, not archived history.
+    Used by InstructorDashboard.
     """
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    batches     = Batch.objects.filter(instructor=request.user)
-    enrollments = list(BatchEnrollment.objects.filter(batch__in=batches).select_related('student', 'batch'))
+    # ── Only pull from the active batch ───────────────────────────
+    active_batch = Batch.objects.filter(instructor=request.user, status='active').first()
+    if not active_batch:
+        return Response([])  # No active batch → empty dashboard (not archived data)
+
+    enrollments = list(
+        BatchEnrollment.objects
+        .filter(batch=active_batch)
+        .select_related('student', 'batch')
+    )
     student_ids = list({e.student_id for e in enrollments})
 
     # ── Bulk-load all recommendations ─────────────────────────────
@@ -1439,10 +1452,16 @@ def instructor_companies(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     # Students belonging to this instructor's batches
-    batches     = Batch.objects.filter(instructor=request.user)
-    student_ids = set(
-        BatchEnrollment.objects.filter(batch__in=batches).values_list('student_id', flat=True)
-    )
+    batches = Batch.objects.filter(instructor=request.user)
+    enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch')
+    
+    student_batch_info = {}
+    for e in enrollments:
+        student_batch_info[e.student_id] = {
+            'name': e.batch.name,
+            'status': e.batch.status
+        }
+    student_ids = list(student_batch_info.keys())
 
     # Bulk-load all recommendations for those students
     from collections import defaultdict
@@ -1473,6 +1492,8 @@ def instructor_companies(request):
                     'school_id':   r.student.school_id,
                     'course':      r.student.course,
                     'match_score': round(float(r.match_score), 1),
+                    'batch_name':  student_batch_info.get(r.student.id, {}).get('name', ''),
+                    'batch_status': student_batch_info.get(r.student.id, {}).get('status', 'active'),
                 }
                 for r in recs_by_position.get(pos.id, [])
             ]

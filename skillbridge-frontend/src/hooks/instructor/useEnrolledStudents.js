@@ -220,6 +220,7 @@ export function useEnrolledStudents() {
     ))
     // Invalidate cache so next navigation sees the updated status
     invalidateCache('/api/instructor/batches/')
+    invalidateCache('/api/instructor/assessments/')
     setShowArchiveConf(false)
     setShowNewBatch(true)
   }
@@ -232,6 +233,7 @@ export function useEnrolledStudents() {
         : b
     ))
     invalidateCache('/api/instructor/batches/')
+    invalidateCache('/api/instructor/assessments/')
     showToast(`Batch unarchived.`)
   }
 

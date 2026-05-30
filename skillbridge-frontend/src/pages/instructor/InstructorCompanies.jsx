@@ -509,7 +509,14 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
                                   {getInitials(stu.name)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{stu.name}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{stu.name}</p>
+                                    {stu.batch_name && (
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${stu.batch_status === 'archived' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' : 'bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-400'}`}>
+                                        {stu.batch_name}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{stu.school_id} · {stu.course}</p>
                                 </div>
                                 <div className="shrink-0 text-right">
@@ -586,7 +593,14 @@ function CompanyCard({ company, onClick }) {
             {getInitials(topEntry.name)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{topEntry.name.split(' ')[0]}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{topEntry.name.split(' ')[0]}</p>
+              {topEntry.batch_name && (
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${topEntry.batch_status === 'archived' ? 'bg-green-100/50 dark:bg-green-900/30 text-green-800 dark:text-green-500/70' : 'bg-green-200 dark:bg-green-800/80 text-green-800 dark:text-green-300'}`}>
+                  {topEntry.batch_name}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{topEntry.posTitle}</p>
           </div>
           <span className="text-xs font-bold text-green-600 dark:text-green-400 shrink-0">{topEntry.match_score}%</span>

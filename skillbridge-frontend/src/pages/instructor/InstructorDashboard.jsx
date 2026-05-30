@@ -89,7 +89,9 @@ export default function InstructorDashboard() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Student performance</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{instructor.subject} · OJT Assessment 2025–2026</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {instructor.subject}{studentsList.length > 0 ? ` · ${studentsList[0]?.batch?.name || 'Active batch'}` : ' · No active batch'}
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             <button onClick={() => navigate('/instructor/students')}
@@ -120,6 +122,20 @@ export default function InstructorDashboard() {
             </div>
           ))}
         </div>
+
+        {/* No active batch banner */}
+        {!loading && studentsList.length === 0 && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-5 flex items-start gap-4">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-amber-600">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">No active batch</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Create a new batch and enroll students to see live performance data here. Archived batches are not shown on the dashboard.</p>
+              <button onClick={() => navigate('/instructor/students')} className="mt-3 text-xs font-semibold text-amber-800 dark:text-amber-300 underline underline-offset-2 hover:no-underline">Go to Students page →</button>
+            </div>
+          </div>
+        )}
 
         {/* Skill leaders */}
         <div>
