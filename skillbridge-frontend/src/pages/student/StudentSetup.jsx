@@ -157,8 +157,11 @@ export default function StudentSetup() {
   const TOTAL_STEPS = 4
   const [step, setStep] = useState(1)
 
+  // Pre-fill from enrollment data if available (instructor already entered these)
+  const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
+
   const [formData, setFormData] = useState({
-    studentId: '', course: '', phone: '', stayingAt: '',
+    studentId: cachedUser?.school_id || '', course: cachedUser?.course || '', phone: '', stayingAt: '',
     homeProvince: '', homeCity: '', homeBarangay: '',
     boardingProvince: '', boardingCity: '', boardingBarangay: '',
     travelWilling: '',

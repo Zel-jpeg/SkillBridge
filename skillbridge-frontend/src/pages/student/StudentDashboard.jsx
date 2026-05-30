@@ -202,7 +202,8 @@ export default function StudentDashboard() {
 
 
   // ── Derived display values (safe fallbacks if API is slow/offline) ──
-  const firstName       = student?.name?.split(' ')[0] ?? 'Student'
+  const rawFirst        = student?.name?.split(' ')[0] ?? 'Student'
+  const firstName       = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
   const displayName     = student?.name     ?? 'Student'
   const displayCourse   = student?.course   ?? ''
   const displayId       = student?.school_id ?? ''

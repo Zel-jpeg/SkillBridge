@@ -48,7 +48,7 @@ export default function LoginPage() {
         await prefetchForRole(user.role)
         // ─────────────────────────────────────────────────────────────
 
-        if (user.role === 'student')         navigate(user.course ? '/student/dashboard' : '/student/setup')
+        if (user.role === 'student')         navigate(user.phone ? '/student/dashboard' : '/student/setup')
         else if (user.role === 'instructor') {
           if (!user.is_approved) navigate('/instructor/pending')
           else                   navigate('/instructor/dashboard')

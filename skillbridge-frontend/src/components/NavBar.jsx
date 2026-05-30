@@ -35,7 +35,14 @@ export default function NavBar({ student }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [])
 
-  function handleLogout() {
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  function handleLogoutClick() {
+    setOpen(false)
+    setShowLogoutModal(true)
+  }
+
+  function confirmLogout() {
     localStorage.removeItem('sb-token')
     localStorage.removeItem('sb-refresh')
     localStorage.removeItem('sb-role')
@@ -122,7 +129,7 @@ export default function NavBar({ student }) {
 
             {/* Logout */}
             <button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -136,6 +143,42 @@ export default function NavBar({ student }) {
           </div>
         )}
       </div>
+
+      {/* ── LOGOUT MODAL ── */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 sm:px-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 sm:p-8 w-full max-w-sm relative shadow-2xl">
+            <div className="w-12 h-12 bg-red-50 dark:bg-red-950/50 rounded-xl flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Log out of SkillBridge?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              You can always log back in using your DNSC Google account.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </nav>
   )
 }

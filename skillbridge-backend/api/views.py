@@ -538,13 +538,15 @@ def instructor_batch_enroll(request, batch_id):
         return Response({'error': 'Batch not found'}, status=404)
 
     students_data = request.data.get('students', [])
-    # Each item: { email, name }
+    # Each item: { email, name, course?, studentId? }
     enrolled = []
     errors   = []
 
     for item in students_data:
-        email = item.get('email', '').strip().lower()
-        name  = item.get('name',  '').strip()
+        email     = item.get('email', '').strip().lower()
+        name      = item.get('name',  '').strip()
+        course    = item.get('course', '').strip()
+        school_id = item.get('studentId', item.get('student_id', '')).strip()
         if not email:
             errors.append({'email': email, 'error': 'email required'})
             continue
@@ -552,15 +554,27 @@ def instructor_batch_enroll(request, batch_id):
         try:
             student = User.objects.get(email=email, role='student')
             # If student self-registered but is still pending, auto-approve when enrolled.
+            update_fields = []
             if not student.is_approved:
                 student.is_approved = True
-                student.save(update_fields=['is_approved'])
+                update_fields.append('is_approved')
+            # Update course/school_id if provided by instructor and student hasn't set them yet
+            if course and not student.course:
+                student.course = course
+                update_fields.append('course')
+            if school_id and not student.school_id:
+                student.school_id = school_id
+                update_fields.append('school_id')
+            if update_fields:
+                student.save(update_fields=update_fields)
         except User.DoesNotExist:
             # Auto-create student account (will log in via Google)
             student = User.objects.create(
                 email=email,
                 name=name or email.split('@')[0],
                 role='student',
+                course=course,
+                school_id=school_id,
                 is_approved=True,
                 is_active=True,
             )

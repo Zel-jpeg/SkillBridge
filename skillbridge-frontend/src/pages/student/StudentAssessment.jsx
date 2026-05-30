@@ -9,8 +9,10 @@
 //   - One question at a time (MCQ, True/False, Identification)
 //   - Instructor-set countdown timer (auto-submits at 0, warns at 5 min)
 //   - Answers autosaved to localStorage — survives refresh/disconnect
+//   - Leave & Save button — pauses timer by freezing it in localStorage
 //   - Review screen with Edit per question
 //   - Confirmation modal before final submit
+//   - Question navigator: numbered sidebar (desktop) / collapsible panel (mobile)
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -76,6 +78,71 @@ function AssessmentError({ message }) {
   )
 }
 
+// ── Question Navigator ────────────────────────────────────────────
+function QuestionNavigator({ questions, answers, current, onJump, isReview, className = '' }) {
+  function getState(q, idx) {
+    const isAnswered = (() => {
+      const a = answers[q.id]
+      if (!a) return false
+      if (q.question_type === 'identification') return (a.text_answer ?? '').trim().length > 0
+      return !!a.selected_choice_id
+    })()
+    const isCurrent = idx === current && !isReview
+    return { isAnswered, isCurrent }
+  }
+
+  return (
+    <div className={`bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 ${className}`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Questions</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {questions.filter((q, i) => {
+            const a = answers[q.id]
+            if (!a) return false
+            if (q.question_type === 'identification') return (a.text_answer ?? '').trim().length > 0
+            return !!a.selected_choice_id
+          }).length}/{questions.length} done
+        </p>
+      </div>
+      <div className="grid grid-cols-5 gap-1.5">
+        {questions.map((q, idx) => {
+          const { isAnswered, isCurrent } = getState(q, idx)
+          return (
+            <button
+              key={q.id}
+              onClick={() => onJump(idx)}
+              title={`Q${idx + 1}: ${q.question_text?.slice(0, 60) ?? ''}…`}
+              className={`
+                w-full aspect-square rounded-lg text-xs font-semibold transition-all
+                ${isCurrent
+                  ? 'bg-green-600 text-white ring-2 ring-green-300 dark:ring-green-700 scale-110 shadow-md'
+                  : isAnswered
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }
+              `}
+            >
+              {idx + 1}
+            </button>
+          )
+        })}
+      </div>
+      {/* Legend */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-green-600 inline-block" /> Current
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-green-100 dark:bg-green-900 inline-block" /> Answered
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-gray-100 dark:bg-gray-800 inline-block" /> Skipped
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════════
@@ -122,6 +189,8 @@ export default function StudentAssessment() {
         if (isNaN(saved) || saved <= 0) {
           localStorage.setItem(timerKey, secs)
           setTimeLeft(secs)
+        } else {
+          setTimeLeft(saved)
         }
         setStarted(true)
       })
@@ -144,11 +213,13 @@ export default function StudentAssessment() {
   })
   const [timeLeft, setTimeLeft] = useState(initialSecs)
 
-  const [current,     setCurrent]     = useState(0)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [showWarning, setShowWarning] = useState(false)
-  const [submitting,  setSubmitting]  = useState(false)
-  const [identText,   setIdentText]   = useState({}) // { [questionId]: string }
+  const [current,      setCurrent]      = useState(0)
+  const [showConfirm,  setShowConfirm]  = useState(false)
+  const [showWarning,  setShowWarning]  = useState(false)
+  const [showLeave,    setShowLeave]    = useState(false)   // Leave & Save modal
+  const [submitting,   setSubmitting]   = useState(false)
+  const [identText,    setIdentText]    = useState({})      // { [questionId]: string }
+  const [showNavPanel, setShowNavPanel] = useState(false)   // mobile navigator toggle
   const warningShown = useRef(false)
 
   const TOTAL    = questions.length
@@ -199,6 +270,14 @@ export default function StudentAssessment() {
     if (storageKey) localStorage.setItem(storageKey, JSON.stringify(updated))
   }
 
+  // ── Leave & Save (pause timer by navigating away) ──────────────
+  // Timer interval stops when component unmounts.
+  // localStorage keeps the frozen timer value for next visit.
+  function handleLeaveConfirm() {
+    setShowLeave(false)
+    navigate('/student/dashboard')
+  }
+
   // ── Submit ─────────────────────────────────────────────────────
   async function handleSubmit() {
     setShowConfirm(false)
@@ -226,7 +305,6 @@ export default function StudentAssessment() {
       if (cached) localStorage.setItem('sb-user', JSON.stringify({ ...cached, has_submitted: true, retake_allowed: false }))
 
       // Build reviewData — enrich questions with correct answers from submit response
-      // (backend only exposes is_correct post-submit for security)
       const correctAnswers = res.data.correct_answers ?? {}
       const enrichedQuestions = questions.map(q => {
         const correct = correctAnswers[String(q.id)] ?? correctAnswers[q.id]
@@ -234,7 +312,6 @@ export default function StudentAssessment() {
         if (correct.type === 'identification') {
           return { ...q, correct_text: correct.text }
         }
-        // MCQ / True-False: mark the correct choice
         return {
           ...q,
           choices: (q.choices || []).map(c => ({
@@ -246,7 +323,7 @@ export default function StudentAssessment() {
 
       const reviewData = {
         questions: enrichedQuestions,
-        answers,  // { [questionId]: { selected_choice_id, text_answer } }
+        answers,
       }
 
       setTimeout(() =>
@@ -312,13 +389,26 @@ export default function StudentAssessment() {
 
       <NavBar student={navStudent} />
 
-      {/* Sub-bar: question counter + timer */}
+      {/* Sub-bar: question counter + timer + leave button */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-          {!started ? 'Loading…' : isReview ? 'Review answers' : `Q ${current + 1} / ${TOTAL}`}
-        </span>
 
-        {/* Timer */}
+        {/* Left: Leave & Save button */}
+        {started && (
+          <button
+            onClick={() => setShowLeave(true)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors shrink-0"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            <span className="hidden sm:inline">Leave &amp; Save</span>
+          </button>
+        )}
+        {!started && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">Loading…</span>
+        )}
+
+        {/* Centre: Timer */}
         {started && (
           <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono font-bold text-sm transition-colors ${timerPillClass} ${isCritical ? 'animate-pulse' : ''}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0">
@@ -330,6 +420,7 @@ export default function StudentAssessment() {
           </div>
         )}
 
+        {/* Right: answered count */}
         <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
           {started ? `${answered}/${TOTAL} answered` : ''}
         </span>
@@ -340,155 +431,258 @@ export default function StudentAssessment() {
         <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${progressPct}%` }} />
       </div>
 
+      {/* ── MAIN LAYOUT: question area + navigator ── */}
       <main className="flex-1 flex justify-center px-4 sm:px-6 py-6 sm:py-10">
-        <div className="w-full max-w-lg">
+        {/* On desktop: 2-col (question | navigator). On mobile: single col + floating toggle */}
+        <div className="w-full max-w-5xl flex gap-6 items-start">
 
-          {/* ── QUESTION ─ */}
-          {started && !isReview && question && (
-            <div>
-              <span className="inline-block bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-                {question.category || question.skill_category || 'General'}
-              </span>
+          {/* ── QUESTION / REVIEW column ── */}
+          <div className="flex-1 min-w-0">
 
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-5 sm:mb-6 leading-snug">
-                {question.question_text || question.text}
-              </h2>
+            {/* ── QUESTION ─ */}
+            {started && !isReview && question && (
+              <div>
+                <span className="inline-block bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                  {question.category || question.skill_category || 'General'}
+                </span>
 
-              {/* MCQ / True-False choices */}
-              {question.question_type !== 'identification' && (
-                <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-8">
-                  {(question.choices || []).map((choice, idx) => {
-                    const selected = answers[question.id]?.selected_choice_id === choice.id
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-5 sm:mb-6 leading-snug">
+                  {question.question_text || question.text}
+                </h2>
+
+                {/* MCQ / True-False choices */}
+                {question.question_type !== 'identification' && (
+                  <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+                    {(question.choices || []).map((choice, idx) => {
+                      const selected = answers[question.id]?.selected_choice_id === choice.id
+                      return (
+                        <button
+                          key={choice.id}
+                          onClick={() => selectChoice(question.id, choice.id)}
+                          className={`w-full text-left px-4 sm:px-5 py-3.5 sm:py-4 rounded-xl border text-sm transition-all active:scale-[0.99]
+                            ${selected
+                              ? 'bg-green-50 dark:bg-green-950 border-green-500 text-green-800 dark:text-green-200 font-medium'
+                              : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-green-300 dark:hover:border-green-700'
+                            }`}
+                        >
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full border mr-3 text-xs shrink-0
+                            ${selected ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-400'}`}>
+                            {getChoiceLabel(idx)}
+                          </span>
+                          {choice.text || choice.choice_text}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Identification answer input */}
+                {question.question_type === 'identification' && (
+                  <div className="mb-6 sm:mb-8">
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                      Type your answer below:
+                    </label>
+                    <input
+                      type="text"
+                      value={identText[question.id] ?? answers[question.id]?.text_answer ?? ''}
+                      onChange={e => setIdentificationText(question.id, e.target.value)}
+                      placeholder="Your answer…"
+                      className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Answer is not case-sensitive.</p>
+                  </div>
+                )}
+
+                {/* Navigation */}
+                <div className="flex gap-3">
+                  {current > 0 && (
+                    <button
+                      onClick={() => setCurrent(prev => prev - 1)}
+                      className="flex-1 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Back
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCurrent(prev => prev + 1)}
+                    disabled={
+                      question.question_type === 'identification'
+                        ? !(answers[question.id]?.text_answer?.trim())
+                        : !answers[question.id]?.selected_choice_id
+                    }
+                    className={`flex-1 py-3.5 rounded-xl text-sm font-semibold transition-colors
+                      ${(question.question_type === 'identification'
+                          ? answers[question.id]?.text_answer?.trim()
+                          : answers[question.id]?.selected_choice_id)
+                        ? 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}
+                  >
+                    {current === TOTAL - 1 ? 'Review answers' : 'Next →'}
+                  </button>
+                </div>
+                {!(question.question_type === 'identification'
+                    ? answers[question.id]?.text_answer?.trim()
+                    : answers[question.id]?.selected_choice_id) && (
+                  <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-3">Answer this question to continue</p>
+                )}
+                <p className="text-center text-xs text-gray-300 dark:text-gray-700 mt-4">Your answers are saved automatically</p>
+              </div>
+            )}
+
+            {/* ── REVIEW ─ */}
+            {started && isReview && (
+              <div>
+                <div className="mb-5">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Review your answers</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {answered === TOTAL
+                      ? 'All questions answered. Ready to submit.'
+                      : `${TOTAL - answered} unanswered — tap Edit to go back.`}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 mb-6">
+                  {questions.map((q, i) => {
+                    const ans = answers[q.id]
+                    const isIdent = q.question_type === 'identification'
+                    const displayAnswer = isIdent
+                      ? ans?.text_answer?.trim() || null
+                      : (q.choices || []).find(c => c.id === ans?.selected_choice_id)?.text || (q.choices || []).find(c => c.id === ans?.selected_choice_id)?.choice_text || null
                     return (
-                      <button
-                        key={choice.id}
-                        onClick={() => selectChoice(question.id, choice.id)}
-                        className={`w-full text-left px-4 sm:px-5 py-3.5 sm:py-4 rounded-xl border text-sm transition-all active:scale-[0.99]
-                          ${selected
-                            ? 'bg-green-50 dark:bg-green-950 border-green-500 text-green-800 dark:text-green-200 font-medium'
-                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-green-300 dark:hover:border-green-700'
-                          }`}
-                      >
-                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full border mr-3 text-xs shrink-0
-                          ${selected ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-400'}`}>
-                          {getChoiceLabel(idx)}
-                        </span>
-                        {choice.text || choice.choice_text}
-                      </button>
+                      <div key={q.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Q{i + 1} · {q.category || q.skill_category || 'General'} · {isIdent ? 'Identification' : q.question_type === 'truefalse' ? 'True/False' : 'MCQ'}</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{q.question_text || q.text}</p>
+                          {displayAnswer
+                            ? <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">"{displayAnswer}"</p>
+                            : <p className="text-xs text-amber-500 font-medium mt-1">Not answered</p>
+                          }
+                        </div>
+                        <button
+                          onClick={() => setCurrent(i)}
+                          className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 shrink-0 mt-0.5 transition-colors px-2 py-1 -mr-1"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     )
                   })}
                 </div>
-              )}
-
-              {/* Identification answer input */}
-              {question.question_type === 'identification' && (
-                <div className="mb-6 sm:mb-8">
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                    Type your answer below:
-                  </label>
-                  <input
-                    type="text"
-                    value={identText[question.id] ?? answers[question.id]?.text_answer ?? ''}
-                    onChange={e => setIdentificationText(question.id, e.target.value)}
-                    placeholder="Your answer…"
-                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                  />
-                  <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Answer is not case-sensitive.</p>
-                </div>
-              )}
-
-              {/* Navigation */}
-              <div className="flex gap-3">
-                {current > 0 && (
+                <div className="flex gap-3">
                   <button
-                    onClick={() => setCurrent(prev => prev - 1)}
+                    onClick={() => setCurrent(TOTAL - 1)}
                     className="flex-1 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Back
                   </button>
-                )}
-                <button
-                  onClick={() => setCurrent(prev => prev + 1)}
-                  disabled={
-                    question.question_type === 'identification'
-                      ? !(answers[question.id]?.text_answer?.trim())
-                      : !answers[question.id]?.selected_choice_id
-                  }
-                  className={`flex-1 py-3.5 rounded-xl text-sm font-semibold transition-colors
-                    ${(question.question_type === 'identification'
-                        ? answers[question.id]?.text_answer?.trim()
-                        : answers[question.id]?.selected_choice_id)
-                      ? 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}
-                >
-                  {current === TOTAL - 1 ? 'Review answers' : 'Next →'}
-                </button>
+                  <button
+                    onClick={() => setShowConfirm(true)}
+                    className="flex-1 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors"
+                  >
+                    Submit
+                  </button>
+                </div>
               </div>
-              {!(question.question_type === 'identification'
-                  ? answers[question.id]?.text_answer?.trim()
-                  : answers[question.id]?.selected_choice_id) && (
-                <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-3">Answer this question to continue</p>
-              )}
-              <p className="text-center text-xs text-gray-300 dark:text-gray-700 mt-4">Your answers are saved automatically</p>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* ── REVIEW ─ */}
-          {started && isReview && (
-            <div>
-              <div className="mb-5">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Review your answers</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {answered === TOTAL
-                    ? 'All questions answered. Ready to submit.'
-                    : `${TOTAL - answered} unanswered — tap Edit to go back.`}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 mb-6">
-                {questions.map((q, i) => {
-                  const ans = answers[q.id]
-                  const isIdent = q.question_type === 'identification'
-                  const displayAnswer = isIdent
-                    ? ans?.text_answer?.trim() || null
-                    : (q.choices || []).find(c => c.id === ans?.selected_choice_id)?.text || (q.choices || []).find(c => c.id === ans?.selected_choice_id)?.choice_text || null
-                  return (
-                    <div key={q.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Q{i + 1} · {q.category || q.skill_category || 'General'} · {isIdent ? 'Identification' : q.question_type === 'truefalse' ? 'True/False' : 'MCQ'}</p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{q.question_text || q.text}</p>
-                        {displayAnswer
-                          ? <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">"{displayAnswer}"</p>
-                          : <p className="text-xs text-amber-500 font-medium mt-1">Not answered</p>
-                        }
-                      </div>
-                      <button
-                        onClick={() => setCurrent(i)}
-                        className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 shrink-0 mt-0.5 transition-colors px-2 py-1 -mr-1"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCurrent(TOTAL - 1)}
-                  className="flex-1 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  className="flex-1 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors"
-                >
-                  Submit
-                </button>
-              </div>
+          {/* ── NAVIGATOR — desktop sidebar (hidden on mobile) ── */}
+          {started && TOTAL > 0 && (
+            <div className="hidden lg:block w-56 xl:w-64 shrink-0 sticky top-6">
+              <QuestionNavigator
+                questions={questions}
+                answers={answers}
+                current={current}
+                onJump={idx => { setCurrent(idx); setShowNavPanel(false) }}
+                isReview={isReview}
+              />
             </div>
           )}
         </div>
       </main>
+
+      {/* ── MOBILE NAVIGATOR — floating button + bottom panel ── */}
+      {started && TOTAL > 0 && (
+        <>
+          {/* Floating toggle button — only visible on mobile/tablet (<lg) */}
+          <button
+            onClick={() => setShowNavPanel(prev => !prev)}
+            className="lg:hidden fixed bottom-6 right-4 z-40 bg-green-600 hover:bg-green-700 text-white rounded-2xl shadow-lg px-4 py-2.5 flex items-center gap-2 text-sm font-semibold transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            {answered}/{TOTAL}
+          </button>
+
+          {/* Bottom panel overlay */}
+          {showNavPanel && (
+            <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+                onClick={() => setShowNavPanel(false)}
+              />
+              {/* Panel */}
+              <div className="relative bg-white dark:bg-gray-900 rounded-t-2xl p-5 shadow-2xl max-h-[60vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Question Navigator</p>
+                  <button
+                    onClick={() => setShowNavPanel(false)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <QuestionNavigator
+                  questions={questions}
+                  answers={answers}
+                  current={current}
+                  onJump={idx => { setCurrent(idx); setShowNavPanel(false) }}
+                  isReview={isReview}
+                  className="border-0 p-0"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── LEAVE & SAVE MODAL ── */}
+      {showLeave && (
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 sm:px-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 sm:p-8 w-full max-w-sm">
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950 rounded-xl flex items-center justify-center mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Leave & save progress?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 leading-relaxed">
+              Your answers and remaining time are saved automatically.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
+              When you return, you can continue from where you left off — the timer will resume from <span className="font-semibold text-gray-700 dark:text-gray-200">{formatTime(timeLeft)}</span>.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLeave(false)}
+                className="flex-1 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Keep going
+              </button>
+              <button
+                onClick={handleLeaveConfirm}
+                className="flex-1 py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Leave & save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5-MIN WARNING */}
       {showWarning && (
