@@ -15,7 +15,7 @@
 //           sortMode, setSortMode, hasPin, studentPin } = useStudentResults(routerState)
 
 import { useState, useEffect, useMemo } from 'react'
-import { useApi, _setCache } from '../useApi'
+import { useApi } from '../useApi'
 
 const RESULTS_URL = '/api/student/results/'
 const REVIEW_URL  = '/api/student/results/review/'
@@ -62,17 +62,6 @@ function readPin() {
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
 export function useStudentResults(routerState = null) {
-  // If we just came from a submit, warm the cache so useApi returns immediately
-  useEffect(() => {
-    if (!routerState) return
-    const { scores, recommendations } = routerState
-    if (!scores && !recommendations) return
-    _setCache(RESULTS_URL, {
-      skill_scores:    scores        ?? [],
-      recommendations: recommendations ?? [],
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const { data, loading, error }                    = useApi(RESULTS_URL)
   // Backend review: correct answers from DB — fixes "all wrong" on return visit
   const { data: reviewRaw, loading: reviewLoading } = useApi(REVIEW_URL)

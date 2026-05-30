@@ -18,7 +18,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import api from '../../api/axios'
-import { useApi } from '../../hooks/useApi'
+import { useApi, invalidateCache } from '../../hooks/useApi'
 
 const WARN_AT_SECS = 5 * 60
 
@@ -299,6 +299,9 @@ export default function StudentAssessment() {
       // Cleanup local storage
       if (storageKey) localStorage.removeItem(storageKey)
       if (timerKey)   localStorage.removeItem(timerKey)
+
+      // Invalidate results cache so the next page fetches fresh data from DB
+      invalidateCache('/api/student/results/')
 
       // Update cached user so dashboard shows "submitted" instantly
       const cached = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()

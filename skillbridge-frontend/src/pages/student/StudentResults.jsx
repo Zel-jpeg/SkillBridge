@@ -619,7 +619,11 @@ export default function StudentResults() {
             </div>
             {/* Map fills remaining card area, no extra padding */}
             <div className="flex-1 w-full min-h-0 px-3 pb-3">
-              <ResultsMap key={sortMode} companies={sorted} studentPin={studentPin} />
+              {resultsLoading && !sorted.length ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-gray-800 animate-pulse rounded-xl" style={{ minHeight: 280 }} />
+              ) : (
+                <ResultsMap key={`${sortMode}-${sorted.map(c => c.id).join('-')}`} companies={sorted} studentPin={studentPin} />
+              )}
             </div>
           </div>
 
