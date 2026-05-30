@@ -20,6 +20,7 @@ export default function EnrollModal({ existingStudents = [], onClose, onEnroll }
   const [xlsxErrors,  setXlsxErrors]  = useState([])
   const [xlsxFile,    setXlsxFile]    = useState(null)
   const [xlsxLoading, setXlsxLoading] = useState(false)
+  const [submitting,  setSubmitting]  = useState(false)
 
   const [manId,      setManId]       = useState('')
   const [manEmail,   setManEmail]    = useState('')
@@ -67,7 +68,7 @@ export default function EnrollModal({ existingStudents = [], onClose, onEnroll }
   }
 
   // ── Manual form handler ───────────────────────────────────────────
-  function handleManual() {
+  async function handleManual() {
     const e = {}
     if (!manName.trim()) e.name = 'Name is required'
     if (!manId.trim()) e.studentId = 'Student ID is required'
@@ -77,7 +78,12 @@ export default function EnrollModal({ existingStudents = [], onClose, onEnroll }
     if (existingStudents.find(s => s.studentId === manId.trim()))  e.studentId = 'ID already enrolled'
     if (existingStudents.find(s => s.email === manEmail.trim().toLowerCase())) e.email = 'Email already enrolled'
     if (Object.keys(e).length) { setManErr(e); return }
-    onEnroll([{ name: manName.trim(), studentId: manId.trim(), email: manEmail.trim().toLowerCase(), course: manCourse }])
+    setSubmitting(true)
+    try {
+      await onEnroll([{ name: manName.trim(), studentId: manId.trim(), email: manEmail.trim().toLowerCase(), course: manCourse }])
+    } finally {
+      setSubmitting(false)
+    }
     setManId(''); setManEmail(''); setManName(''); setNameEdited(false); setManCourse('BSIT'); setManErr({})
   }
 
@@ -197,8 +203,21 @@ export default function EnrollModal({ existingStudents = [], onClose, onEnroll }
                       </table>
                     </div>
                   </div>
-                  <button onClick={() => onEnroll(xlsxRows)} className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors">
-                    Enroll {xlsxRows.length} student{xlsxRows.length > 1 ? 's' : ''}
+                  <button
+                    onClick={async () => { setSubmitting(true); try { await onEnroll(xlsxRows) } finally { setSubmitting(false) } }}
+                    disabled={submitting}
+                    className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2.5" strokeDasharray="42" strokeDashoffset="12"/>
+                        </svg>
+                        Enrolling…
+                      </>
+                    ) : (
+                      <>Enroll {xlsxRows.length} student{xlsxRows.length > 1 ? 's' : ''}</>
+                    )}
                   </button>
                 </div>
               )}
@@ -260,8 +279,21 @@ export default function EnrollModal({ existingStudents = [], onClose, onEnroll }
                 </div>
               </div>
 
-              <button onClick={handleManual} className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors mt-1">
-                Add student
+              <button
+                onClick={handleManual}
+                disabled={submitting}
+                className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors mt-1 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2.5" strokeDasharray="42" strokeDashoffset="12"/>
+                    </svg>
+                    Adding student…
+                  </>
+                ) : (
+                  'Add student'
+                )}
               </button>
             </>
           )}

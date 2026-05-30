@@ -4,7 +4,6 @@ import PrivateRoute from './router/PrivateRoute'
 // Auth
 import LoginPage from './pages/auth/LoginPage'
 import AdminLogin from './pages/auth/AdminLogin'
-import ChooseRolePage from './pages/auth/ChooseRolePage'
 
 // Student pages
 import StudentSetup from './pages/student/StudentSetup'
@@ -34,7 +33,6 @@ function App() {
       <Route path="/"            element={<LoginPage />} />
       <Route path="/login"       element={<LoginPage />} />
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/account/choose-role" element={<ChooseRolePage />} />
 
       {/*
         /instructor/pending is PUBLIC — an unapproved instructor lands here

@@ -62,8 +62,7 @@ export default function LoginPage() {
         } else if (code === 'pending') {
           navigate('/instructor/pending', { state: { type: 'instructor_waiting' } })
         } else if (code === 'role_selection_required') {
-          sessionStorage.setItem('sb_google_token', tokenResponse.access_token)
-          navigate('/account/choose-role')
+          navigate('/instructor/pending', { state: { type: 'not_enrolled' } })
         } else if (code === 'student_not_enrolled' || code === 'student_pending') {
           navigate('/instructor/pending', {
             state: { type: 'student_waiting' }

@@ -63,6 +63,44 @@ def get_instructor_email_html(name, frontend_url, instructor_id=None, department
     </div>
     """
 
+
+def get_student_enrollment_email_html(student_name, instructor_name, batch_name, frontend_url):
+    """HTML email sent to a student when an instructor enrolls them in a batch."""
+    return f"""
+    <div style="font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        <div style="background-color: #16a34a; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">SkillBridge</h1>
+            <p style="color: #dcfce7; margin: 5px 0 0; font-size: 14px;">Davao del Norte State College — OJT Placement System</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #111827; margin: 0 0 12px; font-size: 20px;">You're Enrolled! 🎉</h2>
+            <p style="color: #4b5563; font-size: 15px; line-height: 1.7; margin: 0 0 20px;">
+                Hi <strong>{student_name}</strong>, your OJT instructor <strong>{instructor_name}</strong> has
+                enrolled you in <strong>{batch_name}</strong> on SkillBridge.
+            </p>
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 18px 20px; margin: 0 0 28px;">
+                <p style="margin: 0 0 8px; color: #15803d; font-size: 14px; font-weight: 600;">What you can do now:</p>
+                <ul style="margin: 0; padding-left: 18px; color: #166534; font-size: 14px; line-height: 1.8;">
+                    <li>Sign in using your DNSC Google account (@dnsc.edu.ph)</li>
+                    <li>Complete the OJT skills assessment assigned to your batch</li>
+                    <li>View your skill profile and top company matches</li>
+                </ul>
+            </div>
+            <div style="text-align: center;">
+                <a href="{frontend_url}/login"
+                   style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none;
+                          font-size: 15px; font-weight: bold; padding: 14px 32px; border-radius: 8px; letter-spacing: 0.3px;">
+                    Go to SkillBridge →
+                </a>
+            </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">Institute of Computing • Panabo City, Davao del Norte</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0 0;">Please do not reply to this automated email.</p>
+        </div>
+    </div>
+    """
+
 import os
 
 def send_instructor_email(user, subject, body, html_body=None):
@@ -107,7 +145,23 @@ def send_instructor_email(user, subject, body, html_body=None):
                 print(f'[SkillBridge] Async SMTP email successfully sent to {user.email}')
                 
         except http_requests.exceptions.HTTPError as e:
-            print(f'[SkillBridge] Brevo HTTP Error for {user.email}: {e.response.status_code} | {e.response.text}')
+            status_code = e.response.status_code if e.response is not None else None
+            print(f'[SkillBridge] Brevo HTTP Error for {user.email}: {status_code} | {e.response.text if e.response is not None else "no response"}')
+            # 401 = IP not whitelisted in Brevo — fall back to Django SMTP
+            if status_code == 401:
+                print(f'[SkillBridge] Brevo IP not authorized. Trying SMTP fallback for {user.email}...')
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=body,
+                        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                        html_message=html_body,
+                    )
+                    print(f'[SkillBridge] SMTP fallback succeeded for {user.email}')
+                except Exception as smtp_err:
+                    print(f'[SkillBridge] SMTP fallback also failed for {user.email}: {smtp_err}')
         except Exception as e:
             print(f'[SkillBridge] Async email send FAILED for {user.email}: {e}')
 
@@ -515,6 +569,27 @@ def instructor_batch_enroll(request, batch_id):
 
         _, created = BatchEnrollment.objects.get_or_create(batch=batch, student=student)
         enrolled.append({'email': email, 'name': student.name, 'created': created})
+
+        # ── Send enrollment notification email (only for new enrollments) ──
+        if created:
+            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+            html = get_student_enrollment_email_html(
+                student_name=student.name,
+                instructor_name=request.user.name,
+                batch_name=batch.name,
+                frontend_url=frontend_url,
+            )
+            send_instructor_email(
+                user=student,
+                subject='You have been enrolled in SkillBridge — Complete your OJT Assessment',
+                body=(
+                    f'Hi {student.name},\n\n'
+                    f'Your OJT instructor {request.user.name} has enrolled you in {batch.name} on SkillBridge.\n'
+                    f'Sign in with your DNSC Google account at {frontend_url}/login to take your assessment.\n\n'
+                    f'— SkillBridge, Davao del Norte State College'
+                ),
+                html_body=html,
+            )
 
     return Response({'enrolled': enrolled, 'errors': errors}, status=200)
 
