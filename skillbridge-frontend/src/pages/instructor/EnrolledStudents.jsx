@@ -13,6 +13,7 @@ import { getInitials }         from '../../utils/formatters'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
 const ArchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+const UnarchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="9 13 12 10 15 13"/><line x1="12" y1="10" x2="12" y2="17"/></svg>
 const PlusIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const TrashIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
 const GridIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -45,7 +46,7 @@ export default function EnrolledStudents() {
     instructor,
     batches, activeBatchId, setActiveBatchId, loadingBatches,
     viewedBatch, isArchived, students, activeBatch, completed,
-    showArchiveConf, setShowArchiveConf, handleArchiveBatch,
+    showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
     newBatchName, setNewBatchName, handleCreateBatch,
     handleEnroll, handleRemove, handleToggleRetake,
@@ -177,10 +178,16 @@ export default function EnrolledStudents() {
               </>
             )}
             {isArchived && (
-              <button onClick={() => { const ab = batches.find(b => b.status === 'active'); if (ab) setActiveBatchId(ab.id) }}
-                className="text-xs px-3 py-2 rounded-xl border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950 transition-colors font-medium">
-                Switch to active batch
-              </button>
+              <>
+                <button onClick={() => { const ab = batches.find(b => b.status === 'active'); if (ab) setActiveBatchId(ab.id) }}
+                  className="text-xs px-3 py-2 rounded-xl border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950 transition-colors font-medium">
+                  Switch to active batch
+                </button>
+                <button onClick={handleUnarchiveBatch}
+                  className="flex items-center gap-1.5 border border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950 text-green-700 dark:text-green-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
+                  <UnarchiveIcon /> Unarchive batch
+                </button>
+              </>
             )}
           </div>
         </div>

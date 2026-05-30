@@ -625,6 +625,23 @@ def instructor_batch_archive(request, batch_id):
     return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at})
 
 
+# ── POST /api/instructor/batches/{id}/unarchive/ ─────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def instructor_batch_unarchive(request, batch_id):
+    """Mark a batch as active. Only the owning instructor can do this."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    try:
+        batch = Batch.objects.get(id=batch_id, instructor=request.user)
+    except Batch.DoesNotExist:
+        return Response({'error': 'Batch not found'}, status=404)
+    batch.status      = 'active'
+    batch.archived_at = None
+    batch.save(update_fields=['status', 'archived_at'])
+    return Response({'id': batch.id, 'status': 'active', 'archived_at': None})
+
+
 # ── PATCH /api/instructor/students/{id}/retake/ ──────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])

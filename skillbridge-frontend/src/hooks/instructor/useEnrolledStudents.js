@@ -224,6 +224,17 @@ export function useEnrolledStudents() {
     setShowNewBatch(true)
   }
 
+  async function handleUnarchiveBatch() {
+    try { await api.post(`/api/instructor/batches/${activeBatchId}/unarchive/`) } catch {}
+    setBatches(prev => prev.map(b =>
+      b.id === activeBatchId
+        ? { ...b, status: 'active', archivedAt: null }
+        : b
+    ))
+    invalidateCache('/api/instructor/batches/')
+    showToast(`Batch unarchived.`)
+  }
+
   async function handleCreateBatch() {
     const name  = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
     let newId = Date.now()
@@ -335,7 +346,7 @@ export function useEnrolledStudents() {
     batches, activeBatchId, setActiveBatchId, loadingBatches,
     viewedBatch, isArchived, students, activeBatch, completed,
     // Batch actions
-    showArchiveConf, setShowArchiveConf, handleArchiveBatch,
+    showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
     newBatchName, setNewBatchName, handleCreateBatch,
     // Student actions

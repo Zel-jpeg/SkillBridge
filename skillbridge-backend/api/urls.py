@@ -26,6 +26,7 @@ urlpatterns = [
     path('instructor/batches/<int:batch_id>/enroll/',     views.instructor_batch_enroll,    name='instructor_batch_enroll'),
     path('instructor/batches/<int:batch_id>/students/',   views.instructor_batch_students,  name='instructor_batch_students'),
     path('instructor/batches/<int:batch_id>/archive/',    views.instructor_batch_archive,   name='instructor_batch_archive'),
+    path('instructor/batches/<int:batch_id>/unarchive/',  views.instructor_batch_unarchive, name='instructor_batch_unarchive'),
     path('instructor/students/<int:student_id>/retake/',  views.instructor_student_retake,  name='instructor_student_retake'),
     path('instructor/students/<int:student_id>/',         views.instructor_student_remove,  name='instructor_student_remove'),
 
