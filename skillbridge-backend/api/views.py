@@ -762,11 +762,14 @@ def instructor_batch_students(request, batch_id):
             'retake_allowed': resp.retake_allowed if resp else False,
             'skill_scores':   scores_map.get(s.id, {}),
             'enrolled_at':    e.enrolled_at,
+            'address':        s.address or {},
             'top_recommendations': [
                 {
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     'match_score': round(r.match_score, 2),
+                    'lat':         r.position.company.location_lat,
+                    'lng':         r.position.company.location_lng,
                 }
                 for r in recs_by_student.get(s.id, [])
             ],
@@ -1441,11 +1444,14 @@ def instructor_student_recommendations(request):
             'has_submitted': StudentResponse.objects.filter(student_id=student.id, submitted_at__isnull=False).exists(),
             'skill_scores': {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])},
             'batch':       {'id': e.batch.id, 'name': e.batch.name},
+            'address':     student.address or {},
             'top_recommendations': [
                 {
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     'match_score': r.match_score,
+                    'lat':         r.position.company.location_lat,
+                    'lng':         r.position.company.location_lng,
                 }
                 for r in top_recs
             ],
@@ -1912,6 +1918,7 @@ def admin_users(request):
             'top_position_name': top_rec.position.title if top_rec else None,
             'top_company_name':  top_rec.position.company.name if top_rec else None,
             'retake_allowed':    False,
+            'address':           s.address or {},
         })
 
     def serialize_instructor(user):

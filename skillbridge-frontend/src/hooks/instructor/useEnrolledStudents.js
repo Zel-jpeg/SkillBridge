@@ -49,6 +49,7 @@ function normalizeStudent(s) {
     retakeAllowed:       s.retake_allowed ?? false,
     scores:              s.skill_scores   ?? {},
     top_recommendations: s.top_recommendations ?? [],
+    address:             s.address        ?? {},
   }
 }
 
@@ -76,6 +77,14 @@ export function useEnrolledStudents() {
   // mount, so batchesRaw is available here. Without this, batches starts as []
   // for one render even when cache exists → the stats show 0 for one frame → flicker.
   const [batches, setBatches] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('sb_instructor_students_cache')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+
     if (!batchesRaw || !Array.isArray(batchesRaw)) return []
     return batchesRaw.map(b => ({
       id: b.id, name: b.name, status: b.status,
@@ -83,7 +92,17 @@ export function useEnrolledStudents() {
     }))
   })
 
+  useEffect(() => {
+    if (batches.length > 0) {
+      sessionStorage.setItem('sb_instructor_students_cache', JSON.stringify(batches))
+    }
+  }, [batches])
+
   const [activeBatchId, setActiveBatchId] = useState(() => {
+    if (batches.length > 0) {
+      const active = batches.find(b => b.status === 'active')
+      return active?.id ?? batches[batches.length - 1]?.id ?? null
+    }
     if (!batchesRaw || !Array.isArray(batchesRaw)) return null
     const active = batchesRaw.find(b => b.status === 'active')
     return active?.id ?? batchesRaw[batchesRaw.length - 1]?.id ?? null
@@ -134,7 +153,7 @@ export function useEnrolledStudents() {
     try {
       await Promise.all(batchList.map(async (b) => {
         try {
-          const r = await api.get(`/api/instructor/batches/${b.id}/students/`)
+          const r = await api.get(`/api/instructor/batches/${b.id}/students/?_t=${Date.now()}`)
           const fresh = (r.data.students || []).map(normalizeStudent)
           setBatches(prev => prev.map(pb =>
             pb.id === b.id ? { ...pb, students: fresh } : pb
@@ -200,6 +219,13 @@ export function useEnrolledStudents() {
   const isArchived  = viewedBatch?.status === 'archived'
   const students    = viewedBatch?.students ?? []
   const activeBatch = batches.find(b => b.status === 'active')
+
+  // ── Sync selectedStudent with fresh data ────────────────────────────
+  useEffect(() => {
+    if (!selectedStudent) return
+    const fresh = students.find(s => s.id === selectedStudent.id)
+    if (fresh) setSelectedStudent(fresh)
+  }, [students]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function setStudents(updater) {
     setBatches(prev => prev.map(b =>

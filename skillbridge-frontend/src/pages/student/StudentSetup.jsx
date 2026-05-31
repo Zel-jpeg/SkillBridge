@@ -245,9 +245,14 @@ export default function StudentSetup() {
   function handleNext() {
     if (step === 1 && !validateStep1()) return
     if (step === 2 && !validateStep2()) return
-    if (step === 3 && pinnedLoc) {
+    if (step === 3) {
+      if (!pinnedLoc) {
+        setErrors({ pin: 'Please place a pin on the map to specify your exact location before continuing.' })
+        return
+      }
       setFormData(prev => ({ ...prev, pinLat: pinnedLoc.lat, pinLng: pinnedLoc.lng }))
       localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
+      setErrors({})
     }
     setStep(s => s + 1)
   }
@@ -488,9 +493,11 @@ export default function StudentSetup() {
                   >✕</button>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">No pin — tap the map above. You can skip this step.</p>
+                <p className="text-xs text-gray-400">No pin — tap the map above to set your location.</p>
               )}
             </div>
+            
+            {errors.pin && <p className="text-xs text-red-500 font-medium mt-1 text-center">{errors.pin}</p>}
 
             {/* Info box */}
             <div className="mt-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex gap-2.5">

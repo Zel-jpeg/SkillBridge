@@ -104,7 +104,11 @@ export function _setCache(url, data) {
  */
 export function fetchWithDedup(url) {
   if (_inflight.has(url)) return _inflight.get(url)
-  const promise = api.get(url)
+
+  // Prevent browser caching without destroying the useApi string cache key
+  const fetchUrl = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`
+
+  const promise = api.get(fetchUrl)
     .then(res => {
       const entry = { data: res.data, fetchedAt: Date.now() }
       _cache.set(url, entry)
@@ -158,7 +162,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
   const seed = getCached()
 
   const [data,    setData]    = useState(seed?.data ?? initialData)
-  const [loading, setLoading] = useState(!!url && !skip && !seed)
+  const [loading, setLoading] = useState(!!url && !skip && !seed && !initialData)
   const [error,   setError]   = useState(null)
 
   // Tracks whether the current fetch is a silent background revalidation
@@ -179,11 +183,11 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       return
     }
 
-    if (entry) {
-      // Stale data exists → show it + refresh quietly in background
+    if (entry || initialData) {
+      // Stale data exists or initialData provided → show it + refresh quietly in background
       isBg.current = true
     } else {
-      // No cache → show spinner
+      // No cache and no initialData → show spinner
       setLoading(true)
     }
     setError(null)

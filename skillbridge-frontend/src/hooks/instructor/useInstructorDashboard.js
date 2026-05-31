@@ -43,7 +43,7 @@ export function useInstructorDashboard() {
   // ── Real-time SSE connection ──────────────────────────────────────
   // Singleton — shared with useEnrolledStudents if both are mounted.
   useSSE(SSE_PATH)
-
+  // Add a cache-buster so the browser doesn't intercept this and serve the old JSON from disk
   const { data: apiData, loading: apiLoading } = useApi('/api/instructor/students/recommendations/')
 
   // ── Normalize API → student shape ─────────────────────────────────
@@ -59,6 +59,7 @@ export function useInstructorDashboard() {
       scores:              s.skill_scores  || {},
       retakeAllowed:       s.retake_allowed ?? false,
       top_recommendations: s.top_recommendations ?? [],
+      address:             s.address ?? {},
     }))
   }, [apiData])
 
@@ -83,6 +84,13 @@ export function useInstructorDashboard() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // ── Sync selectedStudent with fresh data ────────────────────────────
+  useEffect(() => {
+    if (!selectedStudent) return
+    const fresh = studentsList.find(s => s.id === selectedStudent.id)
+    if (fresh) setSelectedStudent(fresh)
+  }, [studentsList]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived stats ─────────────────────────────────────────────────
   const completed = studentsList.filter(s => s.status === 'completed')

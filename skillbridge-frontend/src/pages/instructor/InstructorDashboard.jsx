@@ -2,9 +2,11 @@
 // All data + logic now in useInstructorDashboard.js
 // StudentModal now in components/instructor/StudentModal.jsx
 
+import { useState }             from 'react'
 import { useNavigate }          from 'react-router-dom'
 import InstructorNav            from '../../components/instructor/InstructorNav'
 import StudentModal             from '../../components/instructor/StudentModal'
+import SkillLeaderboardModal    from '../../components/instructor/SkillLeaderboardModal'
 import Pagination               from '../../components/Pagination'
 import StatusBadge              from '../../components/StatusBadge'
 import SearchBar                from '../../components/SearchBar'
@@ -56,6 +58,9 @@ export default function InstructorDashboard() {
     PAGE_SIZE, categories, average,
   } = useInstructorDashboard()
 
+  // Skill leaderboard modal state
+  const [selectedSkill, setSelectedSkill] = useState(null)
+
   // Instructor from localStorage (read in hook, also readable here for nav)
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
   const instructor = {
@@ -80,6 +85,16 @@ export default function InstructorDashboard() {
           student={selectedStudent}
           onClose={() => setSelectedStudent(null)}
           onToggleRetake={() => {}} // read-only in dashboard; retake managed in students page
+        />
+      )}
+
+      {selectedSkill && (
+        <SkillLeaderboardModal
+          skill={selectedSkill}
+          allStudents={studentsList}
+          palette={getPalette(leaders.findIndex(l => l.category === selectedSkill.category))}
+          onClose={() => setSelectedSkill(null)}
+          onSelectStudent={(s) => { setSelectedSkill(null); setSelectedStudent(s) }}
         />
       )}
 
@@ -139,11 +154,28 @@ export default function InstructorDashboard() {
 
         {/* Skill leaders */}
         <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top performers by skill</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Top performers by skill</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Click a card to see full ranking</p>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {leaders.map(({ category, student, score }, idx) => (
-              <div key={category} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getPalette(idx).pill}`}>{category.split(' ')[0]}</span>
+              <button
+                key={category}
+                onClick={() => setSelectedSkill({ category, student, score })}
+                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-left hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group w-full"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getPalette(idx).pill}`}>{category.split(' ')[0]}</span>
+                  {/* View icon — visible on hover */}
+                  <svg
+                    className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors shrink-0 mt-1"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </div>
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-gray-900 dark:text-white leading-tight mt-2">{student ? student.name.split(' ').slice(0, 2).join(' ') : '—'}</p>
                   <p className={`text-lg font-bold mt-0.5 ${scoreColor(score)}`}>{score}%</p>
@@ -151,7 +183,7 @@ export default function InstructorDashboard() {
                 <div className="mt-2 h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${getPalette(idx).bar}`} style={{ width: `${score}%` }} />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

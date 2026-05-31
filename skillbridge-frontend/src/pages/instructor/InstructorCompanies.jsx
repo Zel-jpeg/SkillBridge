@@ -184,6 +184,69 @@ function PinMap({ center, pinned, onPin }) {
   )
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// CompaniesMap — overview map showing all partner locations
+// ════════════════════════════════════════════════════════════════════════════
+function CompaniesMap({ companies }) {
+  const elRef  = useRef(null)
+  const mapRef = useRef(null)
+  const mksRef = useRef([])
+
+  function buildMarkers(L, map, list) {
+    mksRef.current.forEach(m => m.remove())
+    mksRef.current = []
+    const geo = list.filter(c => c.lat != null && c.lng != null)
+    const markers = geo.map(co =>
+      L.marker([co.lat, co.lng], { icon: makeViewIcon(L, co.name) })
+        .addTo(map)
+        .bindPopup(`
+          <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.name}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0">${co.address ? [co.address.barangay, co.address.city, co.address.province].filter(Boolean).join(', ') : 'No address set'}</p>
+            <p style="font-size:11px;font-weight:600;color:#3b82f6;margin:5px 0 0">
+              ${co.positions.length} position${co.positions.length !== 1 ? 's' : ''}
+            </p>
+          </div>`)
+    )
+    mksRef.current = markers
+    if (markers.length > 1) {
+      map.fitBounds(L.featureGroup(markers).getBounds().pad(0.28))
+    } else if (markers.length === 1) {
+      map.setView(markers[0].getLatLng(), 13)
+    }
+  }
+
+  useEffect(() => {
+    let alive = true
+    loadLeaflet().then(L => {
+      if (!alive || !elRef.current || mapRef.current) return
+      const map = L.map(elRef.current).setView([7.3072, 125.6839], 10)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map)
+      map.zoomControl.setPosition('bottomright')
+      buildMarkers(L, map, companies)
+      mapRef.current = map
+    })
+    return () => {
+      alive = false
+      mapRef.current?.remove()
+      mapRef.current = null
+    }
+  }, []) // eslint-disable-line
+
+  useEffect(() => {
+    if (!mapRef.current || !window.L) return
+    buildMarkers(window.L, mapRef.current, companies)
+  }, [companies]) // eslint-disable-line
+
+  return (
+    <div ref={elRef} className="w-full rounded-2xl overflow-hidden"
+      style={{ height: 340, isolation: 'isolate' }} />
+  )
+}
+
 // ── Match helpers ─────────────────────────────────────────────────────────────
 const matchColor = p => p >= 80 ? 'text-green-600 dark:text-green-400' : p >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-500 dark:text-rose-400'
 const matchBg    = p => p >= 80 ? 'bg-green-500' : p >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -679,6 +742,13 @@ export default function InstructorCompanies() {
               className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
           </div>
         </div>
+
+        {/* Overview Map */}
+        {!loading && companies.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-1 shadow-sm">
+            <CompaniesMap companies={companies} />
+          </div>
+        )}
 
         {/* Loading skeletons */}
         {loading && (

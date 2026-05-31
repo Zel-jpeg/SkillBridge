@@ -10,6 +10,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clearAllCache } from '../hooks/useApi'
+import { resetPrefetch } from '../api/prefetch'
+import { closeSSE } from '../hooks/useSSE'
 
 export default function NavBar({ student }) {
   const navigate = useNavigate()
@@ -47,6 +50,9 @@ export default function NavBar({ student }) {
     localStorage.removeItem('sb-refresh')
     localStorage.removeItem('sb-role')
     localStorage.removeItem('sb-user')
+    clearAllCache()
+    resetPrefetch()
+    closeSSE()
     navigate('/login', { replace: true })
   }
 

@@ -61,19 +61,20 @@ export function useAdminUsers() {
     const pending  = Array.isArray(usersData.pending_instructors) ? usersData.pending_instructors : []
 
     setStudentsList(students.map(s => ({
-      id:             s.id,
-      name:           s.name,
-      studentId:      s.student_id    || '',
-      email:          s.email         || '',
-      course:         s.course        || '',
-      instructor:     s.instructor    || 'TBD',
-      status:         s.status        || 'pending',
-      retakeAllowed:  !!s.retake_allowed,
-      match:          s.top_match_score   ?? null,
-      position:       s.top_position_name ?? null,
-      company:        s.top_company_name  ?? null,
-      archived:       false,
-      role:           'student',
+      id:               s.id,
+      name:             s.name,
+      studentId:        s.student_id    || '',
+      email:            s.email         || '',
+      course:           s.course        || '',
+      instructor:       s.instructor    || 'TBD',
+      status:           s.status        || 'pending',
+      retakeAllowed:    !!s.retake_allowed,
+      match:            s.top_match_score   ?? null,
+      position:         s.top_position_name ?? null,
+      company:          s.top_company_name  ?? null,
+      archived:         false,
+      role:             'student',
+      address:          s.address           ?? {},
     })))
 
     setInstructors(approved.map(i => ({
@@ -97,6 +98,20 @@ export function useAdminUsers() {
       courses:      i.courses        || 'BSIT / BSIS',
     })))
   }, [usersData])
+
+  // ── Sync selectedUser with fresh data ─────────────────────────────
+  // If a background fetch brings in new data (e.g. adding the address field),
+  // we must update the currently open modal's user object so it re-renders.
+  useEffect(() => {
+    if (!selectedUser) return
+    if (selectedUserType === 'instructor') {
+      const fresh = instructors.find(i => i.id === selectedUser.id)
+      if (fresh) setSelectedUser(fresh)
+    } else {
+      const fresh = studentsList.find(s => s.id === selectedUser.id)
+      if (fresh) setSelectedUser(fresh)
+    }
+  }, [studentsList, instructors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ───────────────────────────────────────────────────────
 

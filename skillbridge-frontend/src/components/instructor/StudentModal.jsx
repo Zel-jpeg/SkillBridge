@@ -18,6 +18,7 @@ import {
   avg, topSkill, bottomSkill, scoreColor, scoreBg, tierLabel,
 } from '../../utils/formatters'
 import { getInitials } from '../../utils/formatters'
+import StudentLocationSection from '../StudentLocationSection'
 
 // Generic suggestion fallback — avoids hardcoding specific categories
 function getSuggestion(cat) {
@@ -215,16 +216,45 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                   </div>
                 </div>
               )}
+
+              {/* ── Location & Preferences ─────────────────────────── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Location &amp; Preferences</p>
+                </div>
+                <StudentLocationSection
+                  address={student.address}
+                  top_recommendations={student.top_recommendations}
+                />
+              </div>
             </div>
           ) : (
             /* Pending state */
-            <div className="flex flex-col items-center gap-4 py-14 px-6">
-              <div className="w-20 h-20 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-dashed border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-400 dark:text-amber-600">
-                <ClockIcon />
+            <div className="flex flex-col gap-5 py-6 px-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-dashed border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-400 dark:text-amber-600">
+                  <ClockIcon />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">No assessment data yet</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs leading-relaxed">This student hasn't completed the assessment. Results will appear here once submitted.</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">No assessment data yet</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs leading-relaxed">This student hasn't completed the assessment. Results will appear here once submitted.</p>
+              {/* Still show location even for pending students */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Location &amp; Preferences</p>
+                </div>
+                <StudentLocationSection
+                  address={student.address}
+                  top_recommendations={[]}
+                />
               </div>
             </div>
           )}
