@@ -211,10 +211,23 @@ export function useInstructorUpload() {
   const [duration,        setDuration]        = useState('')
   const [selectedBatchId, setSelectedBatchId] = useState(null)
 
-  // Skill categories
+  // Skill categories — pre-populated from the global admin-managed list
   const [categories, setCategories] = useState([])
   const [catInput,   setCatInput]   = useState('')
   const catRef = useRef(null)
+
+  // Pre-load global skill categories so instructors see the shared list
+  useEffect(() => {
+    api.get('/api/categories/').then(res => {
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        const loaded = res.data.map(c => makeCategory(c.id, c.name))
+        setCategories(loaded)
+        // Bump ID counter so new locally-added categories don't clash
+        const maxId = Math.max(...res.data.map(c => c.id))
+        _cid = Math.max(_cid, maxId + 1)
+      }
+    }).catch(() => { /* fail silently — instructor can still add manually */ })
+  }, [])
 
   // Questions
   const [questions,    setQuestions]    = useState(() => [makeQuestion(nextQid(), 'mcq')])

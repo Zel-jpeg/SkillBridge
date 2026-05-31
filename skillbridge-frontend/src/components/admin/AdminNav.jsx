@@ -64,9 +64,12 @@ export default function AdminNav({ activePath }) {
   }
 
   const links = [
-    { label: 'Dashboard', path: '/admin/dashboard' },
-    { label: 'Companies', path: '/admin/companies'  },
-    { label: 'Users',     path: '/admin/users'      },
+    { label: 'Dashboard',   path: '/admin/dashboard'   },
+    { label: 'Skills',      path: '/admin/skills'      },
+    { label: 'Companies',   path: '/admin/companies'   },
+    { label: 'Users',       path: '/admin/users'       },
+    { label: 'Assessments', path: '/admin/assessments' },
+    { label: 'Reports',     path: '/admin/reports'     },
   ]
 
   const linkClass = (path) =>

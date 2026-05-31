@@ -25,6 +25,9 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminCompanies from './pages/admin/AdminCompanies'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminNotifications from './pages/admin/AdminNotifications'
+import AdminSkills from './pages/admin/AdminSkills'
+import AdminAssessments from './pages/admin/AdminAssessments'
+import AdminReports from './pages/admin/AdminReports'
 
 function App() {
   return (
@@ -88,6 +91,15 @@ function App() {
       } />
       <Route path="/admin/users" element={
         <PrivateRoute role="admin"><AdminUsers /></PrivateRoute>
+      } />
+      <Route path="/admin/skills" element={
+        <PrivateRoute role="admin"><AdminSkills /></PrivateRoute>
+      } />
+      <Route path="/admin/assessments" element={
+        <PrivateRoute role="admin"><AdminAssessments /></PrivateRoute>
+      } />
+      <Route path="/admin/reports" element={
+        <PrivateRoute role="admin"><AdminReports /></PrivateRoute>
       } />
       <Route path="/admin/notifications" element={
         <PrivateRoute role="admin"><AdminNotifications /></PrivateRoute>

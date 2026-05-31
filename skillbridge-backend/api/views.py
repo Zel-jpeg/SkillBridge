@@ -2322,3 +2322,159 @@ def admin_position_detail(request, position_id):
         'slots':        position.slots_available,
         'requirements': updated_reqs,
     })
+
+# ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def admin_skills(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Forbidden'}, status=403)
+    
+    if request.method == 'GET':
+        cats = SkillCategory.objects.all().order_by('name')
+        return Response([{'id': c.id, 'name': c.name, 'description': c.description} for c in cats])
+        
+    elif request.method == 'POST':
+        name = request.data.get('name', '').strip()
+        description = request.data.get('description', '').strip()
+        if not name:
+            return Response({'error': 'Name is required'}, status=400)
+            
+        cat, created = SkillCategory.objects.get_or_create(
+            name__iexact=name,
+            defaults={'name': name, 'description': description, 'created_by': request.user}
+        )
+        if not created:
+            return Response({'error': 'Skill category already exists'}, status=400)
+            
+        return Response({'id': cat.id, 'name': cat.name, 'description': cat.description}, status=201)
+
+# ── PUT/DELETE /api/admin/skills/<id>/ ────────────────────────────────────
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_skill_detail(request, skill_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Forbidden'}, status=403)
+        
+    try:
+        cat = SkillCategory.objects.get(id=skill_id)
+    except SkillCategory.DoesNotExist:
+        return Response({'error': 'Skill not found'}, status=404)
+        
+    if request.method == 'PUT':
+        name = request.data.get('name', '').strip()
+        description = request.data.get('description', '').strip()
+        if not name:
+            return Response({'error': 'Name is required'}, status=400)
+            
+        if SkillCategory.objects.filter(name__iexact=name).exclude(id=skill_id).exists():
+            return Response({'error': 'Another skill with this name already exists'}, status=400)
+            
+        cat.name = name
+        cat.description = description
+        cat.save(update_fields=['name', 'description'])
+        return Response({'id': cat.id, 'name': cat.name, 'description': cat.description})
+        
+    elif request.method == 'DELETE':
+        cat.delete()
+        return Response(status=204)
+
+
+
+# ── GET /api/admin/reports/ ───────────────────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_reports(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Forbidden'}, status=403)
+
+    from django.db.models import Count, Avg
+
+    # --- Submission stats ---
+    total_students      = User.objects.filter(role='student', is_active=True).count()
+    submitted_students  = StudentResponse.objects.filter(submitted_at__isnull=False).values('student').distinct().count()
+    pending_students    = total_students - submitted_students
+
+    # --- Recommendation stats ---
+    total_recs = Recommendation.objects.count()
+    strong_matches = Recommendation.objects.filter(match_score__gte=80).count()
+    fair_matches   = Recommendation.objects.filter(match_score__gte=60, match_score__lt=80).count()
+    low_matches    = Recommendation.objects.filter(match_score__lt=60).count()
+
+    # --- Average match score ---
+    avg_score_data = Recommendation.objects.aggregate(avg=Avg('match_score'))
+    avg_score = round(avg_score_data['avg'] or 0, 1)
+
+    # --- Skill category breakdown (avg score per category) ---
+    skill_scores = (
+        SkillScore.objects
+        .values('skill_category__name')
+        .annotate(avg_pct=Avg('percentage'), student_count=Count('student', distinct=True))
+        .order_by('-avg_pct')
+    )
+    skill_breakdown = [
+        {
+            'category': s['skill_category__name'],
+            'avg_score': round(s['avg_pct'], 1),
+            'student_count': s['student_count'],
+        }
+        for s in skill_scores
+        if s['skill_category__name']
+    ]
+
+    # --- Top matched companies ---
+    from django.db.models import Count as DCount, Avg as DAvg
+    top_companies = (
+        Recommendation.objects
+        .filter(match_score__gte=60)
+        .values('position__company__name')
+        .annotate(match_count=DCount('id'), avg_score=DAvg('match_score'))
+        .order_by('-match_count')[:5]
+    )
+    top_companies_out = [
+        {
+            'company': t['position__company__name'],
+            'match_count': t['match_count'],
+            'avg_score': round(t['avg_score'], 1),
+        }
+        for t in top_companies
+    ]
+
+    # --- Assessment completion rate per batch ---
+    batches = Batch.objects.prefetch_related('enrollments').order_by('-created_at')[:10]
+    batch_completion = []
+    for b in batches:
+        total = b.enrollments.count()
+        if total == 0:
+            continue
+        try:
+            assessment = Assessment.objects.get(batch=b)
+            submitted = StudentResponse.objects.filter(
+                assessment=assessment, submitted_at__isnull=False
+            ).count()
+        except Assessment.DoesNotExist:
+            submitted = 0
+        batch_completion.append({
+            'batch': b.name,
+            'total': total,
+            'submitted': submitted,
+            'rate': round((submitted / total) * 100, 1) if total else 0,
+        })
+
+    return Response({
+        'submission_stats': {
+            'total': total_students,
+            'submitted': submitted_students,
+            'pending': pending_students,
+        },
+        'recommendation_stats': {
+            'total': total_recs,
+            'strong': strong_matches,
+            'fair': fair_matches,
+            'low': low_matches,
+            'avg_score': avg_score,
+        },
+        'skill_breakdown': skill_breakdown,
+        'top_companies': top_companies_out,
+        'batch_completion': batch_completion,
+    })

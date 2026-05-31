@@ -60,6 +60,9 @@ urlpatterns = [
     path('admin/companies/<int:company_id>/',             views.admin_company_detail,     name='admin_company_detail'),
     path('admin/companies/<int:company_id>/positions/',   views.admin_company_positions,  name='admin_company_positions'),
     path('admin/positions/<int:position_id>/',            views.admin_position_detail,    name='admin_position_detail'),
+    path('admin/skills/',                                 views.admin_skills,             name='admin_skills'),
+    path('admin/skills/<int:skill_id>/',                  views.admin_skill_detail,       name='admin_skill_detail'),
+    path('admin/reports/',                                views.admin_reports,            name='admin_reports'),
     path('admin/students/recommendations/',               views.admin_student_recommendations, name='admin_student_recommendations'),
     path('admin/rerun-recommendations/',                   views.admin_rerun_recommendations,   name='admin_rerun_recommendations'),
 
