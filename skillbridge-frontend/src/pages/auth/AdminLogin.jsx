@@ -77,8 +77,11 @@ export default function AdminLogin() {
       }
       // =========================================================================
 
-      if (msg === 'pending') navigate('/instructor/pending')
-      else setError('Invalid username or password.')
+      if (msg === 'pending') {
+        navigate('/instructor/pending')
+      } else {
+        setError(msg || 'Invalid username or password.')
+      }
     } finally {
       setLoading(false)
     }
@@ -154,16 +157,16 @@ export default function AdminLogin() {
         {/* Form */}
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
 
-          {/* Username */}
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Username
+              Email Address
             </label>
             <input
               type="text"
               value={username}
               onChange={e => { setUsername(e.target.value); setError('') }}
-              placeholder="Enter your admin username"
+              placeholder="Enter your admin email (e.g. admin@dnsc.edu.ph)"
               autoComplete="username"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm outline-none focus:border-green-500 transition-colors placeholder:text-gray-400"
             />
