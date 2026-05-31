@@ -106,9 +106,6 @@ function PinMap({ center, pinned, onPin }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
-  
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -160,67 +157,10 @@ function PinMap({ center, pinned, onPin }) {
     }
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
 
-  async function handleSearch(e) {
-    e.preventDefault()
-    if (!searchQuery.trim() || !mapRef.current) return
-    setIsSearching(true)
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
-        { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
-      )
-      const data = await res.json()
-      if (data && data.length > 0) {
-        const hit = data[0]
-        const lat = parseFloat(hit.lat)
-        const lng = parseFloat(hit.lon)
-        mapRef.current.setView([lat, lng], 17, { animate: true })
-        // Place pin
-        if (mkRef.current) {
-          mkRef.current.setLatLng([lat, lng])
-        } else {
-          const L = window.L
-          mkRef.current = L.marker([lat, lng], {
-            icon: makePinIcon(L), draggable: true,
-          }).addTo(mapRef.current)
-          mkRef.current.on('dragend', ev => {
-            const p = ev.target.getLatLng()
-            onPin({ lat: p.lat, lng: p.lng })
-          })
-        }
-        onPin({ lat, lng })
-      } else {
-        alert('Location not found. Try adding city or province.')
-      }
-    } catch (err) {
-      console.error('Search error:', err)
-    } finally {
-      setIsSearching(false)
-    }
-  }
-
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
       style={{ height: 248, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
-      
-      {/* Map Search Bar */}
-      <div className="absolute top-2 left-2 right-2 z-[1000]">
-        <form onSubmit={handleSearch} className="flex bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden w-full max-w-[280px]">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search map (e.g. Tagum City)"
-            className="flex-1 px-3 py-2 text-xs bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-400"
-          />
-          <button type="submit" disabled={isSearching}
-            className="px-3 flex items-center justify-center text-xs font-medium bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 transition-colors">
-            {isSearching ? <Spinner /> : 'Find'}
-          </button>
-        </form>
-      </div>
-
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
           bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
