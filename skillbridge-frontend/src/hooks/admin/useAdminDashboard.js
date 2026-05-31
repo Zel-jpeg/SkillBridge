@@ -36,6 +36,7 @@ export function useAdminDashboard() {
       match:      s.top_match_score   ?? null,
       position:   s.top_position_name ?? null,
       company:    s.top_company_name  ?? null,
+      photoUrl:   s.photo_url         || null,
     }))
   }, [studentsData])
 
@@ -51,6 +52,7 @@ export function useAdminDashboard() {
         company:   s.company,
         position:  s.position,
         match:     s.match,
+        photoUrl:  s.photoUrl,
       }))
   , [students])
 

@@ -13,6 +13,7 @@ import SearchBar                from '../../components/SearchBar'
 import EmptyState               from '../../components/EmptyState'
 import { useInstructorDashboard, getPalette } from '../../hooks/instructor/useInstructorDashboard'
 import { getInitials }          from '../../utils/formatters'
+import Avatar                   from '../../components/Avatar'
 
 function scoreColor(pct) {
   if (pct == null) return 'text-gray-300 dark:text-gray-700'
@@ -230,7 +231,7 @@ export default function InstructorDashboard() {
                       className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 transition-all cursor-pointer">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-sm font-bold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                          <Avatar name={s.name} photoUrl={s.photoUrl} className="w-10 h-10 rounded-full text-sm" />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{s.name}</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p>
@@ -323,7 +324,7 @@ export default function InstructorDashboard() {
                             className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                                <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
                                 <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                               </div>
                             </td>

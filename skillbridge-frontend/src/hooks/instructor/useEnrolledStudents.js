@@ -50,6 +50,7 @@ function normalizeStudent(s) {
     scores:              s.skill_scores   ?? {},
     top_recommendations: s.top_recommendations ?? [],
     address:             s.address        ?? {},
+    photoUrl:            s.photo_url      || null,
   }
 }
 

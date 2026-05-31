@@ -15,6 +15,7 @@ import EmptyState        from '../../components/EmptyState'
 import StatusBadge       from '../../components/StatusBadge'
 import { useAdminUsers } from '../../hooks/admin/useAdminUsers'
 import { getInitials, matchColor } from '../../utils/formatters'
+import Avatar from '../../components/Avatar'
 
 // ── Small page-scoped icons ───────────────────────────────────────
 const PlusIcon     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -179,7 +180,7 @@ export default function AdminUsers() {
               <EmptyState message="No pending instructor requests." />
             ) : pendingInstructors.map(p => (
               <div key={p.id} className="bg-white dark:bg-gray-900 border border-amber-100 dark:border-amber-900/30 rounded-2xl px-5 py-4 flex items-center gap-4 hover:shadow-sm transition cursor-pointer" onClick={() => setSelectedPending(p)}>
-                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-amber-700 dark:text-amber-300 text-sm font-bold shrink-0">{getInitials(p.name)}</div>
+                <Avatar name={p.name} photoUrl={p.photoUrl} className="w-10 h-10 rounded-xl text-sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{p.name}</p>
@@ -254,7 +255,7 @@ export default function AdminUsers() {
                       className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md cursor-pointer transition-shadow">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-400 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{getInitials(u.name)}</div>
+                          <Avatar name={u.name} photoUrl={u.photoUrl} className="w-9 h-9 rounded-xl text-xs" />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{u.studentId || u.instructorId}</p>
@@ -305,7 +306,7 @@ export default function AdminUsers() {
                             className={`border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-linear-to-br from-indigo-400 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{getInitials(u.name)}</div>
+                                <Avatar name={u.name} photoUrl={u.photoUrl} className="w-8 h-8 rounded-xl text-xs" />
                                 <div>
                                   <p className="text-sm font-medium text-gray-900 dark:text-white">{u.name}</p>
                                   <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{u.studentId || u.instructorId}</p>

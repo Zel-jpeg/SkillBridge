@@ -261,10 +261,20 @@ function AnswerReview({ questions, answers }) {
   const safePage   = Math.min(page, totalPages)
   const pageItems  = filtered.slice((safePage - 1) * REVIEW_PAGE_SIZE, safePage * REVIEW_PAGE_SIZE)
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1) }, [catFilter, resultFilter])
+  // Reset page when filters change (handle carefully to avoid cascading renders)
+  useEffect(() => {
+    // Only set page if we aren't already on page 1, to prevent infinite loops
+    setPage(p => p !== 1 ? 1 : p)
+  }, [catFilter, resultFilter])
+
   // Reset everything when accordion closes
-  useEffect(() => { if (!open) { setPage(1); setCatFilter('all'); setResultFilter('all') } }, [open])
+  useEffect(() => {
+    if (!open) {
+      setPage(p => p !== 1 ? 1 : p)
+      setCatFilter(c => c !== 'all' ? 'all' : c)
+      setResultFilter(r => r !== 'all' ? 'all' : r)
+    }
+  }, [open])
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden mb-8">

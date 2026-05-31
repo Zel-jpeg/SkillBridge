@@ -12,6 +12,7 @@ import EmptyState  from '../../components/EmptyState'
 import AdminNav    from '../../components/admin/AdminNav'
 import { useAdminDashboard } from '../../hooks/admin/useAdminDashboard'
 import { getInitials, matchColor } from '../../utils/formatters'
+import Avatar from '../../components/Avatar'
 
 // ── Local icons (small, page-scoped) ─────────────────────────────
 const GridIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -129,9 +130,7 @@ export default function AdminDashboard() {
               {topMatches.map((m, i) => (
                 <div key={i} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300">
-                      {getInitials(m.student)}
-                    </div>
+                    <Avatar name={m.student} photoUrl={m.photoUrl} className="w-8 h-8 rounded-full text-xs" />
                     <span className={`text-lg font-bold ${matchColor(m.match)}`}>{m.match}%</span>
                   </div>
                   <div>
@@ -183,7 +182,7 @@ export default function AdminDashboard() {
                 <div key={s.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300 shrink-0">{getInitials(s.name)}</div>
+                      <Avatar name={s.name} photoUrl={s.photoUrl} className="w-10 h-10 rounded-full text-sm" />
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{s.name}</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{s.studentId} · {s.course}</p>
@@ -233,7 +232,7 @@ export default function AdminDashboard() {
                       <tr key={s.id} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 shrink-0">{getInitials(s.name)}</div>
+                            <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
                             <div>
                               <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{s.name}</p>
                               <p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p>

@@ -10,6 +10,7 @@ import ConfirmModal            from '../../components/admin/ConfirmModal'
 import Pagination              from '../../components/Pagination'
 import { useEnrolledStudents, getPalette } from '../../hooks/instructor/useEnrolledStudents'
 import { getInitials }         from '../../utils/formatters'
+import Avatar                  from '../../components/Avatar'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
 const ArchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -262,7 +263,7 @@ export default function EnrolledStudents() {
                     className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 transition-all cursor-pointer">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-sm font-bold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                        <Avatar name={s.name} photoUrl={s.photoUrl} className="w-10 h-10 rounded-full text-sm" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{s.name}</p>
                           <p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p>
@@ -345,7 +346,7 @@ export default function EnrolledStudents() {
                       <tr key={s.id} onClick={() => setSelectedStudent(s)}
                         className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i%2?'bg-gray-50/30 dark:bg-gray-800/20':''}`}>
                         <td className="px-5 py-4"><div className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 shrink-0">{getInitials(s.name)}</div>
+                          <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
                           <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                         </div></td>
                         <td className="px-3 py-4">{s.status==='completed'?<span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500"/>Done</span>:<span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500"/>Pending</span>}</td>

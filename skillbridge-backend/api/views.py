@@ -1824,6 +1824,7 @@ def admin_student_recommendations(request):
             'email':            student.email,
             'school_id':        student.school_id,
             'course':           student.course,
+            'photo_url':        student.photo_url,
             'instructor_name':  instructor_by_student.get(student.id, ''),
             'has_submitted':    bool(top_one),
             'top_match_score':  round(top_one.match_score, 2) if top_one else None,
@@ -1835,6 +1836,7 @@ def admin_student_recommendations(request):
                 'email':     student.email,
                 'school_id': student.school_id,
                 'course':    student.course,
+                'photo_url': student.photo_url,
             },
             'top_recommendations': [
                 {
@@ -1922,6 +1924,7 @@ def admin_users(request):
             'top_company_name':  top_rec.position.company.name if top_rec else None,
             'retake_allowed':    False,
             'address':           s.address or {},
+            'photo_url':         s.photo_url,
         })
 
     def serialize_instructor(user):
@@ -1933,6 +1936,7 @@ def admin_users(request):
             'department':   'Institute of Computing',
             'courses':      user.course or 'BSIT / BSIS',
             'is_approved':  user.is_approved,
+            'photo_url':    user.photo_url,
         }
 
     return Response({

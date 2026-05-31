@@ -77,6 +77,7 @@ export function useAdminUsers() {
       archived:         false,
       role:             'student',
       address:          s.address           ?? {},
+      photoUrl:         s.photo_url         || null,
     })))
 
     setInstructors(approved.map(i => ({
@@ -89,6 +90,7 @@ export function useAdminUsers() {
       archived:     false,
       status:       'active',
       role:         'instructor',
+      photoUrl:     i.photo_url      || null,
     })))
 
     setPendingInstructors(pending.map(i => ({
@@ -98,6 +100,7 @@ export function useAdminUsers() {
       email:        i.email          || '',
       department:   i.department     || 'Institute of Computing',
       courses:      i.courses        || 'BSIT / BSIS',
+      photoUrl:     i.photo_url      || null,
     })))
   }, [usersData])
 

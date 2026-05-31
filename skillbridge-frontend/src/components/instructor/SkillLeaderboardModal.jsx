@@ -14,6 +14,7 @@
 
 import { XIcon } from '../Icons'
 import { getInitials } from '../../utils/formatters'
+import Avatar from '../Avatar'
 
 // ── Score helpers (local, no import needed) ────────────────────────
 function scoreColor(p) {
@@ -111,9 +112,7 @@ function PodiumCard({ student, rank, score, category, onSelectStudent }) {
       </div>
 
       {/* Avatar */}
-      <div className={`rounded-full flex items-center justify-center font-bold shrink-0 ${avatarSize} ${avatarStyle}`}>
-        {getInitials(student.name)}
-      </div>
+      <Avatar name={student.name} photoUrl={student.photoUrl} className={`rounded-full shadow-sm shrink-0 ${avatarSize}`} />
 
       {/* Name */}
       <div className="text-center min-w-0 w-full">
@@ -273,9 +272,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, palette, onC
                           </div>
 
                           {/* Avatar */}
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-300 shrink-0">
-                            {getInitials(s.name)}
-                          </div>
+                          <Avatar name={s.name} photoUrl={s.photoUrl} className="w-8 h-8 rounded-full text-xs" />
 
                           {/* Name + course */}
                           <div className="flex-1 min-w-0">
@@ -319,9 +316,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, palette, onC
                         onClick={() => onSelectStudent(s)}
                         title={s.name}
                       >
-                        <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-400 shrink-0">
-                          {getInitials(s.name)}
-                        </div>
+                        <Avatar name={s.name} photoUrl={s.photoUrl} className="w-5 h-5 rounded-full text-[9px]" />
                         <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[100px]">
                           {s.name.split(' ')[0]}
                         </span>

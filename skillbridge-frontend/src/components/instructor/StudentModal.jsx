@@ -18,6 +18,7 @@ import {
   avg, topSkill, bottomSkill, scoreColor, scoreBg, tierLabel,
 } from '../../utils/formatters'
 import { getInitials } from '../../utils/formatters'
+import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
 
 // Generic suggestion fallback — avoids hardcoding specific categories
@@ -48,9 +49,7 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow">
-              {getInitials(student.name)}
-            </div>
+            <Avatar name={student.name} photoUrl={student.photoUrl} className="w-10 h-10 rounded-xl text-sm shadow" />
             <div>
               <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{student.name}</h2>
               <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{student.studentId} · {student.course}</p>
