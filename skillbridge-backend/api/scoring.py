@@ -452,7 +452,7 @@ def suggest_category(question_text, categories):
 
     This helps instructors tag their questions quickly and consistently.
 
-    NLP TECHNIQUE USED — TF-IDF + Cosine Similarity:
+    NLP TECHNIQUE USED — Keyword Match + TF-IDF:
     ──────────────────────────────────────────────────
     TF-IDF stands for Term Frequency–Inverse Document Frequency. It is one of
     the most classic and widely-used techniques in Natural Language Processing.
@@ -479,15 +479,18 @@ def suggest_category(question_text, categories):
     Categories: ["Web Development", "Database Management", "Networking"]
     Question  : "What is the purpose of a primary key in SQL?"
 
-    1. Build corpus (combined text list):
+    1. Option A (Keyword Match): Check if exact category names appear in the question.
+       If yes, return it instantly.
+    
+    2. Build corpus (combined text list):
        corpus = ["Web Development", "Database Management", "Networking",
                  "What is the purpose of a primary key in SQL?"]
 
-    2. TfidfVectorizer converts each item into a vector of word weights.
+    3. TfidfVectorizer converts each item into a vector of word weights.
        "primary", "key", "SQL" appear only in the question and are close to
        "Database" — so the question vector is most similar to "Database Management".
 
-    3. Cosine similarity picks "Database Management" → returned as suggestion.
+    4. Cosine similarity picks "Database Management" → returned as suggestion.
 
     CONFIDENCE THRESHOLD:
     ─────────────────────
@@ -513,6 +516,12 @@ def suggest_category(question_text, categories):
     # Extract just the names of all skill categories
     # These are treated as short "documents" in TF-IDF
     category_names = [cat.name for cat in categories]
+
+    # -- Option A: Simple Keyword Matching (Exact Substring) --
+    question_lower = question_text.lower()
+    for cat_name in category_names:
+        if cat_name.lower() in question_lower:
+            return cat_name
 
     # ── STEP 1: Build the corpus ───────────────────────────────────────────────
     # The corpus is the full collection of "documents" TF-IDF will analyze.

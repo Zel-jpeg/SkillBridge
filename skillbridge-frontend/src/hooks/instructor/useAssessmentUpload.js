@@ -134,7 +134,17 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
         }
       })
 
-      setXlsxRows(rows)
+      const rowsWithSuggestions = await Promise.all(rows.map(async (r) => {
+        try {
+          const res = await api.post('/api/categories/suggest/', { question_text: r.question })
+          if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
+            return { ...r, suggestedCategory: res.data.suggested_category }
+          }
+        } catch(e) {}
+        return r
+      }))
+
+      setXlsxRows(rowsWithSuggestions)
       setXlsxErrors(errs)
     } catch {
       setXlsxErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .xlsx or .csv file.'] }])
@@ -152,7 +162,17 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
     try {
       const content = await file.text()
       const { rows, errs } = parseTextFileContent(content)
-      setTxtRows(rows)
+      const rowsWithSuggestions = await Promise.all(rows.map(async (r) => {
+        try {
+          const res = await api.post('/api/categories/suggest/', { question_text: r.question })
+          if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
+            return { ...r, suggestedCategory: res.data.suggested_category }
+          }
+        } catch(e) {}
+        return r
+      }))
+
+      setTxtRows(rowsWithSuggestions)
       setTxtErrors(errs)
     } catch {
       setTxtErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .txt file.'] }])
@@ -197,6 +217,18 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
     setSubmitError('')
   }
 
+  function applySuggestion(index, newCategory) {
+    if (tab === 'excel') {
+      const newRows = [...xlsxRows]
+      newRows[index] = { ...newRows[index], category: newCategory, suggestedCategory: null }
+      setXlsxRows(newRows)
+    } else {
+      const newRows = [...txtRows]
+      newRows[index] = { ...newRows[index], category: newCategory, suggestedCategory: null }
+      setTxtRows(newRows)
+    }
+  }
+
   const activeRows   = tab === 'excel' ? xlsxRows   : txtRows
   const activeErrors = tab === 'excel' ? xlsxErrors : txtErrors
   const activeLoading = tab === 'excel' ? xlsxLoading : txtLoading
@@ -214,6 +246,7 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
     submitting, submitError, handleSubmit,
     // Utils
     reset,
+    applySuggestion,
     CHOICE_LABELS,
   }
 }

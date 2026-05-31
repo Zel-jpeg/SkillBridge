@@ -18,8 +18,9 @@
 //   • Single "Save All Changes" → confirmation dialog → batch API calls
 //   • Toast feedback on success / error
 
-import { useState }                      from 'react'
+import { useState, useEffect }           from 'react'
 import { useNavigate }                   from 'react-router-dom'
+import api                               from '../../api/axios'
 import InstructorNav                     from '../../components/instructor/InstructorNav'
 import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
@@ -64,7 +65,7 @@ const UPLOAD_TYPE_COLORS = {
 }
 const UPLOAD_TYPE_LABELS = { mcq: 'MCQ', truefalse: 'T/F', identification: 'IDENT' }
 
-function PreviewTable({ rows }) {
+function PreviewTable({ rows, onApplySuggestion }) {
   return (
     <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
       <div className="overflow-x-auto max-h-48">
@@ -91,7 +92,19 @@ function PreviewTable({ rows }) {
                     : r.type === 'truefalse' ? (r.correctIdx === 0 ? 'True' : 'False')
                     : ['A','B','C','D'][r.correctIdx]}
                 </td>
-                <td className="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-90px truncate">{r.category}</td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-col gap-1 items-start">
+                    <span className="text-gray-500 dark:text-gray-400 max-w-90px truncate">{r.category}</span>
+                    {r.suggestedCategory && r.suggestedCategory.toLowerCase() !== r.category.toLowerCase() && (
+                      <button
+                        onClick={() => onApplySuggestion(i, r.suggestedCategory)}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                      >
+                        Suggested: {r.suggestedCategory}
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -122,6 +135,33 @@ function EditableQuestionCard({ q, index, categories, onUpdate, onChangeType, on
   const preview = q.question_text
     ? (q.question_text.length > 70 ? q.question_text.slice(0, 70) + '…' : q.question_text)
     : 'No question text yet…'
+
+  const [suggestedCategory, setSuggestedCategory] = useState(null)
+
+  useEffect(() => {
+    if (!q.question_text || q.question_text.trim() === '') {
+      setSuggestedCategory(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.post('/api/categories/suggest/', { question_text: q.question_text })
+        if (res.data.suggested_category) {
+          // Check if it's already selected
+          if (q.category?.name !== res.data.suggested_category) {
+            setSuggestedCategory(res.data.suggested_category)
+          } else {
+            setSuggestedCategory(null)
+          }
+        } else {
+          setSuggestedCategory(null)
+        }
+      } catch (e) {
+        // silently ignore
+      }
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [q.question_text, q.category?.name])
 
   return (
     <div
@@ -294,20 +334,39 @@ function EditableQuestionCard({ q, index, categories, onUpdate, onChangeType, on
             {categories.length === 0 ? (
               <p className="text-xs text-amber-600 dark:text-amber-400 italic">No categories found.</p>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {categories.map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() => onUpdate(q._tempId, { category: { id: cat.id, name: cat.name } })}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                      (q.category?.id === cat.id || q.category?.name?.toLowerCase() === cat.name.toLowerCase())
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-700 dark:hover:text-green-300'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => onUpdate(q._tempId, { category: { id: cat.id, name: cat.name } })}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                        (q.category?.id === cat.id || q.category?.name?.toLowerCase() === cat.name.toLowerCase())
+                          ? 'bg-green-600 border-green-600 text-white'
+                          : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-700 dark:hover:text-green-300'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+                {suggestedCategory && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Suggested:</span>
+                    <button
+                      onClick={() => {
+                        const catObj = categories.find(c => c.name.toLowerCase() === suggestedCategory.toLowerCase())
+                        if (catObj) {
+                          onUpdate(q._tempId, { category: { id: catObj.id, name: catObj.name } })
+                          setSuggestedCategory(null)
+                        }
+                      }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                    >
+                      {suggestedCategory}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -818,7 +877,7 @@ export default function InstructorAssessments() {
                   <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     {upload.activeRows.length} question{upload.activeRows.length > 1 ? 's' : ''} ready to add:
                   </p>
-                  <PreviewTable rows={upload.activeRows} />
+                  <PreviewTable rows={upload.activeRows} onApplySuggestion={upload.applySuggestion} />
                 </div>
               )}
               {upload.submitError && (
