@@ -44,17 +44,33 @@ function loadLeaflet() {
 
 // ── Nominatim geocoder (free, no key) ────────────────────────────────────────
 async function geocodeAddress({ barangay, city, province }) {
-  const q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
-  const zoom = barangay ? 17 : city ? 15 : 12
+  let q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
+  let zoom = barangay ? 17 : city ? 15 : 12
   try {
-    const res   = await fetch(
+    let res   = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
       { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
     )
-    const [hit] = await res.json()
-    if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
+    let hits = await res.json()
+    if (hits && hits.length > 0) {
+      return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
+    }
+    
+    // Fallback: If barangay search failed, try searching just the city
+    if (barangay && city) {
+      q = [city, province, 'Philippines'].filter(Boolean).join(', ')
+      zoom = 15
+      res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+        { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
+      )
+      hits = await res.json()
+      if (hits && hits.length > 0) {
+        return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
+      }
+    }
   } catch {}
-  return { lat: 7.1907, lng: 125.4553, zoom }  // fallback: Davao City
+  return { lat: 7.1907, lng: 125.4553, zoom: 12 }  // fallback: Davao City
 }
 
 // ── Map icons ─────────────────────────────────────────────────────────────────
