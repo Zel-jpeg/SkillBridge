@@ -54,6 +54,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD  = 'email'
     REQUIRED_FIELDS = ['name', 'role']
 
+    def save(self, *args, **kwargs):
+        if self.name:
+            self.name = self.name.title()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f'{self.name} ({self.role})'
 # ── Batch ────────────────────────────────────────────────────────────────────

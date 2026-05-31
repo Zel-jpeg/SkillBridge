@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MenuIcon, XIcon, BellIcon } from '../Icons'
+import { MenuIcon, XIcon } from '../Icons'
 import { clearAllCache } from '../../hooks/useApi'
 import { resetPrefetch } from '../../api/prefetch'
 import { closeSSE } from '../../hooks/useSSE'
@@ -30,7 +30,6 @@ export default function AdminNav({ activePath }) {
 
   // ── UI state ────────────────────────────────────────────────────
   const [profileOpen, setProfileOpen] = useState(false)
-  const [notifOpen,   setNotifOpen]   = useState(false)
   const [mobileOpen,  setMobileOpen]  = useState(false)
   const [dark,        setDark]        = useState(() => localStorage.getItem('sb-theme') === 'dark')
   const [showLogoutModal, setShowLogoutModal] = useState(false)
@@ -116,47 +115,6 @@ export default function AdminNav({ activePath }) {
         {/* Right side */}
         <div className="flex items-center gap-2">
 
-          {/* Notification bell */}
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => { setNotifOpen(p => !p); setProfileOpen(false) }}
-              className="relative p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <BellIcon />
-              <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-900 pointer-events-none" />
-            </button>
-            {notifOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden z-40">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">Notifications</p>
-                  <span className="text-[10px] uppercase font-bold text-gray-400">3 New</span>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  <div onClick={() => { go('/admin/users?tab=pending') }} className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors bg-blue-50/30 dark:bg-blue-900/10">
-                    <div className="mt-0.5 w-2 h-2 bg-blue-500 rounded-full shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">New Instructor Request</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">A user has requested instructor access.</p>
-                      <p className="text-[10px] text-gray-400 mt-1">Just now</p>
-                    </div>
-                  </div>
-                  <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer flex gap-3 transition-colors">
-                    <div className="mt-0.5 w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">Assessment matching engine updated to v2.0.</p>
-                      <p className="text-[10px] text-gray-400 mt-1">1 day ago</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 text-center border-t border-gray-100 dark:border-gray-800">
-                  <button onClick={() => { go('/admin/notifications') }} className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">
-                    View all activity
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Hamburger (mobile) */}
           <button
             onClick={() => setMobileOpen(p => !p)}
@@ -168,7 +126,7 @@ export default function AdminNav({ activePath }) {
           {/* Avatar dropdown */}
           <div className="relative ml-1">
             <button
-              onClick={() => { setProfileOpen(p => !p); setNotifOpen(false) }}
+              onClick={() => { setProfileOpen(p => !p) }}
               className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-xs font-semibold text-rose-700 dark:text-rose-300 hover:ring-2 hover:ring-rose-400 transition-all overflow-hidden"
             >
               {admin.photoUrl
