@@ -9,6 +9,7 @@ import InstructorNav              from '../../components/instructor/InstructorNa
 import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import { getInitials }            from '../../utils/formatters'
+import Avatar                     from '../../components/Avatar'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
 let _leafletPromise = null
@@ -568,9 +569,7 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
                             {pos.matched_students.map((stu, si) => (
                               <div key={stu.id} className={`flex items-center gap-3 px-4 py-2.5 ${si === 0 ? 'bg-green-50/60 dark:bg-green-950/20' : ''}`}>
                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${si === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>{si + 1}</span>
-                                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 shrink-0">
-                                  {getInitials(stu.name)}
-                                </div>
+                                <Avatar name={stu.name} photoUrl={stu.photo_url} className="w-7 h-7 rounded-full text-xs shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
                                     <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{stu.name}</p>
@@ -652,9 +651,7 @@ function CompanyCard({ company, onClick }) {
 
       {topEntry && (
         <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900 rounded-xl px-3 py-2">
-          <div className="w-6 h-6 rounded-full bg-green-200 dark:bg-green-800 flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 shrink-0">
-            {getInitials(topEntry.name)}
-          </div>
+          <Avatar name={topEntry.name} photoUrl={topEntry.photo_url} className="w-6 h-6 rounded-full text-[10px] shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{topEntry.name.split(' ')[0]}</p>

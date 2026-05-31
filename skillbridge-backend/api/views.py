@@ -1516,6 +1516,7 @@ def instructor_companies(request):
                     'name':        r.student.name,
                     'school_id':   r.student.school_id,
                     'course':      r.student.course,
+                    'photo_url':   r.student.photo_url,
                     'match_score': round(float(r.match_score), 1),
                     'batch_name':  student_batch_info.get(r.student.id, {}).get('name', ''),
                     'batch_status': student_batch_info.get(r.student.id, {}).get('status', 'active'),
