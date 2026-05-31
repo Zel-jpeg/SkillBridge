@@ -394,11 +394,12 @@ def student_profile(request):
         'pinLng': request.data.get('pinLng'),
     }
 
+    user.name      = request.data.get('name',      user.name) or user.name
     user.school_id = request.data.get('studentId', user.school_id)
     user.course    = request.data.get('course',    user.course)
     user.phone     = request.data.get('phone',     user.phone)
     user.address   = address
-    user.save(update_fields=['school_id', 'course', 'phone', 'address'])
+    user.save(update_fields=['name', 'school_id', 'course', 'phone', 'address'])
 
     return Response(UserSerializer(user).data)
 

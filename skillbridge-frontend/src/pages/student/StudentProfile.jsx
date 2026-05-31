@@ -187,7 +187,10 @@ export default function StudentProfile() {
   const displayCourse = apiStudent?.course    ?? ''
   const photoUrl      = apiStudent?.photo_url ?? ''
 
-  // Editable state — seeded from API address once loaded
+  // Editable state — seeded from API once loaded
+  const [editName,           setEditName]           = useState('')
+  const [editStudentId,      setEditStudentId]      = useState('')
+  const [editCourse,         setEditCourse]         = useState('')
   const [phone,              setPhone]              = useState('')
   const [travelWilling,      setTravelWilling]      = useState('panabo')
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -200,6 +203,9 @@ export default function StudentProfile() {
   // Seed editable fields once API data arrives
   useEffect(() => {
     if (!apiStudent) return
+    setEditName(apiStudent.name ?? '')
+    setEditStudentId(apiStudent.school_id ?? '')
+    setEditCourse(apiStudent.course ?? '')
     setPhone(apiStudent.phone ?? '')
     setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
     setStayingAt(apiStudent.address?.stayingAt ?? 'home')
@@ -271,6 +277,9 @@ export default function StudentProfile() {
   // ── Save ─────────────────────────────────────────────────────
   async function handleSave() {
     const e = {}
+    if (!editName.trim())       e.editName      = 'Full name is required'
+    if (!editStudentId.trim())  e.editStudentId = 'Student ID is required'
+    if (!editCourse.trim())     e.editCourse    = 'Course is required'
     const phonePattern = /^09\d{9}$/
     if (!phone)                         e.phone = 'Phone number is required'
     else if (!phonePattern.test(phone)) e.phone = 'Must be 11 digits starting with 09'
@@ -289,6 +298,9 @@ export default function StudentProfile() {
 
     try {
       const res = await api.patch('/api/students/me/profile/', {
+        name:             editName.trim(),
+        studentId:        editStudentId.trim(),
+        course:           editCourse.trim(),
         phone,
         stayingAt,
         travelWilling,
@@ -416,18 +428,57 @@ export default function StudentProfile() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Student details</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Managed by your OJT coordinator.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">You can update your name, ID, and course here.</p>
             </div>
-            {/* Lock badge */}
-            <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full shrink-0 mt-0.5">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Read-only
-            </span>
           </div>
 
-          <ReadOnlyField label="Full name"   value={apiLoading ? '' : displayName} />
-          <ReadOnlyField label="Student ID"  value={apiLoading ? '' : displayId} />
-          <ReadOnlyField label="Course"      value={apiLoading ? '' : displayCourse} />
+          {/* Full name */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Full name <span className="text-green-600 dark:text-green-400 text-[10px] font-semibold ml-1">Editable</span>
+            </label>
+            <input
+              type="text"
+              value={editName}
+              onChange={e => { setEditName(e.target.value); setErrors(prev => ({ ...prev, editName: '' })); setSaved(false) }}
+              placeholder="e.g. Juan Dela Cruz"
+              className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                ${errors.editName ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+            />
+            {errors.editName && <p className="text-xs text-red-500 mt-1.5">{errors.editName}</p>}
+          </div>
+
+          {/* Student ID */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Student ID <span className="text-green-600 dark:text-green-400 text-[10px] font-semibold ml-1">Editable</span>
+            </label>
+            <input
+              type="text"
+              value={editStudentId}
+              onChange={e => { setEditStudentId(e.target.value); setErrors(prev => ({ ...prev, editStudentId: '' })); setSaved(false) }}
+              placeholder="e.g. 2023-12345"
+              className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                ${errors.editStudentId ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+            />
+            {errors.editStudentId && <p className="text-xs text-red-500 mt-1.5">{errors.editStudentId}</p>}
+          </div>
+
+          {/* Course */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Course <span className="text-green-600 dark:text-green-400 text-[10px] font-semibold ml-1">Editable</span>
+            </label>
+            <input
+              type="text"
+              value={editCourse}
+              onChange={e => { setEditCourse(e.target.value); setErrors(prev => ({ ...prev, editCourse: '' })); setSaved(false) }}
+              placeholder="e.g. BSIT"
+              className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                ${errors.editCourse ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+            />
+            {errors.editCourse && <p className="text-xs text-red-500 mt-1.5">{errors.editCourse}</p>}
+          </div>
 
           {/* Phone — editable */}
           <div>
