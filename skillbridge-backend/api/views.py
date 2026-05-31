@@ -104,10 +104,14 @@ def get_student_enrollment_email_html(student_name, instructor_name, batch_name,
 import os
 
 def send_instructor_email(user, subject, body, html_body=None):
+    print(f"[SkillBridge DEBUG] send_instructor_email called for user: {user.email}")
     def _send():
+        print(f"[SkillBridge DEBUG] Thread started for sending email to {user.email}")
         try:
             api_key = os.getenv('BREVO_API_KEY')
             from_email = os.getenv('EMAIL_HOST_USER', 'azelmv14@gmail.com')
+            print(f"[SkillBridge DEBUG] BREVO_API_KEY present: {bool(api_key)}")
+            print(f"[SkillBridge DEBUG] from_email: {from_email}")
             
             if api_key:
                 # -------------------------------------------------------------
@@ -124,9 +128,12 @@ def send_instructor_email(user, subject, body, html_body=None):
                     "api-key": api_key,
                     "content-type": "application/json"
                 }
+                print(f"[SkillBridge DEBUG] Sending to Brevo API...")
                 
                 # http_requests is imported as `import requests as http_requests` at the top of views.py
                 res = http_requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                print(f"[SkillBridge DEBUG] Brevo API Response Status: {res.status_code}")
+                print(f"[SkillBridge DEBUG] Brevo API Response Text: {res.text}")
                 res.raise_for_status() 
                 print(f'[SkillBridge] Async HTTP API email successfully sent to {user.email}')
             
@@ -134,6 +141,7 @@ def send_instructor_email(user, subject, body, html_body=None):
                 # -------------------------------------------------------------
                 # STANDARD SMTP ROUTE (Fails gracefully on Railway free tier)
                 # -------------------------------------------------------------
+                print(f"[SkillBridge DEBUG] Falling back to standard SMTP route...")
                 send_mail(
                     subject=subject,
                     message=body,
@@ -163,15 +171,18 @@ def send_instructor_email(user, subject, body, html_body=None):
                 except Exception as smtp_err:
                     print(f'[SkillBridge] SMTP fallback also failed for {user.email}: {smtp_err}')
         except Exception as e:
-            print(f'[SkillBridge] Async email send FAILED for {user.email}: {e}')
+            import traceback
+            print(f'[SkillBridge DEBUG] Async email send FAILED for {user.email} Exception details: {e}')
+            traceback.print_exc()
 
     try:
         t = threading.Thread(target=_send)
         t.daemon = True
         t.start()
+        print(f"[SkillBridge DEBUG] Thread successfully started for {user.email}")
         return True
     except Exception as e:
-        print(f"[SkillBridge] Failed to start email thread: {e}")
+        print(f"[SkillBridge DEBUG] Failed to start email thread: {e}")
         return False
 
 
@@ -585,7 +596,9 @@ def instructor_batch_enroll(request, batch_id):
         enrolled.append({'email': email, 'name': student.name, 'created': created})
 
         # ── Send enrollment notification email (only for new enrollments) ──
+        print(f"[SkillBridge DEBUG] Processing enrollment for {email}. Enrollment created? {created}")
         if created:
+            print(f"[SkillBridge DEBUG] Preparing to send enrollment email to {student.email}")
             frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
             html = get_student_enrollment_email_html(
                 student_name=student.name,
@@ -604,6 +617,8 @@ def instructor_batch_enroll(request, batch_id):
                 ),
                 html_body=html,
             )
+        else:
+            print(f"[SkillBridge DEBUG] Enrollment not newly created for {email}, skipping email send.")
 
     return Response({'enrolled': enrolled, 'errors': errors}, status=200)
 
