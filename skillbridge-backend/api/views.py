@@ -825,6 +825,9 @@ def instructor_assessments(request):
         except Batch.DoesNotExist:
             return Response({'error': 'Batch not found or not yours'}, status=404)
 
+        # Deactivate any existing active assessments for this batch
+        Assessment.objects.filter(batch=batch, is_active=True).update(is_active=False)
+
     # Create the assessment
     assessment = Assessment.objects.create(
         title=title,

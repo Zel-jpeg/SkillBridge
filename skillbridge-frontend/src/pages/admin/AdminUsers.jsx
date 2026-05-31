@@ -46,8 +46,10 @@ export default function AdminUsers() {
     displayed, counts, instructorsList,
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
-    approvePendingInstructor, rejectPendingInstructor,
+    approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
     handleToggleRetake, handleUpdateUser, handleRemoveUser,
+    confirmDeleteStudent, confirmRemoveStudent, setConfirmRemoveStudent,
+    confirmRejectPending, setConfirmRejectPending,
     toast,
   } = useAdminUsers()
 
@@ -119,6 +121,24 @@ export default function AdminUsers() {
           confirmLabel="Remove"
           onConfirm={confirmDeleteInstructor}
           onCancel={() => setConfirmRemoveInstr(null)}
+        />
+      )}
+      {confirmRemoveStudent && (
+        <ConfirmModal
+          title="Archive student?"
+          message={`This will archive ${confirmRemoveStudent.name} and remove their access.`}
+          confirmLabel="Archive"
+          onConfirm={confirmDeleteStudent}
+          onCancel={() => setConfirmRemoveStudent(null)}
+        />
+      )}
+      {confirmRejectPending && (
+        <ConfirmModal
+          title="Reject instructor request?"
+          message={`This will reject and remove ${confirmRejectPending.name}'s request for instructor access.`}
+          confirmLabel="Reject"
+          onConfirm={confirmRejectInstructor}
+          onCancel={() => setConfirmRejectPending(null)}
         />
       )}
 

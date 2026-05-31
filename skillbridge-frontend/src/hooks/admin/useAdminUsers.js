@@ -33,6 +33,8 @@ export function useAdminUsers() {
   const [selectedUserType,   setSelectedUserType]   = useState('student')
   const [selectedPending,    setSelectedPending]    = useState(null)
   const [confirmRemoveInstr, setConfirmRemoveInstr] = useState(null)
+  const [confirmRemoveStudent, setConfirmRemoveStudent] = useState(null)
+  const [confirmRejectPending, setConfirmRejectPending] = useState(null)
 
   // ── Table state ───────────────────────────────────────────────────
   const [activeTab,        setActiveTab]     = useState('students')
@@ -164,10 +166,17 @@ export function useAdminUsers() {
   }
 
   function rejectPendingInstructor(instr) {
-    setPendingInstructors(p => p.filter(x => x.id !== instr.id))
-    showToast(`${instr.name} rejected.`)
+    setConfirmRejectPending(instr)
+    setSelectedPending(null)
+  }
+
+  function confirmRejectInstructor() {
+    if (!confirmRejectPending) return
+    setPendingInstructors(p => p.filter(x => x.id !== confirmRejectPending.id))
+    showToast(`${confirmRejectPending.name} rejected.`)
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setSelectedPending(null)
+    setConfirmRejectPending(null)
   }
 
   function handleToggleRetake(studentId) {
@@ -198,11 +207,17 @@ export function useAdminUsers() {
   function handleRemoveUser(user) {
     if (selectedUserType === 'instructor') handleDeleteInstructor(user)
     else {
-      setStudentsList(prev => prev.map(s => s.id === user.id ? { ...s, archived: true } : s))
+      setConfirmRemoveStudent(user)
       setSelectedUser(null)
-      invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
-      showToast(`Student ${user.name} archived.`)
     }
+  }
+
+  function confirmDeleteStudent() {
+    if (!confirmRemoveStudent) return
+    setStudentsList(prev => prev.map(s => s.id === confirmRemoveStudent.id ? { ...s, archived: true } : s))
+    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
+    showToast(`Student ${confirmRemoveStudent.name} archived.`)
+    setConfirmRemoveStudent(null)
   }
 
   // ── Sort toggle ───────────────────────────────────────────────────
@@ -294,9 +309,13 @@ export function useAdminUsers() {
     confirmDeleteInstructor,
     approvePendingInstructor,
     rejectPendingInstructor,
+    confirmRejectInstructor,
     handleToggleRetake,
     handleUpdateUser,
     handleRemoveUser,
+    confirmDeleteStudent,
+    confirmRemoveStudent, setConfirmRemoveStudent,
+    confirmRejectPending, setConfirmRejectPending,
     toast,
   }
 }

@@ -21,6 +21,7 @@
 import { useState }                      from 'react'
 import { useNavigate }                   from 'react-router-dom'
 import InstructorNav                     from '../../components/instructor/InstructorNav'
+import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
 import { useAssessmentUpload }           from '../../hooks/instructor/useAssessmentUpload'
 
@@ -404,6 +405,8 @@ export default function InstructorAssessments() {
     updateQuestion, changeQuestionType, updateChoice, setCorrectChoice,
     addQuestion, removeQuestion,
     showSaveConfirm, setShowSaveConfirm,
+    confirmRemoveQuestion, setConfirmRemoveQuestion,
+    confirmRemoveQuestionAction,
     saving, saveAllChanges,
     toast,
   } = useInstructorAssessments()
@@ -717,6 +720,17 @@ export default function InstructorAssessments() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Question Delete Confirmation ── */}
+      {confirmRemoveQuestion && (
+        <ConfirmModal
+          title="Remove question?"
+          message="This question will be marked for deletion. It will be permanently removed when you save all changes."
+          confirmLabel="Remove"
+          onConfirm={confirmRemoveQuestionAction}
+          onCancel={() => setConfirmRemoveQuestion(null)}
+        />
       )}
 
       {/* ── Upload Questions sub-modal (z-70, topmost) ─────────────────────── */}

@@ -179,6 +179,7 @@ export function useInstructorAssessments() {
 
   // ── Save / confirm state ──────────────────────────────────────────────────
   const [showSaveConfirm, setShowSaveConfirm] = useState(false)
+  const [confirmRemoveQuestion, setConfirmRemoveQuestion] = useState(null)
   const [saving,          setSaving]          = useState(false)
   const [toast,           setToast]           = useState(null)
 
@@ -218,6 +219,7 @@ export function useInstructorAssessments() {
     setSelected(null)
     setEditedQuestions([])
     setShowSaveConfirm(false)
+    setConfirmRemoveQuestion(null)
   }, [])
 
   // ── Collapse / expand all ─────────────────────────────────────────────────
@@ -297,10 +299,16 @@ export function useInstructorAssessments() {
 
   // ── Remove / restore a question ───────────────────────────────────────────
   const removeQuestion = useCallback((tempId) => {
-    setEditedQuestions(prev => prev.map(q =>
-      q._tempId === tempId ? { ...q, _deleted: true } : q
-    ))
+    setConfirmRemoveQuestion(tempId)
   }, [])
+
+  const confirmRemoveQuestionAction = useCallback(() => {
+    if (!confirmRemoveQuestion) return
+    setEditedQuestions(prev => prev.map(q =>
+      q._tempId === confirmRemoveQuestion ? { ...q, _deleted: true } : q
+    ))
+    setConfirmRemoveQuestion(null)
+  }, [confirmRemoveQuestion])
 
   // ── Save all changes ──────────────────────────────────────────────────────
   const saveAllChanges = useCallback(async () => {
@@ -404,8 +412,10 @@ export function useInstructorAssessments() {
     setCorrectChoice,
     addQuestion,
     removeQuestion,
-    // ── Save ─────────────────────────────────────────────────────────────────
+    // ── Save / Confirm ───────────────────────────────────────────────────────
     showSaveConfirm, setShowSaveConfirm,
+    confirmRemoveQuestion, setConfirmRemoveQuestion,
+    confirmRemoveQuestionAction,
     saving, saveAllChanges,
     toast,
   }
