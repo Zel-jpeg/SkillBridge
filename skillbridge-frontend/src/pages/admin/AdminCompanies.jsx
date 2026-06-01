@@ -309,9 +309,9 @@ function Spinner() {
 // ── Skill level presets ───────────────────────────────────────────────────────
 const SKILL_LEVELS = [
   { label: 'Not Required', value: 0,  color: 'gray'   },
-  { label: 'Basic',        value: 25, color: 'blue'   },
-  { label: 'Mid',          value: 50, color: 'yellow' },
-  { label: 'Advanced',     value: 75, color: 'orange' },
+  { label: 'Beginner',     value: 25, color: 'gray'   },
+  { label: 'Competent',    value: 50, color: 'yellow' },
+  { label: 'Proficient',   value: 75, color: 'blue'   },
   { label: 'Expert',       value: 90, color: 'green'  },
 ]
 const LEVEL_COLORS = {

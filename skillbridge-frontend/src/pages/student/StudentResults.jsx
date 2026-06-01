@@ -12,7 +12,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import NavBar from '../../components/NavBar'
+import NavBar        from '../../components/NavBar'
+import Avatar        from '../../components/Avatar'
+import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
 
@@ -620,15 +622,18 @@ export default function StudentResults() {
               <div className="flex flex-col gap-3.5">
                 {skillScores.map((s, i) => (
                   <div key={s.label}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{s.label}</span>
-                      <span className={`text-xs font-bold ${matchColor(s.pct)}`}>{s.pct}%</span>
+                    <div className="flex justify-between items-end mb-1">
+                      <span className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-tight mr-2">{s.label}</span>
+                      <span className={`text-xs font-bold shrink-0 ${matchColor(s.pct)}`}>{s.pct}%</span>
                     </div>
-                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]} transition-all duration-700 ease-out`}
-                        style={{ width: animated ? `${s.pct}%` : '0%' }}
-                      />
+                    <div className="flex items-center gap-2">
+                      {s.tag && <SkillTagBadge tag={s.tag} />}
+                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]} transition-all duration-700 ease-out`}
+                          style={{ width: animated ? `${s.pct}%` : '0%' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

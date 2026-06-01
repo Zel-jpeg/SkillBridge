@@ -20,6 +20,7 @@ import {
 import { getInitials } from '../../utils/formatters'
 import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
+import { SkillTagBadge } from '../SkillTagBadge'
 
 // Generic suggestion fallback — avoids hardcoding specific categories
 function getSuggestion(cat) {
@@ -112,8 +113,9 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                         <div className="flex items-center gap-2 mb-1.5">
                           <StatusIcon />
                           <span className="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1">{cat}</span>
-                          {sc < 60 && <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900 px-2 py-0.5 rounded-full">Needs improvement</span>}
-                          <span className={`text-xs font-bold ${scoreColor(sc)}`}>{sc}%</span>
+                          {student.tags?.[cat] && <SkillTagBadge tag={student.tags[cat]} />}
+                          {sc < 60 && <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900 px-2 py-0.5 rounded-full shrink-0">Needs improvement</span>}
+                          <span className={`text-xs font-bold shrink-0 ${scoreColor(sc)}`}>{sc}%</span>
                         </div>
                         <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${scoreBg(sc)}`} style={{ width: `${sc}%` }} />

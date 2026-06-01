@@ -94,3 +94,28 @@ export function matchBg(pct) {
   if (pct >= 60) return 'bg-amber-500'
   return 'bg-gray-200 dark:bg-gray-700'
 }
+
+// ── Qualitative skill tags ─────────────────────────────────────────
+
+/**
+ * Maps a percentage score to a qualitative label.
+ * Mirrors the backend get_qualitative_tag() function.
+ */
+export function getQualitativeTag(pct) {
+  if (pct == null) return null
+  if (pct >= 90) return 'Expert'
+  if (pct >= 75) return 'Proficient'
+  if (pct >= 50) return 'Competent'
+  return 'Beginner'
+}
+
+/**
+ * Config map for a given tag → { label, classes }
+ */
+export const SKILL_TAG_CONFIG = {
+  Expert:     { label: 'Expert',     classes: 'bg-green-100  text-green-700  dark:bg-green-900/60  dark:text-green-300'  },
+  Proficient: { label: 'Proficient', classes: 'bg-blue-100   text-blue-700   dark:bg-blue-900/60   dark:text-blue-300'   },
+  Competent:  { label: 'Competent',  classes: 'bg-amber-100  text-amber-700  dark:bg-amber-900/60  dark:text-amber-300'  },
+  Beginner:   { label: 'Beginner',   classes: 'bg-gray-100   text-gray-600   dark:bg-gray-800      dark:text-gray-400'   },
+}
+

@@ -3,6 +3,8 @@
 
 import AdminNav from '../../components/admin/AdminNav'
 import { useApi } from '../../hooks/useApi'
+import { SkillTagBadge } from '../../components/SkillTagBadge'
+import { getQualitativeTag } from '../../utils/formatters'
 
 const Spinner = () => (
   <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
@@ -33,11 +35,14 @@ function SectionCard({ title, subtitle, children }) {
   )
 }
 
-function BarRow({ label, value, max, colorClass, right }) {
+function BarRow({ label, value, max, colorClass, right, tag }) {
   const pct = max > 0 ? (value / max) * 100 : 0
   return (
     <div className="flex items-center gap-3 py-1.5">
-      <span className="text-xs text-gray-700 dark:text-gray-300 w-40 truncate shrink-0">{label}</span>
+      <div className="flex items-center gap-2 w-48 shrink-0">
+        <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{label}</span>
+        {tag && <SkillTagBadge tag={tag} />}
+      </div>
       <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${colorClass || 'bg-green-500'}`} style={{ width: `${pct}%` }} />
       </div>
@@ -192,6 +197,7 @@ export default function AdminReports() {
                       s.avg_score >= 60 ? 'bg-amber-500' : 'bg-rose-400'
                     }
                     right={`${s.avg_score}%`}
+                    tag={getQualitativeTag(s.avg_score)}
                   />
                 ))}
               </div>

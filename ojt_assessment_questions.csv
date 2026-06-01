@@ -1,0 +1,11 @@
+question,type,choice_a,choice_b,choice_c,choice_d,correct,category
+Which HTTP method is commonly used to submit new data to a web server?,mcq,GET,POST,DELETE,HEAD,B,Web Development
+Which technology is primarily used to style the appearance of web pages?,mcq,HTML,CSS,SQL,PHP,B,Web Development
+A REST API commonly returns data in JSON format.,truefalse,,,,,True,Web Development
+Which SQL command is used to retrieve data from a database table?,mcq,INSERT,UPDATE,DELETE,SELECT,D,Database Management
+A primary key can contain duplicate values in a table.,truefalse,,,,,False,Database Management
+Which database normalization form eliminates partial dependency on a composite key?,mcq,First Normal Form,Second Normal Form,Third Normal Form,Boyce-Codd Normal Form,B,Database Management
+What network device forwards packets between different networks?,identification,,,,,Router,Networking
+Which protocol is primarily used to securely access remote devices over a network?,mcq,FTP,Telnet,SSH,SMTP,C,Networking
+What term refers to a reusable interface that allows applications to communicate with each other?,identification,,,,,API,Programming
+What data structure follows the Last In First Out (LIFO) principle?,identification,,,,,Stack,Programming

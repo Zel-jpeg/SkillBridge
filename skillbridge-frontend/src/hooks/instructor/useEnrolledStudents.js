@@ -39,6 +39,18 @@ const SSE_PATH  = '/api/instructor/events/'
 
 // ── Normalize raw API student → local shape ───────────────────────────────────
 function normalizeStudent(s) {
+  const parsedScores = {}
+  const parsedTags = {}
+  for (const [k, v] of Object.entries(s.skill_scores ?? {})) {
+    if (typeof v === 'object' && v !== null) {
+      parsedScores[k] = v.percentage
+      parsedTags[k] = v.tag
+    } else {
+      parsedScores[k] = v
+      parsedTags[k] = null
+    }
+  }
+
   return {
     id:                  s.id,
     name:                s.name,
@@ -47,7 +59,8 @@ function normalizeStudent(s) {
     course:              s.course,
     status:              s.has_submitted ? 'completed' : 'pending',
     retakeAllowed:       s.retake_allowed ?? false,
-    scores:              s.skill_scores   ?? {},
+    scores:              parsedScores,
+    tags:                parsedTags,
     top_recommendations: s.top_recommendations ?? [],
     address:             s.address        ?? {},
     photoUrl:            s.photo_url      || null,

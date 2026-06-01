@@ -5,6 +5,7 @@
 import { useNavigate }         from 'react-router-dom'
 import InstructorNav           from '../../components/instructor/InstructorNav'
 import StudentModal            from '../../components/instructor/StudentModal'
+import { SkillScoreRow }       from '../../components/SkillTagBadge'
 import EnrollModal             from '../../components/instructor/EnrollModal'
 import ConfirmModal            from '../../components/admin/ConfirmModal'
 import Pagination              from '../../components/Pagination'
@@ -285,19 +286,11 @@ export default function EnrolledStudents() {
                           <div className="flex justify-between mb-1"><span className="text-xs text-gray-500 dark:text-gray-400">Overall</span><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall}%</span></div>
                           <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(overall)}`} style={{ width: `${overall}%` }} /></div>
                         </div>
-                        {/* Compact 2-col skill chips */}
-                        <div className="grid grid-cols-2 gap-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                           {categories.map(cat => {
                             const sc = s.scores[cat]
-                            return (
-                              <div key={cat} className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-2 py-1">
-                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                  sc >= 80 ? 'bg-green-500' : sc >= 60 ? 'bg-amber-400' : 'bg-rose-400'
-                                }`} />
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate flex-1 min-w-0">{cat.split(' ')[0]}</span>
-                                <span className={`text-[11px] font-semibold shrink-0 ${scoreColor(sc)}`}>{sc}%</span>
-                              </div>
-                            )
+                            if (sc === undefined) return null
+                            return <SkillScoreRow key={cat} category={cat} score={sc} tag={s.tags?.[cat]} compact />
                           })}
                         </div>
                         {/* Best skill */}

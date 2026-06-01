@@ -96,6 +96,7 @@ export function useStudentResults(routerState = null) {
     return data.skill_scores.map((s, i) => ({
       label:    s.category,
       pct:      Math.round(s.percentage),
+      tag:      s.tag,
       rawScore: s.raw_score,
       maxScore: s.max_score,
       barColor: BAR_COLORS[i % BAR_COLORS.length],

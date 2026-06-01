@@ -21,6 +21,16 @@ from .models import (
 from .serializers import UserSerializer
 
 
+def get_qualitative_tag(percentage):
+    if percentage >= 90:
+        return 'Expert'
+    elif percentage >= 75:
+        return 'Proficient'
+    elif percentage >= 50:
+        return 'Competent'
+    return 'Beginner'
+
+
 class LoginRateThrottle(AnonRateThrottle):
     scope = 'login'
 
@@ -733,7 +743,10 @@ def instructor_batch_students(request, batch_id):
             assessment=batch_assessment, student_id__in=student_ids
         ).select_related('skill_category'):
             scores_map.setdefault(score.student_id, {})
-            scores_map[score.student_id][score.skill_category.name] = round(score.percentage, 1)
+            scores_map[score.student_id][score.skill_category.name] = {
+                'percentage': round(score.percentage, 1),
+                'tag': get_qualitative_tag(score.percentage)
+            }
 
     # ── Bulk-load top-3 company recommendations per student ──────────
     from collections import defaultdict
@@ -1626,6 +1639,7 @@ def student_results(request):
                 'raw_score':  ss.raw_score,
                 'max_score':  ss.max_score,
                 'percentage': round(ss.percentage, 1),
+                'tag':        get_qualitative_tag(ss.percentage),
             }
             for ss in skill_scores.order_by('-percentage')
         ],

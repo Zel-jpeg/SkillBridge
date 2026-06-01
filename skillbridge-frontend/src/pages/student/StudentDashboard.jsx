@@ -9,6 +9,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Avatar from '../../components/Avatar'
+import { SkillTagBadge } from '../../components/SkillTagBadge'
 import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
@@ -443,15 +445,18 @@ export default function StudentDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-3">
                   {skillScores.map((s, i) => (
                     <div key={s.label}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">{s.label}</span>
-                        <span className="text-xs font-medium text-gray-900 dark:text-white">{s.pct}%</span>
+                      <div className="flex justify-between items-end mb-1">
+                        <span className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-tight mr-2">{s.label}</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0">{s.pct}%</span>
                       </div>
-                      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
-                          style={{ width: `${s.pct}%` }}
-                        />
+                      <div className="flex items-center gap-2">
+                        {s.tag && <SkillTagBadge tag={s.tag} />}
+                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
+                            style={{ width: `${s.pct}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
