@@ -330,13 +330,18 @@ export function useInstructorUpload() {
   // ── TF-IDF suggestion ─────────────────────────────────────────
   function requestCategorySuggestion(qid, text) {
     clearTimeout(suggestionTimers.current[qid])
-    if (text.trim().length < 8) return
+    if (text.trim().length < 8) {
+      setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
+      return
+    }
     suggestionTimers.current[qid] = setTimeout(async () => {
       const suggested = await fetchCategorySuggestion(text)
       if (suggested) {
         setSuggestions(prev => ({ ...prev, [qid]: suggested }))
+      } else {
+        setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
       }
-    }, 600)
+    }, 300) // Reduced to 300ms for snappier feedback
   }
 
   function dismissSuggestion(qid) {

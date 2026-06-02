@@ -514,8 +514,32 @@ def suggest_category(question_text, categories):
     from sklearn.feature_extraction.text import TfidfVectorizer
 
     # Extract just the names of all skill categories
-    # These are treated as short "documents" in TF-IDF
     category_names = [cat.name for cat in categories]
+    
+    # ── DOMAIN KNOWLEDGE BASE ─────────────────────────────────────────────────
+    # To make TF-IDF act like a "Semantic NLP", we inject a massive list of 
+    # predefined keywords for common IT categories. Even if the user doesn't 
+    # provide a description, TF-IDF will have a huge vocabulary to match against!
+    DOMAIN_KNOWLEDGE = {
+        "database": "sql query relational nosql primary key foreign key join index table dbms mongodb mysql postgres oracle data",
+        "database management": "sql query relational nosql primary key foreign key join index table dbms mongodb mysql postgres oracle data",
+        "web development": "html css javascript frontend backend react angular vue nodejs dom hyperlink website web app browser",
+        "networking": "tcp ip router switch subnet osi model protocol packet lan wan internet firewall routing port",
+        "programming": "java python c++ c# syntax loop array variable function object oriented algorithm logic compile code",
+        "cloud": "aws azure gcp google cloud serverless docker kubernetes virtual machine ec2 s3 compute storage vps",
+        "operating systems": "linux windows macos kernel bash shell terminal thread process memory cpu os ubuntu file system",
+        "devops": "ci cd pipeline jenkins gitlab github actions deployment automation ansible terraform infrastructure monitoring",
+        "version control": "git github gitlab bitbucket commit merge branch pull request repository clone push repo",
+        "computer hardware": "cpu ram motherboard gpu hard drive ssd power supply component architecture peripheral input output",
+        "cybersecurity": "security hack threat vulnerability encryption firewall malware virus phishing attack defense authentication",
+        "tools": "ide vscode visual studio figma trello jira slack postman api testing debugging",
+    }
+    
+    # Extract names + descriptions + domain knowledge to give TF-IDF maximum vocabulary
+    category_docs = []
+    for cat in categories:
+        builtin_keywords = DOMAIN_KNOWLEDGE.get(cat.name.lower(), "")
+        category_docs.append(f"{cat.name} {cat.description} {builtin_keywords}")
 
     # -- Option A: Simple Keyword Matching (Exact Substring) --
     question_lower = question_text.lower()
@@ -526,8 +550,7 @@ def suggest_category(question_text, categories):
     # ── STEP 1: Build the corpus ───────────────────────────────────────────────
     # The corpus is the full collection of "documents" TF-IDF will analyze.
     # We put the question as the LAST item so we can reference it easily.
-    # corpus = [cat1_name, cat2_name, ..., catN_name, question_text]
-    corpus = category_names + [question_text]
+    corpus = category_docs + [question_text]
 
     try:
         # ── STEP 2: Apply TF-IDF Vectorization ────────────────────────────────
