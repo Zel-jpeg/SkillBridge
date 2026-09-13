@@ -4,7 +4,7 @@
 // Used in: AdminDashboard, InstructorDashboard, AdminUsers, EnrolledStudents
 //
 // Props:
-//   status — 'completed' | 'pending' | 'approved' | 'rejected' | string
+//   status — 'completed' | 'stopped' | 'pending' | 'approved' | 'rejected' | string
 //   size   — 'sm' (default) | 'md'
 
 const BADGE_CONFIG = {
@@ -17,6 +17,11 @@ const BADGE_CONFIG = {
     text: 'Pending',
     cls:  'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900',
     dot:  'bg-amber-500',
+  },
+  stopped: {
+    text: 'Stopped / flagged',
+    cls:  'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900',
+    dot:  'bg-rose-500',
   },
   approved: {
     text: 'Approved',

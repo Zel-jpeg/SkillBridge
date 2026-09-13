@@ -3,7 +3,6 @@
 // All modals now in components/admin/
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import AdminNav          from '../../components/admin/AdminNav'
 import ConfirmModal      from '../../components/admin/ConfirmModal'
 import AddInstructorModal from '../../components/admin/AddInstructorModal'
@@ -14,7 +13,7 @@ import SearchBar         from '../../components/SearchBar'
 import EmptyState        from '../../components/EmptyState'
 import StatusBadge       from '../../components/StatusBadge'
 import { useAdminUsers } from '../../hooks/admin/useAdminUsers'
-import { getInitials, matchColor } from '../../utils/formatters'
+import { matchColor } from '../../utils/formatters'
 import Avatar from '../../components/Avatar'
 
 // ── Small page-scoped icons ───────────────────────────────────────
@@ -31,10 +30,9 @@ function RolePill({ role }) {
 }
 
 export default function AdminUsers() {
-  const navigate = useNavigate()
   const [approvingId, setApprovingId] = useState(null)
   const {
-    studentsList, instructors, pendingInstructors,
+    instructors, pendingInstructors,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser, selectedUserType, setSelectedUserType,
     selectedPending, setSelectedPending,
@@ -222,6 +220,7 @@ export default function AdminUsers() {
                   <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
                     <option value="all">All status</option>
                     <option value="completed">Completed</option>
+                    <option value="stopped">Stopped / flagged</option>
                     <option value="pending">Pending</option>
                   </select>
                   {instructorsList.length > 0 && (

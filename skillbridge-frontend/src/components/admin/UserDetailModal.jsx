@@ -13,9 +13,10 @@
 
 import { useState } from 'react'
 import { XIcon, TrashIcon, RefreshIcon, PencilIcon } from '../Icons'
-import { getInitials, matchColor } from '../../utils/formatters'
+import { matchColor } from '../../utils/formatters'
 import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
+import CompetencyInsights from '../CompetencyInsights'
 
 export default function UserDetailModal({ user, type, onClose, onUpdate, onRemove, onToggleRetake }) {
   const isStudent  = type === 'student'
@@ -54,6 +55,13 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+          {isStudent && user.status === 'stopped' && (
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-4">
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Assessment stopped / flagged</p>
+              <p className="text-sm text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">{user.stoppedReason || 'An assessment integrity rule was triggered.'}</p>
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">Completed answers were recorded. Violation events: {user.violationCount || 1}.</p>
+            </div>
+          )}
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-4 relative">
             {/* Edit button for instructors */}
             {!isStudent && !editing && (
@@ -144,6 +152,10 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
             )}
           </div>
 
+          {isStudent && user.competencyProfile && (
+            <CompetencyInsights profile={user.competencyProfile} />
+          )}
+
           {/* Location & Preferences — students only */}
           {isStudent && (
             <div>
@@ -169,7 +181,7 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
               </>
             ) : (
               <>
-                {isStudent && user.status === 'completed' && (
+                {isStudent && ['completed', 'stopped'].includes(user.status) && (
                   <button
                     onClick={() => onToggleRetake(user.id)}
                     className={`flex items-center gap-2 justify-center w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${

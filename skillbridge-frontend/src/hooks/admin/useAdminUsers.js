@@ -62,6 +62,8 @@ export function useAdminUsers() {
     const approved = Array.isArray(usersData.instructors)         ? usersData.instructors         : []
     const pending  = Array.isArray(usersData.pending_instructors) ? usersData.pending_instructors : []
 
+    // State is intentionally synchronized from the shared API cache.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudentsList(students.map(s => ({
       id:               s.id,
       name:             s.name,
@@ -71,6 +73,9 @@ export function useAdminUsers() {
       instructor:       s.instructor    || 'TBD',
       status:           s.status        || 'pending',
       retakeAllowed:    !!s.retake_allowed,
+      isFlagged:        !!s.is_flagged,
+      stoppedReason:    s.stopped_reason_display || '',
+      violationCount:   s.violation_count ?? 0,
       match:            s.top_match_score   ?? null,
       position:         s.top_position_name ?? null,
       company:          s.top_company_name  ?? null,
@@ -78,6 +83,7 @@ export function useAdminUsers() {
       role:             'student',
       address:          s.address           ?? {},
       photoUrl:         s.photo_url         || null,
+      competencyProfile: s.competency_profile ?? null,
     })))
 
     setInstructors(approved.map(i => ({
@@ -111,9 +117,11 @@ export function useAdminUsers() {
     if (!selectedUser) return
     if (selectedUserType === 'instructor') {
       const fresh = instructors.find(i => i.id === selectedUser.id)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (fresh) setSelectedUser(fresh)
     } else {
       const fresh = studentsList.find(s => s.id === selectedUser.id)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (fresh) setSelectedUser(fresh)
     }
   }, [studentsList, instructors]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -182,10 +190,14 @@ export function useAdminUsers() {
     setConfirmRejectPending(null)
   }
 
-  function handleToggleRetake(studentId) {
+  async function handleToggleRetake(studentId) {
+    const st = studentsList.find(s => s.id === studentId)
+    if (!st) return
+    const next = !st.retakeAllowed
+    const res = await request('patch', `/api/instructor/students/${studentId}/retake/`, { retake_allowed: next })
+    if (!res.ok) return
     setStudentsList(prev => prev.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s))
     setSelectedUser(prev => prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev)
-    const st = studentsList.find(s => s.id === studentId)
     if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
   }

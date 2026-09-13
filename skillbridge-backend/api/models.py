@@ -89,6 +89,7 @@ class BatchEnrollment(models.Model):
 class SkillCategory(models.Model):
     name        = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    tags        = models.JSONField(default=list, blank=True)
     created_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
@@ -142,11 +143,28 @@ class AnswerChoice(models.Model):
 
 # ── Student Response (one per student per assessment) ────────────────────────
 class StudentResponse(models.Model):
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_SUBMITTED = 'submitted'
+    STATUS_STOPPED = 'stopped'
+    STATUS_CHOICES = [
+        (STATUS_IN_PROGRESS, 'In progress'),
+        (STATUS_SUBMITTED, 'Submitted'),
+        (STATUS_STOPPED, 'Stopped'),
+    ]
+
     student         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='responses')
     assessment      = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='responses')
     started_at      = models.DateTimeField(null=True, blank=True)   # set on first question load (timer anti-cheat)
     submitted_at    = models.DateTimeField(null=True, blank=True)   # set on submit (null = in progress)
     retake_allowed  = models.BooleanField(default=False)
+    question_layout = models.JSONField(default=dict, blank=True)
+    status                  = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
+    stopped_reason          = models.CharField(max_length=50, blank=True, default='')
+    stopped_reason_display  = models.CharField(max_length=255, blank=True, default='')
+    stopped_at              = models.DateTimeField(null=True, blank=True)
+    violation_count         = models.PositiveIntegerField(default=0)
+    violation_events        = models.JSONField(default=list, blank=True)
+    is_flagged              = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('student', 'assessment')
@@ -176,6 +194,25 @@ class SkillScore(models.Model):
         unique_together = ('student', 'assessment', 'skill_category')
 
 
+class StudentCompetencyProfile(models.Model):
+    """Auditable, assessment-level narrative shared by authorized views."""
+
+    student                 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='competency_profiles')
+    assessment              = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='competency_profiles')
+    orientation_label       = models.CharField(max_length=160, blank=True, default='')
+    orientation_summary     = models.TextField(blank=True, default='')
+    competency_profile_text = models.TextField(blank=True, default='')
+    development_suggestions = models.JSONField(default=list, blank=True)
+    supporting_categories   = models.JSONField(default=list, blank=True)
+    generated_at            = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'assessment')
+
+    def __str__(self):
+        return f'{self.student.name} — {self.orientation_label}'
+
+
 # ── Company ───────────────────────────────────────────────────────────────────
 class Company(models.Model):
     name         = models.CharField(max_length=255)
@@ -194,6 +231,7 @@ class Position(models.Model):
     company         = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='positions')
     title           = models.CharField(max_length=255)
     slots_available = models.PositiveIntegerField(default=1)
+    tags            = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f'{self.title} @ {self.company.name}'
@@ -214,6 +252,11 @@ class Recommendation(models.Model):
     student      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations')
     position     = models.ForeignKey(Position, on_delete=models.CASCADE)
     match_score  = models.FloatField(default=0.0)
+    category_score_component = models.FloatField(default=0.0)
+    nlp_score_component      = models.FloatField(default=0.0)
+    location_score_component = models.FloatField(default=0.0)
+    model_used               = models.CharField(max_length=40, blank=True, default='')
+    distance_km              = models.FloatField(blank=True, null=True)
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -222,3 +265,25 @@ class Recommendation(models.Model):
 
     def __str__(self):
         return f'{self.student.name} → {self.position.title} ({self.match_score:.0%})'
+
+
+class RecommendationConfiguration(models.Model):
+    """Singleton-style configuration for the active NLP preprocessor."""
+
+    MODEL_CHOICES = [
+        ('spacy_sm', 'spaCy Small (en_core_web_sm)'),
+        ('spacy_md', 'spaCy Medium (en_core_web_md)'),
+        ('stanza_en', 'Stanza English'),
+    ]
+
+    active_model = models.CharField(max_length=20, choices=MODEL_CHOICES, default='spacy_md')
+    updated_by   = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_active(cls):
+        config, _ = cls.objects.get_or_create(pk=1, defaults={'active_model': 'spacy_md'})
+        return config
+
+    def __str__(self):
+        return f'Active recommendation NLP model: {self.get_active_model_display()}'

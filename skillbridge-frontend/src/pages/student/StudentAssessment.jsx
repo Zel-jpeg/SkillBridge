@@ -9,7 +9,8 @@
 //   - One question at a time (MCQ, True/False, Identification)
 //   - Instructor-set countdown timer (auto-submits at 0, warns at 5 min)
 //   - Answers autosaved to localStorage — survives refresh/disconnect
-//   - Leave & Save button — pauses timer by freezing it in localStorage
+//   - Integrity agreement before the attempt starts
+//   - Fullscreen/focus/visibility/shortcut integrity monitoring
 //   - Review screen with Edit per question
 //   - Confirmation modal before final submit
 //   - Question navigator: numbered sidebar (desktop) / collapsible panel (mobile)
@@ -21,6 +22,40 @@ import api from '../../api/axios'
 import { useApi, invalidateCache } from '../../hooks/useApi'
 
 const WARN_AT_SECS = 5 * 60
+
+const STOP_REASON_TEXT = {
+  window_lost_focus: 'The assessment window lost focus.',
+  tab_hidden: 'The assessment tab or app was hidden.',
+  fullscreen_exited: 'Fullscreen mode was exited.',
+  restricted_shortcut: 'A restricted keyboard shortcut was used.',
+  page_closed: 'The assessment page was refreshed, closed, or left.',
+}
+
+function isMobileLikeDevice() {
+  const reportedMobile = navigator.userAgentData?.mobile
+  if (typeof reportedMobile === 'boolean') return reportedMobile
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && window.innerWidth < 768)
+}
+
+function getFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null
+}
+
+async function enterFullscreen() {
+  const root = document.documentElement
+  const request = root.requestFullscreen || root.webkitRequestFullscreen
+  if (!request) throw new Error('Fullscreen is not supported by this browser.')
+  await request.call(root)
+}
+
+async function leaveFullscreen() {
+  if (!getFullscreenElement()) return
+  const exit = document.exitFullscreen || document.webkitExitFullscreen
+  if (exit) {
+    try { await Promise.resolve(exit.call(document)) } catch { /* fullscreen may already be closing */ }
+  }
+}
 
 function formatTime(secs) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0')
@@ -78,6 +113,96 @@ function AssessmentError({ message }) {
   )
 }
 
+function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, onStart, starting, error }) {
+  const navigate = useNavigate()
+  const mobile = isMobileLikeDevice()
+  const rules = [
+    'Do not switch tabs or apps, minimize the browser, or leave this assessment screen.',
+    mobile
+      ? 'Backgrounding the browser, switching apps, or hiding the page stops the attempt.'
+      : 'The assessment opens in fullscreen. Exiting fullscreen stops the attempt.',
+    'Do not refresh or close the page while the attempt is active.',
+    'Copy, paste, cut, print, save, find, refresh, and developer-tool shortcuts are restricted.',
+    'On the first integrity rule trigger, answered items are submitted and recorded immediately.',
+    'A retake requires approval from an instructor, OJT coordinator, or administrator.',
+  ]
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <NavBar student={student} />
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-sm overflow-hidden">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900 px-6 sm:px-8 py-6">
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300 font-bold">!</div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Assessment integrity agreement</p>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-1">Read and confirm before starting</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{assessment?.title} · {assessment?.duration_minutes} minutes</p>
+              </div>
+            </div>
+          </div>
+          <div className="px-6 sm:px-8 py-6">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+              Browser monitoring supports assessment integrity, but it cannot completely prevent OS-level actions. Any browser-detected rule below will stop this attempt.
+            </p>
+            <ul className="space-y-3 mb-6">
+              {rules.map(rule => (
+                <li key={rule} className="flex gap-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-xs font-bold">•</span>
+                  <span>{rule}</span>
+                </li>
+              ))}
+            </ul>
+            <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={accepted}
+                onChange={event => onAcceptedChange(event.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-green-600"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">I understand these rules and agree that a triggered integrity rule will stop my attempt and record my completed answers.</span>
+            </label>
+            {error && <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+            <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
+              <button onClick={() => navigate('/student/dashboard')} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">Back to dashboard</button>
+              <button
+                onClick={onStart}
+                disabled={!accepted || starting}
+                className="flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                {starting ? 'Starting…' : mobile ? 'Agree & start' : 'Agree, enter fullscreen & start'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function AssessmentStopped({ reason, saving = false, saveError = false, onRetry }) {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-rose-100 dark:border-rose-900 rounded-3xl p-7 sm:p-9 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center text-2xl font-bold mb-5">!</div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Assessment integrity rule triggered</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-1">Your assessment was stopped</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 leading-relaxed">{reason || 'An assessment integrity rule was triggered.'}</p>
+        <div className="mt-5 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 space-y-2">
+          <p>{saving ? 'Saving your completed answers…' : saveError ? 'The attempt is stopped locally, but the server could not be reached yet.' : 'Your completed answers were recorded.'}</p>
+          <p>You must contact your instructor, OJT coordinator, or administrator to request a retake.</p>
+        </div>
+        {saveError && (
+          <button onClick={onRetry} className="w-full mt-4 py-3 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">Retry saving now</button>
+        )}
+        <button onClick={() => navigate('/student/dashboard')} disabled={saving || saveError} className="w-full mt-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50">Back to dashboard</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Question Navigator ────────────────────────────────────────────
 function QuestionNavigator({ questions, answers, current, onJump, isReview, className = '' }) {
   function getState(q, idx) {
@@ -96,7 +221,7 @@ function QuestionNavigator({ questions, answers, current, onJump, isReview, clas
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Questions</p>
         <p className="text-xs text-gray-400 dark:text-gray-500">
-          {questions.filter((q, i) => {
+          {questions.filter(q => {
             const a = answers[q.id]
             if (!a) return false
             if (q.question_type === 'identification') return (a.text_answer ?? '').trim().length > 0
@@ -162,43 +287,16 @@ export default function StudentAssessment() {
   // ── Step 1: Check for active assessment ────────────────────────
   const { data: activeInfo, loading: checkingActive, error: activeError } = useApi('/api/assessments/active/')
 
-  // ── Step 2: Start the assessment (record started_at on server) ─
+  // ── Step 2: Agreement, then start the server attempt ───────────
   const [questions,    setQuestions]    = useState([])
   const [responseId,   setResponseId]   = useState(null)
   const [assessmentId, setAssessmentId] = useState(null)
   const [startError,   setStartError]   = useState(null)
   const [starting,     setStarting]     = useState(false)
   const [started,      setStarted]      = useState(false)
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
+  const [stoppedAttempt, setStoppedAttempt] = useState(null)
   const [initialSecs,  setInitialSecs]  = useState(3600) // fallback 60 min
-
-  useEffect(() => {
-    if (!activeInfo?.id || started || starting) return
-    setStarting(true)
-    setAssessmentId(activeInfo.id)
-
-    api.post(`/api/assessments/${activeInfo.id}/start/`)
-      .then(res => {
-        setResponseId(res.data.response_id)
-        setQuestions(res.data.questions || [])
-        const secs = res.data.time_limit_sec ?? activeInfo.duration_minutes * 60
-        setInitialSecs(secs)
-
-        // Only reset timer if no local save exists for this assessment
-        const timerKey = `sb_timer_${activeInfo.id}`
-        const saved    = parseInt(localStorage.getItem(timerKey), 10)
-        if (isNaN(saved) || saved <= 0) {
-          localStorage.setItem(timerKey, secs)
-          setTimeLeft(secs)
-        } else {
-          setTimeLeft(saved)
-        }
-        setStarted(true)
-      })
-      .catch(err => {
-        setStartError(err.response?.data?.error || 'Failed to start assessment')
-      })
-      .finally(() => setStarting(false))
-  }, [activeInfo]) // eslint-disable-line
 
   // ── Step 3: Local state ────────────────────────────────────────
   const storageKey = assessmentId ? `sb_answers_${assessmentId}` : null
@@ -216,11 +314,91 @@ export default function StudentAssessment() {
   const [current,      setCurrent]      = useState(0)
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [showWarning,  setShowWarning]  = useState(false)
-  const [showLeave,    setShowLeave]    = useState(false)   // Leave & Save modal
   const [submitting,   setSubmitting]   = useState(false)
   const [identText,    setIdentText]    = useState({})      // { [questionId]: string }
   const [showNavPanel, setShowNavPanel] = useState(false)   // mobile navigator toggle
   const warningShown = useRef(false)
+  const answersRef = useRef(answers)
+  const assessmentIdRef = useRef(null)
+  const responseIdRef = useRef(null)
+  const integrityArmedRef = useRef(false)
+  const finalizingRef = useRef(false)
+  const fullscreenRequiredRef = useRef(false)
+
+  useEffect(() => { answersRef.current = answers }, [answers])
+  useEffect(() => { assessmentIdRef.current = assessmentId }, [assessmentId])
+  useEffect(() => { responseIdRef.current = responseId }, [responseId])
+
+  function answersArrayFrom(savedAnswers = answersRef.current) {
+    return Object.entries(savedAnswers || {}).map(([qId, ans]) => ({
+      question_id: parseInt(qId, 10),
+      selected_choice_id: ans.selected_choice_id ?? null,
+      text_answer: ans.text_answer ?? '',
+    }))
+  }
+
+  function clearAttemptStorage(id) {
+    if (!id) return
+    localStorage.removeItem(`sb_answers_${id}`)
+    localStorage.removeItem(`sb_timer_${id}`)
+    localStorage.removeItem(`sb_integrity_active_${id}`)
+  }
+
+  function updateCachedAttemptStatus(status) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('sb-user'))
+      if (cached) localStorage.setItem('sb-user', JSON.stringify({
+        ...cached,
+        has_submitted: true,
+        retake_allowed: false,
+        attempt_status: status,
+      }))
+    } catch { /* localStorage may be unavailable */ }
+  }
+
+  async function handleAgreementStart() {
+    if (!agreementAccepted || !activeInfo?.id || starting) return
+    setStarting(true)
+    setStartError(null)
+    const mobile = isMobileLikeDevice()
+    fullscreenRequiredRef.current = !mobile
+
+    try {
+      if (!mobile) await enterFullscreen()
+      const res = await api.post(`/api/assessments/${activeInfo.id}/start/`)
+      const id = activeInfo.id
+      setAssessmentId(id)
+      assessmentIdRef.current = id
+      setResponseId(res.data.response_id)
+      responseIdRef.current = res.data.response_id
+      setQuestions(res.data.questions || [])
+
+      const answerKey = `sb_answers_${id}`
+      let restoredAnswers = {}
+      try { restoredAnswers = JSON.parse(localStorage.getItem(answerKey) || '{}') || {} } catch { /* ignore malformed autosave */ }
+      setAnswers(restoredAnswers)
+      answersRef.current = restoredAnswers
+
+      const secs = res.data.time_limit_sec ?? activeInfo.duration_minutes * 60
+      setInitialSecs(secs)
+      const saved = parseInt(localStorage.getItem(`sb_timer_${id}`), 10)
+      const timer = isNaN(saved) || saved <= 0 ? secs : saved
+      localStorage.setItem(`sb_timer_${id}`, timer)
+      localStorage.setItem(`sb_integrity_active_${id}`, JSON.stringify({
+        response_id: res.data.response_id,
+        started_at: res.data.started_at,
+      }))
+      setTimeLeft(timer)
+      setStarted(true)
+      requestAnimationFrame(() => { integrityArmedRef.current = true })
+    } catch (err) {
+      integrityArmedRef.current = false
+      await leaveFullscreen()
+      setStartError(err.response?.data?.error || err.message || 'Failed to start assessment')
+    } finally {
+      setStarting(false)
+    }
+  }
 
   const TOTAL    = questions.length
   const isReview = TOTAL > 0 && current === TOTAL
@@ -233,6 +411,149 @@ export default function StudentAssessment() {
         return !!a.selected_choice_id
       }).length
     : 0
+
+  async function submitIntegrityStop(reason, detail = '', { unloading = false, retry = false } = {}) {
+    const id = assessmentIdRef.current
+    if (!id || (!retry && (finalizingRef.current || !integrityArmedRef.current))) return
+
+    finalizingRef.current = true
+    integrityArmedRef.current = false
+    const reasonText = `${STOP_REASON_TEXT[reason] || 'An assessment integrity rule was triggered.'}${detail ? ` (${detail})` : ''}`
+    const payload = {
+      response_id: responseIdRef.current,
+      answers: answersArrayFrom(),
+      reason,
+      detail,
+      occurred_at: new Date().toISOString(),
+    }
+
+    if (unloading) {
+      const token = localStorage.getItem('sb-token')
+      const base = api.defaults.baseURL || window.location.origin
+      const url = new URL(`/api/assessments/${id}/stop/`, base).toString()
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {})
+      return
+    }
+
+    setStarted(false)
+    setStoppedAttempt({ reason, detail, reasonDisplay: reasonText, saving: true, saveError: false })
+    try {
+      const res = await api.post(`/api/assessments/${id}/stop/`, payload)
+      clearAttemptStorage(id)
+      invalidateCache('/api/assessments/active/')
+      invalidateCache('/api/students/me/')
+      invalidateCache('/api/student/results/')
+      updateCachedAttemptStatus('stopped')
+      await leaveFullscreen()
+      setStoppedAttempt({
+        reason,
+        detail,
+        reasonDisplay: res.data.stopped_reason_display || reasonText,
+        saving: false,
+        saveError: false,
+      })
+    } catch (err) {
+      finalizingRef.current = false
+      setStoppedAttempt({
+        reason,
+        detail,
+        reasonDisplay: reasonText,
+        saving: false,
+        saveError: true,
+        error: err.response?.data?.error || 'Could not reach the server.',
+      })
+    }
+  }
+
+  // If a page was closed or refreshed before its keepalive request completed,
+  // the durable local marker finalizes it on the next visit.
+  useEffect(() => {
+    if (!activeInfo?.id || started || stoppedAttempt) return
+    if (activeInfo.attempt_status === 'stopped') {
+      clearAttemptStorage(activeInfo.id)
+      return
+    }
+    const markerKey = `sb_integrity_active_${activeInfo.id}`
+    let marker = null
+    try { marker = JSON.parse(localStorage.getItem(markerKey)) } catch { /* ignore malformed marker */ }
+    if (!marker) return
+
+    let savedAnswers = {}
+    try { savedAnswers = JSON.parse(localStorage.getItem(`sb_answers_${activeInfo.id}`) || '{}') || {} } catch { /* ignore malformed autosave */ }
+    setAssessmentId(activeInfo.id)
+    assessmentIdRef.current = activeInfo.id
+    setResponseId(marker.response_id)
+    responseIdRef.current = marker.response_id
+    setAnswers(savedAnswers)
+    answersRef.current = savedAnswers
+    integrityArmedRef.current = true
+    submitIntegrityStop('page_closed', 'Recovered after the assessment page was left')
+  }, [activeInfo]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Integrity listeners are active only while questions are live.
+  useEffect(() => {
+    if (!started || submitting || stoppedAttempt) return
+
+    const onVisibilityChange = () => {
+      if (document.hidden) submitIntegrityStop('tab_hidden')
+    }
+    const onBlur = () => {
+      setTimeout(() => {
+        if (!document.hidden && !document.hasFocus()) submitIntegrityStop('window_lost_focus')
+      }, 50)
+    }
+    const onFullscreenChange = () => {
+      if (fullscreenRequiredRef.current && !getFullscreenElement()) {
+        submitIntegrityStop('fullscreen_exited')
+      }
+    }
+    const onKeyDown = event => {
+      const key = event.key.toLowerCase()
+      const modifier = event.ctrlKey || event.metaKey
+      let shortcut = ''
+      if (event.key === 'F12') shortcut = 'F12'
+      else if (event.key === 'F5') shortcut = 'F5'
+      else if (modifier && event.shiftKey && ['i', 'j', 'c'].includes(key)) shortcut = `${event.metaKey ? 'Meta' : 'Ctrl'}+Shift+${key.toUpperCase()}`
+      else if (modifier && ['c', 'v', 'x', 'p', 's', 'f', 'r'].includes(key)) shortcut = `${event.metaKey ? 'Meta' : 'Ctrl'}+${key.toUpperCase()}`
+      if (!shortcut) return
+      event.preventDefault()
+      event.stopPropagation()
+      submitIntegrityStop('restricted_shortcut', shortcut)
+    }
+    const onContextMenu = event => event.preventDefault()
+    const onPageExit = () => submitIntegrityStop('page_closed', '', { unloading: true })
+    const onPopState = () => submitIntegrityStop('page_closed')
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('blur', onBlur)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+    window.addEventListener('keydown', onKeyDown, true)
+    document.addEventListener('contextmenu', onContextMenu)
+    window.addEventListener('beforeunload', onPageExit)
+    window.addEventListener('pagehide', onPageExit)
+    window.addEventListener('popstate', onPopState)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('blur', onBlur)
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
+      window.removeEventListener('keydown', onKeyDown, true)
+      document.removeEventListener('contextmenu', onContextMenu)
+      window.removeEventListener('beforeunload', onPageExit)
+      window.removeEventListener('pagehide', onPageExit)
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [started, submitting, stoppedAttempt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Countdown timer ────────────────────────────────────────────
   useEffect(() => {
@@ -259,6 +580,7 @@ export default function StudentAssessment() {
   // ── Answer selection ───────────────────────────────────────────
   function selectChoice(questionId, choiceId) {
     const updated = { ...answers, [questionId]: { selected_choice_id: choiceId, text_answer: '' } }
+    answersRef.current = updated
     setAnswers(updated)
     if (storageKey) localStorage.setItem(storageKey, JSON.stringify(updated))
   }
@@ -266,29 +588,21 @@ export default function StudentAssessment() {
   function setIdentificationText(questionId, text) {
     setIdentText(prev => ({ ...prev, [questionId]: text }))
     const updated = { ...answers, [questionId]: { selected_choice_id: null, text_answer: text } }
+    answersRef.current = updated
     setAnswers(updated)
     if (storageKey) localStorage.setItem(storageKey, JSON.stringify(updated))
   }
 
-  // ── Leave & Save (pause timer by navigating away) ──────────────
-  // Timer interval stops when component unmounts.
-  // localStorage keeps the frozen timer value for next visit.
-  function handleLeaveConfirm() {
-    setShowLeave(false)
-    navigate('/student/dashboard')
-  }
-
   // ── Submit ─────────────────────────────────────────────────────
   async function handleSubmit() {
+    if (finalizingRef.current) return
+    finalizingRef.current = true
+    integrityArmedRef.current = false
     setShowConfirm(false)
     setShowWarning(false)
     setSubmitting(true)
 
-    const answersArray = Object.entries(answers).map(([qId, ans]) => ({
-      question_id:        parseInt(qId, 10),
-      selected_choice_id: ans.selected_choice_id ?? null,
-      text_answer:        ans.text_answer ?? '',
-    }))
+    const answersArray = answersArrayFrom()
 
     try {
       const res = await api.post(`/api/assessments/${assessmentId}/submit/`, {
@@ -297,15 +611,18 @@ export default function StudentAssessment() {
       })
 
       // Cleanup local storage
-      if (storageKey) localStorage.removeItem(storageKey)
-      if (timerKey)   localStorage.removeItem(timerKey)
+      clearAttemptStorage(assessmentId)
 
       // Invalidate results cache so the next page fetches fresh data from DB
       invalidateCache('/api/student/results/')
+      invalidateCache('/api/assessments/active/')
+      invalidateCache('/api/students/me/')
 
       // Update cached user so dashboard shows "submitted" instantly
       const cached = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
       if (cached) localStorage.setItem('sb-user', JSON.stringify({ ...cached, has_submitted: true, retake_allowed: false }))
+
+      await leaveFullscreen()
 
       // Build reviewData — enrich questions with correct answers from submit response
       const correctAnswers = res.data.correct_answers ?? {}
@@ -339,6 +656,8 @@ export default function StudentAssessment() {
         })
       , 800)
     } catch (err) {
+      finalizingRef.current = false
+      integrityArmedRef.current = true
       setSubmitting(false)
       const msg = err.response?.data?.error || 'Submission failed. Please try again.'
       alert(msg)
@@ -366,9 +685,30 @@ export default function StudentAssessment() {
       </div>
     </div>
   )
-  if (checkingActive || starting) return <AssessmentLoading />
+  if (checkingActive)             return <AssessmentLoading />
   if (activeError)                return <AssessmentError message={activeError} />
-  if (startError)                 return <AssessmentError message={startError} />
+  if (activeInfo?.attempt_status === 'stopped' && !activeInfo?.retake_allowed) {
+    return <AssessmentStopped reason={activeInfo.stopped_reason_display} />
+  }
+  if (stoppedAttempt) return (
+    <AssessmentStopped
+      reason={stoppedAttempt.reasonDisplay}
+      saving={stoppedAttempt.saving}
+      saveError={stoppedAttempt.saveError}
+      onRetry={() => submitIntegrityStop(stoppedAttempt.reason, stoppedAttempt.detail, { retry: true })}
+    />
+  )
+  if (!started) return (
+    <IntegrityAgreement
+      assessment={activeInfo}
+      student={navStudent}
+      accepted={agreementAccepted}
+      onAcceptedChange={setAgreementAccepted}
+      onStart={handleAgreementStart}
+      starting={starting}
+      error={startError}
+    />
+  )
   if (started && TOTAL === 0)     return <AssessmentError message="empty_assessment" />
 
   // ── Timer display ──────────────────────────────────────────────
@@ -390,26 +730,20 @@ export default function StudentAssessment() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col relative">
 
-      <NavBar student={navStudent} />
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <img src="/SB-logov1.png" alt="SkillBridge" className="w-7 h-7 rounded-md object-cover" />
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">SkillBridge</span>
+        </div>
+        <span className="inline-flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-3 py-1.5 rounded-full">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Integrity monitoring active
+        </span>
+      </div>
 
       {/* Sub-bar: question counter + timer + leave button */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
 
-        {/* Left: Leave & Save button */}
-        {started && (
-          <button
-            onClick={() => setShowLeave(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors shrink-0"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 5l-7 7 7 7"/>
-            </svg>
-            <span className="hidden sm:inline">Leave &amp; Save</span>
-          </button>
-        )}
-        {!started && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">Loading…</span>
-        )}
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0">Do not leave this screen</span>
 
         {/* Centre: Timer */}
         {started && (
@@ -651,40 +985,6 @@ export default function StudentAssessment() {
             </div>
           )}
         </>
-      )}
-
-      {/* ── LEAVE & SAVE MODAL ── */}
-      {showLeave && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 sm:px-6">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 sm:p-8 w-full max-w-sm">
-            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950 rounded-xl flex items-center justify-center mb-4">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 5l-7 7 7 7"/>
-              </svg>
-            </div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Leave & save progress?</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 leading-relaxed">
-              Your answers and remaining time are saved automatically.
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
-              When you return, you can continue from where you left off — the timer will resume from <span className="font-semibold text-gray-700 dark:text-gray-200">{formatTime(timeLeft)}</span>.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowLeave(false)}
-                className="flex-1 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                Keep going
-              </button>
-              <button
-                onClick={handleLeaveConfirm}
-                className="flex-1 py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Leave & save
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* 5-MIN WARNING */}

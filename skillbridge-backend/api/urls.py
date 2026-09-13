@@ -20,6 +20,7 @@ urlpatterns = [
     # ── Skill Categories (shared) ─────────────────────────────────────────────
     path('categories/',               views.categories,              name='categories'),
     path('categories/suggest/',       views.suggest_category_view,   name='suggest_category'),
+    path('tags/suggest/',             views.suggest_tags_view,       name='suggest_tags'),
 
     # ── Instructor — Batches ──────────────────────────────────────────────────
     path('instructor/batches/',                           views.instructor_batches,         name='instructor_batches'),
@@ -47,6 +48,7 @@ urlpatterns = [
     path('assessments/active/',                  views.assessment_active,  name='assessment_active'),
     path('assessments/<int:assessment_id>/start/',  views.assessment_start,   name='assessment_start'),
     path('assessments/<int:assessment_id>/submit/', views.assessment_submit,  name='assessment_submit'),
+    path('assessments/<int:assessment_id>/stop/',   views.assessment_stop,    name='assessment_stop'),
     path('instructor/assessments/<int:assessment_id>/questions/add/', views.instructor_assessment_add_questions, name='instructor_assessment_add_questions'),
 
     
@@ -65,6 +67,7 @@ urlpatterns = [
     path('admin/reports/',                                views.admin_reports,            name='admin_reports'),
     path('admin/students/recommendations/',               views.admin_student_recommendations, name='admin_student_recommendations'),
     path('admin/rerun-recommendations/',                   views.admin_rerun_recommendations,   name='admin_rerun_recommendations'),
+    path('admin/nlp-configuration/',                       views.admin_nlp_configuration,       name='admin_nlp_configuration'),
 
     # ── Admin — Real-time SSE ─────────────────────────────────────────────────
     # EventSource connects here with ?token=<jwt>

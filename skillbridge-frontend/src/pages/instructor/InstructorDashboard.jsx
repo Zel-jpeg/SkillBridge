@@ -12,7 +12,6 @@ import StatusBadge              from '../../components/StatusBadge'
 import SearchBar                from '../../components/SearchBar'
 import EmptyState               from '../../components/EmptyState'
 import { useInstructorDashboard, getPalette } from '../../hooks/instructor/useInstructorDashboard'
-import { getInitials }          from '../../utils/formatters'
 import Avatar                   from '../../components/Avatar'
 
 function scoreColor(pct) {
@@ -53,10 +52,10 @@ export default function InstructorDashboard() {
     sortBy, sortDir, toggleSort,
     view, setView, page, setPage,
     selectedStudent, setSelectedStudent,
-    toast, showToast,
+    toast,
     completed, pending, avgOverall, leaders,
     displayed, paginated,
-    PAGE_SIZE, categories, average,
+    PAGE_SIZE, categories,
   } = useInstructorDashboard()
 
   // Skill leaderboard modal state
@@ -325,10 +324,7 @@ export default function InstructorDashboard() {
                               </div>
                             </td>
                             <td className="px-3 py-4">
-                              {s.status === 'completed'
-                                ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500 inline-block" />Done</span>
-                                : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />Pending</span>
-                              }
+                              <StatusBadge status={s.status} />
                             </td>
                             <td className="px-3 py-4 max-w-xs">
                               {s.status === 'completed' ? (

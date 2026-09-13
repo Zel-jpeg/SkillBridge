@@ -57,11 +57,15 @@ function normalizeStudent(s) {
     studentId:           s.school_id || '',
     email:               s.email,
     course:              s.course,
-    status:              s.has_submitted ? 'completed' : 'pending',
+    status:              s.attempt_status === 'stopped' ? 'stopped' : s.has_submitted ? 'completed' : 'pending',
     retakeAllowed:       s.retake_allowed ?? false,
+    isFlagged:           s.is_flagged ?? false,
+    stoppedReason:       s.stopped_reason_display || '',
+    violationCount:      s.violation_count ?? 0,
     scores:              parsedScores,
     tags:                parsedTags,
     top_recommendations: s.top_recommendations ?? [],
+    competencyProfile:   s.competency_profile ?? null,
     address:             s.address        ?? {},
     photoUrl:            s.photo_url      || null,
   }
@@ -97,7 +101,7 @@ export function useEnrolledStudents() {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
       }
-    } catch {}
+    } catch { /* sessionStorage may be unavailable */ }
 
     if (!batchesRaw || !Array.isArray(batchesRaw)) return []
     return batchesRaw.map(b => ({
@@ -252,7 +256,7 @@ export function useEnrolledStudents() {
   // ── Actions ───────────────────────────────────────────────────────
 
   async function handleArchiveBatch() {
-    try { await api.post(`/api/instructor/batches/${activeBatchId}/archive/`) } catch {}
+    try { await api.post(`/api/instructor/batches/${activeBatchId}/archive/`) } catch { /* optimistic state remains recoverable by refresh */ }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
         ? { ...b, status: 'archived', archivedAt: new Date().toISOString().slice(0, 10) }
@@ -266,7 +270,7 @@ export function useEnrolledStudents() {
   }
 
   async function handleUnarchiveBatch() {
-    try { await api.post(`/api/instructor/batches/${activeBatchId}/unarchive/`) } catch {}
+    try { await api.post(`/api/instructor/batches/${activeBatchId}/unarchive/`) } catch { /* optimistic state remains recoverable by refresh */ }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
         ? { ...b, status: 'active', archivedAt: null }
@@ -280,7 +284,7 @@ export function useEnrolledStudents() {
   async function handleCreateBatch() {
     const name  = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
     let newId = Date.now()
-    try { const res = await api.post('/api/instructor/batches/', { name }); newId = res.data.id } catch {}
+    try { const res = await api.post('/api/instructor/batches/', { name }); newId = res.data.id } catch { /* keep the local draft id */ }
     const nb = { id: newId, name, status: 'active', archivedAt: null, students: [] }
     setBatches(prev => [...prev, nb])
     setActiveBatchId(nb.id)
@@ -298,7 +302,7 @@ export function useEnrolledStudents() {
       // Invalidate so the next page visit re-fetches the updated retake status
       invalidateCache('/api/instructor/batches/')
       invalidateCache('/api/instructor/students/recommendations/')
-    } catch {}
+    } catch { /* optimistic state remains recoverable by refresh */ }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
         ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s) }

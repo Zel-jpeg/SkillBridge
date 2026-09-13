@@ -55,10 +55,14 @@ export function useInstructorDashboard() {
       studentId:           s.school_id    || s.student_id || '',
       email:               s.email        || '',
       course:              s.course       || '',
-      status:              s.has_submitted ? 'completed' : 'pending',
+      status:              s.attempt_status === 'stopped' ? 'stopped' : s.has_submitted ? 'completed' : 'pending',
       scores:              s.skill_scores  || {},
       retakeAllowed:       s.retake_allowed ?? false,
+      isFlagged:           s.is_flagged ?? false,
+      stoppedReason:       s.stopped_reason_display || '',
+      violationCount:      s.violation_count ?? 0,
       top_recommendations: s.top_recommendations ?? [],
+      competencyProfile:   s.competency_profile ?? null,
       address:             s.address ?? {},
       photoUrl:            s.photo_url || null,
     }))
@@ -90,6 +94,7 @@ export function useInstructorDashboard() {
   useEffect(() => {
     if (!selectedStudent) return
     const fresh = studentsList.find(s => s.id === selectedStudent.id)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fresh) setSelectedStudent(fresh)
   }, [studentsList]) // eslint-disable-line react-hooks/exhaustive-deps
 

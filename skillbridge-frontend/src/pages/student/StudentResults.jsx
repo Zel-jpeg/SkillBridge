@@ -17,6 +17,7 @@ import Avatar        from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
+import CompetencyInsights from '../../components/CompetencyInsights'
 
 
 function getCachedUser() {
@@ -127,7 +128,7 @@ function ResultsMap({ companies, studentPin }) {
             <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
               <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${co.company}</p>
               <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
-              <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${co.match}% skill match</span>${dist != null ? ' · ' + distTxt : ''}</p>
+              <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${co.match}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
             </div>`)
         allMarkers.push(mk)
       })
@@ -503,6 +504,7 @@ export default function StudentResults() {
   const {
     skillScores,
     overallScore,
+    competencyProfile,
     recommendations: sorted,
     reviewData,
     reviewLoading,
@@ -572,6 +574,12 @@ export default function StudentResults() {
             )}
           </div>
         </div>
+
+        {competencyProfile && (
+          <div className="mt-6">
+            <CompetencyInsights profile={competencyProfile} />
+          </div>
+        )}
 
         {/* ── TOP ROW: Map (left) + Skill Profile (right) side by side ── */}
         <div className="mt-6 mb-8 flex flex-col lg:flex-row gap-6 lg:items-start">
@@ -707,9 +715,9 @@ export default function StudentResults() {
             {companyTab === 'recommended' && (
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 self-start sm:self-auto">
               {[
-                { key: 'match',    label: 'Skill Match' },
+                { key: 'match',    label: 'Hybrid Match' },
                 { key: 'distance', label: 'Nearest',    disabled: !hasPin },
-                { key: 'combined', label: 'Combined',   disabled: !hasPin },
+                { key: 'combined', label: 'Score Details' },
               ].map(({ key, label, disabled }) => (
                 <button
                   key={key}
@@ -732,10 +740,10 @@ export default function StudentResults() {
           </div>
 
           {/* Sort explanation banners */}
-          {sortMode === 'combined' && hasPin && (
+          {sortMode === 'combined' && (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p className="text-xs text-blue-700 dark:text-blue-300">Combined score = 70% skill match + 30% proximity</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Hybrid score = 60% category alignment + 25% rich NLP similarity + 15% location</p>
             </div>
           )}
 
@@ -841,10 +849,10 @@ export default function StudentResults() {
 
                   {/* Score column */}
                   <div className="text-right shrink-0">
-                    {sortMode === 'combined' && hasPin ? (
+                    {sortMode === 'combined' ? (
                       <>
                         <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{r.combined}%</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">combined</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">hybrid match</p>
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
                       <>
@@ -883,7 +891,7 @@ export default function StudentResults() {
                 {/* Score bar */}
                 <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   {(() => {
-                    const pct = sortMode === 'combined' && hasPin ? r.combined
+                    const pct = sortMode === 'combined' ? r.combined
                               : sortMode === 'distance' && r.distKm != null ? r.proximityPct
                               : r.match
                     const col = sortMode === 'distance' ? 'bg-blue-500'
@@ -894,13 +902,13 @@ export default function StudentResults() {
                 </div>
 
                 {/* Sub-scores if combined */}
-                {sortMode === 'combined' && hasPin && (
-                  <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-600">
-                    <span className="text-green-600 dark:text-green-400 font-medium">{r.match}% skill</span>
-                    <span className="text-gray-300 dark:text-gray-700">·</span>
-                    <span className="text-blue-600 dark:text-blue-400 font-medium">
-                      {r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km · {r.proximityPct}% proximity
-                    </span>
+                {sortMode === 'combined' && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-green-600 dark:text-green-400 font-medium">Category {Math.round(r.category_score_component ?? 0)}%</span>
+                    <span>· NLP {Math.round(r.nlp_score_component ?? 0)}%</span>
+                    <span>· Location {Math.round(r.location_score_component ?? 0)}%</span>
+                    {r.distKm != null && <span>· {r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km</span>}
+                    <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
                   </div>
                 )}
               </div>

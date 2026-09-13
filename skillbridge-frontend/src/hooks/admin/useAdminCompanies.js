@@ -58,6 +58,7 @@ function normalizeCompany(c) {
           id:           p.id,
           title:        p.title,
           slots:        p.slots        ?? 1,
+          tags:         p.tags         ?? [],
           requirements: p.requirements ?? {},   // API field is 'requirements'
         }))
       : [],
@@ -173,6 +174,7 @@ export function useAdminCompanies() {
       title:        position.title,
       slots:        position.slots,
       requirements: position.requirements,   // FIX: was 'skill_requirements'
+      tags:         position.tags,
     })
     if (!res.ok) return { ok: false }
 
@@ -181,6 +183,7 @@ export function useAdminCompanies() {
       title:        position.title,
       slots:        position.slots,
       requirements: position.requirements,
+      tags:         position.tags,
     }
     setCompanies(prev => prev.map(c =>
       c.id === company.id
@@ -198,6 +201,7 @@ export function useAdminCompanies() {
       title:        position.title,
       slots:        position.slots,
       requirements: position.requirements,
+      tags:         position.tags,
     })
     if (!res.ok) return { ok: false }
 
@@ -210,6 +214,7 @@ export function useAdminCompanies() {
             title:        position.title,
             slots:        position.slots,
             requirements: position.requirements,
+            tags:         position.tags,
           }
         ),
       }

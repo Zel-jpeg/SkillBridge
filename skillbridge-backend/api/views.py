@@ -11,14 +11,51 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum, Max
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
-    StudentResponse, ResponseAnswer, SkillScore,
+    StudentResponse, ResponseAnswer, SkillScore, StudentCompetencyProfile,
     Company, Position, PositionRequirement, Recommendation,
+    RecommendationConfiguration,
 )
 from .serializers import UserSerializer
+from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
+from .recommendation_nlp import (
+    MODEL_OPTIONS, model_status, normalize_tags, suggest_position_tags, suggest_skill_tags,
+)
+
+
+INTEGRITY_REASON_DISPLAYS = {
+    'window_lost_focus': 'Assessment window lost focus.',
+    'tab_hidden': 'Assessment tab or app was hidden.',
+    'fullscreen_exited': 'Fullscreen mode was exited.',
+    'restricted_shortcut': 'A restricted keyboard shortcut was used.',
+    'page_closed': 'The assessment page was refreshed, closed, or left.',
+}
+
+
+def serialize_attempt_integrity(response_obj):
+    if response_obj is None:
+        return {
+            'attempt_status': None,
+            'is_flagged': False,
+            'stopped_reason': '',
+            'stopped_reason_display': '',
+            'stopped_at': None,
+            'violation_count': 0,
+            'retake_allowed': False,
+        }
+    return {
+        'attempt_status': response_obj.status,
+        'is_flagged': response_obj.is_flagged,
+        'stopped_reason': response_obj.stopped_reason,
+        'stopped_reason_display': response_obj.stopped_reason_display,
+        'stopped_at': response_obj.stopped_at,
+        'violation_count': response_obj.violation_count,
+        'retake_allowed': response_obj.retake_allowed,
+    }
 
 
 def get_qualitative_tag(percentage):
@@ -29,6 +66,59 @@ def get_qualitative_tag(percentage):
     elif percentage >= 50:
         return 'Competent'
     return 'Beginner'
+
+
+def serialize_recommendation(recommendation):
+    """Stable recommendation payload shared by student/admin/instructor APIs."""
+    position = recommendation.position
+    company = position.company
+    return {
+        'id': recommendation.id,
+        'position_id': position.id,
+        'position': position.title,
+        'company': company.name,
+        'slots': position.slots_available,
+        'match_score': round(recommendation.match_score, 1),
+        'category_score_component': round(recommendation.category_score_component, 1),
+        'nlp_score_component': round(recommendation.nlp_score_component, 1),
+        'location_score_component': round(recommendation.location_score_component, 1),
+        'model_used': recommendation.model_used,
+        'distance_km': round(recommendation.distance_km, 1) if recommendation.distance_km is not None else None,
+        'lat': company.location_lat,
+        'lng': company.location_lng,
+        'address': ', '.join(filter(None, [
+            (company.address or {}).get('barangay', ''),
+            (company.address or {}).get('city', ''),
+            (company.address or {}).get('province', ''),
+        ])) or None,
+        'tags': list(dict.fromkeys(
+            [req.skill_category.name for req in position.requirements.select_related('skill_category').all()]
+            + list(position.tags or [])
+        )),
+    }
+
+
+def serialize_competency_profile(profile):
+    if profile is None:
+        return None
+    return {
+        'orientation_label': profile.orientation_label,
+        'orientation_summary': profile.orientation_summary,
+        'competency_profile_text': profile.competency_profile_text,
+        'development_suggestions': profile.development_suggestions or [],
+        'supporting_categories': profile.supporting_categories or [],
+        'generated_at': profile.generated_at,
+    }
+
+
+def latest_competency_profiles(student_ids, assessment=None):
+    queryset = StudentCompetencyProfile.objects.filter(student_id__in=student_ids)
+    if assessment is not None:
+        queryset = queryset.filter(assessment=assessment)
+    result = {}
+    for profile in queryset.order_by('student_id', '-generated_at', '-id'):
+        result.setdefault(profile.student_id, profile)
+    return result
 
 
 class LoginRateThrottle(AnonRateThrottle):
@@ -449,7 +539,7 @@ def student_me(request):
     latest_response = (
         StudentResponse.objects
         .filter(student=user)
-        .order_by('-submitted_at')
+        .order_by('-started_at', '-id')
         .first()
     )
 
@@ -460,6 +550,7 @@ def student_me(request):
         **UserSerializer(user).data,
         'has_submitted':      has_submitted,
         'retake_allowed':     retake_allowed,
+        **serialize_attempt_integrity(latest_response),
         'active_assessment':  active_assessment,
         'batch':              {
             'id':   enrollment.batch.id,
@@ -478,7 +569,9 @@ def student_me(request):
 def categories(request):
     if request.method == 'GET':
         cats = SkillCategory.objects.all().order_by('name')
-        return Response([{'id': c.id, 'name': c.name, 'description': c.description} for c in cats])
+        return Response([{
+            'id': c.id, 'name': c.name, 'description': c.description, 'tags': c.tags or []
+        } for c in cats])
 
     # POST — create new category (instructor or admin only)
     if request.user.role not in ('instructor', 'admin'):
@@ -490,10 +583,15 @@ def categories(request):
 
     cat, created = SkillCategory.objects.get_or_create(
         name__iexact=name,
-        defaults={'name': name, 'description': request.data.get('description', ''), 'created_by': request.user}
+        defaults={
+            'name': name,
+            'description': request.data.get('description', ''),
+            'tags': normalize_tags(request.data.get('tags')),
+            'created_by': request.user,
+        }
     )
     return Response(
-        {'id': cat.id, 'name': cat.name, 'created': created},
+        {'id': cat.id, 'name': cat.name, 'tags': cat.tags or [], 'created': created},
         status=201 if created else 200
     )
 
@@ -515,6 +613,69 @@ def suggest_category_view(request):
     cats = list(SkillCategory.objects.all())
     suggestion = suggest_category(question_text, cats)
     return Response({'suggested_category': suggestion})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def suggest_tags_view(request):
+    """Suggest editable tags without persisting or overwriting saved tags."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    tag_type = request.data.get('type')
+    if tag_type == 'skill':
+        return Response({'suggested_tags': suggest_skill_tags(
+            request.data.get('name', ''), request.data.get('description', '')
+        )})
+    if tag_type == 'position':
+        requirements = []
+        for category_name, percentage in (request.data.get('requirements') or {}).items():
+            category = SkillCategory.objects.filter(name__iexact=category_name).first()
+            requirements.append({
+                'name': category_name,
+                'percentage': percentage,
+                'tags': category.tags if category else [],
+            })
+        return Response({'suggested_tags': suggest_position_tags(
+            request.data.get('title', ''), requirements
+        )})
+    return Response({'error': 'type must be skill or position'}, status=400)
+
+
+def _nlp_config_payload(config, include_status=False):
+    options = []
+    for model_id, metadata in MODEL_OPTIONS.items():
+        option = {'id': model_id, **metadata}
+        if include_status:
+            option.update(model_status(model_id))
+        options.append(option)
+    return {
+        'active_model': config.active_model,
+        'active_model_label': MODEL_OPTIONS[config.active_model]['label'],
+        'default_model': 'spacy_md',
+        'models': options,
+        'updated_at': config.updated_at,
+    }
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def admin_nlp_configuration(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+    config = RecommendationConfiguration.get_active()
+    if request.method == 'GET':
+        return Response(_nlp_config_payload(config, include_status=True))
+
+    model_id = request.data.get('active_model')
+    if model_id not in MODEL_OPTIONS:
+        return Response({'error': 'Unsupported NLP model.'}, status=400)
+    config.active_model = model_id
+    config.updated_by = request.user
+    config.save(update_fields=['active_model', 'updated_by', 'updated_at'])
+    payload = _nlp_config_payload(config, include_status=True)
+    payload['message'] = 'Active NLP model updated. Re-run recommendations to refresh saved scores.'
+    return Response(payload)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -680,15 +841,29 @@ def instructor_student_retake(request, student_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
     retake_allowed = request.data.get('retake_allowed', False)
-    # Verify the student belongs to this instructor's batch
-    batches     = Batch.objects.filter(instructor=request.user)
-    enrolled_ids = BatchEnrollment.objects.filter(batch__in=batches).values_list('student_id', flat=True)
-    if int(student_id) not in list(enrolled_ids):
-        return Response({'error': 'Student not in your batches'}, status=403)
-    updated = StudentResponse.objects.filter(student_id=student_id).update(retake_allowed=retake_allowed)
-    if updated == 0:
+    if request.user.role == 'instructor':
+        belongs_to_instructor = BatchEnrollment.objects.filter(
+            batch__instructor=request.user,
+            student_id=student_id,
+        ).exists()
+        if not belongs_to_instructor:
+            return Response({'error': 'Student not in your batches'}, status=403)
+
+    latest_response = (
+        StudentResponse.objects
+        .filter(student_id=student_id, submitted_at__isnull=False)
+        .order_by('-started_at', '-id')
+        .first()
+    )
+    if latest_response is None:
         return Response({'error': 'No submission found for this student'}, status=404)
-    return Response({'student_id': student_id, 'retake_allowed': retake_allowed})
+    latest_response.retake_allowed = bool(retake_allowed)
+    latest_response.save(update_fields=['retake_allowed'])
+    return Response({
+        'student_id': student_id,
+        'retake_allowed': latest_response.retake_allowed,
+        **serialize_attempt_integrity(latest_response),
+    })
 
 
 # ── DELETE /api/instructor/students/{id}/ ────────────────────────
@@ -715,7 +890,10 @@ def instructor_batch_students(request, batch_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        batch = Batch.objects.get(id=batch_id)
+        batch_query = Batch.objects.filter(id=batch_id)
+        if request.user.role == 'instructor':
+            batch_query = batch_query.filter(instructor=request.user)
+        batch = batch_query.get()
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
 
@@ -748,6 +926,8 @@ def instructor_batch_students(request, batch_id):
                 'tag': get_qualitative_tag(score.percentage)
             }
 
+    profile_map = latest_competency_profiles(student_ids, batch_assessment) if batch_assessment else {}
+
     # ── Bulk-load top-3 company recommendations per student ──────────
     from collections import defaultdict
     all_recs = (
@@ -774,7 +954,9 @@ def instructor_batch_students(request, batch_id):
             'photo_url':      s.photo_url,
             'has_submitted':  bool(resp and resp.submitted_at is not None),
             'retake_allowed': resp.retake_allowed if resp else False,
+            **serialize_attempt_integrity(resp),
             'skill_scores':   scores_map.get(s.id, {}),
+            'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
             'enrolled_at':    e.enrolled_at,
             'address':        s.address or {},
             'top_recommendations': [
@@ -782,6 +964,11 @@ def instructor_batch_students(request, batch_id):
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     'match_score': round(r.match_score, 2),
+                    'category_score_component': round(r.category_score_component, 2),
+                    'nlp_score_component': round(r.nlp_score_component, 2),
+                    'location_score_component': round(r.location_score_component, 2),
+                    'model_used': r.model_used,
+                    'distance_km': r.distance_km,
                     'lat':         r.position.company.location_lat,
                     'lng':         r.position.company.location_lng,
                 }
@@ -1242,11 +1429,16 @@ def assessment_active(request):
     except Assessment.DoesNotExist:
         return Response({'error': 'no_active_assessment'}, status=404)
 
-    # Check if already submitted (and retake not allowed)
-    existing = StudentResponse.objects.filter(
-        student=user, assessment=assessment, submitted_at__isnull=False
-    ).first()
-    if existing and not existing.retake_allowed:
+    existing = StudentResponse.objects.filter(student=user, assessment=assessment).first()
+    if existing and existing.status == StudentResponse.STATUS_STOPPED and not existing.retake_allowed:
+        return Response({
+            'id': assessment.id,
+            'title': assessment.title,
+            'duration_minutes': assessment.duration_minutes,
+            'batch_name': enrollment.batch.name,
+            **serialize_attempt_integrity(existing),
+        })
+    if existing and existing.submitted_at is not None and not existing.retake_allowed:
         return Response({'error': 'already_submitted'}, status=409)
 
     return Response({
@@ -1254,6 +1446,7 @@ def assessment_active(request):
         'title':            assessment.title,
         'duration_minutes': assessment.duration_minutes,
         'batch_name':       enrollment.batch.name,
+        **serialize_attempt_integrity(existing),
     })
 
 
@@ -1275,49 +1468,78 @@ def assessment_start(request, assessment_id):
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
-    # Create or retrieve in-progress response
-    response_obj, created = StudentResponse.objects.get_or_create(
-        student=user,
-        assessment=assessment,
-        submitted_at__isnull=True,
-        defaults={'started_at': timezone.now()}
-    )
+    # Lock the response while its layout is first created. This prevents two
+    # near-simultaneous /start/ requests from returning different arrangements.
+    with transaction.atomic():
+        now = timezone.now()
+        response_obj, created = (
+            StudentResponse.objects.select_for_update().get_or_create(
+                student=user,
+                assessment=assessment,
+                defaults={'started_at': now},
+            )
+        )
 
-    # Record start time only on first open
-    if created or response_obj.started_at is None:
-        response_obj.started_at = timezone.now()
-        response_obj.save(update_fields=['started_at'])
+        if created:
+            response_obj.question_layout = build_question_layout(assessment)
+            response_obj.status = StudentResponse.STATUS_IN_PROGRESS
+            response_obj.save(update_fields=['question_layout', 'status'])
+        elif response_obj.submitted_at is not None:
+            if not response_obj.retake_allowed:
+                return Response({'error': 'Assessment already submitted'}, status=409)
+
+            # The existing model keeps one response row per student/assessment.
+            # Starting an allowed retake turns that row into a fresh attempt.
+            response_obj.answers.all().delete()
+            SkillScore.objects.filter(student=user, assessment=assessment).delete()
+            Recommendation.objects.filter(student=user).delete()
+            response_obj.started_at = now
+            response_obj.submitted_at = None
+            response_obj.retake_allowed = False
+            response_obj.question_layout = build_question_layout(assessment)
+            response_obj.status = StudentResponse.STATUS_IN_PROGRESS
+            response_obj.stopped_reason = ''
+            response_obj.stopped_reason_display = ''
+            response_obj.stopped_at = None
+            response_obj.violation_count = 0
+            response_obj.violation_events = []
+            response_obj.is_flagged = False
+            response_obj.save(update_fields=[
+                'started_at', 'submitted_at', 'retake_allowed', 'question_layout',
+                'status', 'stopped_reason', 'stopped_reason_display', 'stopped_at',
+                'violation_count', 'violation_events', 'is_flagged',
+            ])
+        else:
+            update_fields = []
+            if response_obj.started_at is None:
+                response_obj.started_at = now
+                update_fields.append('started_at')
+            if not response_obj.question_layout:
+                response_obj.question_layout = build_question_layout(assessment)
+                update_fields.append('question_layout')
+            if update_fields:
+                response_obj.save(update_fields=update_fields)
 
     # Build question list (no correct answer revealed)
-    questions = assessment.questions.prefetch_related('choices').order_by('question_order')
     q_list = []
-    for q in questions:
-        if q.question_type == 'identification':
-            # Don't send the correct answer to client
-            q_list.append({
-                'id':            q.id,
-                'question_text': q.question_text,
-                'question_type': q.question_type,
-                'category':      q.skill_category.name if q.skill_category else '',
-                'choices':       [],
-            })
-        else:
-            q_list.append({
-                'id':            q.id,
-                'question_text': q.question_text,
-                'question_type': q.question_type,
-                'category':      q.skill_category.name if q.skill_category else '',
-                'choices': [
-                    {'id': c.id, 'text': c.choice_text}
-                    for c in q.choices.all()
-                ],
-            })
+    for q in ordered_questions(assessment, response_obj.question_layout):
+        q_list.append({
+            'id':            q.id,
+            'question_text': q.question_text,
+            'question_type': q.question_type,
+            'category':      q.skill_category.name if q.skill_category else '',
+            'choices': [
+                {'id': choice.id, 'text': choice.choice_text}
+                for choice in ordered_choices(q, response_obj.question_layout)
+            ],
+        })
 
     return Response({
         'response_id':    response_obj.id,
         'started_at':     response_obj.started_at,
         'time_limit_sec': assessment.duration_minutes * 60,
         'questions':      q_list,
+        'status':         response_obj.status,
     })
 
 
@@ -1340,33 +1562,40 @@ def assessment_submit(request, assessment_id):
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
-    # Get the in-progress response
-    try:
-        response_obj = StudentResponse.objects.get(
-            student=user,
-            assessment=assessment,
-            submitted_at__isnull=True
-        )
-    except StudentResponse.DoesNotExist:
-        return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
-
-    # Timer validation: check if they exceeded time limit
-    if response_obj.started_at:
-        elapsed = (timezone.now() - response_obj.started_at).total_seconds()
-        allowed = assessment.duration_minutes * 60 + 30  # 30 sec grace period
-        if elapsed > allowed:
-            # Mark submitted anyway but flag it
-            pass  # For thesis: flag but don't block
-
     answers_data = request.data.get('answers', [])
+    if not isinstance(answers_data, list):
+        return Response({'error': 'answers must be a list'}, status=400)
     categories   = list(SkillCategory.objects.all())
 
-    # ── Auto-score ───────────────────────────────────────────────
-    score_results = score_submission(response_obj, answers_data, categories)
+    # The row lock makes normal submit and integrity stop mutually exclusive.
+    # Whichever request finalizes the attempt first wins.
+    with transaction.atomic():
+        try:
+            response_obj = StudentResponse.objects.select_for_update().get(
+                student=user,
+                assessment=assessment,
+            )
+        except StudentResponse.DoesNotExist:
+            return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
 
-    # ── Mark submitted ───────────────────────────────────────────
-    response_obj.submitted_at = timezone.now()
-    response_obj.save(update_fields=['submitted_at'])
+        response_id = request.data.get('response_id')
+        if response_id and str(response_obj.id) != str(response_id):
+            return Response({'error': 'Attempt does not match response_id.'}, status=400)
+        if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
+            return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
+
+        # Timer validation remains non-blocking, matching the existing behavior.
+        if response_obj.started_at:
+            elapsed = (timezone.now() - response_obj.started_at).total_seconds()
+            allowed = assessment.duration_minutes * 60 + 30
+            if elapsed > allowed:
+                pass
+
+        score_results = score_submission(response_obj, answers_data, categories)
+        response_obj.submitted_at = timezone.now()
+        response_obj.status = StudentResponse.STATUS_SUBMITTED
+        response_obj.is_flagged = False
+        response_obj.save(update_fields=['submitted_at', 'status', 'is_flagged'])
 
     # ── Generate recommendations (cosine similarity) ─────────────
     recommendations = generate_recommendations(user, assessment, categories)
@@ -1388,6 +1617,98 @@ def assessment_submit(request, assessment_id):
         'scores':          score_results,
         'recommendations': recommendations[:5],   # top 5
         'correct_answers': correct_answers,
+    })
+
+
+# ── POST /api/assessments/{id}/stop/ ──────────────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assessment_stop(request, assessment_id):
+    """Finalize an attempt after the first browser integrity rule is triggered."""
+    from .scoring import score_submission, generate_recommendations
+
+    user = request.user
+    if user.role != 'student':
+        return Response({'error': 'Students only'}, status=403)
+
+    try:
+        assessment = Assessment.objects.get(id=assessment_id)
+    except Assessment.DoesNotExist:
+        return Response({'error': 'Assessment not found'}, status=404)
+
+    reason = request.data.get('reason', '')
+    if reason not in INTEGRITY_REASON_DISPLAYS:
+        return Response({'error': 'Invalid integrity stop reason.'}, status=400)
+    answers_data = request.data.get('answers', [])
+    if not isinstance(answers_data, list):
+        return Response({'error': 'answers must be a list'}, status=400)
+    # Integrity stops record only genuinely completed responses, not inputs a
+    # student touched and then cleared before the rule was triggered.
+    answers_data = [
+        answer for answer in answers_data
+        if isinstance(answer, dict) and (
+            answer.get('selected_choice_id') or
+            str(answer.get('text_answer', '')).strip()
+        )
+    ]
+
+    detail = str(request.data.get('detail', '')).strip()[:120]
+    base_display = INTEGRITY_REASON_DISPLAYS[reason]
+    reason_display = f'{base_display} ({detail})' if detail else base_display
+    categories = list(SkillCategory.objects.all())
+
+    with transaction.atomic():
+        try:
+            response_obj = StudentResponse.objects.select_for_update().get(
+                student=user,
+                assessment=assessment,
+            )
+        except StudentResponse.DoesNotExist:
+            return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
+
+        response_id = request.data.get('response_id')
+        if response_id and str(response_obj.id) != str(response_id):
+            return Response({'error': 'Attempt does not match response_id.'}, status=400)
+
+        # Stop retries are intentionally idempotent: never rescore or append events.
+        if response_obj.status == StudentResponse.STATUS_STOPPED:
+            return Response({
+                'message': 'Assessment was already stopped.',
+                'already_stopped': True,
+                **serialize_attempt_integrity(response_obj),
+            })
+        if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
+            return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
+
+        score_submission(response_obj, answers_data, categories)
+        stopped_at = timezone.now()
+        response_obj.status = StudentResponse.STATUS_STOPPED
+        response_obj.submitted_at = stopped_at
+        response_obj.stopped_at = stopped_at
+        response_obj.stopped_reason = reason
+        response_obj.stopped_reason_display = reason_display
+        response_obj.violation_count = 1
+        response_obj.violation_events = [{
+            'reason': reason,
+            'display': reason_display,
+            'detail': detail,
+            'occurred_at': request.data.get('occurred_at') or stopped_at.isoformat(),
+            'recorded_at': stopped_at.isoformat(),
+        }]
+        response_obj.is_flagged = True
+        response_obj.retake_allowed = False
+        response_obj.save(update_fields=[
+            'status', 'submitted_at', 'stopped_at', 'stopped_reason',
+            'stopped_reason_display', 'violation_count', 'violation_events',
+            'is_flagged', 'retake_allowed',
+        ])
+
+    recommendations = generate_recommendations(user, assessment, categories)
+    return Response({
+        'message': 'Assessment stopped and completed answers recorded.',
+        'scores_saved': True,
+        'recommendations': recommendations[:5],
+        **serialize_attempt_integrity(response_obj),
     })
 
 
@@ -1418,6 +1739,14 @@ def instructor_student_recommendations(request):
         .select_related('student', 'batch')
     )
     student_ids = list({e.student_id for e in enrollments})
+    profile_map = latest_competency_profiles(student_ids)
+    response_map = {}
+    for attempt in (
+        StudentResponse.objects
+        .filter(student_id__in=student_ids, assessment__batch=active_batch)
+        .order_by('student_id', '-started_at', '-id')
+    ):
+        response_map.setdefault(attempt.student_id, attempt)
 
     # ── Bulk-load all recommendations ─────────────────────────────
     from collections import defaultdict
@@ -1447,6 +1776,7 @@ def instructor_student_recommendations(request):
     for e in enrollments:
         student  = e.student
         top_recs = recs_by_student.get(student.id, [])
+        attempt = response_map.get(student.id)
         # Normalise to the shape InstructorDashboard expects
         top_one  = top_recs[0] if top_recs else None
         results.append({
@@ -1458,8 +1788,11 @@ def instructor_student_recommendations(request):
             'school_id':   student.school_id,
             'course':      student.course,
             'photo_url':   student.photo_url,
-            'has_submitted': StudentResponse.objects.filter(student_id=student.id, submitted_at__isnull=False).exists(),
+            'has_submitted': bool(attempt and attempt.submitted_at is not None),
+            'retake_allowed': attempt.retake_allowed if attempt else False,
+            **serialize_attempt_integrity(attempt),
             'skill_scores': {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])},
+            'competency_profile': serialize_competency_profile(profile_map.get(student.id)),
             'batch':       {'id': e.batch.id, 'name': e.batch.name},
             'address':     student.address or {},
             'top_recommendations': [
@@ -1467,6 +1800,11 @@ def instructor_student_recommendations(request):
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     'match_score': r.match_score,
+                    'category_score_component': r.category_score_component,
+                    'nlp_score_component': r.nlp_score_component,
+                    'location_score_component': r.location_score_component,
+                    'model_used': r.model_used,
+                    'distance_km': r.distance_km,
                     'lat':         r.position.company.location_lat,
                     'lng':         r.position.company.location_lng,
                 }
@@ -1515,7 +1853,7 @@ def instructor_companies(request):
 
     companies = (
         Company.objects
-        .prefetch_related('positions')
+        .prefetch_related('positions', 'positions__requirements', 'positions__requirements__skill_category')
         .order_by('name')
     )
 
@@ -1531,6 +1869,11 @@ def instructor_companies(request):
                     'course':      r.student.course,
                     'photo_url':   r.student.photo_url,
                     'match_score': round(float(r.match_score), 1),
+                    'category_score_component': round(float(r.category_score_component), 1),
+                    'nlp_score_component': round(float(r.nlp_score_component), 1),
+                    'location_score_component': round(float(r.location_score_component), 1),
+                    'model_used': r.model_used,
+                    'distance_km': r.distance_km,
                     'batch_name':  student_batch_info.get(r.student.id, {}).get('name', ''),
                     'batch_status': student_batch_info.get(r.student.id, {}).get('status', 'active'),
                 }
@@ -1540,6 +1883,11 @@ def instructor_companies(request):
                 'id':              pos.id,
                 'title':           pos.title,
                 'slots':           pos.slots_available,
+                'tags':            pos.tags or [],
+                'requirements': {
+                    requirement.skill_category.name: requirement.required_percentage
+                    for requirement in pos.requirements.all()
+                },
                 'matched_students': matched,
                 'matched_count':   len(matched),
             })
@@ -1564,7 +1912,7 @@ def instructor_company_edit(request, co_id):
     Allows instructors to edit company info and position details.
     Accepts:
       { name, address, lat, lng,
-        positions: [{ id, title, slots }] }
+        positions: [{ id, title, slots, tags }] }
     """
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1586,6 +1934,7 @@ def instructor_company_edit(request, co_id):
             pos = company.positions.get(id=pos_data['id'])
             if 'title' in pos_data: pos.title           = pos_data['title']
             if 'slots' in pos_data: pos.slots_available = pos_data['slots']
+            if 'tags' in pos_data: pos.tags = normalize_tags(pos_data.get('tags'))
             pos.save()
         except Position.DoesNotExist:
             pass
@@ -1609,26 +1958,35 @@ def student_results(request):
         .select_related('position', 'position__company')
         .order_by('-match_score')
     )
+    latest = (
+        StudentResponse.objects
+        .filter(student=user, submitted_at__isnull=False)
+        .order_by('-submitted_at')
+        .select_related('assessment')
+        .first()
+    )
+    competency_profile = (
+        StudentCompetencyProfile.objects
+        .filter(student=user, assessment=latest.assessment)
+        .first()
+        if latest else None
+    )
 
-    # Auto-regenerate if student has scores but no recommendations
-    # (handles company/position added AFTER the student submitted)
-    if skill_scores.exists() and not recommendations.exists():
+    # Auto-generate missing legacy profiles/recommendations after deployment.
+    if skill_scores.exists() and latest and (not recommendations.exists() or competency_profile is None):
         try:
             from .scoring import generate_recommendations
-            latest = (
-                StudentResponse.objects
-                .filter(student=user, submitted_at__isnull=False)
-                .order_by('-submitted_at').first()
+            cats = list(SkillCategory.objects.all())
+            generate_recommendations(user, latest.assessment, cats)
+            competency_profile = StudentCompetencyProfile.objects.filter(
+                student=user, assessment=latest.assessment
+            ).first()
+            recommendations = (
+                Recommendation.objects
+                .filter(student=user)
+                .select_related('position', 'position__company')
+                .order_by('-match_score')
             )
-            if latest:
-                cats = list(SkillCategory.objects.all())
-                generate_recommendations(user, latest.assessment, cats)
-                recommendations = (
-                    Recommendation.objects
-                    .filter(student=user)
-                    .select_related('position', 'position__company')
-                    .order_by('-match_score')
-                )
         except Exception:
             pass
 
@@ -1643,29 +2001,9 @@ def student_results(request):
             }
             for ss in skill_scores.order_by('-percentage')
         ],
-        'recommendations': [
-            {
-                'id':          r.id,
-                'position':    r.position.title,
-                'company':     r.position.company.name,
-                'slots':       r.position.slots_available,
-                'match_score': round(r.match_score, 1),
-                'lat':         r.position.company.location_lat,
-                'lng':         r.position.company.location_lng,
-                'address':     (
-                    ', '.join(filter(None, [
-                        (r.position.company.address or {}).get('barangay', ''),
-                        (r.position.company.address or {}).get('city', ''),
-                        (r.position.company.address or {}).get('province', ''),
-                    ])) or None
-                ),
-                'tags': [
-                    req.skill_category.name
-                    for req in r.position.requirements.select_related('skill_category').all()
-                ],
-            }
-            for r in recommendations
-        ],
+        'recommendations': [serialize_recommendation(r) for r in recommendations],
+        'competency_profile': serialize_competency_profile(competency_profile),
+        'active_model': RecommendationConfiguration.get_active().active_model,
     })
 
 
@@ -1691,11 +2029,9 @@ def student_results_review(request):
     if not latest_response:
         return Response({'questions': [], 'answers': {}})
 
-    questions = (
-        latest_response.assessment.questions
-        .prefetch_related('choices')
-        .select_related('skill_category')
-        .order_by('question_order')
+    questions = ordered_questions(
+        latest_response.assessment,
+        latest_response.question_layout,
     )
     submitted = {
         ra.question_id: ra
@@ -1723,7 +2059,7 @@ def student_results_review(request):
         else:
             q_dict['choices'] = [
                 {'id': c.id, 'text': c.choice_text, 'is_correct': c.is_correct}
-                for c in q.choices.all()
+                for c in ordered_choices(q, latest_response.question_layout)
             ]
         q_list.append(q_dict)
 
@@ -1774,7 +2110,7 @@ def student_companies(request):
                 'tags': [
                     req.skill_category.name
                     for req in p.requirements.all()
-                ],
+                ] + list(p.tags or []),
             }
             for p in company.positions.all()
         ]
@@ -1803,6 +2139,7 @@ def admin_student_recommendations(request):
 
     students = list(User.objects.filter(role='student', is_active=True))
     student_ids = [s.id for s in students]
+    profile_map = latest_competency_profiles(student_ids)
 
     # ── Bulk-load ALL recommendations in ONE query ────────────────────
     all_recs = (
@@ -1846,6 +2183,7 @@ def admin_student_recommendations(request):
             'top_match_score':  round(top_one.match_score, 2) if top_one else None,
             'top_position_name': top_one.position.title if top_one else None,
             'top_company_name':  top_one.position.company.name if top_one else None,
+            'competency_profile': serialize_competency_profile(profile_map.get(student.id)),
             'student': {
                 'id':        student.id,
                 'name':      student.name,
@@ -1859,6 +2197,11 @@ def admin_student_recommendations(request):
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     'match_score': r.match_score,
+                    'category_score_component': r.category_score_component,
+                    'nlp_score_component': r.nlp_score_component,
+                    'location_score_component': r.location_score_component,
+                    'model_used': r.model_used,
+                    'distance_km': r.distance_km,
                 }
                 for r in top_recs
             ],
@@ -1902,6 +2245,7 @@ def admin_users(request):
 
     # ── Bulk-load top recs for all students in ONE query ─────────────
     student_ids = [s.id for s in students]
+    profile_map = latest_competency_profiles(student_ids)
     all_recs = (
         Recommendation.objects
         .filter(student_id__in=student_ids)
@@ -1912,6 +2256,14 @@ def admin_users(request):
     for r in all_recs:
         if r.student_id not in top_rec_by_student:
             top_rec_by_student[r.student_id] = r
+
+    response_by_student = {}
+    for attempt in (
+        StudentResponse.objects
+        .filter(student_id__in=student_ids)
+        .order_by('student_id', '-started_at', '-id')
+    ):
+        response_by_student.setdefault(attempt.student_id, attempt)
 
     # ── Bulk-load instructor names for students ──────────────────────
     enrollments = (
@@ -1927,6 +2279,12 @@ def admin_users(request):
     students_out = []
     for s in students:
         top_rec = top_rec_by_student.get(s.id)
+        attempt = response_by_student.get(s.id)
+        student_status = (
+            'stopped' if attempt and attempt.status == StudentResponse.STATUS_STOPPED
+            else 'completed' if attempt and attempt.status == StudentResponse.STATUS_SUBMITTED
+            else 'pending'
+        )
         students_out.append({
             'id':               s.id,
             'name':             s.name,
@@ -1934,13 +2292,15 @@ def admin_users(request):
             'student_id':       s.school_id or '',
             'course':           s.course or '',
             'instructor':       instructor_by_student.get(s.id, 'TBD'),
-            'status':           'completed' if top_rec else 'pending',
+            'status':           student_status,
             'top_match_score':  round(top_rec.match_score, 2) if top_rec else None,
             'top_position_name': top_rec.position.title if top_rec else None,
             'top_company_name':  top_rec.position.company.name if top_rec else None,
-            'retake_allowed':    False,
+            'retake_allowed':    attempt.retake_allowed if attempt else False,
+            **serialize_attempt_integrity(attempt),
             'address':           s.address or {},
             'photo_url':         s.photo_url,
+            'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
         })
 
     def serialize_instructor(user):
@@ -2085,6 +2445,7 @@ def admin_companies(request):
                     'id':     pos.id,
                     'title':  pos.title,
                     'slots':  pos.slots_available,
+                    'tags':   pos.tags or [],
                     'requirements': reqs,
                 })
             data.append({
@@ -2177,6 +2538,7 @@ def admin_company_positions(request, company_id):
     title    = request.data.get('title', '').strip()
     slots    = int(request.data.get('slots', 1))
     reqs     = request.data.get('requirements', {})  # { "Database": 70, "Programming": 60 }
+    tags     = normalize_tags(request.data.get('tags'))
 
     if not title:
         return Response({'error': 'title is required'}, status=400)
@@ -2185,6 +2547,7 @@ def admin_company_positions(request, company_id):
         company=company,
         title=title,
         slots_available=slots,
+        tags=tags,
     )
 
     # Create requirement rows
@@ -2208,6 +2571,7 @@ def admin_company_positions(request, company_id):
         'id':    position.id,
         'title': position.title,
         'slots': position.slots_available,
+        'tags':  position.tags or [],
     }, status=201)
 
 
@@ -2273,6 +2637,7 @@ def admin_rerun_recommendations(request):
             'ok': True,
             'students_processed': count,
             'errors': errors,
+            'active_model': RecommendationConfiguration.get_active().active_model,
             'message': f'Recommendations re-run for {count} student(s).',
         })
     except Exception as e:
@@ -2306,6 +2671,9 @@ def admin_position_detail(request, position_id):
             position.slots_available = max(1, int(request.data['slots']))
         except (TypeError, ValueError):
             pass
+
+    if 'tags' in request.data:
+        position.tags = normalize_tags(request.data.get('tags'))
  
     position.save()
  
@@ -2340,6 +2708,7 @@ def admin_position_detail(request, position_id):
         'id':           position.id,
         'title':        position.title,
         'slots':        position.slots_available,
+        'tags':         position.tags or [],
         'requirements': updated_reqs,
     })
 
@@ -2352,22 +2721,27 @@ def admin_skills(request):
     
     if request.method == 'GET':
         cats = SkillCategory.objects.all().order_by('name')
-        return Response([{'id': c.id, 'name': c.name, 'description': c.description} for c in cats])
+        return Response([{
+            'id': c.id, 'name': c.name, 'description': c.description, 'tags': c.tags or []
+        } for c in cats])
         
     elif request.method == 'POST':
         name = request.data.get('name', '').strip()
         description = request.data.get('description', '').strip()
+        tags = normalize_tags(request.data.get('tags'))
         if not name:
             return Response({'error': 'Name is required'}, status=400)
             
         cat, created = SkillCategory.objects.get_or_create(
             name__iexact=name,
-            defaults={'name': name, 'description': description, 'created_by': request.user}
+            defaults={'name': name, 'description': description, 'tags': tags, 'created_by': request.user}
         )
         if not created:
             return Response({'error': 'Skill category already exists'}, status=400)
             
-        return Response({'id': cat.id, 'name': cat.name, 'description': cat.description}, status=201)
+        return Response({
+            'id': cat.id, 'name': cat.name, 'description': cat.description, 'tags': cat.tags or []
+        }, status=201)
 
 # ── PUT/DELETE /api/admin/skills/<id>/ ────────────────────────────────────
 @api_view(['PUT', 'DELETE'])
@@ -2384,6 +2758,7 @@ def admin_skill_detail(request, skill_id):
     if request.method == 'PUT':
         name = request.data.get('name', '').strip()
         description = request.data.get('description', '').strip()
+        tags = normalize_tags(request.data.get('tags'))
         if not name:
             return Response({'error': 'Name is required'}, status=400)
             
@@ -2392,8 +2767,11 @@ def admin_skill_detail(request, skill_id):
             
         cat.name = name
         cat.description = description
-        cat.save(update_fields=['name', 'description'])
-        return Response({'id': cat.id, 'name': cat.name, 'description': cat.description})
+        cat.tags = tags
+        cat.save(update_fields=['name', 'description', 'tags'])
+        return Response({
+            'id': cat.id, 'name': cat.name, 'description': cat.description, 'tags': cat.tags or []
+        })
         
     elif request.method == 'DELETE':
         cat.delete()

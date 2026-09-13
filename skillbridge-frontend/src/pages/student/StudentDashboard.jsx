@@ -7,13 +7,14 @@
 //   - Shows a loading skeleton while the API call is in flight
 //   - studentPin still read from localStorage (set during profile setup)
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
+import CompetencyInsights from '../../components/CompetencyInsights'
 
 // Read the user object saved by the login response
 // This lets pages render instantly without a skeleton on every navigation.
@@ -210,7 +211,10 @@ export default function StudentDashboard() {
   const displayCourse   = student?.course   ?? ''
   const displayId       = student?.school_id ?? ''
   const photoUrl        = student?.photo_url ?? null
-  const hasTakenAssessment = student?.has_submitted ?? false
+  const attemptStopped   = student?.attempt_status === 'stopped'
+  const hasTakenAssessment = student?.attempt_status
+    ? student.attempt_status === 'submitted'
+    : student?.has_submitted ?? false
   const retakeAllowed   = student?.retake_allowed  ?? false
 
   // ── NavBar student prop (matches NavBar expected shape) ────────
@@ -226,6 +230,7 @@ export default function StudentDashboard() {
   const {
     skillScores,
     overallScore,
+    competencyProfile,
     topMatches,
     recommendations: allRecs,
     studentPin,
@@ -282,7 +287,7 @@ export default function StudentDashboard() {
       <NavBar student={navStudent} />
 
       {/* ── Retake Available Banner ── */}
-      {retakeAllowed && hasTakenAssessment && (
+      {retakeAllowed && (hasTakenAssessment || attemptStopped) && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
           <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-3">
@@ -306,7 +311,24 @@ export default function StudentDashboard() {
         </div>
       )}
 
+      {attemptStopped && !retakeAllowed && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+          <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl px-5 py-4 flex items-start gap-3 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-bold">!</div>
+            <div>
+              <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">Assessment stopped / flagged</p>
+              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">{student?.stopped_reason_display || 'An assessment integrity rule was triggered.'} Your completed answers were recorded. Contact your instructor, OJT coordinator, or administrator to request a retake.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {hasTakenAssessment && competencyProfile && (
+          <div className="mb-4">
+            <CompetencyInsights profile={competencyProfile} compact />
+          </div>
+        )}
         {/*
           HTML order optimised for mobile reading:
             greeting → status → matches → skills → map → nearest
@@ -599,7 +621,7 @@ export default function StudentDashboard() {
                     onClick={() => navigate('/student/results')}
                     className="mt-1 text-xs text-green-600 dark:text-green-400 hover:underline text-center"
                   >
-                    See full results with combined scoring →
+                    See full hybrid score details →
                   </button>
                 </div>
               </>
@@ -625,7 +647,7 @@ export default function StudentDashboard() {
                     <span className="text-base">📊</span>
                     <div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white">View all matches</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Full results with combined scoring</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Full hybrid recommendation details</p>
                     </div>
                   </button>
                 </div>

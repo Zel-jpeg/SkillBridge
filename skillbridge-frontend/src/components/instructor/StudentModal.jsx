@@ -12,26 +12,20 @@
 import {
   XIcon, RefreshIcon,
   CheckCircleIcon, WarnIcon, CrossCircleIcon,
-  StarIcon, AlertTriangleIcon, LightbulbIcon, SparkleIcon, ClockIcon,
+  StarIcon, AlertTriangleIcon, ClockIcon,
 } from '../Icons'
 import {
   avg, topSkill, bottomSkill, scoreColor, scoreBg, tierLabel,
 } from '../../utils/formatters'
-import { getInitials } from '../../utils/formatters'
 import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
 import { SkillTagBadge } from '../SkillTagBadge'
-
-// Generic suggestion fallback — avoids hardcoding specific categories
-function getSuggestion(cat) {
-  return `Focus on strengthening ${cat} skills through practice exercises, review materials, and hands-on projects.`
-}
+import CompetencyInsights from '../CompetencyInsights'
 
 export default function StudentModal({ student, isArchived, onClose, onToggleRetake }) {
   const overall = avg(student.scores || {})
   const top     = topSkill(student.scores || {})
   const bottom  = bottomSkill(student.scores || {})
-  const gaps    = Object.entries(student.scores || {}).filter(([, v]) => v < 60)
   const tier    = overall !== null ? tierLabel(overall) : null
   const recs    = student.top_recommendations ?? []
 
@@ -69,14 +63,28 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
             <p className="text-xs text-gray-400 dark:text-gray-500 truncate flex-1">{student.email}</p>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">{student.course}</span>
-              {student.status === 'completed'
+              {student.status === 'stopped'
+                ? <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900 px-2.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"/>Stopped / flagged</span>
+                : student.status === 'completed'
                 ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-green-500"/>Assessment Done</span>
                 : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Pending</span>
               }
             </div>
           </div>
 
-          {student.status === 'completed' ? (
+          {student.status === 'stopped' ? (
+            <div className="p-6 flex flex-col gap-5">
+              <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-5">
+                <div className="flex items-center gap-2 mb-2 text-rose-700 dark:text-rose-300">
+                  <AlertTriangleIcon />
+                  <p className="text-sm font-bold">Assessment integrity rule triggered</p>
+                </div>
+                <p className="text-sm text-rose-700 dark:text-rose-300 leading-relaxed">{student.stoppedReason || 'The attempt was stopped and flagged for review.'}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">Completed answers were recorded. Violation events: {student.violationCount || 1}.</p>
+              </div>
+              <StudentLocationSection address={student.address} top_recommendations={[]} />
+            </div>
+          ) : student.status === 'completed' ? (
             <div className="p-6 flex flex-col gap-6">
 
               {/* Overall + category breakdown */}
@@ -144,6 +152,8 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                 )}
               </div>
 
+              <CompetencyInsights profile={student.competencyProfile} />
+
               {/* ── Company Recommendations ───────────────── */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -192,32 +202,6 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                 )}
               </div>
 
-              {/* Suggestions for weak areas */}
-              {gaps.length > 0 ? (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <LightbulbIcon />
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Instructor Suggestions</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {gaps.map(([cat, sc]) => (
-                      <div key={cat} className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-xl px-4 py-3">
-                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">{cat} <span className="font-normal text-amber-600 dark:text-amber-500">({sc}%)</span></p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{getSuggestion(cat)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-900 rounded-2xl px-5 py-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0"><SparkleIcon /></div>
-                  <div>
-                    <p className="text-sm font-bold text-green-800 dark:text-green-300">No weak areas!</p>
-                    <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">This student passed all categories above 60%. Great performance overall.</p>
-                  </div>
-                </div>
-              )}
-
               {/* ── Location & Preferences ─────────────────────────── */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -262,7 +246,7 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
         </div>
 
         {/* Footer — Retake toggle */}
-        {!isArchived && student.status === 'completed' && (
+        {!isArchived && ['completed', 'stopped'].includes(student.status) && (
           <div className="shrink-0 border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${

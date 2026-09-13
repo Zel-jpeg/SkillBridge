@@ -34,7 +34,8 @@ export function useAdminSkills() {
 
   const filteredSkills = skills.filter(s => 
     s.name.toLowerCase().includes(search.toLowerCase()) || 
-    (s.description || '').toLowerCase().includes(search.toLowerCase())
+    (s.description || '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.tags || []).some(tag => tag.toLowerCase().includes(search.toLowerCase()))
   )
 
   const showToast = (msg) => {

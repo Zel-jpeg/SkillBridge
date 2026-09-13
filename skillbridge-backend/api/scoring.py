@@ -274,166 +274,131 @@ def build_skill_vector(student, assessment, categories):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def generate_recommendations(student, assessment, categories):
+    """Generate explainable 60/25/15 hybrid recommendations.
+
+    Category alignment uses cosine similarity over assessment percentages and
+    position requirements. Rich profile/position text is preprocessed by the
+    configured spaCy/Stanza model, then compared with TF-IDF cosine similarity.
+    Location uses an 80 km linear decay; missing coordinates receive a neutral
+    50% location score so unavailable data does not crash or dominate ranking.
     """
-    WHAT THIS DOES:
-    ───────────────
-    This is the CORE RECOMMENDATION ENGINE of SkillBridge.
+    from sklearn.feature_extraction.text import TfidfVectorizer
 
-    It compares the student's skill profile (a vector of their assessment
-    scores) against every company position's skill requirements (also a vector)
-    and computes a match score for each position. The results are ranked highest
-    to lowest and stored in the Recommendation table.
+    from .models import (
+        Position, Recommendation, RecommendationConfiguration, SkillScore,
+        StudentCompetencyProfile,
+    )
+    from .recommendation_nlp import (
+        build_position_description,
+        generate_competency_insights,
+        location_similarity,
+        preprocess_texts,
+    )
 
-    ALGORITHM USED — Cosine Similarity:
-    ────────────────────────────────────
-    Cosine similarity is a mathematical method from NLP and information
-    retrieval used to measure how similar two vectors are, regardless of
-    their magnitude (size).
+    categories = list(categories)
+    skill_scores = list(
+        SkillScore.objects.filter(student=student, assessment=assessment)
+        .select_related('skill_category')
+    )
+    insights = generate_competency_insights(skill_scores)
+    StudentCompetencyProfile.objects.update_or_create(
+        student=student,
+        assessment=assessment,
+        defaults=insights,
+    )
 
-    INTUITION:
-    Imagine each vector as an arrow pointing in a direction in multi-dimensional
-    space (one dimension per skill category). Cosine similarity measures the
-    ANGLE between the two arrows:
-      - Angle = 0°  → cos(0°) = 1.0 → PERFECT MATCH (100%)
-      - Angle = 90° → cos(90°) = 0.0 → NO MATCH (0%)
-
-    This is especially useful because it focuses on the PATTERN of skills,
-    not just raw numbers:
-    - A student with [0.80, 0.60, 0.70] matches well with a position
-      requiring [0.80, 0.60, 0.70] — high similarity.
-    - A student with [0.80, 0.10, 0.10] matches poorly with a position
-      requiring [0.10, 0.80, 0.80] — different skill pattern, low similarity.
-
-    STEP-BY-STEP PROCESS:
-    ─────────────────────
-    1. Call build_skill_vector() → get the student's skill vector
-       Example: student_vec = [0.82, 0.55, 0.30, 0.70]
-
-    2. For each Position in the database that has requirements defined:
-         a. Build the position's requirement vector using the same category order
-            Example: pos_vec = [0.80, 0.60, 0.20, 0.70]
-         b. Compute:
-               score = cosine_similarity(student_vec, pos_vec)
-               # Returns a value between 0.0 and 1.0
-         c. Multiply by 100 to convert to percentage (e.g., 0.96 → 96%)
-
-    3. Save each match score to the Recommendation table in the database.
-
-    4. Sort all results from highest to lowest match score.
-
-    5. Return the sorted list — students see the best-matching companies first.
-
-    WHY COSINE SIMILARITY AND NOT OTHER ALGORITHMS?
-    ────────────────────────────────────────────────
-    - It is mathematically simple and results are easy to explain to a panel.
-    - It is widely used in document similarity, search engines, and
-      recommendation systems (Netflix, Spotify, etc. use similar approaches).
-    - It does NOT require training data — it works directly on the vectors.
-    - It handles sparse vectors well (when a student has 0 in some categories).
-    - Provided by scikit-learn, a trusted, industry-standard Python library.
-
-    PARAMETERS:
-    ───────────
-    student    : The User object (student)
-    assessment : The Assessment object
-    categories : Ordered queryset of SkillCategory objects
-                 (same ordering used in build_skill_vector and position vectors)
-
-    RETURNS:
-    ────────
-    A list of dicts sorted by match_score descending:
-    [
-      { 'position_title': 'Web Developer', 'company_name': 'XYZ Corp',
-        'match_score': 96.5, 'tags': ['Web Development', 'Programming'], ... },
-      ...
-    ]
-    """
-    from .models import Position, PositionRequirement, Recommendation
-
-    # ── STEP 1: Build the student's skill vector ──────────────────────────────
     student_vec = build_skill_vector(student, assessment, categories)
-
-    # Safety check: if the student has no scores yet (all zeros), skip.
-    # A zero vector has no direction, so cosine similarity is undefined.
     if student_vec.sum() == 0:
         return []
 
-    # ── STEP 2: Iterate over all Positions and compute match scores ───────────
-    positions = Position.objects.prefetch_related('requirements', 'company').all()
+    positions = list(
+        Position.objects.select_related('company').prefetch_related(
+            'requirements', 'requirements__skill_category'
+        )
+    )
+    positions = [position for position in positions if position.requirements.all()]
+    if not positions:
+        Recommendation.objects.filter(student=student).delete()
+        return []
+
+    profile_text = insights['competency_profile_text']
+    position_texts = [build_position_description(position) for position in positions]
+    requested_model = RecommendationConfiguration.get_active().active_model
+    processed, model_used, _fallback_reason = preprocess_texts(
+        [profile_text] + position_texts,
+        requested_model,
+    )
+
+    try:
+        tfidf = TfidfVectorizer(ngram_range=(1, 3), min_df=1, sublinear_tf=True)
+        matrix = tfidf.fit_transform(processed)
+        nlp_scores = cosine_similarity(matrix[:1], matrix[1:])[0]
+    except ValueError:
+        # Empty vocabulary is possible when all text is stop words.
+        nlp_scores = np.zeros(len(positions), dtype=float)
+
     results = []
-
-    for position in positions:
-        # Build a lookup for this position's requirements:
-        # { skill_category_id → required_percentage (normalized 0–1) }
-        reqs = {r.skill_category_id: r.required_percentage / 100.0
-                for r in position.requirements.all()}
-
-        # Skip positions with no requirements defined — we can't compare
-        # against an empty requirement set (no direction = no angle)
-        if not reqs:
-            continue
-
-        # ── STEP 3: Build the position requirement vector ─────────────────────
-        # Build the vector using the SAME category ordering as the student vector.
-        # If the position doesn't require a particular skill, that dimension = 0.
-        # Example: pos_vec = [0.80, 0.60, 0.00, 0.70]
-        #                      ^ Web Dev  ^ DB  ^ No networking req  ^ Programming
-        pos_vec = np.array([
-            reqs.get(cat.id, 0.0) for cat in categories
-        ], dtype=float)
-
-        # Safety check: skip if position vector is all zeros (no requirements set)
+    scored_position_ids = []
+    for index, position in enumerate(positions):
+        reqs = {
+            requirement.skill_category_id: requirement.required_percentage / 100.0
+            for requirement in position.requirements.all()
+        }
+        pos_vec = np.array([reqs.get(category.id, 0.0) for category in categories], dtype=float)
         if pos_vec.sum() == 0:
             continue
 
-        # ── STEP 4: Compute Cosine Similarity ─────────────────────────────────
-        # .reshape(1, -1) converts the 1D array into a 2D row matrix,
-        # which is the format scikit-learn's cosine_similarity expects.
-        # Result is a 2D array [[score]]; we extract the scalar with [0][0].
-        # score is between 0.0 (no match) and 1.0 (perfect match).
-        score = float(cosine_similarity(
-            student_vec.reshape(1, -1),   # shape: (1, n_categories)
-            pos_vec.reshape(1, -1)        # shape: (1, n_categories)
+        category_score = float(cosine_similarity(
+            student_vec.reshape(1, -1), pos_vec.reshape(1, -1)
         )[0][0])
+        nlp_score = float(nlp_scores[index])
+        location_score, distance_km = location_similarity(
+            student.address,
+            position.company.location_lat,
+            position.company.location_lng,
+        )
+        final_score = 0.60 * category_score + 0.25 * nlp_score + 0.15 * location_score
 
-        # ── STEP 5: Save the recommendation to the database ───────────────────
-        # update_or_create means: if a recommendation already exists for this
-        # student + position, UPDATE it. Otherwise, CREATE a new one.
-        # match_score is stored as a percentage (0–100).
+        component_values = {
+            'match_score': round(final_score * 100, 2),
+            'category_score_component': round(category_score * 100, 2),
+            'nlp_score_component': round(nlp_score * 100, 2),
+            'location_score_component': round(location_score * 100, 2),
+            'model_used': model_used,
+            'distance_km': round(distance_km, 2) if distance_km is not None else None,
+            'generated_at': timezone.now(),
+        }
         Recommendation.objects.update_or_create(
             student=student,
             position=position,
-            defaults={
-                'match_score': round(score * 100, 2),  # e.g., 0.965 → 96.5
-                'generated_at': timezone.now(),
-            }
+            defaults=component_values,
         )
-
-        # ── STEP 6: Append result for return value ────────────────────────────
+        scored_position_ids.append(position.id)
         results.append({
-            'position_id':    position.id,
+            'position_id': position.id,
             'position_title': position.title,
-            'company_id':     position.company.id,
-            'company_name':   position.company.name,
-            'company':        position.company.name,
-            'position':       position.title,
-            'slots':          position.slots_available,
-            'match_score':    round(score * 100, 2),
-            'lat':            position.company.location_lat,
-            'lng':            position.company.location_lng,
+            'company_id': position.company.id,
+            'company_name': position.company.name,
+            'company': position.company.name,
+            'position': position.title,
+            'slots': position.slots_available,
+            **component_values,
+            'requested_model': requested_model,
+            'lat': position.company.location_lat,
+            'lng': position.company.location_lng,
             'address': ', '.join(filter(None, [
                 (position.company.address or {}).get('barangay', ''),
                 (position.company.address or {}).get('city', ''),
                 (position.company.address or {}).get('province', ''),
             ])) or None,
-            # skill tags: names of all the skill categories this position requires
-            'tags': [req.skill_category.name for req in position.requirements.select_related('skill_category').all()],
+            'tags': list(dict.fromkeys(
+                [requirement.skill_category.name for requirement in position.requirements.all()]
+                + list(position.tags or [])
+            )),
         })
 
-    # ── STEP 7: Sort results by match_score, highest first ────────────────────
-    # This is the "ranked" part of "ranked recommendations" — the company
-    # that best matches the student's skills appears at the top of the list.
-    results.sort(key=lambda x: x['match_score'], reverse=True)
+    Recommendation.objects.filter(student=student).exclude(position_id__in=scored_position_ids).delete()
+    results.sort(key=lambda item: item['match_score'], reverse=True)
     return results
 
 

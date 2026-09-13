@@ -10,6 +10,7 @@ import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import { getInitials }            from '../../utils/formatters'
 import Avatar                     from '../../components/Avatar'
+import api                        from '../../api/axios'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
 let _leafletPromise = null
@@ -288,10 +289,31 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
 
   // Positions edits
   const [positions, setPositions] = useState(
-    (company.positions ?? []).map(p => ({ id: p.id, title: p.title, slots: p.slots }))
+    (company.positions ?? []).map(p => ({
+      id: p.id,
+      title: p.title,
+      slots: p.slots,
+      requirements: p.requirements || {},
+      tags: (p.tags || []).join(', '),
+    }))
   )
+  const [suggestingFor, setSuggestingFor] = useState(null)
   function setPosField(idx, key, val) {
     setPositions(ps => ps.map((p, i) => i === idx ? { ...p, [key]: val } : p))
+  }
+
+  async function suggestTags(idx) {
+    const position = positions[idx]
+    if (!position.title.trim()) return
+    setSuggestingFor(idx)
+    try {
+      const res = await api.post('/api/tags/suggest/', {
+        type: 'position', title: position.title, requirements: position.requirements,
+      })
+      setPosField(idx, 'tags', (res.data?.suggested_tags || []).join(', '))
+    } finally {
+      setSuggestingFor(null)
+    }
   }
 
   // Auto-geocode when address selection changes
@@ -322,7 +344,12 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
       address,
       lat:      pinned?.lat ?? null,
       lng:      pinned?.lng ?? null,
-      positions: positions.map(p => ({ id: p.id, title: p.title, slots: parseInt(p.slots) || 0 })),
+      positions: positions.map(p => ({
+        id: p.id,
+        title: p.title,
+        slots: parseInt(p.slots) || 0,
+        tags: p.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      })),
     })
   }
 
@@ -431,6 +458,18 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
                       <div>
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Title</label>
                         <input value={pos.title} onChange={e => setPosField(idx, 'title', e.target.value)}
+                          className={inputCls('')} />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Position Tags</label>
+                          <button type="button" onClick={() => suggestTags(idx)} disabled={suggestingFor === idx}
+                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50">
+                            {suggestingFor === idx ? 'Suggesting…' : 'Suggest Tags'}
+                          </button>
+                        </div>
+                        <textarea value={pos.tags} onChange={e => setPosField(idx, 'tags', e.target.value)} rows={2}
+                          placeholder="Django, REST API, PostgreSQL"
                           className={inputCls('')} />
                       </div>
                       <div>

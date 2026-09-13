@@ -19,6 +19,7 @@ import AddressDropdowns from '../../components/AddressDropdowns'
 import AdminNav        from '../../components/admin/AdminNav'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
+import api from '../../api/axios'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN, singleton promise prevents duplicate injection
@@ -666,6 +667,8 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
 
   const [title,  setTitle]  = useState(initialData?.title || '')
   const [slots,  setSlots]  = useState(initialData?.slots ?? 1)
+  const [tags,   setTags]   = useState((initialData?.tags || []).join(', '))
+  const [suggesting, setSuggesting] = useState(false)
   const [error,  setError]  = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -703,9 +706,24 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
       title:        title.trim(),
       slots:        Number(slots),
       requirements: filteredReqs,
+      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
     })
     setSaving(false)
     if (result?.ok) onClose()
+  }
+
+  async function handleSuggestTags() {
+    if (!title.trim()) { setError('Enter a position title before suggesting tags.'); return }
+    setSuggesting(true)
+    try {
+      const requirements = Object.fromEntries(Object.entries(reqs).filter(([, value]) => value > 0))
+      const res = await api.post('/api/tags/suggest/', { type: 'position', title, requirements })
+      setTags((res.data?.suggested_tags || []).join(', '))
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not suggest tags.')
+    } finally {
+      setSuggesting(false)
+    }
   }
 
   return (
@@ -784,6 +802,20 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Position Tags</label>
+              <button type="button" onClick={handleSuggestTags} disabled={suggesting}
+                className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline disabled:opacity-50">
+                {suggesting ? 'Suggesting…' : 'Suggest Tags'}
+              </button>
+            </div>
+            <textarea value={tags} onChange={e => setTags(e.target.value)} rows={3}
+              placeholder="Django, REST API, authentication, PostgreSQL"
+              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <p className="text-[11px] text-gray-400 mt-1">Optional, comma-separated, and fully editable before saving.</p>
           </div>
         </div>
 
@@ -1047,6 +1079,13 @@ export default function AdminCompanies() {
                           <span className="text-xs text-gray-300 dark:text-gray-700">No requirements set</span>
                         )}
                       </div>
+                      {pos.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {pos.tags.slice(0, 6).map(tag => (
+                            <span key={tag} className="text-[10px] bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-full">{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {/* Edit + Delete buttons for position */}
                     <div className="flex items-center gap-1 shrink-0">

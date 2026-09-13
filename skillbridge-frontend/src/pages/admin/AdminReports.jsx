@@ -2,9 +2,11 @@
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
 
 import AdminNav from '../../components/admin/AdminNav'
+import { useEffect, useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { getQualitativeTag } from '../../utils/formatters'
+import api from '../../api/axios'
 
 const Spinner = () => (
   <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
@@ -51,6 +53,69 @@ function BarRow({ label, value, max, colorClass, right, tag }) {
   )
 }
 
+function NlpConfigurationCard() {
+  const [config, setConfig] = useState(null)
+  const [selected, setSelected] = useState('spacy_md')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    api.get('/api/admin/nlp-configuration/').then(({ data }) => {
+      setConfig(data)
+      setSelected(data.active_model)
+    }).catch(() => setMessage('Could not load NLP model configuration.'))
+  }, [])
+
+  async function saveModel() {
+    setBusy(true)
+    try {
+      const { data } = await api.patch('/api/admin/nlp-configuration/', { active_model: selected })
+      setConfig(data)
+      setMessage(data.message)
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Could not update the active model.')
+    } finally { setBusy(false) }
+  }
+
+  async function rerun() {
+    setBusy(true)
+    try {
+      const { data } = await api.post('/api/admin/rerun-recommendations/')
+      setMessage(data.message || 'Recommendations refreshed.')
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Could not re-run recommendations.')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <SectionCard title="Recommendation NLP Model" subtitle="Students automatically use the active preprocessing model; the 60/25/15 weights stay fixed.">
+      <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+        <div className="flex-1">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Active model</label>
+          <select value={selected} onChange={e => setSelected(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+            {(config?.models || []).map(model => (
+              <option key={model.id} value={model.id}>{model.label}{model.available ? '' : ' (fallback will be used)'}</option>
+            ))}
+          </select>
+        </div>
+        <button onClick={saveModel} disabled={busy || selected === config?.active_model}
+          className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 text-white disabled:opacity-50">Save Model</button>
+        <button onClick={rerun} disabled={busy}
+          className="px-4 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white disabled:opacity-50">Re-run Recommendations</button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {(config?.models || []).map(model => (
+          <span key={model.id} title={model.error || ''} className={`text-[11px] px-2 py-1 rounded-full ${model.available ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'}`}>
+            {model.label}: {model.available ? 'available' : 'offline fallback'}
+          </span>
+        ))}
+      </div>
+      {message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">{message}</p>}
+    </SectionCard>
+  )
+}
+
 export default function AdminReports() {
   const { data, loading } = useApi('/api/admin/reports/')
 
@@ -91,6 +156,8 @@ export default function AdminReports() {
             System-wide insights on student performance, skill gaps, and company matching.
           </p>
         </div>
+
+        <NlpConfigurationCard />
 
         {/* ── Row 1: Top-level stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

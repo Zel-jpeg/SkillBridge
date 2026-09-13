@@ -4,6 +4,7 @@ import ConfirmModal from '../../components/admin/ConfirmModal'
 import SearchBar from '../../components/SearchBar'
 import EmptyState from '../../components/EmptyState'
 import { useAdminSkills } from '../../hooks/admin/useAdminSkills'
+import api from '../../api/axios'
 
 const PlusIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const PencilIcon = ({ size = 14 }) => (
@@ -32,7 +33,23 @@ const Spinner = () => (
 
 function SkillModal({ skill, onClose, onSave, saving }) {
   const [name, setName] = useState(skill?.name || '')
+  const [description, setDescription] = useState(skill?.description || '')
+  const [tags, setTags] = useState((skill?.tags || []).join(', '))
+  const [suggesting, setSuggesting] = useState(false)
   const [error, setError] = useState('')
+
+  const suggestTags = async () => {
+    if (!name.trim()) { setError('Enter a skill name before suggesting tags.'); return }
+    setSuggesting(true)
+    try {
+      const res = await api.post('/api/tags/suggest/', { type: 'skill', name, description })
+      setTags((res.data?.suggested_tags || []).join(', '))
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not suggest tags.')
+    } finally {
+      setSuggesting(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,7 +57,12 @@ function SkillModal({ skill, onClose, onSave, saving }) {
       setError('Skill name is required.')
       return
     }
-    const res = await onSave({ id: skill?.id, name })
+    const res = await onSave({
+      id: skill?.id,
+      name: name.trim(),
+      description: description.trim(),
+      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+    })
     if (!res.ok) setError(res.error)
   }
 
@@ -77,7 +99,26 @@ function SkillModal({ skill, onClose, onSave, saving }) {
               placeholder="e.g. ReactJS"
               className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
-          
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Description</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+              placeholder="Optional context for this category"
+              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Skill Tags</label>
+              <button type="button" onClick={suggestTags} disabled={suggesting}
+                className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline disabled:opacity-50">
+                {suggesting ? 'Suggesting…' : 'Suggest Tags'}
+              </button>
+            </div>
+            <textarea value={tags} onChange={e => setTags(e.target.value)} rows={3}
+              placeholder="Python, Java, OOP, debugging"
+              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <p className="text-[11px] text-gray-400 mt-1">Comma-separated. Suggestions remain editable and are saved only when you submit.</p>
+          </div>
 
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose}
@@ -168,6 +209,7 @@ export default function AdminSkills() {
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skill Name</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Tags</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 w-24">Actions</th>
                   </tr>
                 </thead>
@@ -176,6 +218,14 @@ export default function AdminSkills() {
                     <tr key={skill.id} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                       <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
                         {skill.name}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(skill.tags || []).slice(0, 6).map(tag => (
+                            <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">{tag}</span>
+                          ))}
+                          {!skill.tags?.length && <span className="text-xs text-gray-400">Optional</span>}
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5">

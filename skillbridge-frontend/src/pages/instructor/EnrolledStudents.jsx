@@ -9,9 +9,9 @@ import { SkillScoreRow }       from '../../components/SkillTagBadge'
 import EnrollModal             from '../../components/instructor/EnrollModal'
 import ConfirmModal            from '../../components/admin/ConfirmModal'
 import Pagination              from '../../components/Pagination'
-import { useEnrolledStudents, getPalette } from '../../hooks/instructor/useEnrolledStudents'
-import { getInitials }         from '../../utils/formatters'
+import { useEnrolledStudents } from '../../hooks/instructor/useEnrolledStudents'
 import Avatar                  from '../../components/Avatar'
+import StatusBadge             from '../../components/StatusBadge'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
 const ArchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -46,7 +46,7 @@ export default function EnrolledStudents() {
   const navigate = useNavigate()
   const {
     instructor,
-    batches, activeBatchId, setActiveBatchId, loadingBatches,
+    batches, activeBatchId, setActiveBatchId,
     viewedBatch, isArchived, students, activeBatch, completed,
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
@@ -272,10 +272,7 @@ export default function EnrolledStudents() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {s.status === 'completed'
-                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500" />Done</span>
-                          : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2 py-0.5 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500" />Pending</span>
-                        }
+                        <StatusBadge status={s.status} />
                         {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors" title="Remove"><TrashIcon /></button>}
                       </div>
                     </div>
@@ -308,7 +305,9 @@ export default function EnrolledStudents() {
                         <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
                         </div>
-                        <p className="text-xs text-gray-400 dark:text-gray-600">Waiting for assessment</p>
+                        <p className={`text-xs text-center ${s.status === 'stopped' ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                          {s.status === 'stopped' ? s.stoppedReason || 'Assessment stopped and flagged' : 'Waiting for assessment'}
+                        </p>
                         <div className="flex flex-wrap gap-1 justify-center">
                           {categories.slice(0, 4).map(c => (
                             <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">{c.split(' ')[0]}</span>
@@ -342,7 +341,7 @@ export default function EnrolledStudents() {
                           <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
                           <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                         </div></td>
-                        <td className="px-3 py-4">{s.status==='completed'?<span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-green-500"/>Done</span>:<span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-1 rounded-full"><span className="w-1 h-1 rounded-full bg-amber-500"/>Pending</span>}</td>
+                        <td className="px-3 py-4"><StatusBadge status={s.status} /></td>
                         <td className="px-3 py-4 max-w-xs">
                           {s.status === 'completed' ? (
                             <div className="flex flex-wrap gap-1">

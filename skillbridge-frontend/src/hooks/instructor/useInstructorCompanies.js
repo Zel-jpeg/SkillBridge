@@ -65,7 +65,7 @@ export function useInstructorCompanies() {
           lng:     payload.lng,
           positions: co.positions.map(p => {
             const u = payload.positions.find(x => x.id === p.id)
-            return u ? { ...p, title: u.title, slots: u.slots } : p
+            return u ? { ...p, title: u.title, slots: u.slots, tags: u.tags } : p
           }),
         }
       ))

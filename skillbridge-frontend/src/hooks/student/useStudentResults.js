@@ -2,8 +2,7 @@
 //
 // Fetches GET /api/student/results/ and enriches recommendations with:
 //   - distKm       — Haversine distance from student's pinned location
-//   - proximityPct — 0-100 score (0 km = 100, ≥200 km = 0)
-//   - combined     — 70% skill match + 30% proximity
+//   - backend-provided hybrid component scores and distance
 //
 // Also accepts `routerState` — the data passed through navigate() state
 // immediately after an assessment submit.  That data is used as the
@@ -28,16 +27,6 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a    = Math.sin(dLat / 2) ** 2
     + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-// Proximity score: 0–100 (0 km → 100, ≥200 km → 0)
-function proximityScore(distKm) {
-  return Math.max(0, Math.round(100 - (distKm / 200) * 100))
-}
-
-// Combined: 70% skill match + 30% proximity
-function combinedScore(matchPct, distKm) {
-  return Math.round(matchPct * 0.7 + proximityScore(distKm) * 0.3)
 }
 
 // ── Color helpers (shared between Results and Dashboard) ──────────────────────
@@ -113,11 +102,17 @@ export function useStudentResults(routerState = null) {
     if (!data?.recommendations?.length) return []
     return data.recommendations.map(r => {
       const match = Math.round(r.match_score)
-      if (hasPin && r.lat != null && r.lng != null) {
-        const dist = haversineKm(studentPin.lat, studentPin.lng, r.lat, r.lng)
-        return { ...r, match, distKm: dist, proximityPct: proximityScore(dist), combined: combinedScore(match, dist) }
+      const localDistance = hasPin && r.lat != null && r.lng != null
+        ? haversineKm(studentPin.lat, studentPin.lng, r.lat, r.lng)
+        : null
+      const distKm = r.distance_km ?? localDistance
+      return {
+        ...r,
+        match,
+        distKm,
+        proximityPct: r.location_score_component ?? null,
+        combined: match,
       }
-      return { ...r, match, distKm: null, proximityPct: null, combined: match }
     })
   }, [data, hasPin, studentPin])
 
@@ -135,6 +130,7 @@ export function useStudentResults(routerState = null) {
 
   return {
     skillScores, overallScore,
+    competencyProfile: data?.competency_profile ?? null,
     recommendations, topMatches,
     reviewData, reviewLoading,
     loading, error,
