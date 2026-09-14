@@ -21,6 +21,7 @@ import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
 import { SkillTagBadge } from '../SkillTagBadge'
 import CompetencyInsights from '../CompetencyInsights'
+import PlacementStatusCard from '../placements/PlacementStatusCard'
 
 export default function StudentModal({ student, isArchived, onClose, onToggleRetake }) {
   const overall = avg(student.scores || {})
@@ -70,6 +71,10 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
                 : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-2.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>Pending</span>
               }
             </div>
+          </div>
+
+          <div className="px-6 pt-4">
+            <PlacementStatusCard placement={student.placement} audience="instructor" />
           </div>
 
           {student.status === 'stopped' ? (

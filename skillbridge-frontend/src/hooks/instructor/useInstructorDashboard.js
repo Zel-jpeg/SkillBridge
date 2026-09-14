@@ -63,6 +63,7 @@ export function useInstructorDashboard() {
       violationCount:      s.violation_count ?? 0,
       top_recommendations: s.top_recommendations ?? [],
       competencyProfile:   s.competency_profile ?? null,
+      placement:           s.placement ?? { status: 'unplaced' },
       address:             s.address ?? {},
       photoUrl:            s.photo_url || null,
     }))

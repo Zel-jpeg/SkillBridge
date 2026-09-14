@@ -69,6 +69,7 @@ export default function InstructorNav({ activePath }) {
     { label: 'Assessments',    path: '/instructor/assessments'       },
     { label: 'New assessment', path: '/instructor/assessment/create' },
     { label: 'Companies',      path: '/instructor/companies'         },
+    { label: 'Placements',     path: '/instructor/placements'        },
   ]
 
   const linkClass = (path) =>

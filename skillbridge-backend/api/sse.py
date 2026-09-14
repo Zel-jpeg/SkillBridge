@@ -62,13 +62,17 @@ def _admin_snapshot():
     Lightweight aggregate counts for the admin panel.
     Comparing two snapshots tells us which cache URLs are stale.
     """
-    from .models import User, Company, StudentResponse
+    from django.db.models import Max
+    from .models import User, Company, StudentResponse, OJTPlacement
     return {
         'students':            User.objects.filter(role='student',    is_active=True).count(),
         'instructors_active':  User.objects.filter(role='instructor', is_approved=True,  is_active=True).count(),
         'instructors_pending': User.objects.filter(role='instructor', is_approved=False, is_active=True).count(),
         'companies':           Company.objects.count(),
         'submissions':         StudentResponse.objects.filter(submitted_at__isnull=False).count(),
+        'placement_updated':   OJTPlacement.objects.aggregate(
+            latest=Max('updated_at'),
+        )['latest'],
     }
 
 
@@ -86,6 +90,8 @@ def _admin_diff_urls(old, new):
     if (old['instructors_active']  != new['instructors_active'] or
             old['instructors_pending'] != new['instructors_pending']):
         urls.add('/api/admin/users/')
+    if old['placement_updated'] != new['placement_updated']:
+        urls.add('/api/admin/placement-analytics/')
     return list(urls)
 
 
@@ -96,10 +102,14 @@ def _instructor_snapshot():
     Lightweight aggregate counts for the instructor panel.
     Tracks student submissions and active student count.
     """
-    from .models import User, StudentResponse
+    from django.db.models import Max
+    from .models import User, StudentResponse, OJTPlacement
     return {
         'submissions':     StudentResponse.objects.filter(submitted_at__isnull=False).count(),
         'active_students': User.objects.filter(role='student', is_active=True).count(),
+        'placement_updated': OJTPlacement.objects.aggregate(
+            latest=Max('updated_at'),
+        )['latest'],
     }
 
 
@@ -113,6 +123,11 @@ def _instructor_diff_urls(old, new):
     urls = set()
     if (old['submissions']     != new['submissions'] or
             old['active_students'] != new['active_students']):
+        urls.update([
+            '/api/instructor/students/recommendations/',
+            '/api/instructor/batches/',
+        ])
+    if old['placement_updated'] != new['placement_updated']:
         urls.update([
             '/api/instructor/students/recommendations/',
             '/api/instructor/batches/',

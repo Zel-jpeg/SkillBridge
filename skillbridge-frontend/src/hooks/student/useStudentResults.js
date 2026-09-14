@@ -131,6 +131,7 @@ export function useStudentResults(routerState = null) {
   return {
     skillScores, overallScore,
     competencyProfile: data?.competency_profile ?? null,
+    placement: data?.placement ?? null,
     recommendations, topMatches,
     reviewData, reviewLoading,
     loading, error,

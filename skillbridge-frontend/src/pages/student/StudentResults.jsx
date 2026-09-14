@@ -18,6 +18,7 @@ import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
 import CompetencyInsights from '../../components/CompetencyInsights'
+import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 
 
 function getCachedUser() {
@@ -505,6 +506,7 @@ export default function StudentResults() {
     skillScores,
     overallScore,
     competencyProfile,
+    placement,
     recommendations: sorted,
     reviewData,
     reviewLoading,
@@ -573,6 +575,10 @@ export default function StudentResults() {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="mt-6">
+          <PlacementStatusCard placement={placement ?? apiStudent?.placement} audience="student" />
         </div>
 
         {competencyProfile && (

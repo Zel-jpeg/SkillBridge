@@ -66,6 +66,7 @@ export default function AdminNav({ activePath }) {
     { label: 'Dashboard',   path: '/admin/dashboard'   },
     { label: 'Skills',      path: '/admin/skills'      },
     { label: 'Companies',   path: '/admin/companies'   },
+    { label: 'Placements',  path: '/admin/placements'  },
     { label: 'Users',       path: '/admin/users'       },
     { label: 'Assessments', path: '/admin/assessments' },
     { label: 'Reports',     path: '/admin/reports'     },

@@ -19,6 +19,7 @@ import EnrolledStudents from './pages/instructor/EnrolledStudents'
 import InstructorPending from './pages/instructor/InstructorPending'
 import InstructorAssessments from './pages/instructor/InstructorAssessments'
 import InstructorCompanies from './pages/instructor/InstructorCompanies'
+import { InstructorPlacements } from './pages/placements/PlacementsPage'
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -27,6 +28,7 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminSkills from './pages/admin/AdminSkills'
 import AdminAssessments from './pages/admin/AdminAssessments'
 import AdminReports from './pages/admin/AdminReports'
+import AdminPlacements from './pages/admin/AdminPlacements'
 
 function App() {
   return (
@@ -80,6 +82,9 @@ function App() {
       <Route path="/instructor/companies" element={
         <PrivateRoute role="instructor"><InstructorCompanies /></PrivateRoute>
       } />
+      <Route path="/instructor/placements" element={
+        <PrivateRoute role="instructor"><InstructorPlacements /></PrivateRoute>
+      } />
 
       {/* ── Admin routes (requires role="admin") ───────────────────── */}
       <Route path="/admin/dashboard" element={
@@ -99,6 +104,9 @@ function App() {
       } />
       <Route path="/admin/reports" element={
         <PrivateRoute role="admin"><AdminReports /></PrivateRoute>
+      } />
+      <Route path="/admin/placements" element={
+        <PrivateRoute role="admin"><AdminPlacements /></PrivateRoute>
       } />
 
       {/* ── Catch-all → redirect unknown URLs to login ─────────────── */}

@@ -66,6 +66,7 @@ function normalizeStudent(s) {
     tags:                parsedTags,
     top_recommendations: s.top_recommendations ?? [],
     competencyProfile:   s.competency_profile ?? null,
+    placement:           s.placement ?? { status: 'unplaced' },
     address:             s.address        ?? {},
     photoUrl:            s.photo_url      || null,
   }

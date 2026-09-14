@@ -11,13 +11,15 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Sum, Max
+from django.db import IntegrityError, transaction
+from django.db.models import Count, Sum, Max, Q
+from django.db.models.deletion import ProtectedError
+from django.utils.dateparse import parse_date
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
     StudentResponse, ResponseAnswer, SkillScore, StudentCompetencyProfile,
-    Company, Position, PositionRequirement, Recommendation,
+    Company, Position, PositionRequirement, Recommendation, OJTPlacement,
     RecommendationConfiguration,
 )
 from .serializers import UserSerializer
@@ -545,6 +547,7 @@ def student_me(request):
 
     has_submitted  = latest_response is not None and latest_response.submitted_at is not None
     retake_allowed = latest_response.retake_allowed if latest_response else False
+    approved_placement = _approved_student_placement(user.id)
 
     return Response({
         **UserSerializer(user).data,
@@ -556,6 +559,9 @@ def student_me(request):
             'id':   enrollment.batch.id,
             'name': enrollment.batch.name,
         } if enrollment else None,
+        # Students only receive their finalized placement. Removed/rejected
+        # history remains internal to coordinators and instructors.
+        'placement': _serialize_placement_visibility(approved_placement),
     })
 
 
@@ -941,6 +947,8 @@ def instructor_batch_students(request, batch_id):
         if len(recs_by_student[r.student_id]) < 3:
             recs_by_student[r.student_id].append(r)
 
+    placements_by_student = _visible_placements_by_student(student_ids)
+
     students = []
     for e in enrollments:
         s    = e.student
@@ -959,6 +967,9 @@ def instructor_batch_students(request, batch_id):
             'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
             'enrolled_at':    e.enrolled_at,
             'address':        s.address or {},
+            'placement':      _serialize_placement_visibility(
+                placements_by_student.get(s.id), include_unplaced=True,
+            ),
             'top_recommendations': [
                 {
                     'position':    r.position.title,
@@ -1761,6 +1772,8 @@ def instructor_student_recommendations(request):
         if len(recs_by_student[r.student_id]) < 3:
             recs_by_student[r.student_id].append(r)
 
+    placements_by_student = _visible_placements_by_student(student_ids)
+
     # ── Bulk-load all skill scores ─────────────────────────────────
     all_scores = (
         SkillScore.objects
@@ -1795,6 +1808,9 @@ def instructor_student_recommendations(request):
             'competency_profile': serialize_competency_profile(profile_map.get(student.id)),
             'batch':       {'id': e.batch.id, 'name': e.batch.name},
             'address':     student.address or {},
+            'placement':   _serialize_placement_visibility(
+                placements_by_student.get(student.id), include_unplaced=True,
+            ),
             'top_recommendations': [
                 {
                     'position':    r.position.title,
@@ -1923,6 +1939,25 @@ def instructor_company_edit(request, co_id):
         return Response({'error': 'Not found'}, status=404)
 
     data = request.data
+    # Never let a slot edit make an existing approved placement over capacity.
+    for pos_data in data.get('positions', []):
+        if 'slots' not in pos_data:
+            continue
+        try:
+            position = company.positions.get(id=pos_data['id'])
+            requested_slots = int(pos_data['slots'])
+        except (KeyError, TypeError, ValueError, Position.DoesNotExist):
+            return Response({'error': 'Invalid position or slots value.'}, status=400)
+        approved_count = position.ojt_placements.filter(
+            status=OJTPlacement.STATUS_APPROVED,
+        ).count()
+        if requested_slots < approved_count:
+            return Response({
+                'error': 'slots cannot be lower than the approved placement count.',
+                'position_id': position.id,
+                'approved_count': approved_count,
+            }, status=409)
+
     if 'name'    in data: company.name         = data['name']
     if 'address' in data: company.address      = data['address']
     if 'lat'     in data: company.location_lat  = data['lat']
@@ -1971,6 +2006,7 @@ def student_results(request):
         .first()
         if latest else None
     )
+    approved_placement = _approved_student_placement(user.id)
 
     # Auto-generate missing legacy profiles/recommendations after deployment.
     if skill_scores.exists() and latest and (not recommendations.exists() or competency_profile is None):
@@ -2004,6 +2040,7 @@ def student_results(request):
         'recommendations': [serialize_recommendation(r) for r in recommendations],
         'competency_profile': serialize_competency_profile(competency_profile),
         'active_model': RecommendationConfiguration.get_active().active_model,
+        'placement': _serialize_placement_visibility(approved_placement),
     })
 
 
@@ -2491,7 +2528,12 @@ def admin_company_detail(request, company_id):
         return Response({'error': 'Company not found'}, status=404)
  
     if request.method == 'DELETE':
-        company.delete()
+        try:
+            company.delete()
+        except ProtectedError:
+            return Response({
+                'error': 'Company cannot be deleted while placement history references it.',
+            }, status=409)
         return Response(status=204)
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
@@ -2657,7 +2699,12 @@ def admin_position_detail(request, position_id):
         return Response({'error': 'Position not found'}, status=404)
  
     if request.method == 'DELETE':
-        position.delete()
+        try:
+            position.delete()
+        except ProtectedError:
+            return Response({
+                'error': 'Position cannot be deleted while placement history references it.',
+            }, status=409)
         return Response(status=204)
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
@@ -2668,9 +2715,18 @@ def admin_position_detail(request, position_id):
  
     if 'slots' in request.data:
         try:
-            position.slots_available = max(1, int(request.data['slots']))
+            requested_slots = max(1, int(request.data['slots']))
         except (TypeError, ValueError):
-            pass
+            return Response({'error': 'slots must be an integer.'}, status=400)
+        approved_count = position.ojt_placements.filter(
+            status=OJTPlacement.STATUS_APPROVED,
+        ).count()
+        if requested_slots < approved_count:
+            return Response({
+                'error': 'slots cannot be lower than the approved placement count.',
+                'approved_count': approved_count,
+            }, status=409)
+        position.slots_available = requested_slots
 
     if 'tags' in request.data:
         position.tags = normalize_tags(request.data.get('tags'))
@@ -2875,4 +2931,1012 @@ def admin_reports(request):
         'skill_breakdown': skill_breakdown,
         'top_companies': top_companies_out,
         'batch_completion': batch_completion,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# OJT PLACEMENTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _placement_batch(student_id):
+    """Use the student's newest active enrollment, then newest enrollment."""
+    enrollments = BatchEnrollment.objects.filter(student_id=student_id).select_related('batch')
+    enrollment = enrollments.filter(batch__status='active').order_by('-enrolled_at', '-id').first()
+    if enrollment is None:
+        enrollment = enrollments.order_by('-enrolled_at', '-id').first()
+    return enrollment.batch if enrollment else None
+
+
+def _serialize_placement(placement):
+    return {
+        'id': placement.id,
+        'student': {
+            'id': placement.student_id,
+            'name': placement.student.name,
+            'school_id': placement.student.school_id,
+            'email': placement.student.email,
+            'course': placement.student.course,
+        },
+        'company': {
+            'id': placement.company_id,
+            'name': placement.company.name,
+            'address': placement.company.address or {},
+        },
+        'position': {
+            'id': placement.position_id,
+            'title': placement.position.title,
+        },
+        'recommendation_id': placement.recommendation_id,
+        'batch': (
+            {'id': placement.batch_id, 'name': placement.batch.name}
+            if placement.batch_id else None
+        ),
+        'match_score_at_assignment': placement.match_score_at_assignment,
+        'category_score_component_at_assignment': placement.category_score_component_at_assignment,
+        'nlp_score_component_at_assignment': placement.nlp_score_component_at_assignment,
+        'location_score_component_at_assignment': placement.location_score_component_at_assignment,
+        'distance_km_at_assignment': placement.distance_km_at_assignment,
+        'status': placement.status,
+        'remarks': placement.remarks,
+        'assigned_by': (
+            {'id': placement.assigned_by_id, 'name': placement.assigned_by.name}
+            if placement.assigned_by_id else None
+        ),
+        'approved_by': (
+            {'id': placement.approved_by_id, 'name': placement.approved_by.name}
+            if placement.approved_by_id else None
+        ),
+        'removed_by': (
+            {'id': placement.removed_by_id, 'name': placement.removed_by.name}
+            if placement.removed_by_id else None
+        ),
+        'rejected_by': (
+            {'id': placement.rejected_by_id, 'name': placement.rejected_by.name}
+            if placement.rejected_by_id else None
+        ),
+        'created_at': placement.created_at,
+        'updated_at': placement.updated_at,
+        'approved_at': placement.approved_at,
+        'removed_at': placement.removed_at,
+        'rejected_at': placement.rejected_at,
+    }
+
+
+def _serialize_placement_visibility(placement, include_unplaced=False):
+    """Small, read-only placement payload for student and instructor screens."""
+    if placement is None:
+        if not include_unplaced:
+            return None
+        return {
+            'id': None,
+            'status': 'unplaced',
+            'company': None,
+            'position': None,
+            'match_score_at_assignment': None,
+            'approved_at': None,
+        }
+
+    return {
+        'id': placement.id,
+        'status': placement.status,
+        'company': {
+            'id': placement.company_id,
+            'name': placement.company.name,
+            'address': placement.company.address or {},
+            'address_text': _company_address_text(placement.company.address),
+        },
+        'position': {
+            'id': placement.position_id,
+            'title': placement.position.title,
+        },
+        'match_score_at_assignment': placement.match_score_at_assignment,
+        'approved_at': placement.approved_at,
+        'updated_at': placement.updated_at,
+    }
+
+
+def _approved_student_placement(student_id):
+    return _placement_select_related(
+        OJTPlacement.objects.filter(
+            student_id=student_id,
+            status=OJTPlacement.STATUS_APPROVED,
+        )
+    ).order_by('-approved_at', '-id').first()
+
+
+def _visible_placements_by_student(student_ids):
+    """Approved placement wins; otherwise expose only the latest workflow state."""
+    if not student_ids:
+        return {}
+
+    latest = {}
+    placements = _placement_select_related(
+        OJTPlacement.objects.filter(student_id__in=student_ids)
+    ).order_by('student_id', '-updated_at', '-id')
+    for placement in placements:
+        latest.setdefault(placement.student_id, placement)
+
+    approved = {}
+    approved_rows = _placement_select_related(
+        OJTPlacement.objects.filter(
+            student_id__in=student_ids,
+            status=OJTPlacement.STATUS_APPROVED,
+        )
+    ).order_by('student_id', '-approved_at', '-id')
+    for placement in approved_rows:
+        approved.setdefault(placement.student_id, placement)
+
+    return {
+        student_id: approved.get(student_id) or latest.get(student_id)
+        for student_id in student_ids
+    }
+
+
+def _placement_area(address):
+    """Group by city first, province second, with a stable empty fallback."""
+    if not isinstance(address, dict):
+        return 'Unknown Area'
+    for key in ('city', 'province'):
+        value = address.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return 'Unknown Area'
+
+
+def _placement_select_related(queryset):
+    return queryset.select_related(
+        'student', 'company', 'position', 'recommendation', 'batch',
+        'assigned_by', 'approved_by', 'removed_by', 'rejected_by',
+    )
+
+
+def _positive_int(raw_value, field_name):
+    if raw_value in (None, ''):
+        return None, None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return None, f'{field_name} must be an integer.'
+    if value <= 0:
+        return None, f'{field_name} must be greater than zero.'
+    return value, None
+
+
+def _query_flag(request, name):
+    return str(request.query_params.get(name, '')).lower() in ('1', 'true', 'yes')
+
+
+def _can_manage_placement_student(user, student_id):
+    if user.role == 'admin':
+        return True
+    return user.role == 'instructor' and BatchEnrollment.objects.filter(
+        student_id=student_id, batch__instructor=user,
+    ).exists()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def placement_suggestions(request):
+    """Recommendation-ranked students grouped under company positions."""
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    company_id, error = _positive_int(request.query_params.get('company_id'), 'company_id')
+    if error:
+        return Response({'error': error}, status=400)
+    position_id, error = _positive_int(request.query_params.get('position_id'), 'position_id')
+    if error:
+        return Response({'error': error}, status=400)
+    batch_id, error = _positive_int(request.query_params.get('batch_id'), 'batch_id')
+    if error:
+        return Response({'error': error}, status=400)
+
+    include_history = _query_flag(request, 'include_history')
+    include_placed = _query_flag(request, 'include_placed')
+
+    enrollments = BatchEnrollment.objects.all()
+    if request.user.role == 'instructor':
+        enrollments = enrollments.filter(batch__instructor=request.user)
+    if batch_id:
+        enrollments = enrollments.filter(batch_id=batch_id)
+    student_ids = list(enrollments.values_list('student_id', flat=True).distinct())
+    if request.user.role == 'admin' and not batch_id:
+        student_ids = list(
+            User.objects.filter(role='student', is_active=True).values_list('id', flat=True)
+        )
+
+    scoped_enrollments = BatchEnrollment.objects.filter(student_id__in=student_ids).select_related('batch')
+    if request.user.role == 'instructor':
+        scoped_enrollments = scoped_enrollments.filter(batch__instructor=request.user)
+    batch_by_student = {}
+    for enrollment in scoped_enrollments.filter(batch__status='active').order_by(
+        'student_id', '-enrolled_at', '-id',
+    ):
+        batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
+    for enrollment in scoped_enrollments.order_by('student_id', '-enrolled_at', '-id'):
+        batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
+
+    companies = Company.objects.prefetch_related('positions').order_by('name', 'id')
+    if company_id:
+        companies = companies.filter(id=company_id)
+    if position_id:
+        companies = companies.filter(positions__id=position_id).distinct()
+
+    positions_query = Position.objects.filter(company__in=companies)
+    if position_id:
+        positions_query = positions_query.filter(id=position_id)
+    position_ids = list(positions_query.values_list('id', flat=True))
+
+    recommendations = (
+        Recommendation.objects
+        .filter(student_id__in=student_ids, position_id__in=position_ids)
+        .select_related('student', 'position')
+        .order_by('position_id', '-match_score', 'student__name', 'id')
+    )
+    recommendations_by_position = {}
+    for recommendation in recommendations:
+        recommendations_by_position.setdefault(recommendation.position_id, []).append(recommendation)
+
+    approved_counts = {
+        row['position_id']: row['count']
+        for row in OJTPlacement.objects.filter(
+            position_id__in=position_ids, status=OJTPlacement.STATUS_APPROVED,
+        ).values('position_id').annotate(count=Count('id'))
+    }
+    approved_by_student = {
+        placement.student_id: placement
+        for placement in _placement_select_related(OJTPlacement.objects.filter(
+            student_id__in=student_ids, status=OJTPlacement.STATUS_APPROVED,
+        ))
+    }
+    latest_by_student_position = {}
+    for placement in _placement_select_related(OJTPlacement.objects.filter(
+        student_id__in=student_ids, position_id__in=position_ids,
+    )).order_by('student_id', 'position_id', '-updated_at', '-id'):
+        latest_by_student_position.setdefault(
+            (placement.student_id, placement.position_id), placement,
+        )
+
+    output = []
+    for company in companies:
+        positions_output = []
+        positions = company.positions.all().order_by('title', 'id')
+        if position_id:
+            positions = positions.filter(id=position_id)
+        for position in positions:
+            students = []
+            for recommendation in recommendations_by_position.get(position.id, []):
+                approved = approved_by_student.get(recommendation.student_id)
+                latest = latest_by_student_position.get(
+                    (recommendation.student_id, position.id),
+                )
+                if approved is not None:
+                    suggestion_status = (
+                        OJTPlacement.STATUS_APPROVED
+                        if approved.position_id == position.id else 'already_placed'
+                    )
+                    status_placement = approved
+                elif latest is not None:
+                    suggestion_status = latest.status
+                    status_placement = latest
+                else:
+                    suggestion_status = 'unplaced'
+                    status_placement = None
+
+                if suggestion_status in (
+                    OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED,
+                ) and not include_history:
+                    continue
+                if suggestion_status == 'already_placed' and not include_placed:
+                    continue
+
+                batch = batch_by_student.get(recommendation.student_id)
+                students.append({
+                    'recommendation_id': recommendation.id,
+                    'placement_id': status_placement.id if status_placement else None,
+                    'placement_status': suggestion_status,
+                    'student': {
+                        'id': recommendation.student_id,
+                        'name': recommendation.student.name,
+                        'school_id': recommendation.student.school_id,
+                        'course': recommendation.student.course,
+                    },
+                    'batch': {'id': batch.id, 'name': batch.name} if batch else None,
+                    'match_score': recommendation.match_score,
+                    'category_score_component': recommendation.category_score_component,
+                    'nlp_score_component': recommendation.nlp_score_component,
+                    'location_score_component': recommendation.location_score_component,
+                    'distance_km': recommendation.distance_km,
+                    'approved_placement': (
+                        {
+                            'id': approved.id,
+                            'company_id': approved.company_id,
+                            'company_name': approved.company.name,
+                            'position_id': approved.position_id,
+                            'position_title': approved.position.title,
+                        }
+                        if approved else None
+                    ),
+                })
+
+            approved_count = approved_counts.get(position.id, 0)
+            positions_output.append({
+                'id': position.id,
+                'title': position.title,
+                'slots_available': position.slots_available,
+                'approved_count': approved_count,
+                'remaining_slots': max(position.slots_available - approved_count, 0),
+                'suggested_students': students,
+            })
+        output.append({
+            'id': company.id,
+            'name': company.name,
+            'address': company.address or {},
+            'lat': company.location_lat,
+            'lng': company.location_lng,
+            'positions': positions_output,
+        })
+
+    eligible_students = []
+    for student in User.objects.filter(id__in=student_ids, role='student', is_active=True).order_by('name'):
+        batch = batch_by_student.get(student.id)
+        eligible_students.append({
+            'id': student.id,
+            'name': student.name,
+            'student_id': student.school_id,
+            'course': student.course,
+            'batch': {'id': batch.id, 'name': batch.name} if batch else None,
+        })
+
+    return Response({
+        'companies': output,
+        'eligible_students': eligible_students,
+        'include_history': include_history,
+        'include_placed': include_placed,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def placement_approve(request):
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+    recommendation_id, error = _positive_int(
+        request.data.get('recommendation_id'), 'recommendation_id',
+    )
+    if error or recommendation_id is None:
+        return Response({'error': error or 'recommendation_id is required.'}, status=400)
+
+    try:
+        with transaction.atomic():
+            recommendation = Recommendation.objects.select_for_update().get(id=recommendation_id)
+            if not _can_manage_placement_student(request.user, recommendation.student_id):
+                return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+            student = User.objects.select_for_update().get(id=recommendation.student_id)
+            position = Position.objects.select_for_update().select_related('company').get(
+                id=recommendation.position_id,
+            )
+
+            current = _placement_select_related(OJTPlacement.objects.filter(
+                student=student, status=OJTPlacement.STATUS_APPROVED,
+            )).first()
+            if current:
+                if current.position_id == position.id:
+                    return Response({'placement': _serialize_placement(current), 'idempotent': True})
+                return Response({
+                    'error': 'Student already has an approved placement.',
+                    'placement': _serialize_placement(current),
+                }, status=409)
+
+            approved_count = OJTPlacement.objects.filter(
+                position=position, status=OJTPlacement.STATUS_APPROVED,
+            ).count()
+            if approved_count >= position.slots_available:
+                return Response({
+                    'error': 'No remaining slots for this position.',
+                    'slots_available': position.slots_available,
+                    'approved_count': approved_count,
+                    'remaining_slots': 0,
+                }, status=409)
+
+            placement = OJTPlacement.objects.select_for_update().filter(
+                recommendation=recommendation,
+                status=OJTPlacement.STATUS_SUGGESTED,
+            ).order_by('-id').first()
+            created = placement is None
+            if placement is None:
+                placement = OJTPlacement(
+                    student=student,
+                    company=position.company,
+                    position=position,
+                    batch=_placement_batch(student.id),
+                )
+            placement.copy_recommendation_snapshot(recommendation)
+            placement.status = OJTPlacement.STATUS_APPROVED
+            placement.assigned_by = placement.assigned_by or request.user
+            placement.approved_by = request.user
+            placement.approved_at = timezone.now()
+            if 'remarks' in request.data:
+                placement.remarks = str(request.data.get('remarks') or '').strip()
+            placement.clean()
+            placement.save()
+    except Recommendation.DoesNotExist:
+        return Response({'error': 'Recommendation not found.'}, status=404)
+    except IntegrityError:
+        return Response({'error': 'Student already has an approved placement.'}, status=409)
+
+    return Response(
+        {'placement': _serialize_placement(placement)},
+        status=201 if created else 200,
+    )
+
+
+def _change_placement_status(request, new_status):
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+    remarks = str(request.data.get('remarks') or '').strip()
+    if not remarks:
+        return Response({'error': 'remarks is required.'}, status=400)
+    placement_id, placement_error = _positive_int(
+        request.data.get('placement_id'), 'placement_id',
+    )
+    recommendation_id, recommendation_error = _positive_int(
+        request.data.get('recommendation_id'), 'recommendation_id',
+    )
+    if placement_error:
+        return Response({'error': placement_error}, status=400)
+    if recommendation_error:
+        return Response({'error': recommendation_error}, status=400)
+    if placement_id is None and recommendation_id is None:
+        return Response({
+            'error': 'placement_id or recommendation_id is required.',
+        }, status=400)
+
+    try:
+        with transaction.atomic():
+            recommendation = None
+            if placement_id:
+                initial = OJTPlacement.objects.get(id=placement_id)
+                if not _can_manage_placement_student(request.user, initial.student_id):
+                    return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+                User.objects.select_for_update().get(id=initial.student_id)
+                Position.objects.select_for_update().get(id=initial.position_id)
+                placement = _placement_select_related(
+                    # Related audit users are nullable. PostgreSQL cannot apply
+                    # FOR UPDATE to the nullable side of those outer joins, so
+                    # lock only the placement row while still eager-loading it.
+                    OJTPlacement.objects.select_for_update(of=('self',)),
+                ).get(id=placement_id)
+            else:
+                recommendation = Recommendation.objects.select_for_update().select_related(
+                    'student', 'position__company',
+                ).get(id=recommendation_id)
+                if not _can_manage_placement_student(request.user, recommendation.student_id):
+                    return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+                User.objects.select_for_update().get(id=recommendation.student_id)
+                Position.objects.select_for_update().get(id=recommendation.position_id)
+                placement = _placement_select_related(
+                    OJTPlacement.objects.select_for_update(of=('self',)).filter(
+                        recommendation=recommendation,
+                    ),
+                ).order_by('-updated_at', '-id').first()
+
+                if placement and placement.status in (
+                    OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED,
+                ):
+                    if placement.status == new_status:
+                        return Response({
+                            'placement': _serialize_placement(placement),
+                            'idempotent': True,
+                        })
+                    return Response({
+                        'error': f'Suggestion is already {placement.status}.',
+                        'placement': _serialize_placement(placement),
+                    }, status=409)
+
+                if placement is None:
+                    placement = OJTPlacement(
+                        student=recommendation.student,
+                        company=recommendation.position.company,
+                        position=recommendation.position,
+                        batch=_placement_batch(recommendation.student_id),
+                    )
+                    placement.copy_recommendation_snapshot(recommendation)
+
+            if placement.status == new_status:
+                return Response({
+                    'placement': _serialize_placement(placement), 'idempotent': True,
+                })
+            if placement.status in (
+                OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED,
+            ):
+                return Response({
+                    'error': f'Placement is already {placement.status}.',
+                    'placement': _serialize_placement(placement),
+                }, status=409)
+
+            placement.status = new_status
+            placement.remarks = remarks
+            now = timezone.now()
+            if new_status == OJTPlacement.STATUS_REMOVED:
+                placement.removed_by = request.user
+                placement.removed_at = now
+            else:
+                placement.rejected_by = request.user
+                placement.rejected_at = now
+            placement.clean()
+            placement.save()
+    except OJTPlacement.DoesNotExist:
+        return Response({'error': 'Placement not found.'}, status=404)
+    except Recommendation.DoesNotExist:
+        return Response({'error': 'Recommendation not found.'}, status=404)
+
+    return Response({'placement': _serialize_placement(placement)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def placement_remove(request):
+    return _change_placement_status(request, OJTPlacement.STATUS_REMOVED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def placement_reject(request):
+    return _change_placement_status(request, OJTPlacement.STATUS_REJECTED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def placement_manual_assign(request):
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+    student_id, error = _positive_int(request.data.get('student_id'), 'student_id')
+    if error or student_id is None:
+        return Response({'error': error or 'student_id is required.'}, status=400)
+    position_id, error = _positive_int(request.data.get('position_id'), 'position_id')
+    if error or position_id is None:
+        return Response({'error': error or 'position_id is required.'}, status=400)
+    batch_id, error = _positive_int(request.data.get('batch_id'), 'batch_id')
+    if error:
+        return Response({'error': error}, status=400)
+
+    try:
+        with transaction.atomic():
+            student = User.objects.select_for_update().get(id=student_id, role='student')
+            if not _can_manage_placement_student(request.user, student.id):
+                return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+            position = Position.objects.select_for_update().select_related('company').get(
+                id=position_id,
+            )
+            current = _placement_select_related(OJTPlacement.objects.filter(
+                student=student, status=OJTPlacement.STATUS_APPROVED,
+            )).first()
+            if current:
+                return Response({
+                    'error': 'Student already has an approved placement.',
+                    'placement': _serialize_placement(current),
+                }, status=409)
+
+            approved_count = OJTPlacement.objects.filter(
+                position=position, status=OJTPlacement.STATUS_APPROVED,
+            ).count()
+            if approved_count >= position.slots_available:
+                return Response({
+                    'error': 'No remaining slots for this position.',
+                    'slots_available': position.slots_available,
+                    'approved_count': approved_count,
+                    'remaining_slots': 0,
+                }, status=409)
+
+            if batch_id:
+                enrollment = BatchEnrollment.objects.select_related('batch').filter(
+                    batch_id=batch_id, student=student,
+                ).first()
+                if enrollment is None:
+                    return Response({
+                        'error': 'Student is not enrolled in the selected batch.',
+                    }, status=400)
+                batch = enrollment.batch
+            else:
+                batch = _placement_batch(student.id)
+
+            recommendation = Recommendation.objects.filter(
+                student=student, position=position,
+            ).first()
+            placement = OJTPlacement(
+                student=student,
+                company=position.company,
+                position=position,
+                batch=batch,
+                status=OJTPlacement.STATUS_APPROVED,
+                remarks=str(request.data.get('remarks') or '').strip(),
+                assigned_by=request.user,
+                approved_by=request.user,
+                approved_at=timezone.now(),
+            )
+            if recommendation:
+                placement.copy_recommendation_snapshot(recommendation)
+            placement.clean()
+            placement.save()
+    except User.DoesNotExist:
+        return Response({'error': 'Student not found.'}, status=404)
+    except Position.DoesNotExist:
+        return Response({'error': 'Position not found.'}, status=404)
+    except IntegrityError:
+        return Response({'error': 'Student already has an approved placement.'}, status=409)
+
+    return Response({'placement': _serialize_placement(placement)}, status=201)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def placement_history(request):
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    placements = _placement_select_related(OJTPlacement.objects.all())
+    if request.user.role == 'instructor':
+        placements = placements.filter(
+            student__enrollments__batch__instructor=request.user,
+        ).distinct()
+
+    status_filter = request.query_params.get('status')
+    if status_filter:
+        valid_statuses = {choice[0] for choice in OJTPlacement.STATUS_CHOICES}
+        if status_filter not in valid_statuses:
+            return Response({'error': 'Invalid status.'}, status=400)
+        placements = placements.filter(status=status_filter)
+
+    for query_name, field_name in (
+        ('student_id', 'student_id'),
+        ('company_id', 'company_id'),
+        ('position_id', 'position_id'),
+        ('batch_id', 'batch_id'),
+    ):
+        value, error = _positive_int(request.query_params.get(query_name), query_name)
+        if error:
+            return Response({'error': error}, status=400)
+        if value:
+            placements = placements.filter(**{field_name: value})
+
+    try:
+        limit = min(max(int(request.query_params.get('limit', 200)), 1), 500)
+        offset = max(int(request.query_params.get('offset', 0)), 0)
+    except (TypeError, ValueError):
+        return Response({'error': 'limit and offset must be integers.'}, status=400)
+
+    placements = placements.order_by('-updated_at', '-id')
+    total = placements.count()
+    page = placements[offset:offset + limit]
+    return Response({
+        'count': total,
+        'limit': limit,
+        'offset': offset,
+        'placements': [_serialize_placement(placement) for placement in page],
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def placement_analytics(request):
+    """System-wide OJT capacity, placement, and area analytics for admins."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+
+    from collections import Counter
+
+    students = list(
+        User.objects.filter(role='student', is_active=True).only('id', 'address')
+    )
+    approved_placements = list(
+        OJTPlacement.objects
+        .filter(status=OJTPlacement.STATUS_APPROVED)
+        .select_related('company')
+        .only('student_id', 'position_id', 'company__address')
+    )
+    approved_student_ids = {placement.student_id for placement in approved_placements}
+
+    student_counts = Counter(_placement_area(student.address) for student in students)
+    unplaced_counts = Counter(
+        _placement_area(student.address)
+        for student in students
+        if student.id not in approved_student_ids
+    )
+
+    companies = list(Company.objects.all().only('id', 'address'))
+    company_counts = Counter(_placement_area(company.address) for company in companies)
+    placement_counts = Counter(
+        _placement_area(placement.company.address)
+        for placement in approved_placements
+    )
+
+    approved_by_position = Counter(
+        placement.position_id for placement in approved_placements
+    )
+    total_slots = 0
+    available_slots = 0
+    total_slots_by_area = Counter()
+    available_slots_by_area = Counter()
+    for position in Position.objects.select_related('company').all():
+        area = _placement_area(position.company.address)
+        position_slots = position.slots_available or 0
+        position_free = max(
+            position_slots - approved_by_position.get(position.id, 0), 0,
+        )
+        total_slots += position_slots
+        available_slots += position_free
+        total_slots_by_area[area] += position_slots
+        available_slots_by_area[area] += position_free
+
+    all_areas = sorted(
+        set(student_counts)
+        | set(unplaced_counts)
+        | set(company_counts)
+        | set(placement_counts)
+        | set(total_slots_by_area)
+    )
+    area_breakdown = [{
+        'area': area,
+        'student_count': student_counts.get(area, 0),
+        'approved_placements': placement_counts.get(area, 0),
+        'unplaced_students': unplaced_counts.get(area, 0),
+        'company_count': company_counts.get(area, 0),
+        'total_slots': total_slots_by_area.get(area, 0),
+        'available_slots': available_slots_by_area.get(area, 0),
+    } for area in all_areas]
+
+    def top_areas(metric):
+        return [
+            {'area': row['area'], 'count': row[metric]}
+            for row in sorted(
+                (item for item in area_breakdown if item[metric] > 0),
+                key=lambda item: (-item[metric], item['area'].lower()),
+            )[:5]
+        ]
+
+    active_student_ids = {student.id for student in students}
+    approved_count = len(approved_placements)
+    unplaced_count = len(students) - len(
+        approved_student_ids.intersection(active_student_ids)
+    )
+    fill_rate = round((approved_count / total_slots) * 100, 1) if total_slots else 0
+
+    return Response({
+        'summary': {
+            'total_ojt_slots': total_slots,
+            'approved_placements': approved_count,
+            'remaining_slots': available_slots,
+            'unplaced_students': unplaced_count,
+            'placement_fill_rate': fill_rate,
+        },
+        'area_breakdown': area_breakdown,
+        'top_areas': {
+            'by_student_count': top_areas('student_count'),
+            'by_placement_count': top_areas('approved_placements'),
+        },
+        'generated_at': timezone.now(),
+    })
+
+
+PLACEMENT_REPORT_TYPES = {
+    'company_placements',
+    'student_placements',
+    'placement_history',
+}
+
+
+def _placement_report_queryset(user):
+    placements = _placement_select_related(OJTPlacement.objects.all())
+    if user.role == 'instructor':
+        placements = placements.filter(
+            student__enrollments__batch__instructor=user,
+        ).distinct()
+    return placements
+
+
+def _company_address_text(address):
+    if not address:
+        return ''
+    if isinstance(address, str):
+        return address
+    keys = ('street', 'barangay', 'city', 'municipality', 'province', 'region')
+    values = []
+    for key in keys:
+        value = address.get(key)
+        if value and value not in values:
+            values.append(str(value))
+    if not values:
+        for value in address.values():
+            if isinstance(value, str) and value.strip() and value not in values:
+                values.append(value)
+    return ', '.join(values)
+
+
+def _serialize_placement_report_record(placement, capacity_by_position):
+    serialized = _serialize_placement(placement)
+    capacity = capacity_by_position.get(placement.position_id, {})
+    slots_available = placement.position.slots_available
+    approved_count = capacity.get('approved_count', 0)
+    serialized['company']['address_text'] = _company_address_text(
+        placement.company.address,
+    )
+    serialized['position'].update({
+        'slots_available': slots_available,
+        'approved_count': approved_count,
+        'remaining_slots': max(slots_available - approved_count, 0),
+    })
+    return serialized
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def placement_reports(request):
+    """Filtered, export-ready placement records for frontend PDF/XLSX reports."""
+    if request.user.role not in ('admin', 'instructor'):
+        return Response({'error': 'Forbidden'}, status=403)
+
+    report_type = request.query_params.get('report_type', 'company_placements')
+    if report_type not in PLACEMENT_REPORT_TYPES:
+        return Response({
+            'error': 'Invalid report_type.',
+            'supported_report_types': sorted(PLACEMENT_REPORT_TYPES),
+        }, status=400)
+
+    placements = _placement_report_queryset(request.user)
+    status_filter = request.query_params.get('status', 'all').strip().lower()
+    valid_statuses = {choice[0] for choice in OJTPlacement.STATUS_CHOICES}
+    if status_filter not in valid_statuses | {'all'}:
+        return Response({'error': 'Invalid status.'}, status=400)
+    if status_filter != 'all':
+        placements = placements.filter(status=status_filter)
+
+    applied_filters = {
+        'status': status_filter,
+        'company_id': None,
+        'position_id': None,
+        'batch_id': None,
+        'course': request.query_params.get('course', '').strip(),
+        'area': request.query_params.get('area', '').strip(),
+        'city': request.query_params.get('city', '').strip(),
+        'province': request.query_params.get('province', '').strip(),
+        'date_field': request.query_params.get('date_field', 'created_at').strip(),
+        'date_from': request.query_params.get('date_from', '').strip(),
+        'date_to': request.query_params.get('date_to', '').strip(),
+    }
+
+    for query_name, field_name in (
+        ('company_id', 'company_id'),
+        ('position_id', 'position_id'),
+        ('batch_id', 'batch_id'),
+    ):
+        value, error = _positive_int(request.query_params.get(query_name), query_name)
+        if error:
+            return Response({'error': error}, status=400)
+        applied_filters[query_name] = value
+        if value:
+            placements = placements.filter(**{field_name: value})
+
+    if applied_filters['course']:
+        placements = placements.filter(student__course__iexact=applied_filters['course'])
+    if applied_filters['area']:
+        area = applied_filters['area']
+        placements = placements.filter(
+            Q(company__address__city__icontains=area)
+            | Q(company__address__municipality__icontains=area)
+            | Q(company__address__province__icontains=area)
+            | Q(company__address__region__icontains=area)
+        )
+    if applied_filters['city']:
+        city = applied_filters['city']
+        placements = placements.filter(
+            Q(company__address__city__icontains=city)
+            | Q(company__address__municipality__icontains=city)
+        )
+    if applied_filters['province']:
+        placements = placements.filter(
+            company__address__province__icontains=applied_filters['province'],
+        )
+
+    date_field = applied_filters['date_field']
+    if date_field not in ('created_at', 'approved_at'):
+        return Response({
+            'error': 'date_field must be created_at or approved_at.',
+        }, status=400)
+    parsed_dates = {}
+    for query_name in ('date_from', 'date_to'):
+        raw_value = applied_filters[query_name]
+        if not raw_value:
+            continue
+        parsed_value = parse_date(raw_value)
+        if parsed_value is None:
+            return Response({
+                'error': f'{query_name} must use YYYY-MM-DD format.',
+            }, status=400)
+        parsed_dates[query_name] = parsed_value
+    if (
+        parsed_dates.get('date_from')
+        and parsed_dates.get('date_to')
+        and parsed_dates['date_from'] > parsed_dates['date_to']
+    ):
+        return Response({'error': 'date_from cannot be after date_to.'}, status=400)
+    if parsed_dates.get('date_from'):
+        placements = placements.filter(**{
+            f'{date_field}__date__gte': parsed_dates['date_from'],
+        })
+    if parsed_dates.get('date_to'):
+        placements = placements.filter(**{
+            f'{date_field}__date__lte': parsed_dates['date_to'],
+        })
+
+    if report_type == 'company_placements':
+        placements = placements.order_by(
+            'company__name', 'position__title', 'student__name', 'id',
+        )
+    elif report_type == 'student_placements':
+        placements = placements.order_by(
+            'student__name', '-updated_at', '-id',
+        )
+    else:
+        placements = placements.order_by('-updated_at', '-id')
+
+    position_ids = list(placements.values_list('position_id', flat=True).distinct())
+    capacity_by_position = {
+        row['id']: {
+            'approved_count': row['approved_count'],
+            'slots_available': row['slots_available'],
+        }
+        for row in Position.objects.filter(id__in=position_ids).annotate(
+            approved_count=Count(
+                'ojt_placements',
+                filter=Q(ojt_placements__status=OJTPlacement.STATUS_APPROVED),
+            ),
+        ).values('id', 'slots_available', 'approved_count')
+    }
+    records = [
+        _serialize_placement_report_record(placement, capacity_by_position)
+        for placement in placements
+    ]
+    status_counts = {status_name: 0 for status_name in valid_statuses}
+    for record in records:
+        status_counts[record['status']] += 1
+
+    unique_positions = set()
+    unique_companies = set()
+    unique_students = set()
+    for record in records:
+        unique_positions.add(record['position']['id'])
+        unique_companies.add(record['company']['id'])
+        unique_students.add(record['student']['id'])
+
+    summary = {
+        'total_records': len(records),
+        'unique_students': len(unique_students),
+        'unique_companies': len(unique_companies),
+        'unique_positions': len(unique_positions),
+        'status_counts': status_counts,
+        'slots_available': sum(
+            capacity_by_position[position_id]['slots_available']
+            for position_id in unique_positions
+        ),
+        'approved_count': sum(
+            capacity_by_position[position_id]['approved_count']
+            for position_id in unique_positions
+        ),
+    }
+    summary['remaining_slots'] = max(
+        summary['slots_available'] - summary['approved_count'], 0,
+    )
+
+    return Response({
+        'report_type': report_type,
+        'generated_at': timezone.now(),
+        'generated_by': {
+            'id': request.user.id,
+            'name': request.user.name,
+            'role': request.user.role,
+        },
+        'filters': applied_filters,
+        'summary': summary,
+        'records': records,
     })

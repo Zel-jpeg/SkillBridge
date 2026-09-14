@@ -15,6 +15,7 @@ import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
 import CompetencyInsights from '../../components/CompetencyInsights'
+import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 
 // Read the user object saved by the login response
 // This lets pages render instantly without a skeleton on every navigation.
@@ -324,6 +325,9 @@ export default function StudentDashboard() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="mb-4">
+          <PlacementStatusCard placement={student?.placement} audience="student" />
+        </div>
         {hasTakenAssessment && competencyProfile && (
           <div className="mb-4">
             <CompetencyInsights profile={competencyProfile} compact />

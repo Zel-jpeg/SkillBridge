@@ -33,6 +33,21 @@ const BADGE_CONFIG = {
     cls:  'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900',
     dot:  'bg-rose-500',
   },
+  suggested: {
+    text: 'Suggested',
+    cls:  'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900',
+    dot:  'bg-blue-500',
+  },
+  removed: {
+    text: 'Removed',
+    cls:  'text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800',
+    dot:  'bg-gray-400',
+  },
+  unplaced: {
+    text: 'Unplaced',
+    cls:  'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900',
+    dot:  'bg-amber-500',
+  },
 }
 
 export default function StatusBadge({ status, label, size = 'sm' }) {

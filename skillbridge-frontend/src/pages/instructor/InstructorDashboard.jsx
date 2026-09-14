@@ -13,6 +13,7 @@ import SearchBar                from '../../components/SearchBar'
 import EmptyState               from '../../components/EmptyState'
 import { useInstructorDashboard, getPalette } from '../../hooks/instructor/useInstructorDashboard'
 import Avatar                   from '../../components/Avatar'
+import PlacementStatusCard      from '../../components/placements/PlacementStatusCard'
 
 function scoreColor(pct) {
   if (pct == null) return 'text-gray-300 dark:text-gray-700'
@@ -235,6 +236,8 @@ export default function InstructorDashboard() {
                         <StatusBadge status={s.status} />
                       </div>
 
+                      <PlacementStatusCard placement={s.placement} audience="instructor" compact />
+
                       {s.status === 'completed' ? (
                         <div className="flex flex-col gap-3">
                           {/* Overall bar */}
@@ -306,6 +309,7 @@ export default function InstructorDashboard() {
                       <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                         <th onClick={() => toggleSort('name')} className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Student <SortIndicator col="name" sortBy={sortBy} sortDir={sortDir} /></th>
                         <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                        <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Placement</th>
                         <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
                         <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
                         <th onClick={() => toggleSort('overall')} className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Overall <SortIndicator col="overall" sortBy={sortBy} sortDir={sortDir} /></th>
@@ -325,6 +329,9 @@ export default function InstructorDashboard() {
                             </td>
                             <td className="px-3 py-4">
                               <StatusBadge status={s.status} />
+                            </td>
+                            <td className="px-3 py-4 min-w-36">
+                              <PlacementStatusCard placement={s.placement} audience="instructor" compact />
                             </td>
                             <td className="px-3 py-4 max-w-xs">
                               {s.status === 'completed' ? (

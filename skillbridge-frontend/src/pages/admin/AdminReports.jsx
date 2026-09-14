@@ -118,8 +118,9 @@ function NlpConfigurationCard() {
 
 export default function AdminReports() {
   const { data, loading } = useApi('/api/admin/reports/')
+  const { data: placementData, loading: placementLoading } = useApi('/api/admin/placement-analytics/')
 
-  if (loading) {
+  if (loading || placementLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <AdminNav activePath="/admin/reports" />
@@ -133,6 +134,10 @@ export default function AdminReports() {
   const skills = data?.skill_breakdown     || []
   const companies = data?.top_companies    || []
   const batches   = data?.batch_completion || []
+  const placement = placementData?.summary || {}
+  const areas = placementData?.area_breakdown || []
+  const topStudentAreas = placementData?.top_areas?.by_student_count || []
+  const topPlacementAreas = placementData?.top_areas?.by_placement_count || []
 
   const submittedPct = sub.total > 0 ? Math.round((sub.submitted / sub.total) * 100) : 0
 
@@ -158,6 +163,96 @@ export default function AdminReports() {
         </div>
 
         <NlpConfigurationCard />
+
+        {/* ── OJT placement analytics ── */}
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">OJT Placement Analytics</h2>
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            Approved assignments, student demand, and remaining company capacity by area.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <StatCard label="Total OJT Slots" value={placement.total_ojt_slots ?? 0} color="text-blue-600 dark:text-blue-400" sub="across all positions" />
+          <StatCard label="Approved Placements" value={placement.approved_placements ?? 0} color="text-green-600 dark:text-green-400" sub="finalized assignments" />
+          <StatCard label="Remaining Slots" value={placement.remaining_slots ?? 0} color="text-cyan-600 dark:text-cyan-400" sub="free company capacity" />
+          <StatCard label="Unplaced Students" value={placement.unplaced_students ?? 0} color="text-amber-600 dark:text-amber-400" sub="active students without approval" />
+          <StatCard label="Placement Fill Rate" value={`${placement.placement_fill_rate ?? 0}%`} color="text-violet-600 dark:text-violet-400" sub="approved placements ÷ slots" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <SectionCard title="Placement Fill Rate" subtitle="Share of all OJT slots currently approved.">
+            <div className="flex items-center gap-5">
+              <div className="relative h-28 w-28 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#e5e7eb" strokeWidth="3.5" />
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#16a34a" strokeWidth="3.5"
+                    strokeDasharray={`${Math.min(placement.placement_fill_rate ?? 0, 100)} ${Math.max(100 - (placement.placement_fill_rate ?? 0), 0)}`} strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xl font-black text-gray-900 dark:text-white">{placement.placement_fill_rate ?? 0}%</span>
+                  <span className="text-[10px] text-gray-400">filled</span>
+                </div>
+              </div>
+              <div className="space-y-2 text-xs text-gray-600 dark:text-gray-300">
+                <p><span className="font-bold text-green-600 dark:text-green-400">{placement.approved_placements ?? 0}</span> approved</p>
+                <p><span className="font-bold text-cyan-600 dark:text-cyan-400">{placement.remaining_slots ?? 0}</span> free slots</p>
+                <p><span className="font-bold text-amber-600 dark:text-amber-400">{placement.unplaced_students ?? 0}</span> unplaced students</p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Top Student Areas" subtitle="Areas with the most active students.">
+            {topStudentAreas.length ? (
+              <div className="space-y-1">
+                {topStudentAreas.map(row => <BarRow key={row.area} label={row.area} value={row.count} max={topStudentAreas[0]?.count || 1} right={`${row.count}`} colorClass="bg-blue-500" />)}
+              </div>
+            ) : <p className="text-sm italic text-gray-400">No student area data yet.</p>}
+          </SectionCard>
+
+          <SectionCard title="Top Placement Areas" subtitle="Company areas with the most approved placements.">
+            {topPlacementAreas.length ? (
+              <div className="space-y-1">
+                {topPlacementAreas.map(row => <BarRow key={row.area} label={row.area} value={row.count} max={topPlacementAreas[0]?.count || 1} right={`${row.count}`} colorClass="bg-green-500" />)}
+              </div>
+            ) : <p className="text-sm italic text-gray-400">No approved placements yet.</p>}
+          </SectionCard>
+        </div>
+
+        <SectionCard title="Placement Breakdown by Area" subtitle="Student counts use student addresses; placement, company, and slot counts use company addresses.">
+          {areas.length === 0 ? (
+            <p className="text-sm italic text-gray-400">No students, companies, or placement capacity yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400">
+                    <th className="pb-3 pr-4 font-semibold">Area</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Students</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Approved</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Unplaced</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Companies</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Total Slots</th>
+                    <th className="pb-3 pl-3 text-center font-semibold">Free Slots</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {areas.map(row => (
+                    <tr key={row.area} className="border-b border-gray-50 last:border-0 dark:border-gray-800/70">
+                      <td className="py-3 pr-4 font-medium text-gray-800 dark:text-gray-200">{row.area}</td>
+                      <td className="px-3 py-3 text-center text-blue-600 dark:text-blue-400">{row.student_count}</td>
+                      <td className="px-3 py-3 text-center text-green-600 dark:text-green-400">{row.approved_placements}</td>
+                      <td className="px-3 py-3 text-center text-amber-600 dark:text-amber-400">{row.unplaced_students}</td>
+                      <td className="px-3 py-3 text-center text-gray-600 dark:text-gray-300">{row.company_count}</td>
+                      <td className="px-3 py-3 text-center text-gray-600 dark:text-gray-300">{row.total_slots}</td>
+                      <td className="py-3 pl-3 text-center font-semibold text-cyan-600 dark:text-cyan-400">{row.available_slots}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
 
         {/* ── Row 1: Top-level stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

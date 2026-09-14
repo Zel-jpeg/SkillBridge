@@ -65,9 +65,19 @@ urlpatterns = [
     path('admin/skills/',                                 views.admin_skills,             name='admin_skills'),
     path('admin/skills/<int:skill_id>/',                  views.admin_skill_detail,       name='admin_skill_detail'),
     path('admin/reports/',                                views.admin_reports,            name='admin_reports'),
+    path('admin/placement-analytics/',                    views.placement_analytics,      name='placement_analytics'),
     path('admin/students/recommendations/',               views.admin_student_recommendations, name='admin_student_recommendations'),
     path('admin/rerun-recommendations/',                   views.admin_rerun_recommendations,   name='admin_rerun_recommendations'),
     path('admin/nlp-configuration/',                       views.admin_nlp_configuration,       name='admin_nlp_configuration'),
+
+    # OJT Placements (admin system-wide; instructors scoped to their batches)
+    path('placements/suggestions/',   views.placement_suggestions,   name='placement_suggestions'),
+    path('placements/reports/',       views.placement_reports,       name='placement_reports'),
+    path('placements/',               views.placement_history,       name='placement_history'),
+    path('placements/approve/',       views.placement_approve,       name='placement_approve'),
+    path('placements/remove/',        views.placement_remove,        name='placement_remove'),
+    path('placements/reject/',        views.placement_reject,        name='placement_reject'),
+    path('placements/manual-assign/', views.placement_manual_assign, name='placement_manual_assign'),
 
     # ── Admin — Real-time SSE ─────────────────────────────────────────────────
     # EventSource connects here with ?token=<jwt>

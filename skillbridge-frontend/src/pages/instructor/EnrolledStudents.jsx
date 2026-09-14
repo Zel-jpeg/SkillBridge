@@ -12,6 +12,7 @@ import Pagination              from '../../components/Pagination'
 import { useEnrolledStudents } from '../../hooks/instructor/useEnrolledStudents'
 import Avatar                  from '../../components/Avatar'
 import StatusBadge             from '../../components/StatusBadge'
+import PlacementStatusCard      from '../../components/placements/PlacementStatusCard'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
 const ArchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -276,6 +277,7 @@ export default function EnrolledStudents() {
                         {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors" title="Remove"><TrashIcon /></button>}
                       </div>
                     </div>
+                    <PlacementStatusCard placement={s.placement} audience="instructor" compact />
                     {s.status === 'completed' ? (
                       <div className="flex flex-col gap-3">
                         {/* Overall bar */}
@@ -328,6 +330,7 @@ export default function EnrolledStudents() {
                   <thead><tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Student</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Placement</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
                     <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
                     <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Overall</th>
@@ -342,6 +345,7 @@ export default function EnrolledStudents() {
                           <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                         </div></td>
                         <td className="px-3 py-4"><StatusBadge status={s.status} /></td>
+                        <td className="px-3 py-4 min-w-36"><PlacementStatusCard placement={s.placement} audience="instructor" compact /></td>
                         <td className="px-3 py-4 max-w-xs">
                           {s.status === 'completed' ? (
                             <div className="flex flex-wrap gap-1">

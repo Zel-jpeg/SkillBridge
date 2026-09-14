@@ -20,7 +20,10 @@ const PREFETCH_URLS = {
     '/api/admin/students/recommendations/',
     '/api/admin/users/',
     '/api/admin/companies/',
+    '/api/admin/placement-analytics/',
     '/api/categories/',               // needed by Companies page position editor
+    '/api/placements/suggestions/?include_history=true&include_placed=true',
+    '/api/placements/?limit=500',
   ],
   instructor: [
     '/api/instructor/students/recommendations/',
@@ -29,6 +32,8 @@ const PREFETCH_URLS = {
     '/api/instructor/assessments/',   // Assessments list page
     '/api/instructor/companies/',     // Companies page
     '/api/categories/',               // assessment question editor
+    '/api/placements/suggestions/?include_history=true&include_placed=true',
+    '/api/placements/?limit=500',
   ],
   student: [
     '/api/students/me/',

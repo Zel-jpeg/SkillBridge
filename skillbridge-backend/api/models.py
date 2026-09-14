@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -265,6 +266,133 @@ class Recommendation(models.Model):
 
     def __str__(self):
         return f'{self.student.name} → {self.position.title} ({self.match_score:.0%})'
+
+
+# ── OJT Placement ───────────────────────────────────────────────────────────────────────────
+class OJTPlacement(models.Model):
+    STATUS_SUGGESTED = 'suggested'
+    STATUS_APPROVED = 'approved'
+    STATUS_REMOVED = 'removed'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES = [
+        (STATUS_SUGGESTED, 'Suggested'),
+        (STATUS_APPROVED, 'Approved'),
+        (STATUS_REMOVED, 'Removed'),
+        (STATUS_REJECTED, 'Rejected'),
+    ]
+
+    student = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name='ojt_placements',
+    )
+    company = models.ForeignKey(
+        Company, on_delete=models.PROTECT, related_name='ojt_placements',
+    )
+    position = models.ForeignKey(
+        Position, on_delete=models.PROTECT, related_name='ojt_placements',
+    )
+    recommendation = models.ForeignKey(
+        Recommendation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_placements',
+    )
+    batch = models.ForeignKey(
+        Batch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_placements',
+    )
+
+    # These values are snapshots. Later recommendation recalculation must not
+    # alter the evidence used when this placement decision was made.
+    match_score_at_assignment = models.FloatField(null=True, blank=True)
+    category_score_component_at_assignment = models.FloatField(null=True, blank=True)
+    nlp_score_component_at_assignment = models.FloatField(null=True, blank=True)
+    location_score_component_at_assignment = models.FloatField(null=True, blank=True)
+    distance_km_at_assignment = models.FloatField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_SUGGESTED,
+    )
+    remarks = models.TextField(blank=True, default='')
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_assignments_made',
+    )
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_placements_approved',
+    )
+    removed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_placements_removed',
+    )
+    rejected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ojt_placements_rejected',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    removed_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student'],
+                condition=models.Q(status='approved'),
+                name='unique_approved_placement_per_student',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['position', 'status'], name='ojt_pos_status_idx'),
+            models.Index(fields=['student', 'status'], name='ojt_student_status_idx'),
+        ]
+
+    def clean(self):
+        errors = {}
+        if self.student_id and self.student.role != 'student':
+            errors['student'] = 'OJT placements can only be created for students.'
+        if self.position_id and self.company_id and self.position.company_id != self.company_id:
+            errors['company'] = 'Company must match the selected position.'
+        if self.recommendation_id:
+            if self.recommendation.student_id != self.student_id:
+                errors['recommendation'] = 'Recommendation must belong to the selected student.'
+            elif self.recommendation.position_id != self.position_id:
+                errors['recommendation'] = 'Recommendation must belong to the selected position.'
+        if self.batch_id and self.student_id and not BatchEnrollment.objects.filter(
+            batch_id=self.batch_id, student_id=self.student_id,
+        ).exists():
+            errors['batch'] = 'Student is not enrolled in the selected batch.'
+        if errors:
+            raise ValidationError(errors)
+
+    def copy_recommendation_snapshot(self, recommendation):
+        self.recommendation = recommendation
+        self.match_score_at_assignment = recommendation.match_score
+        self.category_score_component_at_assignment = recommendation.category_score_component
+        self.nlp_score_component_at_assignment = recommendation.nlp_score_component
+        self.location_score_component_at_assignment = recommendation.location_score_component
+        self.distance_km_at_assignment = recommendation.distance_km
+
+    def __str__(self):
+        return f'{self.student.name} → {self.position.title} ({self.status})'
 
 
 class RecommendationConfiguration(models.Model):
