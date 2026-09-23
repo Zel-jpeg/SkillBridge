@@ -1,0 +1,957 @@
+{
+  "version": "rich-notebook-representative-v1",
+  "source_notebook": "SkillBridge_Rich_NLP_Model_Comparison (1).ipynb",
+  "source_sha256": "87858fa3952d09cd2bdb1502978b1da24a9b1299c96610d72769728b5b17819e",
+  "seed": 42,
+  "description": "Representative prepared synthetic dataset: 60 cases (10 per archetype), 6 positions and 5 skill categories from the rich NLP notebook design. Uses production neutral competency text, not notebook-inferred position titles. Results are not exact paper reproduction or evidence of real-world accuracy.",
+  "categories": [
+    {
+      "id": 1,
+      "name": "Programming",
+      "tags": [
+        "Python",
+        "Java",
+        "JavaScript",
+        "Git",
+        "OOP",
+        "Algorithms",
+        "debugging",
+        "problem solving",
+        "software logic",
+        "code quality"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Database",
+      "tags": [
+        "SQL",
+        "MySQL",
+        "PostgreSQL",
+        "ERD",
+        "normalization",
+        "indexing",
+        "queries",
+        "database design",
+        "data integrity",
+        "backup"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Networking",
+      "tags": [
+        "Cisco",
+        "routing",
+        "switching",
+        "TCP/IP",
+        "subnetting",
+        "firewall",
+        "LAN",
+        "WAN",
+        "network troubleshooting",
+        "connectivity"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Web Development",
+      "tags": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "React",
+        "Bootstrap",
+        "responsive design",
+        "frontend",
+        "web API",
+        "browser testing",
+        "user interface"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Cybersecurity",
+      "tags": [
+        "authentication",
+        "encryption",
+        "OWASP",
+        "firewalls",
+        "network security",
+        "secure coding",
+        "access control",
+        "vulnerability awareness",
+        "phishing",
+        "security policy"
+      ]
+    }
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "backend",
+        "server-side",
+        "REST API",
+        "database integration",
+        "authentication",
+        "business logic",
+        "Django",
+        "Flask",
+        "API endpoint",
+        "server application"
+      ],
+      "requirements": {
+        "Programming": 92,
+        "Database": 84,
+        "Networking": 38,
+        "Web Development": 76,
+        "Cybersecurity": 52
+      }
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "frontend",
+        "UI development",
+        "React components",
+        "responsive layout",
+        "CSS styling",
+        "Bootstrap interface",
+        "browser compatibility",
+        "web pages",
+        "JavaScript events",
+        "user experience"
+      ],
+      "requirements": {
+        "Programming": 78,
+        "Database": 38,
+        "Networking": 32,
+        "Web Development": 95,
+        "Cybersecurity": 44
+      }
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics",
+      "tags": [
+        "database administration",
+        "SQL queries",
+        "schema design",
+        "ERD",
+        "normalization",
+        "backup",
+        "indexing",
+        "data validation",
+        "relational database",
+        "data management"
+      ],
+      "requirements": {
+        "Programming": 74,
+        "Database": 96,
+        "Networking": 36,
+        "Web Development": 46,
+        "Cybersecurity": 58
+      }
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc.",
+      "tags": [
+        "quality assurance",
+        "test cases",
+        "bug reporting",
+        "software testing",
+        "validation",
+        "defect tracking",
+        "manual testing",
+        "regression testing",
+        "debugging",
+        "test documentation"
+      ],
+      "requirements": {
+        "Programming": 72,
+        "Database": 64,
+        "Networking": 42,
+        "Web Development": 66,
+        "Cybersecurity": 76
+      }
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems",
+      "tags": [
+        "network administration",
+        "Cisco configuration",
+        "routing",
+        "switching",
+        "subnetting",
+        "TCP/IP",
+        "firewall rules",
+        "network monitoring",
+        "connectivity support",
+        "LAN troubleshooting"
+      ],
+      "requirements": {
+        "Programming": 42,
+        "Database": 34,
+        "Networking": 96,
+        "Web Development": 28,
+        "Cybersecurity": 78
+      }
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies",
+      "tags": [
+        "technical support",
+        "helpdesk",
+        "hardware troubleshooting",
+        "software installation",
+        "operating systems",
+        "network support",
+        "user assistance",
+        "device setup",
+        "ticket handling",
+        "maintenance"
+      ],
+      "requirements": {
+        "Programming": 62,
+        "Database": 58,
+        "Networking": 84,
+        "Web Development": 52,
+        "Cybersecurity": 68
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "prepared-001",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 45.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 55.0
+      }
+    },
+    {
+      "id": "prepared-002",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 95.0,
+        "Networking": 20.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 35.0
+      }
+    },
+    {
+      "id": "prepared-003",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 75.0,
+        "Networking": 65.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-004",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 100.0,
+        "Database": 100.0,
+        "Networking": 40.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-005",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 100.0,
+        "Database": 85.0,
+        "Networking": 30.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-006",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 90.0,
+        "Networking": 40.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-007",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 100.0,
+        "Database": 95.0,
+        "Networking": 25.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-008",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 100.0,
+        "Database": 95.0,
+        "Networking": 15.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 55.0
+      }
+    },
+    {
+      "id": "prepared-009",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 55.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-010",
+      "archetype": "Backend-focused student",
+      "expected_position_id": 1,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 60.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-053",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 40.0,
+        "Networking": 35.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 30.0
+      }
+    },
+    {
+      "id": "prepared-054",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 45.0,
+        "Networking": 45.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 55.0
+      }
+    },
+    {
+      "id": "prepared-055",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 85.0,
+        "Database": 50.0,
+        "Networking": 30.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-056",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 85.0,
+        "Networking": 45.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-057",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 65.0,
+        "Database": 45.0,
+        "Networking": 30.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-058",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 45.0,
+        "Networking": 35.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 40.0
+      }
+    },
+    {
+      "id": "prepared-059",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 85.0,
+        "Database": 15.0,
+        "Networking": 60.0,
+        "Web Development": 100.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-060",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 35.0,
+        "Networking": 50.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 50.0
+      }
+    },
+    {
+      "id": "prepared-061",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 30.0,
+        "Networking": 20.0,
+        "Web Development": 100.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-062",
+      "archetype": "Frontend-focused student",
+      "expected_position_id": 2,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 25.0,
+        "Networking": 25.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 40.0
+      }
+    },
+    {
+      "id": "prepared-103",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 100.0,
+        "Networking": 25.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 65.0
+      }
+    },
+    {
+      "id": "prepared-104",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 85.0,
+        "Networking": 55.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 50.0
+      }
+    },
+    {
+      "id": "prepared-105",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 20.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 45.0
+      }
+    },
+    {
+      "id": "prepared-106",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 90.0,
+        "Networking": 45.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 40.0
+      }
+    },
+    {
+      "id": "prepared-107",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 80.0,
+        "Networking": 45.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 40.0
+      }
+    },
+    {
+      "id": "prepared-108",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 90.0,
+        "Networking": 35.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 50.0
+      }
+    },
+    {
+      "id": "prepared-109",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 100.0,
+        "Networking": 50.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-110",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 95.0,
+        "Networking": 30.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-111",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 85.0,
+        "Database": 100.0,
+        "Networking": 30.0,
+        "Web Development": 35.0,
+        "Cybersecurity": 65.0
+      }
+    },
+    {
+      "id": "prepared-112",
+      "archetype": "Database-focused student",
+      "expected_position_id": 3,
+      "scores": {
+        "Programming": 95.0,
+        "Database": 100.0,
+        "Networking": 45.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 50.0
+      }
+    },
+    {
+      "id": "prepared-153",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 45.0,
+        "Networking": 50.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-154",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 55.0,
+        "Networking": 60.0,
+        "Web Development": 70.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-155",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 80.0,
+        "Networking": 40.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-156",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 55.0,
+        "Networking": 65.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-157",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 70.0,
+        "Networking": 35.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-158",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 65.0,
+        "Networking": 55.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 90.0
+      }
+    },
+    {
+      "id": "prepared-159",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 90.0,
+        "Database": 55.0,
+        "Networking": 50.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-160",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 85.0,
+        "Database": 65.0,
+        "Networking": 50.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-161",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 80.0,
+        "Database": 75.0,
+        "Networking": 50.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-162",
+      "archetype": "QA-focused student",
+      "expected_position_id": 4,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 60.0,
+        "Networking": 35.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 95.0
+      }
+    },
+    {
+      "id": "prepared-201",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 55.0,
+        "Database": 35.0,
+        "Networking": 95.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 75.0
+      }
+    },
+    {
+      "id": "prepared-202",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 35.0,
+        "Database": 45.0,
+        "Networking": 95.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 85.0
+      }
+    },
+    {
+      "id": "prepared-203",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 30.0,
+        "Database": 40.0,
+        "Networking": 100.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-204",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 40.0,
+        "Database": 50.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-205",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 20.0,
+        "Networking": 80.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 65.0
+      }
+    },
+    {
+      "id": "prepared-206",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 30.0,
+        "Networking": 95.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 90.0
+      }
+    },
+    {
+      "id": "prepared-207",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 55.0,
+        "Database": 35.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-208",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 35.0,
+        "Database": 40.0,
+        "Networking": 95.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 90.0
+      }
+    },
+    {
+      "id": "prepared-209",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 40.0,
+        "Database": 25.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-210",
+      "archetype": "Network-focused student",
+      "expected_position_id": 5,
+      "scores": {
+        "Programming": 40.0,
+        "Database": 60.0,
+        "Networking": 95.0,
+        "Web Development": 25.0,
+        "Cybersecurity": 85.0
+      }
+    },
+    {
+      "id": "prepared-251",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 60.0,
+        "Networking": 60.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-252",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 70.0,
+        "Networking": 85.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 65.0
+      }
+    },
+    {
+      "id": "prepared-253",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 75.0,
+        "Database": 75.0,
+        "Networking": 95.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 50.0
+      }
+    },
+    {
+      "id": "prepared-254",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 55.0,
+        "Database": 70.0,
+        "Networking": 85.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-255",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 65.0,
+        "Networking": 90.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-256",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 50.0,
+        "Networking": 85.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 60.0
+      }
+    },
+    {
+      "id": "prepared-257",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 45.0,
+        "Database": 55.0,
+        "Networking": 80.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-258",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 60.0,
+        "Networking": 85.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 80.0
+      }
+    },
+    {
+      "id": "prepared-259",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 60.0,
+        "Database": 65.0,
+        "Networking": 70.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 70.0
+      }
+    },
+    {
+      "id": "prepared-260",
+      "archetype": "IT support-focused student",
+      "expected_position_id": 6,
+      "scores": {
+        "Programming": 70.0,
+        "Database": 75.0,
+        "Networking": 95.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 70.0
+      }
+    }
+  ]
+}

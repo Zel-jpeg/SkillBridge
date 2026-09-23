@@ -21,6 +21,7 @@ import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
 import { SkillTagBadge } from '../SkillTagBadge'
 import CompetencyInsights from '../CompetencyInsights'
+import NlpTextPreview from '../NlpTextPreview'
 import PlacementStatusCard from '../placements/PlacementStatusCard'
 
 export default function StudentModal({ student, isArchived, onClose, onToggleRetake }) {
@@ -158,6 +159,7 @@ export default function StudentModal({ student, isArchived, onClose, onToggleRet
               </div>
 
               <CompetencyInsights profile={student.competencyProfile} />
+              <NlpTextPreview key={student.id} studentId={student.id} />
 
               {/* ── Company Recommendations ───────────────── */}
               <div>

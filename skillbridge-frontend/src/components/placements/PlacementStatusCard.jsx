@@ -19,14 +19,23 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
 
   if (audience === 'student' && !approved) {
     return (
-      <div className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">No approved placement yet</p>
-          <StatusBadge status="unplaced" />
+      <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col items-center justify-center text-center gap-3">
+        {/* Amber accent icon */}
+        <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
         </div>
-        <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
-          Please wait for your instructor/OJT coordinator to finalize your placement.
-        </p>
+        <div>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">No approved placement yet</p>
+            <StatusBadge status="unplaced" />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs mx-auto">
+            Please wait for your instructor/OJT coordinator to finalize your placement.
+          </p>
+        </div>
       </div>
     )
   }

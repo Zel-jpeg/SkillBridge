@@ -17,6 +17,7 @@ import { matchColor } from '../../utils/formatters'
 import Avatar from '../Avatar'
 import StudentLocationSection from '../StudentLocationSection'
 import CompetencyInsights from '../CompetencyInsights'
+import NlpTextPreview from '../NlpTextPreview'
 
 export default function UserDetailModal({ user, type, onClose, onUpdate, onRemove, onToggleRetake }) {
   const isStudent  = type === 'student'
@@ -155,6 +156,7 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
           {isStudent && user.competencyProfile && (
             <CompetencyInsights profile={user.competencyProfile} />
           )}
+          {isStudent && <NlpTextPreview key={user.id} studentId={user.id} />}
 
           {/* Location & Preferences — students only */}
           {isStudent && (

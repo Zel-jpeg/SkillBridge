@@ -100,13 +100,13 @@ def serialize_recommendation(recommendation):
     }
 
 
-def serialize_competency_profile(profile):
+def serialize_competency_profile(profile, include_nlp_text=True):
     if profile is None:
         return None
     return {
         'orientation_label': profile.orientation_label,
         'orientation_summary': profile.orientation_summary,
-        'competency_profile_text': profile.competency_profile_text,
+        **({'competency_profile_text': profile.competency_profile_text} if include_nlp_text else {}),
         'development_suggestions': profile.development_suggestions or [],
         'supporting_categories': profile.supporting_categories or [],
         'generated_at': profile.generated_at,
@@ -2038,7 +2038,7 @@ def student_results(request):
             for ss in skill_scores.order_by('-percentage')
         ],
         'recommendations': [serialize_recommendation(r) for r in recommendations],
-        'competency_profile': serialize_competency_profile(competency_profile),
+        'competency_profile': serialize_competency_profile(competency_profile, include_nlp_text=False),
         'active_model': RecommendationConfiguration.get_active().active_model,
         'placement': _serialize_placement_visibility(approved_placement),
     })

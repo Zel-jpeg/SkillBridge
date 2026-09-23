@@ -167,8 +167,8 @@ function addCompanyTables(doc, autoTable, records, startY) {
     autoTable(doc, tableTheme({
       startY: y + 8,
       head: [[
-        'Student', 'School ID', 'Course', 'Batch', 'Status', 'Match',
-        'Category', 'NLP', 'Location', 'Distance', 'Approved at', 'Remarks',
+        'Student', 'School ID', 'Course', 'Batch', 'Status', 'Hybrid match',
+        'Category fit', 'NLP fit', 'Location fit', 'Distance', 'Approved at', 'Remarks',
       ]],
       body: group.map(record => [
         record.student.name,
@@ -237,7 +237,7 @@ function addHistoryTable(doc, autoTable, records, startY) {
       STATUS_LABELS[record.status] || record.status,
       `Assigned: ${person(record.assigned_by)}\nApproved: ${person(record.approved_by)}\nRemoved: ${person(record.removed_by)}\nRejected: ${person(record.rejected_by)}`,
       `Created: ${dateTime(record.created_at)}\nUpdated: ${dateTime(record.updated_at)}\nApproved: ${dateTime(record.approved_at)}\nRemoved: ${dateTime(record.removed_at)}\nRejected: ${dateTime(record.rejected_at)}`,
-      `Match: ${percent(record.match_score_at_assignment)}\nCategory: ${percent(record.category_score_component_at_assignment)}\nNLP: ${percent(record.nlp_score_component_at_assignment)}\nLocation: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
+      `Hybrid match: ${percent(record.match_score_at_assignment)}\nCategory fit: ${percent(record.category_score_component_at_assignment)}\nNLP fit: ${percent(record.nlp_score_component_at_assignment)}\nLocation fit: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
       clean(record.remarks),
     ]) : [['—', 'No placement records match the selected filters.']],
     columnStyles: {
@@ -322,10 +322,10 @@ function spreadsheetRows(payload) {
     'Approved Count': record.position.approved_count,
     'Remaining Slots': record.position.remaining_slots,
     Status: STATUS_LABELS[record.status] || record.status,
-    'Match Score': record.match_score_at_assignment,
-    'Category Component': record.category_score_component_at_assignment,
-    'NLP Component': record.nlp_score_component_at_assignment,
-    'Location Component': record.location_score_component_at_assignment,
+    'Hybrid match': record.match_score_at_assignment,
+    'Category fit': record.category_score_component_at_assignment,
+    'NLP fit': record.nlp_score_component_at_assignment,
+    'Location fit': record.location_score_component_at_assignment,
     'Distance (km)': record.distance_km_at_assignment,
     'Assigned By': person(record.assigned_by),
     'Approved By': person(record.approved_by),

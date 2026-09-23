@@ -1,0 +1,1169 @@
+{
+  "mode": "evaluation_dataset",
+  "status": "complete",
+  "case_count": 60,
+  "position_count": 6,
+  "dataset": {
+    "version": "rich-notebook-representative-v1",
+    "sha256": "f11af215818563d72ef8d9bef367c922a11a8d33a16bc3cd193b5ed022cba88e",
+    "description": "Representative prepared synthetic dataset: 60 cases (10 per archetype), 6 positions and 5 skill categories from the rich NLP notebook design. Uses production neutral competency text, not notebook-inferred position titles. Results are not exact paper reproduction or evidence of real-world accuracy.",
+    "skipped_count": 0
+  },
+  "ranking": "NLP text similarity",
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions"
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions"
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics"
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc."
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems"
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies"
+    }
+  ],
+  "models": [
+    {
+      "id": "spacy_sm",
+      "label": "spaCy Small",
+      "package": "en_core_web_sm",
+      "status": "available",
+      "metrics": {
+        "top1_accuracy": 0.6,
+        "top3_accuracy": 0.9833333333333333,
+        "precision": 0.6042207792207792,
+        "recall": 0.6,
+        "f1": 0.527170868347339,
+        "processing_time_seconds": 2.295165600000473
+      },
+      "predictions": [
+        {
+          "case_id": "prepared-001",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-002",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-003",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            2,
+            1,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-004",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-005",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-006",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-007",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-008",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-009",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-010",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-053",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-054",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-055",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-056",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-057",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-058",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-059",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-060",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "case_id": "prepared-061",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "case_id": "prepared-062",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-103",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-104",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-105",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-106",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-107",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-108",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "case_id": "prepared-109",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-110",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-111",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-112",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-153",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            2,
+            4,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-154",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            5,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-155",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-156",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            5,
+            6
+          ]
+        },
+        {
+          "case_id": "prepared-157",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-158",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-159",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-160",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-161",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-162",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-201",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-202",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-203",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-204",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-205",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-206",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-207",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-208",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-209",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-210",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-251",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            4,
+            6
+          ]
+        },
+        {
+          "case_id": "prepared-252",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-253",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-254",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-255",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-256",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-257",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-258",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-259",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-260",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spacy_md",
+      "label": "spaCy Medium",
+      "package": "en_core_web_md",
+      "status": "available",
+      "metrics": {
+        "top1_accuracy": 0.6,
+        "top3_accuracy": 0.9833333333333333,
+        "precision": 0.6042207792207792,
+        "recall": 0.6,
+        "f1": 0.527170868347339,
+        "processing_time_seconds": 2.318114599999717
+      },
+      "predictions": [
+        {
+          "case_id": "prepared-001",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-002",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-003",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            2,
+            1,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-004",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-005",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-006",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-007",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-008",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-009",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-010",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-053",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-054",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-055",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-056",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-057",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-058",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-059",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-060",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "case_id": "prepared-061",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "case_id": "prepared-062",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-103",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-104",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-105",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-106",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-107",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-108",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "case_id": "prepared-109",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-110",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-111",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-112",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-153",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            2,
+            4,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-154",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            5,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-155",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-156",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            5,
+            6
+          ]
+        },
+        {
+          "case_id": "prepared-157",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-158",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-159",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-160",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "case_id": "prepared-161",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-162",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-201",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-202",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-203",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-204",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-205",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-206",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-207",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-208",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-209",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-210",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-251",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-252",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-253",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            3
+          ]
+        },
+        {
+          "case_id": "prepared-254",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-255",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-256",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-257",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-258",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-259",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        },
+        {
+          "case_id": "prepared-260",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stanza_en",
+      "label": "Stanza English",
+      "package": "stanza English resources",
+      "status": "unavailable",
+      "metrics": null,
+      "message": "stanza English resources could not load. Install compatible local model resources; no fallback is evaluated."
+    }
+  ],
+  "metric_note": "Precision, recall and F1 are macro averages of Top-1 predictions over the union of expected and predicted classes; undefined values are zero.",
+  "timing_note": "Processing time includes preprocessing and ranking; model loading, data reads, profile generation and metric calculation are excluded. Cached models and hardware affect time."
+}

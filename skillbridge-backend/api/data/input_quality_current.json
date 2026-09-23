@@ -1,0 +1,2681 @@
+{
+  "mode": "evaluation_dataset",
+  "status": "complete",
+  "case_count": 60,
+  "position_count": 6,
+  "dataset": {
+    "version": "rich-notebook-representative-v1",
+    "sha256": "f11af215818563d72ef8d9bef367c922a11a8d33a16bc3cd193b5ed022cba88e",
+    "variant": "Production prepared dataset",
+    "taxonomy": {
+      "version": "it-taxonomy-v2",
+      "category_count": 5,
+      "warnings": [],
+      "common_tags": [
+        {
+          "tag": "javascript",
+          "category_count": 2
+        },
+        {
+          "tag": "firewall",
+          "category_count": 2
+        }
+      ],
+      "note": "Heuristic warnings need human review. Aliases normalize generated text only; saved categories and tags remain unchanged."
+    },
+    "source_taxonomy": {
+      "version": "it-taxonomy-v2",
+      "category_count": 5,
+      "warnings": [],
+      "common_tags": [
+        {
+          "tag": "javascript",
+          "category_count": 2
+        }
+      ],
+      "note": "Heuristic warnings need human review. Aliases normalize generated text only; saved categories and tags remain unchanged."
+    },
+    "skipped_count": 0,
+    "description": "Production prepared dataset: the same 60 synthetic cases and 6 positions, with current neutral text generation and curated tag suggestions applied in memory. Scores and expected labels are unchanged. This is not exact notebook reproduction or an independent real-world accuracy study."
+  },
+  "ranking": "NLP text similarity",
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions"
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions"
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics"
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc."
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems"
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies"
+    }
+  ],
+  "models": [
+    {
+      "id": "spacy_sm",
+      "label": "spaCy Small",
+      "package": "en_core_web_sm",
+      "status": "available",
+      "metrics": {
+        "top1_accuracy": 0.65,
+        "top3_accuracy": 1.0,
+        "precision": 0.7424242424242425,
+        "recall": 0.6499999999999999,
+        "f1": 0.6281349206349206,
+        "processing_time_seconds": 3.7849378999999317
+      },
+      "predictions": [
+        {
+          "case_id": "prepared-001",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4833040528807527,
+            0.3634156432608727,
+            0.3194309696458396
+          ]
+        },
+        {
+          "case_id": "prepared-002",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4740674848506758,
+            0.3615290666681765,
+            0.3180942769923856
+          ]
+        },
+        {
+          "case_id": "prepared-003",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.345447096554997,
+            0.30827864237472924,
+            0.258413412746816
+          ]
+        },
+        {
+          "case_id": "prepared-004",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5061004034809397,
+            0.4086838464915621,
+            0.21175321763003405
+          ]
+        },
+        {
+          "case_id": "prepared-005",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.6239356101010094,
+            0.3524171233514893,
+            0.1988594286167041
+          ]
+        },
+        {
+          "case_id": "prepared-006",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4667134807588957,
+            0.37505561036777757,
+            0.3572536959896118
+          ]
+        },
+        {
+          "case_id": "prepared-007",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4755150660390616,
+            0.3687650585286124,
+            0.3584712480536015
+          ]
+        },
+        {
+          "case_id": "prepared-008",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5685590519653179,
+            0.4009242115429427,
+            0.20403652471075515
+          ]
+        },
+        {
+          "case_id": "prepared-009",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.47201485123223286,
+            0.3568140339149429,
+            0.3161987938565917
+          ]
+        },
+        {
+          "case_id": "prepared-010",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4529901535806929,
+            0.3419164616756479,
+            0.30277838732745893
+          ]
+        },
+        {
+          "case_id": "prepared-053",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43100282066714835,
+            0.3002704821622601,
+            0.1542066280024558
+          ]
+        },
+        {
+          "case_id": "prepared-054",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3823262306087397,
+            0.3469028193526428,
+            0.1541918092051264
+          ]
+        },
+        {
+          "case_id": "prepared-055",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43979253320235,
+            0.31133301050116785,
+            0.1545281794685554
+          ]
+        },
+        {
+          "case_id": "prepared-056",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.5150383232897601,
+            0.360940289172802,
+            0.3121855292904626
+          ]
+        },
+        {
+          "case_id": "prepared-057",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5017371334523092,
+            0.20249678316405154,
+            0.16106910771797994
+          ]
+        },
+        {
+          "case_id": "prepared-058",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4461842819318593,
+            0.22658088099678778,
+            0.1971864435481943
+          ]
+        },
+        {
+          "case_id": "prepared-059",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            6
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4001720436372304,
+            0.27522135876584136,
+            0.15158064561383655
+          ]
+        },
+        {
+          "case_id": "prepared-060",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5259311099781071,
+            0.2235348211024563,
+            0.1942821867835428
+          ]
+        },
+        {
+          "case_id": "prepared-061",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5339910793248862,
+            0.2195838438787422,
+            0.1957560771051177
+          ]
+        },
+        {
+          "case_id": "prepared-062",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.44471724027024057,
+            0.29423358251811826,
+            0.15064827757796176
+          ]
+        },
+        {
+          "case_id": "prepared-103",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.444476546827247,
+            0.4141297457198443,
+            0.20667246618093807
+          ]
+        },
+        {
+          "case_id": "prepared-104",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.45297431239598773,
+            0.42030868671153,
+            0.20312294552458413
+          ]
+        },
+        {
+          "case_id": "prepared-105",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.48725798039659196,
+            0.4508704651787961,
+            0.16504564021090423
+          ]
+        },
+        {
+          "case_id": "prepared-106",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5230812992863996,
+            0.37286462198002324,
+            0.21487868631983348
+          ]
+        },
+        {
+          "case_id": "prepared-107",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.44998165408887925,
+            0.4170426707152007,
+            0.2662489417718716
+          ]
+        },
+        {
+          "case_id": "prepared-108",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5180188759800733,
+            0.377749913857296,
+            0.2055809709445492
+          ]
+        },
+        {
+          "case_id": "prepared-109",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.38349710057472747,
+            0.33503903916557337,
+            0.28747288250378955
+          ]
+        },
+        {
+          "case_id": "prepared-110",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.47341031315795606,
+            0.3469272044867712,
+            0.31123668280078653
+          ]
+        },
+        {
+          "case_id": "prepared-111",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.41103575729112785,
+            0.41093528023608594,
+            0.20469237012933794
+          ]
+        },
+        {
+          "case_id": "prepared-112",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.510353024562843,
+            0.41211790331007103,
+            0.21353252108693882
+          ]
+        },
+        {
+          "case_id": "prepared-153",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            2,
+            4,
+            1
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.4675686607342473,
+            0.27826152141163774,
+            0.20255877282746082
+          ]
+        },
+        {
+          "case_id": "prepared-154",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.32483192835188673,
+            0.2618716305282764,
+            0.25336787000288363
+          ]
+        },
+        {
+          "case_id": "prepared-155",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.3843527859736311,
+            0.3799044530555157,
+            0.2710698282731039
+          ]
+        },
+        {
+          "case_id": "prepared-156",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.23402618188087795,
+            0.2148819793078305,
+            0.20339657141262965
+          ]
+        },
+        {
+          "case_id": "prepared-157",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3895498046886429,
+            0.30907700568169194,
+            0.2066863127835729
+          ]
+        },
+        {
+          "case_id": "prepared-158",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3084298846684622,
+            0.198870095507298,
+            0.19000678016720207
+          ]
+        },
+        {
+          "case_id": "prepared-159",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            2
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.345002287665196,
+            0.29648148646358913,
+            0.210804588075558
+          ]
+        },
+        {
+          "case_id": "prepared-160",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3335608221016072,
+            0.32710644928159915,
+            0.18785777646845317
+          ]
+        },
+        {
+          "case_id": "prepared-161",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3506212791555889,
+            0.24115514322713158,
+            0.1804477189654399
+          ]
+        },
+        {
+          "case_id": "prepared-162",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.34212618772308145,
+            0.20040959840514658,
+            0.1943210956849261
+          ]
+        },
+        {
+          "case_id": "prepared-201",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5848522033276247,
+            0.35742551862544547,
+            0.17974834529501235
+          ]
+        },
+        {
+          "case_id": "prepared-202",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43296116606941404,
+            0.30915025037316163,
+            0.12481830038874851
+          ]
+        },
+        {
+          "case_id": "prepared-203",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43604042530544773,
+            0.3124730379453803,
+            0.12362638501338746
+          ]
+        },
+        {
+          "case_id": "prepared-204",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4434460691714542,
+            0.31778003221117995,
+            0.12572603662071197
+          ]
+        },
+        {
+          "case_id": "prepared-205",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.43884882494361394,
+            0.39550336518207796,
+            0.18799139929123337
+          ]
+        },
+        {
+          "case_id": "prepared-206",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.41026650255765745,
+            0.34002807443531263,
+            0.14711597812081278
+          ]
+        },
+        {
+          "case_id": "prepared-207",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.558990194885229,
+            0.34662768450898723,
+            0.17921046837069263
+          ]
+        },
+        {
+          "case_id": "prepared-208",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3981560248567106,
+            0.28528369100107687,
+            0.17665674607432014
+          ]
+        },
+        {
+          "case_id": "prepared-209",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4455080334507755,
+            0.306416473172828,
+            0.1245539076113341
+          ]
+        },
+        {
+          "case_id": "prepared-210",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4105744197158545,
+            0.2980870033243144,
+            0.17935775310883723
+          ]
+        },
+        {
+          "case_id": "prepared-251",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            4,
+            6,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.22968559182480103,
+            0.22514681050742447,
+            0.21832050151246235
+          ]
+        },
+        {
+          "case_id": "prepared-252",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43357389542021046,
+            0.36057060061202545,
+            0.1981551779727394
+          ]
+        },
+        {
+          "case_id": "prepared-253",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3978155174630579,
+            0.30423274426881997,
+            0.25288980832952945
+          ]
+        },
+        {
+          "case_id": "prepared-254",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3468017131802535,
+            0.32662357823839056,
+            0.17034066884748755
+          ]
+        },
+        {
+          "case_id": "prepared-255",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.40093394247415964,
+            0.3186575316990136,
+            0.23345455390036873
+          ]
+        },
+        {
+          "case_id": "prepared-256",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4454308106446708,
+            0.4014127044452406,
+            0.19076454203131796
+          ]
+        },
+        {
+          "case_id": "prepared-257",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.4735833723645365,
+            0.40238174807662264,
+            0.17747225778679845
+          ]
+        },
+        {
+          "case_id": "prepared-258",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3734771754886863,
+            0.33800060790256553,
+            0.20093321086803825
+          ]
+        },
+        {
+          "case_id": "prepared-259",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            4,
+            6
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.31381931026496207,
+            0.2777380557373509,
+            0.2678736224927635
+          ]
+        },
+        {
+          "case_id": "prepared-260",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            4,
+            6
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.4469024172264502,
+            0.3196701947708062,
+            0.31692508923245033
+          ]
+        }
+      ],
+      "diagnostics": {
+        "common_confusions": [
+          {
+            "expected_position_id": 4,
+            "predicted_position_id": 1,
+            "count": 6
+          },
+          {
+            "expected_position_id": 6,
+            "predicted_position_id": 5,
+            "count": 6
+          },
+          {
+            "expected_position_id": 3,
+            "predicted_position_id": 1,
+            "count": 5
+          },
+          {
+            "expected_position_id": 2,
+            "predicted_position_id": 1,
+            "count": 1
+          },
+          {
+            "expected_position_id": 4,
+            "predicted_position_id": 2,
+            "count": 1
+          },
+          {
+            "expected_position_id": 5,
+            "predicted_position_id": 6,
+            "count": 1
+          },
+          {
+            "expected_position_id": 6,
+            "predicted_position_id": 4,
+            "count": 1
+          }
+        ],
+        "near_misses": [
+          {
+            "case_id": "prepared-056",
+            "expected_position_id": 2,
+            "top3_position_ids": [
+              1,
+              2,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.5150383232897601,
+              0.360940289172802,
+              0.3121855292904626
+            ]
+          },
+          {
+            "case_id": "prepared-103",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.444476546827247,
+              0.4141297457198443,
+              0.20667246618093807
+            ]
+          },
+          {
+            "case_id": "prepared-105",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.48725798039659196,
+              0.4508704651787961,
+              0.16504564021090423
+            ]
+          },
+          {
+            "case_id": "prepared-107",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.44998165408887925,
+              0.4170426707152007,
+              0.2662489417718716
+            ]
+          },
+          {
+            "case_id": "prepared-111",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.41103575729112785,
+              0.41093528023608594,
+              0.20469237012933794
+            ]
+          },
+          {
+            "case_id": "prepared-112",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.510353024562843,
+              0.41211790331007103,
+              0.21353252108693882
+            ]
+          },
+          {
+            "case_id": "prepared-153",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              2,
+              4,
+              1
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.4675686607342473,
+              0.27826152141163774,
+              0.20255877282746082
+            ]
+          },
+          {
+            "case_id": "prepared-154",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.32483192835188673,
+              0.2618716305282764,
+              0.25336787000288363
+            ]
+          },
+          {
+            "case_id": "prepared-155",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.3843527859736311,
+              0.3799044530555157,
+              0.2710698282731039
+            ]
+          },
+          {
+            "case_id": "prepared-156",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.23402618188087795,
+              0.2148819793078305,
+              0.20339657141262965
+            ]
+          },
+          {
+            "case_id": "prepared-157",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3895498046886429,
+              0.30907700568169194,
+              0.2066863127835729
+            ]
+          },
+          {
+            "case_id": "prepared-159",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              2
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.345002287665196,
+              0.29648148646358913,
+              0.210804588075558
+            ]
+          },
+          {
+            "case_id": "prepared-161",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3506212791555889,
+              0.24115514322713158,
+              0.1804477189654399
+            ]
+          },
+          {
+            "case_id": "prepared-205",
+            "expected_position_id": 5,
+            "top3_position_ids": [
+              6,
+              5,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.43884882494361394,
+              0.39550336518207796,
+              0.18799139929123337
+            ]
+          },
+          {
+            "case_id": "prepared-251",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              4,
+              6,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.22968559182480103,
+              0.22514681050742447,
+              0.21832050151246235
+            ]
+          },
+          {
+            "case_id": "prepared-253",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3978155174630579,
+              0.30423274426881997,
+              0.25288980832952945
+            ]
+          },
+          {
+            "case_id": "prepared-254",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3468017131802535,
+              0.32662357823839056,
+              0.17034066884748755
+            ]
+          },
+          {
+            "case_id": "prepared-255",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.40093394247415964,
+              0.3186575316990136,
+              0.23345455390036873
+            ]
+          },
+          {
+            "case_id": "prepared-257",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.4735833723645365,
+              0.40238174807662264,
+              0.17747225778679845
+            ]
+          },
+          {
+            "case_id": "prepared-259",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              4,
+              6
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.31381931026496207,
+              0.2777380557373509,
+              0.2678736224927635
+            ]
+          },
+          {
+            "case_id": "prepared-260",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              4,
+              6
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.4469024172264502,
+              0.3196701947708062,
+              0.31692508923245033
+            ]
+          }
+        ],
+        "note": "High Top-3 with lower Top-1 means the labeled position is often close, but another position ranks first. Inspect category evidence and label ambiguity; do not change labels to match predictions."
+      }
+    },
+    {
+      "id": "spacy_md",
+      "label": "spaCy Medium",
+      "package": "en_core_web_md",
+      "status": "available",
+      "metrics": {
+        "top1_accuracy": 0.6666666666666666,
+        "top3_accuracy": 1.0,
+        "precision": 0.746031746031746,
+        "recall": 0.6666666666666666,
+        "f1": 0.6453840245775729,
+        "processing_time_seconds": 3.834283599999253
+      },
+      "predictions": [
+        {
+          "case_id": "prepared-001",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4783097894198369,
+            0.35922682789263594,
+            0.32142475400446463
+          ]
+        },
+        {
+          "case_id": "prepared-002",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4681081909551096,
+            0.3603065419473554,
+            0.32035897306239175
+          ]
+        },
+        {
+          "case_id": "prepared-003",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3436235725617988,
+            0.3074904462544168,
+            0.25493344045280036
+          ]
+        },
+        {
+          "case_id": "prepared-004",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4997834172799372,
+            0.40779711875839586,
+            0.20953422643201283
+          ]
+        },
+        {
+          "case_id": "prepared-005",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.6191398962896272,
+            0.34797487354400847,
+            0.1995191390722941
+          ]
+        },
+        {
+          "case_id": "prepared-006",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.46076392657796567,
+            0.3775543850976686,
+            0.3560119380220371
+          ]
+        },
+        {
+          "case_id": "prepared-007",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.47056122021657704,
+            0.3708848710288816,
+            0.3543214842620235
+          ]
+        },
+        {
+          "case_id": "prepared-008",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5635818910695806,
+            0.3966107976689735,
+            0.20578572513145854
+          ]
+        },
+        {
+          "case_id": "prepared-009",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4689021335038685,
+            0.3546506839610597,
+            0.3172173664400159
+          ]
+        },
+        {
+          "case_id": "prepared-010",
+          "expected_position_id": 1,
+          "top3_position_ids": [
+            1,
+            3,
+            2
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4515577010208488,
+            0.3415582494082293,
+            0.3019636844110041
+          ]
+        },
+        {
+          "case_id": "prepared-053",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.43699421387328763,
+            0.2962059000796906,
+            0.15141899834655123
+          ]
+        },
+        {
+          "case_id": "prepared-054",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3851503639386883,
+            0.340773106680865,
+            0.1523065625504866
+          ]
+        },
+        {
+          "case_id": "prepared-055",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4467765766308925,
+            0.30506214923996594,
+            0.15282937125754578
+          ]
+        },
+        {
+          "case_id": "prepared-056",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            1,
+            2,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.5102107142876038,
+            0.363020121089527,
+            0.3079676394485792
+          ]
+        },
+        {
+          "case_id": "prepared-057",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5030806447017405,
+            0.19774434837871707,
+            0.1593193567781177
+          ]
+        },
+        {
+          "case_id": "prepared-058",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4462691094321891,
+            0.22585957531038062,
+            0.19379715804183495
+          ]
+        },
+        {
+          "case_id": "prepared-059",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            6
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4033629829316258,
+            0.27278149505538807,
+            0.15256372589460201
+          ]
+        },
+        {
+          "case_id": "prepared-060",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5245279432369948,
+            0.22923801434397822,
+            0.19452427816115428
+          ]
+        },
+        {
+          "case_id": "prepared-061",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5362134398163513,
+            0.2167335878305858,
+            0.19441580015671783
+          ]
+        },
+        {
+          "case_id": "prepared-062",
+          "expected_position_id": 2,
+          "top3_position_ids": [
+            2,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4514700744370299,
+            0.28782529122746936,
+            0.1489388636502213
+          ]
+        },
+        {
+          "case_id": "prepared-103",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.4378321847519612,
+            0.4133235403365412,
+            0.20430505201332733
+          ]
+        },
+        {
+          "case_id": "prepared-104",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.446715206348482,
+            0.4185296308394024,
+            0.1957081710739813
+          ]
+        },
+        {
+          "case_id": "prepared-105",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.4816223120177729,
+            0.446561876986811,
+            0.16289443621154587
+          ]
+        },
+        {
+          "case_id": "prepared-106",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.523386287668951,
+            0.37394144475245494,
+            0.21230634406995924
+          ]
+        },
+        {
+          "case_id": "prepared-107",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.45092707563040496,
+            0.41699739956896015,
+            0.26311114005937125
+          ]
+        },
+        {
+          "case_id": "prepared-108",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5170365692642135,
+            0.3773378476486992,
+            0.20586778634531092
+          ]
+        },
+        {
+          "case_id": "prepared-109",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.38232832234400693,
+            0.3333998701574145,
+            0.28456462727379983
+          ]
+        },
+        {
+          "case_id": "prepared-110",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4720625322242663,
+            0.3450303892697285,
+            0.30794977357044
+          ]
+        },
+        {
+          "case_id": "prepared-111",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            3,
+            1,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4101135385377035,
+            0.4053986567499373,
+            0.2023138611401635
+          ]
+        },
+        {
+          "case_id": "prepared-112",
+          "expected_position_id": 3,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.5040296222016145,
+            0.411261799803922,
+            0.21131444808958194
+          ]
+        },
+        {
+          "case_id": "prepared-153",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            2,
+            4,
+            1
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.4623984155283705,
+            0.27367877973410526,
+            0.20643451538248128
+          ]
+        },
+        {
+          "case_id": "prepared-154",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3219583535796193,
+            0.2581920486338747,
+            0.2576363097873967
+          ]
+        },
+        {
+          "case_id": "prepared-155",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            3,
+            4
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.3807452745555067,
+            0.3776105858591411,
+            0.26764508495036543
+          ]
+        },
+        {
+          "case_id": "prepared-156",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.23141517537807138,
+            0.21183413608885307,
+            0.20737203620044536
+          ]
+        },
+        {
+          "case_id": "prepared-157",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.38286552343871616,
+            0.3052319996740965,
+            0.20137953693357716
+          ]
+        },
+        {
+          "case_id": "prepared-158",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3034805251793728,
+            0.19806365451397973,
+            0.18713096917674274
+          ]
+        },
+        {
+          "case_id": "prepared-159",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            2
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.33826678153038386,
+            0.29348857507547127,
+            0.21309905123613765
+          ]
+        },
+        {
+          "case_id": "prepared-160",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            5
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.32952356662402954,
+            0.3196044633275465,
+            0.183203207853262
+          ]
+        },
+        {
+          "case_id": "prepared-161",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            1,
+            4,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.34495657533393737,
+            0.23817984860490804,
+            0.17571972258359145
+          ]
+        },
+        {
+          "case_id": "prepared-162",
+          "expected_position_id": 4,
+          "top3_position_ids": [
+            4,
+            1,
+            3
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.33853870659628016,
+            0.19877603897435453,
+            0.19350424354312087
+          ]
+        },
+        {
+          "case_id": "prepared-201",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5799924324268907,
+            0.35477285437894024,
+            0.17659447384212482
+          ]
+        },
+        {
+          "case_id": "prepared-202",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4290801255446879,
+            0.3074094077216795,
+            0.12280956621823223
+          ]
+        },
+        {
+          "case_id": "prepared-203",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4321083811532372,
+            0.31043030174499747,
+            0.12138564002636464
+          ]
+        },
+        {
+          "case_id": "prepared-204",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4394815212947346,
+            0.315727227744962,
+            0.123456864224079
+          ]
+        },
+        {
+          "case_id": "prepared-205",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.43392407810906886,
+            0.39237875535791816,
+            0.18335174810643295
+          ]
+        },
+        {
+          "case_id": "prepared-206",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.40672456819283376,
+            0.3375402846909484,
+            0.1437876175875707
+          ]
+        },
+        {
+          "case_id": "prepared-207",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.5540942379608521,
+            0.34400983841588717,
+            0.17606447551206653
+          ]
+        },
+        {
+          "case_id": "prepared-208",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.39499885153101405,
+            0.2839614989299025,
+            0.17430725283111648
+          ]
+        },
+        {
+          "case_id": "prepared-209",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4415783247964895,
+            0.3043880567792589,
+            0.12230054505596168
+          ]
+        },
+        {
+          "case_id": "prepared-210",
+          "expected_position_id": 5,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.40799310974734043,
+            0.29724576106112344,
+            0.17727703092017877
+          ]
+        },
+        {
+          "case_id": "prepared-251",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            4,
+            6,
+            5
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.227292677464939,
+            0.22477257430032146,
+            0.22244907522282026
+          ]
+        },
+        {
+          "case_id": "prepared-252",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4289620644085709,
+            0.3585001098105532,
+            0.19519746355209233
+          ]
+        },
+        {
+          "case_id": "prepared-253",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            3
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3916843465533967,
+            0.2997206874865204,
+            0.25685757436321577
+          ]
+        },
+        {
+          "case_id": "prepared-254",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3458855466131697,
+            0.3251863505109578,
+            0.16802286383722667
+          ]
+        },
+        {
+          "case_id": "prepared-255",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.3967176820950395,
+            0.31569544137482136,
+            0.22904319801238437
+          ]
+        },
+        {
+          "case_id": "prepared-256",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.4404231276508254,
+            0.3982329709906436,
+            0.18605205820938867
+          ]
+        },
+        {
+          "case_id": "prepared-257",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            6,
+            4
+          ],
+          "expected_rank": 2,
+          "top3_scores": [
+            0.47192539562106683,
+            0.40004291191741864,
+            0.17470428797023635
+          ]
+        },
+        {
+          "case_id": "prepared-258",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            6,
+            5,
+            4
+          ],
+          "expected_rank": 1,
+          "top3_scores": [
+            0.3669392240052837,
+            0.33720747811733887,
+            0.198714005929879
+          ]
+        },
+        {
+          "case_id": "prepared-259",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            4,
+            6
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.31379390446087835,
+            0.2732441573982211,
+            0.25941171280855024
+          ]
+        },
+        {
+          "case_id": "prepared-260",
+          "expected_position_id": 6,
+          "top3_position_ids": [
+            5,
+            4,
+            6
+          ],
+          "expected_rank": 3,
+          "top3_scores": [
+            0.44216059865457713,
+            0.315873283466874,
+            0.31327326739554895
+          ]
+        }
+      ],
+      "diagnostics": {
+        "common_confusions": [
+          {
+            "expected_position_id": 4,
+            "predicted_position_id": 1,
+            "count": 6
+          },
+          {
+            "expected_position_id": 6,
+            "predicted_position_id": 5,
+            "count": 6
+          },
+          {
+            "expected_position_id": 3,
+            "predicted_position_id": 1,
+            "count": 4
+          },
+          {
+            "expected_position_id": 2,
+            "predicted_position_id": 1,
+            "count": 1
+          },
+          {
+            "expected_position_id": 4,
+            "predicted_position_id": 2,
+            "count": 1
+          },
+          {
+            "expected_position_id": 5,
+            "predicted_position_id": 6,
+            "count": 1
+          },
+          {
+            "expected_position_id": 6,
+            "predicted_position_id": 4,
+            "count": 1
+          }
+        ],
+        "near_misses": [
+          {
+            "case_id": "prepared-056",
+            "expected_position_id": 2,
+            "top3_position_ids": [
+              1,
+              2,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.5102107142876038,
+              0.363020121089527,
+              0.3079676394485792
+            ]
+          },
+          {
+            "case_id": "prepared-103",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.4378321847519612,
+              0.4133235403365412,
+              0.20430505201332733
+            ]
+          },
+          {
+            "case_id": "prepared-105",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.4816223120177729,
+              0.446561876986811,
+              0.16289443621154587
+            ]
+          },
+          {
+            "case_id": "prepared-107",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.45092707563040496,
+              0.41699739956896015,
+              0.26311114005937125
+            ]
+          },
+          {
+            "case_id": "prepared-112",
+            "expected_position_id": 3,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.5040296222016145,
+              0.411261799803922,
+              0.21131444808958194
+            ]
+          },
+          {
+            "case_id": "prepared-153",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              2,
+              4,
+              1
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.4623984155283705,
+              0.27367877973410526,
+              0.20643451538248128
+            ]
+          },
+          {
+            "case_id": "prepared-154",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3219583535796193,
+              0.2581920486338747,
+              0.2576363097873967
+            ]
+          },
+          {
+            "case_id": "prepared-155",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              3,
+              4
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.3807452745555067,
+              0.3776105858591411,
+              0.26764508495036543
+            ]
+          },
+          {
+            "case_id": "prepared-156",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.23141517537807138,
+              0.21183413608885307,
+              0.20737203620044536
+            ]
+          },
+          {
+            "case_id": "prepared-157",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.38286552343871616,
+              0.3052319996740965,
+              0.20137953693357716
+            ]
+          },
+          {
+            "case_id": "prepared-159",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              2
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.33826678153038386,
+              0.29348857507547127,
+              0.21309905123613765
+            ]
+          },
+          {
+            "case_id": "prepared-161",
+            "expected_position_id": 4,
+            "top3_position_ids": [
+              1,
+              4,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.34495657533393737,
+              0.23817984860490804,
+              0.17571972258359145
+            ]
+          },
+          {
+            "case_id": "prepared-205",
+            "expected_position_id": 5,
+            "top3_position_ids": [
+              6,
+              5,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.43392407810906886,
+              0.39237875535791816,
+              0.18335174810643295
+            ]
+          },
+          {
+            "case_id": "prepared-251",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              4,
+              6,
+              5
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.227292677464939,
+              0.22477257430032146,
+              0.22244907522282026
+            ]
+          },
+          {
+            "case_id": "prepared-253",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              3
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3916843465533967,
+              0.2997206874865204,
+              0.25685757436321577
+            ]
+          },
+          {
+            "case_id": "prepared-254",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3458855466131697,
+              0.3251863505109578,
+              0.16802286383722667
+            ]
+          },
+          {
+            "case_id": "prepared-255",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.3967176820950395,
+              0.31569544137482136,
+              0.22904319801238437
+            ]
+          },
+          {
+            "case_id": "prepared-257",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              6,
+              4
+            ],
+            "expected_rank": 2,
+            "top3_scores": [
+              0.47192539562106683,
+              0.40004291191741864,
+              0.17470428797023635
+            ]
+          },
+          {
+            "case_id": "prepared-259",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              4,
+              6
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.31379390446087835,
+              0.2732441573982211,
+              0.25941171280855024
+            ]
+          },
+          {
+            "case_id": "prepared-260",
+            "expected_position_id": 6,
+            "top3_position_ids": [
+              5,
+              4,
+              6
+            ],
+            "expected_rank": 3,
+            "top3_scores": [
+              0.44216059865457713,
+              0.315873283466874,
+              0.31327326739554895
+            ]
+          }
+        ],
+        "note": "High Top-3 with lower Top-1 means the labeled position is often close, but another position ranks first. Inspect category evidence and label ambiguity; do not change labels to match predictions."
+      }
+    },
+    {
+      "id": "stanza_en",
+      "label": "Stanza English",
+      "package": "stanza English resources",
+      "status": "unavailable",
+      "metrics": null,
+      "message": "stanza English resources could not load. Install compatible local model resources; no fallback is evaluated."
+    }
+  ],
+  "metric_note": "Precision, recall and F1 are macro averages of Top-1 predictions over the union of expected and predicted classes; undefined values are zero.",
+  "text_generation_version": "neutral-evidence-v2",
+  "taxonomy_version": "it-taxonomy-v2",
+  "timing_note": "Processing time includes preprocessing and ranking; model loading, data reads, profile generation and metric calculation are excluded. Cached models and hardware affect time.",
+  "input_sha256": "f1fa4228e19529ae9338871003ecf08db39ed3cc57a420db2379bd7724da7a72",
+  "text_samples": {
+    "profiles": [
+      {
+        "case_id": "prepared-001",
+        "text": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Programming (95.0%) and Database (90.0%). The student demonstrates excellent programming competency (95 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; excellent database management competency (90 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; strong web development competency (80 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; basic cybersecurity competency (55 percent); category vocabulary: authentication, encryption; basic networking competency (45 percent); category vocabulary: TCP/IP, routing. Skill evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management SQL database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design database management database design web development strong competency web development strong competency web development strong competency web development strong competency web development strong competency web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing."
+      },
+      {
+        "case_id": "prepared-053",
+        "text": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Web Development (90.0%) and Programming (80.0%). The student demonstrates excellent web development competency (90 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; strong programming competency (80 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; basic database management competency (40 percent); category vocabulary: SQL, PostgreSQL; basic networking competency (35 percent); category vocabulary: TCP/IP, routing; basic cybersecurity competency (30 percent); category vocabulary: authentication, encryption. Skill evidence: web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development HTML web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM web development DOM programming strong competency programming strong competency programming strong competency programming strong competency programming strong competency programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git database management basic competency database management SQL database management PostgreSQL networking basic competency networking TCP/IP networking routing cybersecurity basic competency cybersecurity authentication cybersecurity encryption."
+      },
+      {
+        "case_id": "prepared-103",
+        "text": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Database (100.0%) and Programming (90.0%). The student demonstrates excellent database management competency (100 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; excellent programming competency (90 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; developing cybersecurity competency (65 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; basic web development competency (30 percent); category vocabulary: HTML, CSS; basic networking competency (25 percent); category vocabulary: TCP/IP, routing. Skill evidence: database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management SQL database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design database management database design programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git cybersecurity developing competency cybersecurity developing competency cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control web development basic competency web development HTML web development CSS networking basic competency networking TCP/IP networking routing."
+      },
+      {
+        "case_id": "prepared-153",
+        "text": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Web Development (90.0%) and Programming (75.0%). The student demonstrates excellent web development competency (90 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; proficient programming competency (75 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; proficient cybersecurity competency (70 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; basic networking competency (50 percent); category vocabulary: TCP/IP, routing; basic database management competency (45 percent); category vocabulary: SQL, PostgreSQL. Skill evidence: web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development HTML web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM web development DOM programming proficient competency programming proficient competency programming proficient competency programming proficient competency programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control networking basic competency networking TCP/IP networking routing database management basic competency database management SQL database management PostgreSQL."
+      },
+      {
+        "case_id": "prepared-201",
+        "text": "Assessment evidence indicates a cybersecurity-oriented competency pattern, led by Networking (95.0%) and Cybersecurity (75.0%). The student demonstrates excellent networking competency (95 percent); category vocabulary: TCP/IP, routing, switching, subnetting, LAN, WAN, Cisco, firewall; proficient cybersecurity competency (75 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; basic programming competency (55 percent); category vocabulary: Python, Java; basic database management competency (35 percent); category vocabulary: SQL, PostgreSQL; basic web development competency (20 percent); category vocabulary: HTML, CSS. Skill evidence: networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking routing networking routing networking routing networking routing networking routing networking routing networking switching networking switching networking switching networking switching networking switching networking switching networking subnetting networking subnetting networking subnetting networking subnetting networking subnetting networking subnetting networking LAN networking LAN networking LAN networking LAN networking LAN networking LAN networking WAN networking WAN networking WAN networking WAN networking WAN networking WAN networking Cisco networking Cisco networking Cisco networking Cisco networking Cisco networking Cisco networking firewall networking firewall networking firewall cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control programming basic competency programming Python programming Java database management basic competency database management SQL database management PostgreSQL web development basic competency web development HTML web development CSS."
+      },
+      {
+        "case_id": "prepared-251",
+        "text": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Cybersecurity (80.0%) and Programming (60.0%). The student demonstrates strong cybersecurity competency (80 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control, secure coding, vulnerability assessment, phishing; developing database management competency (60 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization; developing networking competency (60 percent); category vocabulary: TCP/IP, routing, switching, subnetting, LAN; developing programming competency (60 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; basic web development competency (55 percent); category vocabulary: HTML, CSS. Skill evidence: cybersecurity strong competency cybersecurity strong competency cybersecurity strong competency cybersecurity strong competency cybersecurity strong competency cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity secure coding cybersecurity secure coding cybersecurity secure coding cybersecurity secure coding cybersecurity secure coding cybersecurity vulnerability assessment cybersecurity vulnerability assessment cybersecurity vulnerability assessment cybersecurity vulnerability assessment cybersecurity vulnerability assessment cybersecurity phishing cybersecurity phishing cybersecurity phishing cybersecurity phishing cybersecurity phishing database management developing competency database management developing competency database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management ERD database management ERD database management normalization database management normalization networking developing competency networking developing competency networking TCP/IP networking TCP/IP networking routing networking routing networking switching networking switching networking subnetting networking subnetting networking LAN networking LAN programming developing competency programming developing competency programming Python programming Python programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming algorithms programming algorithms web development basic competency web development HTML web development CSS."
+      }
+    ],
+    "positions": [
+      {
+        "id": 1,
+        "title": "Backend Developer Intern",
+        "text": "Backend Developer Intern at ABC Software Solutions. Required skill percentages: Programming: 92 percent; Database: 84 percent; Networking: 38 percent; Web Development: 76 percent; Cybersecurity: 52 percent. Competency requirements: excellent programming competency (92 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; strong database management competency (84 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; proficient web development competency (76 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design; basic cybersecurity competency (52 percent); category vocabulary: authentication, encryption; basic networking competency (38 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint. Requirement evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management strong competency database management strong competency database management strong competency database management strong competency database management strong competency database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design web development proficient competency web development proficient competency web development proficient competency web development proficient competency web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing backend backend server-side server-side REST API REST API Django Django Flask Flask authentication authentication database integration database integration business logic business logic API endpoint API endpoint."
+      },
+      {
+        "id": 2,
+        "title": "Frontend Developer Intern",
+        "text": "Frontend Developer Intern at ABC Software Solutions. Required skill percentages: Programming: 78 percent; Database: 38 percent; Networking: 32 percent; Web Development: 95 percent; Cybersecurity: 44 percent. Competency requirements: excellent web development competency (95 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; proficient programming competency (78 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; basic cybersecurity competency (44 percent); category vocabulary: authentication, encryption; basic database management competency (38 percent); category vocabulary: SQL, PostgreSQL; basic networking competency (32 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: frontend, React components, JavaScript events, responsive layout, CSS styling, browser compatibility, UI development. Requirement evidence: web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development excellent competency web development HTML web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM web development DOM programming proficient competency programming proficient competency programming proficient competency programming proficient competency programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms cybersecurity basic competency cybersecurity authentication cybersecurity encryption database management basic competency database management SQL database management PostgreSQL networking basic competency networking TCP/IP networking routing frontend frontend React components React components JavaScript events JavaScript events responsive layout responsive layout CSS styling CSS styling browser compatibility browser compatibility UI development UI development."
+      },
+      {
+        "id": 3,
+        "title": "Database Administrator Intern",
+        "text": "Database Administrator Intern at DataCore Analytics. Required skill percentages: Programming: 74 percent; Database: 96 percent; Networking: 36 percent; Web Development: 46 percent; Cybersecurity: 58 percent. Competency requirements: excellent database management competency (96 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; proficient programming competency (74 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; basic cybersecurity competency (58 percent); category vocabulary: authentication, encryption; basic web development competency (46 percent); category vocabulary: HTML, CSS; basic networking competency (36 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: database administration, SQL optimization, schema design, backup, indexing, data validation, relational database. Requirement evidence: database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management SQL database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design database management database design programming proficient competency programming proficient competency programming proficient competency programming proficient competency programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms cybersecurity basic competency cybersecurity authentication cybersecurity encryption web development basic competency web development HTML web development CSS networking basic competency networking TCP/IP networking routing database administration database administration SQL optimization SQL optimization schema design schema design backup backup indexing indexing data validation data validation relational database relational database."
+      },
+      {
+        "id": 4,
+        "title": "QA Tester Intern",
+        "text": "QA Tester Intern at Tech Innovations Inc.. Required skill percentages: Programming: 72 percent; Database: 64 percent; Networking: 42 percent; Web Development: 66 percent; Cybersecurity: 76 percent. Competency requirements: proficient cybersecurity competency (76 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; proficient programming competency (72 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; developing web development competency (66 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design; developing database management competency (64 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization; basic networking competency (42 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: quality assurance, test cases, bug reporting, regression testing, manual testing, test documentation, defect tracking. Requirement evidence: cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control programming proficient competency programming proficient competency programming proficient competency programming proficient competency programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms web development developing competency web development developing competency web development HTML web development HTML web development CSS web development CSS web development JavaScript web development React web development React web development responsive design web development responsive design database management developing competency database management developing competency database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management ERD database management ERD database management normalization database management normalization networking basic competency networking TCP/IP networking routing quality assurance quality assurance test cases test cases bug reporting bug reporting regression testing regression testing manual testing manual testing test documentation test documentation defect tracking defect tracking."
+      },
+      {
+        "id": 5,
+        "title": "Network Administrator Intern",
+        "text": "Network Administrator Intern at NetSecure Systems. Required skill percentages: Programming: 42 percent; Database: 34 percent; Networking: 96 percent; Web Development: 28 percent; Cybersecurity: 78 percent. Competency requirements: excellent networking competency (96 percent); category vocabulary: TCP/IP, routing, switching, subnetting, LAN, WAN, Cisco, firewall; proficient cybersecurity competency (78 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; basic programming competency (42 percent); category vocabulary: Python, Java; basic database management competency (34 percent); category vocabulary: SQL, PostgreSQL; basic web development competency (28 percent); category vocabulary: HTML, CSS. Role-specific vocabulary: network administration, routing, switching, subnetting, Cisco configuration, network monitoring, LAN troubleshooting. Requirement evidence: networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking excellent competency networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking routing networking routing networking routing networking routing networking routing networking routing networking switching networking switching networking switching networking switching networking switching networking switching networking subnetting networking subnetting networking subnetting networking subnetting networking subnetting networking subnetting networking LAN networking LAN networking LAN networking LAN networking LAN networking LAN networking WAN networking WAN networking WAN networking WAN networking WAN networking WAN networking Cisco networking Cisco networking Cisco networking Cisco networking Cisco networking Cisco networking firewall networking firewall networking firewall cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity proficient competency cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity firewall cybersecurity access control cybersecurity access control cybersecurity access control cybersecurity access control programming basic competency programming Python programming Java database management basic competency database management SQL database management PostgreSQL web development basic competency web development HTML web development CSS network administration network administration routing routing switching switching subnetting subnetting Cisco configuration Cisco configuration network monitoring network monitoring LAN troubleshooting LAN troubleshooting."
+      },
+      {
+        "id": 6,
+        "title": "IT Support Intern",
+        "text": "IT Support Intern at XYZ Technologies. Required skill percentages: Programming: 62 percent; Database: 58 percent; Networking: 84 percent; Web Development: 52 percent; Cybersecurity: 68 percent. Competency requirements: strong networking competency (84 percent); category vocabulary: TCP/IP, routing, switching, subnetting, LAN, WAN, Cisco, firewall; developing cybersecurity competency (68 percent); category vocabulary: authentication, encryption, OWASP, firewall, access control; developing programming competency (62 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms; basic database management competency (58 percent); category vocabulary: SQL, PostgreSQL; basic web development competency (52 percent); category vocabulary: HTML, CSS. Role-specific vocabulary: technical support, helpdesk, hardware troubleshooting, software installation, device setup, ticket handling, user assistance. Requirement evidence: networking strong competency networking strong competency networking strong competency networking strong competency networking strong competency networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking TCP/IP networking routing networking routing networking routing networking routing networking routing networking switching networking switching networking switching networking switching networking switching networking subnetting networking subnetting networking subnetting networking subnetting networking subnetting networking LAN networking LAN networking LAN networking LAN networking LAN networking WAN networking WAN networking WAN networking WAN networking WAN networking Cisco networking Cisco networking Cisco networking Cisco networking Cisco networking firewall networking firewall cybersecurity developing competency cybersecurity developing competency cybersecurity authentication cybersecurity authentication cybersecurity encryption cybersecurity encryption cybersecurity OWASP cybersecurity OWASP cybersecurity firewall cybersecurity access control cybersecurity access control programming developing competency programming developing competency programming Python programming Python programming Java programming Java programming JavaScript programming JavaScript programming OOP programming OOP programming algorithms programming algorithms database management basic competency database management SQL database management PostgreSQL web development basic competency web development HTML web development CSS technical support technical support helpdesk helpdesk hardware troubleshooting hardware troubleshooting software installation software installation device setup device setup ticket handling ticket handling user assistance user assistance."
+      }
+    ],
+    "note": "Raw generated inputs used in this run, before model preprocessing. Category tags describe category vocabulary, not separately verified subskills. Read-only; no question or answer text is queried."
+  }
+}

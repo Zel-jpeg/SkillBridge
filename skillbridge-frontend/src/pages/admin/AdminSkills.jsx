@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AdminNav from '../../components/admin/AdminNav'
+import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import SearchBar from '../../components/SearchBar'
 import EmptyState from '../../components/EmptyState'
@@ -111,7 +112,7 @@ function SkillModal({ skill, onClose, onSave, saving }) {
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Skill Tags</label>
               <button type="button" onClick={suggestTags} disabled={suggesting}
                 className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline disabled:opacity-50">
-                {suggesting ? 'Suggesting…' : 'Suggest Tags'}
+                {suggesting ? 'Suggesting…' : 'Suggest/Refresh Tags'}
               </button>
             </div>
             <textarea value={tags} onChange={e => setTags(e.target.value)} rows={3}
@@ -174,6 +175,7 @@ export default function AdminSkills() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+        <TaxonomyQuality />
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Skill Taxonomy</h1>

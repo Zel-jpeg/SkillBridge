@@ -20,6 +20,7 @@ import AdminNav        from '../../components/admin/AdminNav'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
+import NlpTextPreview from '../../components/NlpTextPreview'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN, singleton promise prevents duplicate injection
@@ -809,7 +810,7 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Position Tags</label>
               <button type="button" onClick={handleSuggestTags} disabled={suggesting}
                 className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline disabled:opacity-50">
-                {suggesting ? 'Suggesting…' : 'Suggest Tags'}
+                {suggesting ? 'Suggesting…' : 'Suggest/Refresh Tags'}
               </button>
             </div>
             <textarea value={tags} onChange={e => setTags(e.target.value)} rows={3}
@@ -1086,6 +1087,7 @@ export default function AdminCompanies() {
                           ))}
                         </div>
                       )}
+                      <NlpTextPreview key={pos.id} positionId={pos.id} />
                     </div>
                     {/* Edit + Delete buttons for position */}
                     <div className="flex items-center gap-1 shrink-0">

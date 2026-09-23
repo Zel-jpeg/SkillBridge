@@ -1,8 +1,14 @@
 from django.urls import path
+from .evaluation_views import admin_nlp_model_comparison
+from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
 from .sse import admin_events, instructor_events   # ← SSE views
 
 urlpatterns = [
+    path('admin/taxonomy-quality/', taxonomy_quality, name='taxonomy_quality'),
+    path('nlp/students/<int:student_id>/text/', student_nlp_text, name='student_nlp_text'),
+    path('nlp/positions/<int:position_id>/text/', position_nlp_text, name='position_nlp_text'),
+    path('admin/nlp-model-comparison/', admin_nlp_model_comparison, name='admin_nlp_model_comparison'),
     # ── Auth ─────────────────────────────────────────────────────────────────
     path('auth/login/',          views.login,           name='login'),
     path('auth/refresh/',        views.refresh,         name='refresh'),

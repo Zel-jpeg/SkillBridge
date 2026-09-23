@@ -10,6 +10,7 @@ import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import { getInitials }            from '../../utils/formatters'
 import Avatar                     from '../../components/Avatar'
+import NlpTextPreview from '../../components/NlpTextPreview'
 import api                        from '../../api/axios'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
@@ -595,6 +596,7 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{pos.title}</p>
+                            <NlpTextPreview key={pos.id} positionId={pos.id} />
                             <p className="text-xs text-gray-400">{pos.slots} slot{pos.slots !== 1 ? 's' : ''}</p>
                           </div>
                           <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full shrink-0 ${

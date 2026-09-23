@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import ScoreLabel from '../../components/ScoreLabel'
 import NavBar        from '../../components/NavBar'
 import Avatar        from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
@@ -581,11 +582,6 @@ export default function StudentResults() {
           <PlacementStatusCard placement={placement ?? apiStudent?.placement} audience="student" />
         </div>
 
-        {competencyProfile && (
-          <div className="mt-6">
-            <CompetencyInsights profile={competencyProfile} />
-          </div>
-        )}
 
         {/* ── TOP ROW: Map (left) + Skill Profile (right) side by side ── */}
         <div className="mt-6 mb-8 flex flex-col lg:flex-row gap-6 lg:items-start">
@@ -680,6 +676,12 @@ export default function StudentResults() {
           />
         )}
 
+        {competencyProfile && (
+          <div className="mb-8">
+            <CompetencyInsights profile={competencyProfile} />
+          </div>
+        )}
+
         {/* ── COMPANY MATCHES — full width below ── */}
         <div className="flex flex-col gap-5">
 
@@ -749,7 +751,7 @@ export default function StudentResults() {
           {sortMode === 'combined' && (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p className="text-xs text-blue-700 dark:text-blue-300">Hybrid score = 60% category alignment + 25% rich NLP similarity + 15% location</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Hybrid match = 60% Category fit + 25% NLP fit + 15% Location fit</p>
             </div>
           )}
 
@@ -858,7 +860,7 @@ export default function StudentResults() {
                     {sortMode === 'combined' ? (
                       <>
                         <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{r.combined}%</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">hybrid match</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500"><ScoreLabel label="Hybrid match" /></p>
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
                       <>
@@ -868,7 +870,7 @@ export default function StudentResults() {
                     ) : (
                       <>
                         <p className={`text-lg font-bold ${matchColor(r.match)}`}>{r.match}%</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">match</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500"><ScoreLabel label="Hybrid match" /></p>
                       </>
                     )}
                   </div>
@@ -910,9 +912,9 @@ export default function StudentResults() {
                 {/* Sub-scores if combined */}
                 {sortMode === 'combined' && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600 dark:text-green-400 font-medium">Category {Math.round(r.category_score_component ?? 0)}%</span>
-                    <span>· NLP {Math.round(r.nlp_score_component ?? 0)}%</span>
-                    <span>· Location {Math.round(r.location_score_component ?? 0)}%</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label="Category fit" /> {Math.round(r.category_score_component ?? 0)}%</span>
+                    <span>· <ScoreLabel label="NLP fit" /> {Math.round(r.nlp_score_component ?? 0)}%</span>
+                    <span>· <ScoreLabel label="Location fit" /> {Math.round(r.location_score_component ?? 0)}%</span>
                     {r.distKm != null && <span>· {r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km</span>}
                     <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
                   </div>

@@ -30,24 +30,13 @@ MODEL_OPTIONS = {
     },
 }
 
-DEFAULT_SKILL_TAGS = {
-    'programming': ['Python', 'Java', 'JavaScript', 'OOP', 'algorithms', 'debugging', 'Git', 'problem solving'],
-    'database': ['SQL', 'PostgreSQL', 'MySQL', 'ERD', 'normalization', 'indexing', 'database design', 'data integrity'],
-    'networking': ['TCP/IP', 'routing', 'switching', 'LAN', 'WAN', 'subnetting', 'firewall', 'network troubleshooting'],
-    'web development': ['HTML', 'CSS', 'JavaScript', 'React', 'responsive design', 'web API', 'browser testing', 'user interface'],
-    'cybersecurity': ['authentication', 'encryption', 'OWASP', 'network security', 'secure coding', 'access control', 'vulnerability assessment', 'security policy'],
-    'design': ['UI design', 'UX design', 'wireframing', 'prototyping', 'visual design', 'accessibility'],
-    'data analytics': ['data analysis', 'statistics', 'Python', 'SQL', 'visualization', 'reporting'],
-}
+from .skill_taxonomy import (
+    SKILL_TAGS as DEFAULT_SKILL_TAGS, ROLE_TAGS as POSITION_TAGS,
+    canonical_category, is_generic_tag, key as taxonomy_key,
+)
+from collections import Counter
 
-POSITION_TAGS = {
-    'backend developer': ['backend', 'server-side', 'REST API', 'Django', 'authentication', 'database integration', 'API endpoints'],
-    'frontend developer': ['frontend', 'React', 'JavaScript', 'responsive layout', 'CSS styling', 'UI development', 'browser compatibility'],
-    'database administrator': ['database administration', 'SQL queries', 'schema design', 'backup', 'indexing', 'data management'],
-    'qa tester': ['quality assurance', 'test cases', 'bug reporting', 'regression testing', 'manual testing', 'test documentation'],
-    'network administrator': ['network administration', 'routing', 'switching', 'subnetting', 'network monitoring', 'connectivity support'],
-    'it support': ['technical support', 'helpdesk', 'hardware troubleshooting', 'software installation', 'user assistance', 'ticket handling'],
-}
+TEXT_GENERATION_VERSION = 'neutral-evidence-v2'
 
 ORIENTATION_GROUPS = [
     ('Backend and data-oriented', {'programming', 'backend', 'database', 'sql', 'python', 'java', 'django', 'api'}),
@@ -85,44 +74,43 @@ def normalize_tags(value, limit=30):
 
 
 def suggest_skill_tags(name, description=''):
-    lowered = re.sub(r'\s+', ' ', str(name or '')).strip().casefold()
-    suggestions = []
-    for category, tags in DEFAULT_SKILL_TAGS.items():
-        if category in lowered or lowered in category:
-            suggestions.extend(tags)
-    if not suggestions:
-        words = re.findall(r"[A-Za-z][A-Za-z0-9+#.-]{2,}", f'{name} {description}')
-        suggestions.extend(word for word in words if word.casefold() not in STOP_WORDS)
-    return normalize_tags(suggestions, limit=12)
+    canonical = canonical_category(name)
+    if canonical in DEFAULT_SKILL_TAGS:
+        return list(DEFAULT_SKILL_TAGS[canonical])
+    # Unknown categories use description evidence, not fragments of the name.
+    phrases = re.split(r'[,;\n]+', str(description or ''))
+    return normalize_tags([phrase.strip() for phrase in phrases
+                           if 1 <= len(phrase.split()) <= 4 and
+                           not is_generic_tag(phrase, name)], limit=12)
 
 
 def suggest_position_tags(title, requirements=None):
-    lowered = str(title or '').casefold()
-    suggestions = []
-    for position_name, tags in POSITION_TAGS.items():
-        if position_name in lowered:
-            suggestions.extend(tags)
-
-    requirements = requirements or []
+    normalized = taxonomy_key(title)
+    normalized = normalized.replace('back end', 'backend').replace('front end', 'frontend')
+    normalized = normalized.replace('quality assurance', 'qa tester')
+    role_tags = []
+    for role, tags in POSITION_TAGS.items():
+        if taxonomy_key(role) in normalized:
+            role_tags.extend(tags)
+    if role_tags:
+        return normalize_tags(role_tags, limit=16)
+    # Unknown roles: a few tags from the strongest requirements, never all of
+    # every category. Admins review these suggestions before persisting them.
     if isinstance(requirements, dict):
-        requirements = [
-            {'name': name, 'percentage': pct, 'tags': []}
-            for name, pct in requirements.items()
-        ]
+        requirements = [{'name': name, 'percentage': value} for name, value in requirements.items()]
     def percentage(item):
         try:
             return float(item.get('percentage', item.get('required_percentage', 0)) or 0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    ranked = sorted(requirements, key=percentage, reverse=True)
-    for item in ranked:
-        suggestions.append(item.get('name') or item.get('category') or '')
-        suggestions.extend(item.get('tags') or [])
-
-    if not suggestions:
-        suggestions.extend(re.findall(r"[A-Za-z][A-Za-z0-9+#.-]{2,}", title or ''))
-    return normalize_tags(suggestions, limit=16)
+        except (ValueError, TypeError):
+            return 0
+    suggestions = []
+    for item in sorted(requirements or [], key=percentage, reverse=True)[:2]:
+        if percentage(item) <= 0:
+            continue
+        name = item.get('name') or item.get('category') or ''
+        tags = item.get('tags') or suggest_skill_tags(name)
+        suggestions.extend([t for t in normalize_tags(tags) if not is_generic_tag(t, name)][:4])
+    return normalize_tags(suggestions, limit=12)
 
 
 def competency_label(score):
@@ -149,22 +137,41 @@ def score_weight(score):
     return 1
 
 
-def _selected_tags(tags, score):
-    count = 6 if score >= 80 else 4 if score >= 60 else 3
-    return normalize_tags(tags)[:count]
+def _selected_tags(tags, score, category_name=''):
+    # Zero scores are not positive evidence. Retain more distinct terms in
+    # strong categories without inventing knowledge of unassessed subskills.
+    count = 8 if score >= 80 else 5 if score >= 60 else 2 if score > 0 else 0
+    return [tag for tag in normalize_tags(tags) if not is_generic_tag(tag, category_name)][:count]
+
+
+def _evidence_parts(entries):
+    """Symmetric category evidence for students and positions, no labels/roles.
+
+    Shared tags are repeated less within this profile/requirement set. TF-IDF
+    still supplies corpus-wide inverse-document frequency. Category tags are
+    illustrative category vocabulary, not claims of separately tested skills.
+    """
+    entries = sorted(entries, key=lambda pair: (-pair[1], canonical_category(pair[0].name)))
+    selected = [(category, score, _selected_tags(category.tags, score, category.name)) for category, score in entries]
+    frequency = Counter(taxonomy_key(tag) for _, _, tags in selected for tag in set(tags))
+    fragments, evidence = [], []
+    for category, score, tags in selected:
+        name = canonical_category(category.name)
+        band = competency_label(score)
+        fragments.append(f'{band} {name} competency ({score:g} percent); category vocabulary: {", ".join(tags) or "no specific tags"}')
+        if score <= 0:
+            continue
+        weight = score_weight(score)
+        # Same skill + band phrase on both sides makes strengths comparable;
+        # expected positions and archetype names are never inputs here.
+        evidence.extend([f'{name} {band} competency'] * weight)
+        for tag in tags:
+            evidence.extend([f'{name} {tag}'] * max(1, weight // frequency[taxonomy_key(tag)]))
+    return fragments, evidence
 
 
 def build_student_profile(skill_scores):
-    """Build a weighted natural-language profile from saved category scores."""
-    fragments = []
-    evidence = []
-    for skill_score in sorted(skill_scores, key=lambda score: score.percentage, reverse=True):
-        category = skill_score.skill_category
-        score = float(skill_score.percentage)
-        tags = _selected_tags(category.tags, score)
-        details = ', '.join(tags) if tags else category.name
-        fragments.append(f'{competency_label(score)} {category.name.lower()} competency demonstrated through {details}')
-        evidence.extend(([category.name] + tags) * score_weight(score))
+    fragments, evidence = _evidence_parts([(s.skill_category, float(s.percentage)) for s in skill_scores])
     if not fragments:
         return 'No assessed competency evidence is available.'
     return f"The student demonstrates {'; '.join(fragments)}. Skill evidence: {' '.join(evidence)}."
@@ -261,24 +268,19 @@ def generate_competency_insights(skill_scores):
 
 
 def build_position_description(position):
-    """Build a weighted description from requirements and optional saved tags."""
-    fragments = []
-    evidence = []
-    requirements = sorted(position.requirements.all(), key=lambda req: req.required_percentage, reverse=True)
-    for requirement in requirements:
-        category = requirement.skill_category
-        score = float(requirement.required_percentage)
-        tags = _selected_tags(category.tags, score)
-        details = ', '.join(tags) if tags else category.name
-        fragments.append(f'{competency_label(score)} {category.name.lower()} competency involving {details}')
-        evidence.extend(([category.name] + tags) * score_weight(score))
-    position_tags = normalize_tags(position.tags)
-    role_detail = ', '.join(position_tags[:8]) if position_tags else position.title
-    requirements_text = '; '.join(fragments) if fragments else 'general workplace competency'
+    """Current saved requirements/tags, generated on demand without writes."""
+    requirements = list(position.requirements.all())
+    fragments, evidence = _evidence_parts([(r.skill_category, float(r.required_percentage)) for r in requirements])
+    position_tags = [t for t in normalize_tags(position.tags) if not is_generic_tag(t)]
+    # Role-specific tags remain visible but cannot overwhelm assessed skill
+    # evidence with six repetitions of unassessed role vocabulary.
+    role_evidence = [tag for tag in position_tags[:12] for _ in range(2)]
     return (
-        f'{position.title} at {position.company.name} requires {requirements_text}. '
-        f'This role is associated with {role_detail}. Requirement evidence: '
-        f"{' '.join(evidence + position_tags * 6)}."
+        f'{position.title} at {position.company.name}. Required skill percentages: '
+        + '; '.join(f'{r.skill_category.name}: {float(r.required_percentage):g} percent' for r in requirements)
+        + f". Competency requirements: {'; '.join(fragments) or 'not specified'}. "
+        + f"Role-specific vocabulary: {', '.join(position_tags) or 'no saved role tags'}. "
+        + f"Requirement evidence: {' '.join(evidence + role_evidence)}."
     )
 
 
@@ -308,8 +310,12 @@ def _load_model(model_id):
     raise ValueError(f'Unsupported NLP model: {model_id}')
 
 
-def preprocess_texts(texts, model_id):
-    """Return processed text, actual model id, and an optional fallback reason."""
+def preprocess_texts(texts, model_id, *, allow_fallback=True):
+    """Return processed text, actual model id, and an optional fallback reason.
+
+    Evaluation passes allow_fallback=False so missing models cannot inherit
+    another model's metrics. Existing production callers retain fallback.
+    """
     try:
         model = _load_model(model_id)
         if model_id.startswith('spacy_'):
@@ -334,6 +340,8 @@ def preprocess_texts(texts, model_id):
             output.append(' '.join(tokens))
         return output, model_id, None
     except Exception as exc:
+        if not allow_fallback:
+            raise
         if model_id != 'spacy_sm':
             processed, actual_model, nested_reason = preprocess_texts(texts, 'spacy_sm')
             reason = f'{model_id} unavailable: {exc}'

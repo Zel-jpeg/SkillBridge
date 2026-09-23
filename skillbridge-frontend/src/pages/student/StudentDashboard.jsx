@@ -14,7 +14,6 @@ import { SkillTagBadge } from '../../components/SkillTagBadge'
 import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
-import CompetencyInsights from '../../components/CompetencyInsights'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 
 // Read the user object saved by the login response
@@ -231,7 +230,6 @@ export default function StudentDashboard() {
   const {
     skillScores,
     overallScore,
-    competencyProfile,
     topMatches,
     recommendations: allRecs,
     studentPin,
@@ -246,6 +244,10 @@ export default function StudentDashboard() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
+  // ── Placement data ─────────────────────────────────────────────
+  const placement = student?.placement
+  const isUnplaced = !placement || placement.status !== 'approved'
+
   // ── Bento tile base style ─────────────────────────────────────
   const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl'
 
@@ -259,29 +261,33 @@ export default function StudentDashboard() {
         Below that, sm uses col-span utilities; mobile stacks.
 
         Desktop layout:
-          "greeting  greeting  status "
-          "skills    matches   map    "
-          "skills    nearest   map    "
+          "greeting  greeting  status   "
+          "matches   skills    map      "
+          "nearest   skills    map      "
+          "placement placement placement"
 
         The map tile spans rows 2–3 on desktop, making it tall
         enough to show the Leaflet map without scrolling.
+        The placement tile spans the full bottom row when visible.
       */}
       <style>{`
         @media (min-width: 1024px) {
           .sb-bento {
             grid-template-columns: 1fr 1fr 1.6fr;
-            grid-template-rows: auto 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr auto;
             grid-template-areas:
-              "greeting greeting status "
-              "matches  skills   map    "
-              "nearest  skills   map    ";
+              "greeting  greeting  status   "
+              "matches   skills    map      "
+              "nearest   skills    map      "
+              "placement placement placement";
           }
-          .sb-greeting { grid-area: greeting; }
-          .sb-status   { grid-area: status;   }
-          .sb-skills   { grid-area: skills;   }
-          .sb-matches  { grid-area: matches;  }
-          .sb-map      { grid-area: map;      }
-          .sb-nearest  { grid-area: nearest;  }
+          .sb-greeting   { grid-area: greeting;   }
+          .sb-status     { grid-area: status;     }
+          .sb-skills     { grid-area: skills;     }
+          .sb-matches    { grid-area: matches;    }
+          .sb-map        { grid-area: map;        }
+          .sb-nearest    { grid-area: nearest;    }
+          .sb-placement  { grid-area: placement;  }
         }
       `}</style>
 
@@ -325,14 +331,6 @@ export default function StudentDashboard() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="mb-4">
-          <PlacementStatusCard placement={student?.placement} audience="student" />
-        </div>
-        {hasTakenAssessment && competencyProfile && (
-          <div className="mb-4">
-            <CompetencyInsights profile={competencyProfile} compact />
-          </div>
-        )}
         {/*
           HTML order optimised for mobile reading:
             greeting → status → matches → skills → map → nearest
@@ -715,6 +713,13 @@ export default function StudentDashboard() {
               </>
             )}
           </div>
+
+          {/* ── PLACEMENT STATUS ──────────────────────────────── */}
+          {isUnplaced && (
+            <div className="sb-placement sm:col-span-2">
+              <PlacementStatusCard placement={placement} audience="student" />
+            </div>
+          )}
 
         </div>
       </main>

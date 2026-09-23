@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import AdminNav from '../../components/admin/AdminNav'
 import InstructorNav from '../../components/instructor/InstructorNav'
 import Avatar from '../../components/Avatar'
+import ScoreLabel from '../../components/ScoreLabel'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
 import SearchBar from '../../components/SearchBar'
@@ -109,7 +110,7 @@ function ActionModal({ action, busy, onClose, onSubmit }) {
 function DetailModal({ detail, onClose }) {
   if (!detail) return null
   const { suggestion, company, position } = detail
-  const scores = [['Overall match', suggestion.match_score], ['Category fit', suggestion.category_score_component], ['NLP fit', suggestion.nlp_score_component], ['Location fit', suggestion.location_score_component]]
+  const scores = [['Hybrid match', suggestion.match_score], ['Category fit', suggestion.category_score_component], ['NLP fit', suggestion.nlp_score_component], ['Location fit', suggestion.location_score_component]]
   return (
     <ModalShell onClose={onClose} width="max-w-2xl">
       <div className="p-6">
@@ -121,7 +122,7 @@ function DetailModal({ detail, onClose }) {
           <div><p className="text-sm font-semibold text-gray-900 dark:text-white">{position.title}</p><p className="text-xs text-gray-500 dark:text-gray-400">{company.name}{addressText(company.address) ? ` · ${addressText(company.address)}` : ''}</p></div><StatusPill status={suggestion.placement_status} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-          {scores.map(([label, score]) => <div key={label} className="rounded-xl border border-gray-100 dark:border-gray-800 p-3 text-center"><p className={`text-xl font-bold ${matchColor(Number(score ?? 0))}`}>{score == null ? '—' : `${Math.round(Number(score))}%`}</p><p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{label}</p></div>)}
+          {scores.map(([label, score]) => <div key={label} className="rounded-xl border border-gray-100 dark:border-gray-800 p-3 text-center"><p className={`text-xl font-bold ${matchColor(Number(score ?? 0))}`}>{score == null ? '—' : `${Math.round(Number(score))}%`}</p><p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1"><ScoreLabel label={label} /></p></div>)}
         </div>
         <div className="grid sm:grid-cols-2 gap-3 mt-4 text-sm">
           <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-3"><p className="text-xs text-gray-400">Distance</p><p className="font-medium text-gray-900 dark:text-white mt-1">{suggestion.distance_km == null ? 'Not available' : `${Number(suggestion.distance_km).toFixed(1)} km`}</p></div>
@@ -190,10 +191,10 @@ function SuggestionRow({ suggestion, company, position, canManage, onAction, onV
         <Avatar name={suggestion.student.name} className="w-10 h-10 rounded-xl text-xs" />
         <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{suggestion.student.name}</p><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{suggestion.student.school_id || 'No school ID'} · {suggestion.student.course || 'No course'}</p><p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{suggestion.batch?.name || 'No batch'}</p></div>
       </div>
-      <div><p className={`text-lg font-bold ${matchColor(Number(suggestion.match_score ?? 0))}`}>{Math.round(Number(suggestion.match_score ?? 0))}%</p><p className="text-[10px] text-gray-400">match score</p></div>
+      <div><p className={`text-lg font-bold ${matchColor(Number(suggestion.match_score ?? 0))}`}>{Math.round(Number(suggestion.match_score ?? 0))}%</p><p className="text-[10px] text-gray-400"><ScoreLabel label="Hybrid match" /></p></div>
       <div className="space-y-1.5">
         <StatusPill status={suggestion.placement_status} />
-        <p className="text-[11px] text-gray-500 dark:text-gray-400">Category {Math.round(Number(suggestion.category_score_component ?? 0))}% · NLP {Math.round(Number(suggestion.nlp_score_component ?? 0))}% · Location {Math.round(Number(suggestion.location_score_component ?? 0))}%</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400"><ScoreLabel label="Category fit" /> {Math.round(Number(suggestion.category_score_component ?? 0))}% · <ScoreLabel label="NLP fit" /> {Math.round(Number(suggestion.nlp_score_component ?? 0))}% · <ScoreLabel label="Location fit" /> {Math.round(Number(suggestion.location_score_component ?? 0))}%</p>
         {suggestion.distance_km != null && <p className="text-[11px] text-gray-400 dark:text-gray-500">{Number(suggestion.distance_km).toFixed(1)} km away</p>}
         {placedElsewhere && suggestion.approved_placement && <p className="text-[11px] text-violet-600 dark:text-violet-400">{suggestion.approved_placement.position_title} at {suggestion.approved_placement.company_name}</p>}
       </div>

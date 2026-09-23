@@ -2,6 +2,7 @@
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
 
 import AdminNav from '../../components/admin/AdminNav'
+import NlpModelComparison from '../../components/admin/NlpModelComparison'
 import { useEffect, useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
@@ -91,7 +92,7 @@ function NlpConfigurationCard() {
     <SectionCard title="Recommendation NLP Model" subtitle="Students automatically use the active preprocessing model; the 60/25/15 weights stay fixed.">
       <div className="flex flex-col lg:flex-row lg:items-end gap-3">
         <div className="flex-1">
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Active model</label>
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Current active model: {config?.active_model_label || 'Loading…'}</label>
           <select value={selected} onChange={e => setSelected(e.target.value)}
             className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
             {(config?.models || []).map(model => (
@@ -99,7 +100,7 @@ function NlpConfigurationCard() {
             ))}
           </select>
         </div>
-        <button onClick={saveModel} disabled={busy || selected === config?.active_model}
+        <button onClick={saveModel} disabled={busy || !config || selected === config?.active_model}
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 text-white disabled:opacity-50">Save Model</button>
         <button onClick={rerun} disabled={busy}
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white disabled:opacity-50">Re-run Recommendations</button>
@@ -163,6 +164,7 @@ export default function AdminReports() {
         </div>
 
         <NlpConfigurationCard />
+        <NlpModelComparison />
 
         {/* ── OJT placement analytics ── */}
         <div>
