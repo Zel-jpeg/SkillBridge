@@ -211,7 +211,11 @@ export default function EnrolledStudents() {
             { label: 'Total enrolled', value: students.length, sub: 'all courses',      green: false },
             { label: 'BSIT',           value: bsit.length,    sub: 'students',         green: false },
             { label: 'BSIS',           value: bsis.length,    sub: 'students',         green: false },
-            { label: 'Completion',     value: `${Math.round((completed.length / (students.length || 1)) * 100)}%`, sub: `${completed.length} of ${students.length} done`, green: true },
+            { label: 'Required completion', value: `${Math.round((completed.length / (students.length || 1)) * 100)}%`, sub: `${completed.length} of ${students.length} students`, green: true },
+            { label: 'Required assessments', value: students[0]?.totalRequiredCount ?? 0, sub: 'published, competency included', green: false },
+            { label: 'Stopped / flagged', value: students.filter(s => s.status === 'stopped').length, sub: 'integrity review', green: false },
+            { label: 'Retakes approved', value: students.filter(s => s.assessmentResults.some(a => a.retake_allowed)).length, sub: 'students', green: false },
+            { label: 'Recommendations unlocked', value: students.filter(s => !s.recommendationsLocked).length, sub: 'final profiles ready', green: true },
           ].map(c => (
             <div key={c.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{c.label}</p>
@@ -234,8 +238,8 @@ export default function EnrolledStudents() {
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${course===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
           </div>
-          <div className="flex items-center gap-1.5">
-            {[{v:'all',l:'All'},{v:'completed',l:'Done'},{v:'pending',l:'Pending'}].map(f => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[{v:'all',l:'All'},{v:'completed',l:'Complete'},{v:'pending',l:'In progress'},{v:'stopped',l:'Stopped / flagged'},{v:'retake',l:'Retake approved'},{v:'unlocked',l:'Recommendations unlocked'},{v:'unplaced',l:'Unplaced'},{v:'placed',l:'Placed'}].map(f => (
               <button key={f.v} onClick={() => { setStatus(f.v); setPage(1) }}
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${status===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
@@ -278,6 +282,7 @@ export default function EnrolledStudents() {
                       </div>
                     </div>
                     <PlacementStatusCard placement={s.placement} audience="instructor" compact />
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">{s.completedRequiredCount} of {s.totalRequiredCount} required · {s.remainingRequiredCount} remaining · {s.recommendationsLocked ? 'Recommendations locked' : 'Recommendations unlocked'}</p>
                     {s.status === 'completed' ? (
                       <div className="flex flex-col gap-3">
                         {/* Overall bar */}
@@ -330,6 +335,7 @@ export default function EnrolledStudents() {
                   <thead><tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Student</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Required progress</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Placement</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
                     <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
@@ -345,6 +351,7 @@ export default function EnrolledStudents() {
                           <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                         </div></td>
                         <td className="px-3 py-4"><StatusBadge status={s.status} /></td>
+                        <td className="px-3 py-4 text-xs text-gray-600 dark:text-gray-300">{s.completedRequiredCount}/{s.totalRequiredCount}<br />{s.recommendationsLocked ? 'Recommendations locked' : 'Unlocked'}</td>
                         <td className="px-3 py-4 min-w-36"><PlacementStatusCard placement={s.placement} audience="instructor" compact /></td>
                         <td className="px-3 py-4 max-w-xs">
                           {s.status === 'completed' ? (

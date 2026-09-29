@@ -10,6 +10,8 @@
 import { useState }     from 'react'
 import { useNavigate }  from 'react-router-dom'
 import InstructorNav    from '../../components/instructor/InstructorNav'
+import AssessmentSettings from '../../components/instructor/AssessmentSettings'
+import ConfirmModal from '../../components/admin/ConfirmModal'
 import {
   useInstructorUpload,
   formatDraftAge,
@@ -92,6 +94,7 @@ function UploadErrors({ errors }) {
 // ════════════════════════════════════════════════════════════════
 export default function InstructorUpload() {
   const navigate = useNavigate()
+  const [confirmPublish, setConfirmPublish] = useState(false)
 
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
   const instructor = {
@@ -105,6 +108,9 @@ export default function InstructorUpload() {
     batches, loadingBatches, selectedBatchId, setSelectedBatchId,
     // Metadata
     title, setTitle, duration, setDuration,
+    publicationStatus, setPublicationStatus, isRequired, setIsRequired,
+    includeInCompetency, setIncludeInCompetency, displayOrder, setDisplayOrder,
+    availableAt, setAvailableAt, dueAt, setDueAt,
     // Categories
     categories, catInput, setCatInput, catRef,
     addCategory, removeCategory,
@@ -144,9 +150,9 @@ export default function InstructorUpload() {
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Assessment published!</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Assessment {publicationStatus === 'published' ? 'published' : 'saved as a draft'}!</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Your assessment is now active{selectedBatchId ? ' for the selected batch' : ''}.
+              {publicationStatus === 'published' ? 'Students in the selected batch can see it when available.' : 'The draft is visible to instructors and admins only.'}
               {publishedId && <span className="text-xs text-gray-400 dark:text-gray-600 ml-1">(ID: {publishedId})</span>}
             </p>
           </div>
@@ -256,7 +262,7 @@ export default function InstructorUpload() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Assign to batch
-                <span className="text-gray-400 dark:text-gray-600 font-normal ml-1.5">(optional)</span>
+                <span className="text-gray-400 dark:text-gray-600 font-normal ml-1.5">(required to publish)</span>
               </label>
               {loadingBatches ? (
                 <div className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-400 animate-pulse">
@@ -285,11 +291,18 @@ export default function InstructorUpload() {
               )}
               {selectedBatchId && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 flex items-center gap-1">
-                  <CheckIcon /> Students in this batch will see the assessment
+                  <CheckIcon /> Students will see this assessment when published and available
                 </p>
               )}
+              {errors.batch_id && <p className="text-xs text-red-600 mt-1">{errors.batch_id}</p>}
             </div>
           </div>
+          <AssessmentSettings value={{ publication_status: publicationStatus, is_required: isRequired,
+            include_in_competency: includeInCompetency, display_order: displayOrder,
+            available_at: availableAt, due_at: dueAt }}
+            onChange={next => { setPublicationStatus(next.publication_status); setIsRequired(next.is_required)
+              setIncludeInCompetency(next.include_in_competency); setDisplayOrder(next.display_order)
+              setAvailableAt(next.available_at); setDueAt(next.due_at) }} errors={errors} />
         </div>
 
         {/* ── SECTION 2: Skill Categories ── */}
@@ -650,7 +663,7 @@ export default function InstructorUpload() {
           )}
 
           <button
-            onClick={handlePublish}
+            onClick={() => publicationStatus === 'published' ? setConfirmPublish(true) : handlePublish()}
             disabled={publishing}
             className="w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
             {publishing ? (
@@ -658,11 +671,18 @@ export default function InstructorUpload() {
                 <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/>
                 </svg>
-                Publishing…
+                Saving…
               </>
-            ) : 'Publish assessment'}
+            ) : publicationStatus === 'published' ? 'Publish assessment' : 'Save draft'}
           </button>
         </div>
+
+        {confirmPublish && <ConfirmModal tone="confirm" title="Publish assessment?"
+          message={isRequired && includeInCompetency
+            ? 'This assigns a required assessment. Students with final recommendations may become incomplete until they submit it. Existing attempts remain intact.'
+            : 'Students in the selected batch will see this assessment when it becomes available. Existing attempts remain intact.'}
+          confirmLabel="Publish" onConfirm={() => { setConfirmPublish(false); handlePublish() }}
+          onCancel={() => setConfirmPublish(false)} />}
 
         <div className="h-4" />
       </main>

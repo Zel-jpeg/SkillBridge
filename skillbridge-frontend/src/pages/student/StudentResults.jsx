@@ -1,9 +1,7 @@
 // src/pages/student/StudentResults.jsx
 //
-// Shows skill profile + answer review + company matches.
-// Data sources (in priority order):
-//   1. location.state from StudentAssessment submit (zero delay, already in memory)
-//   2. GET /api/student/results/ via useStudentResults hook (cached, fast)
+// Final combined skill profile and company matches.
+// GET /api/student/results/combined/ is the source of final scores and lock state.
 //
 // If student has pinned their location (sb_pin_location in localStorage):
 //   - Map shows student pin (blue) + company pins (green)
@@ -11,10 +9,9 @@
 //   - Sort modes: Best Match | Nearest | Combined
 
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
 import NavBar        from '../../components/NavBar'
-import Avatar        from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
@@ -181,346 +178,29 @@ function distBadgeColor(km) {
   return 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
 }
 
-const ChevronDown = ({ open }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-    className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-    <path d="M6 9l6 6 6-6"/>
-  </svg>
-)
-
-// ════════════════════════════════════════════════════════════════
-// AnswerReview — collapsible accordion with pagination + filters.
-// Scales to 100+ questions: 10 per page, category filter, result filter.
-// Persisted via localStorage so student can return after navigating away.
-// ════════════════════════════════════════════════════════════════
-const REVIEW_PAGE_SIZE = 10
-
-function AnswerReview({ questions, answers }) {
-  const [open,         setOpen]         = useState(false)
-  const [page,         setPage]         = useState(1)
-  const [catFilter,    setCatFilter]    = useState('all')
-  const [resultFilter, setResultFilter] = useState('all') // 'all' | 'wrong' | 'skipped'
-
-  // Compute result per question.
-  // questions come enriched with is_correct on choices (MCQ/TF) or correct_text (identification)
-  const results = questions.map(q => {
-    const ansObj     = answers[q.id] ?? answers[String(q.id)] ?? null
-    const isIdent    = q.question_type === 'identification'
-    const selectedId = ansObj?.selected_choice_id ?? null
-    const textAnswer = (ansObj?.text_answer ?? '').trim()
-    const chosen     = isIdent ? (textAnswer || null) : selectedId
-
-    const correctChoice = (q.choices || []).find(c => c.is_correct)
-    const correctText   = isIdent
-      ? (q.correct_text ?? '')
-      : (correctChoice?.text ?? correctChoice?.choice_text ?? '')
-
-    let isCorrect  = false
-    let chosenText = null
-
-    if (isIdent) {
-      chosenText = textAnswer || null
-      isCorrect  = chosen != null && correctText.trim() !== ''
-        && correctText.trim().toLowerCase() === chosen.toLowerCase()
-    } else {
-      chosenText = (q.choices || []).find(c => c.id === selectedId)?.text
-        ?? (q.choices || []).find(c => c.id === selectedId)?.choice_text
-        ?? null
-      isCorrect = selectedId != null && !!(q.choices || []).find(c => c.id === selectedId && c.is_correct)
-    }
-
-    return {
-      ...q,
-      skill_category: q.category || q.skill_category || 'General',
-      chosen,
-      isCorrect,
-      chosenText,
-      correctText,
-      isIdent,
-    }
-  })
-
-  const totalCorrect = results.filter(r => r.isCorrect).length
-  const wrongCount   = results.filter(r => r.chosen != null && !r.isCorrect).length
-  const skippedCount = results.filter(r => r.chosen == null).length
-  const totalItems   = results.length
-  const pct          = Math.round((totalCorrect / totalItems) * 100)
-
-  const scoreColor = pct >= 80 ? 'text-green-600 dark:text-green-400'
-                   : pct >= 60 ? 'text-amber-600 dark:text-amber-400'
-                   : 'text-rose-600 dark:text-rose-400'
-  const scoreBg    = pct >= 80 ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900'
-                   : pct >= 60 ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-900'
-                   : 'bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-900'
-
-  const categories = [...new Set(results.map(r => r.skill_category || 'General'))]
-
-  // Apply filters
-  const filtered = results.filter(r => {
-    if (catFilter !== 'all' && r.skill_category !== catFilter) return false
-    if (resultFilter === 'wrong')   return r.chosen != null && !r.isCorrect
-    if (resultFilter === 'skipped') return r.chosen == null
-    return true
-  })
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / REVIEW_PAGE_SIZE))
-  const safePage   = Math.min(page, totalPages)
-  const pageItems  = filtered.slice((safePage - 1) * REVIEW_PAGE_SIZE, safePage * REVIEW_PAGE_SIZE)
-
-  // Reset page when filters change (handle carefully to avoid cascading renders)
-  useEffect(() => {
-    // Only set page if we aren't already on page 1, to prevent infinite loops
-    setPage(p => p !== 1 ? 1 : p)
-  }, [catFilter, resultFilter])
-
-  // Reset everything when accordion closes
-  useEffect(() => {
-    if (!open) {
-      setPage(p => p !== 1 ? 1 : p)
-      setCatFilter(c => c !== 'all' ? 'all' : c)
-      setResultFilter(r => r !== 'all' ? 'all' : r)
-    }
-  }, [open])
-
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden mb-8">
-
-      {/* ── Accordion header ── */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors text-left"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center shrink-0">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600 dark:text-gray-300">
-              <path d="M9 11l3 3L22 4"/>
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Answer Review</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              {open
-                ? `Showing ${filtered.length} of ${totalItems} question${totalItems !== 1 ? 's' : ''}`
-                : 'Tap to review your answers'}
-            </p>
-          </div>
-        </div>
-
-        {/* Score pill + chevron */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold ${scoreBg} ${scoreColor}`}>
-            <span>{totalCorrect}/{totalItems} correct</span>
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-            <span>{pct}%</span>
-          </div>
-          <ChevronDown open={open} />
-        </div>
-      </button>
-
-      {/* ── Accordion body ── */}
-      {open && (
-        <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex flex-col gap-4">
-
-          {/* Overall score banner */}
-          <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border ${scoreBg}`}>
-            <div>
-              <p className={`text-lg font-bold ${scoreColor}`}>{pct}%</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {totalCorrect} correct · {wrongCount} wrong · {skippedCount} skipped · {totalItems} total
-              </p>
-            </div>
-            <div className="flex-1 max-w-140px h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-700 ease-out
-                ${pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-
-          {/* ── Filters row ── */}
-          <div className="flex flex-col sm:flex-row gap-2">
-
-            {/* Category dropdown */}
-            <select
-              value={catFilter}
-              onChange={e => setCatFilter(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-green-500 transition-colors cursor-pointer"
-            >
-              <option value="all">All categories ({totalItems})</option>
-              {categories.map(cat => {
-                const count = results.filter(r => r.skill_category === cat).length
-                return <option key={cat} value={cat}>{cat} ({count})</option>
-              })}
-            </select>
-
-            {/* Result filter toggle */}
-            <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl shrink-0">
-              {[
-                { key: 'all',     label: 'All' },
-                { key: 'wrong',   label: `Wrong (${wrongCount})` },
-                { key: 'skipped', label: `Skipped (${skippedCount})` },
-              ].map(({ key, label }) => (
-                <button key={key}
-                  onClick={() => setResultFilter(key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap
-                    ${resultFilter === key
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Empty state ── */}
-          {pageItems.length === 0 && (
-            <div className="py-10 text-center">
-              <p className="text-2xl mb-2">
-                {resultFilter === 'wrong' ? '🎉' : resultFilter === 'skipped' ? '✅' : '🔍'}
-              </p>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {resultFilter === 'wrong'   ? 'No wrong answers here!' :
-                 resultFilter === 'skipped' ? 'No skipped questions!' :
-                 'No questions match this filter.'}
-              </p>
-            </div>
-          )}
-
-          {/* ── Question list (paginated) ── */}
-          {pageItems.length > 0 && (
-            <div className="flex flex-col gap-2.5">
-              {pageItems.map(r => {
-                const qNum = results.indexOf(r) + 1
-                return (
-                  <div key={r.id}
-                    className={`rounded-xl border px-4 py-3.5
-                      ${r.chosen == null
-                        ? 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700'
-                        : r.isCorrect
-                          ? 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-900'
-                          : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900'
-                      }`}>
-
-                    {/* Q number + category badge */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">Q{qNum}</span>
-                      <span className="text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-                        {r.skill_category}
-                      </span>
-                    </div>
-
-                    {/* Question text + status icon */}
-                    <div className="flex items-start gap-2.5">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5
-                        ${r.chosen == null ? 'bg-gray-200 dark:bg-gray-700'
-                          : r.isCorrect    ? 'bg-green-500'
-                          :                  'bg-rose-500'}`}>
-                        {r.chosen == null ? (
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M12 8v4M12 16h.01"/></svg>
-                        ) : r.isCorrect ? (
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7"/></svg>
-                        ) : (
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug flex-1">{r.question_text ?? r.text}</p>
-                    </div>
-
-                    {/* Answer rows */}
-                    <div className="mt-2.5 pl-7 flex flex-col gap-1.5">
-                      {r.chosen == null ? (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 italic">Not answered</p>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Your answer:</span>
-                          <span className={`text-xs font-medium
-                            ${r.isCorrect ? 'text-green-700 dark:text-green-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                            {r.chosenText}
-                          </span>
-                        </div>
-                      )}
-                      {r.chosen != null && !r.isCorrect && r.correctText && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Correct:</span>
-                          <span className="text-xs font-semibold text-green-700 dark:text-green-400">{r.correctText}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* ── Pagination ── */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-1">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-                Prev
-              </button>
-
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                Page {safePage} of {totalPages} · {filtered.length} item{filtered.length !== 1 ? 's' : ''}
-              </span>
-
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
-              >
-                Next
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-              </button>
-            </div>
-          )}
-
-          {/* Footer note */}
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center pt-1">
-            Your skill profile and company matches above are based on these scores.
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════
 export default function StudentResults() {
   const navigate = useNavigate()
-  const location = useLocation()
-
-  // ── Results hook — seeded from router state (zero-delay after submit) ──
-  // reviewData now comes from the hook which fetches /api/student/results/review/
-  const routerState = location.state ?? null
+  // Final results always come from the current batch-scoped API.
   const {
     skillScores,
-    overallScore,
     competencyProfile,
     placement,
     recommendations: sorted,
-    reviewData,
-    reviewLoading,
     loading: resultsLoading,
+    error: resultsError,
+    resultData,
+    recommendationsLocked,
     sortMode,
     setSortMode,
     hasPin,
     studentPin,
-  } = useStudentResults(routerState)
+  } = useStudentResults()
 
   // ── All companies tab ───────────────────────────────────────────
   const [companyTab, setCompanyTab] = useState('recommended') // 'recommended' | 'all'
-  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/')
+  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked, fresh: true })
   const allCompanies = allCompaniesRaw ?? []
 
   // Animated skill bars
@@ -532,7 +212,6 @@ export default function StudentResults() {
   const displayName   = apiStudent?.name      ?? 'Student'
   const displayId     = apiStudent?.school_id ?? ''
   const displayCourse = apiStudent?.course    ?? ''
-  const retakeAllowed = apiStudent?.retake_allowed ?? false
   const navStudent    = {
     name:      displayName,
     initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
@@ -542,6 +221,29 @@ export default function StudentResults() {
   }
 
 
+
+  if (resultsLoading || !resultData || resultsError || recommendationsLocked) return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <NavBar student={navStudent} />
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400">← Skills Assessments</button>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 sm:p-8">
+          {resultsLoading || (!resultData && !resultsError) ? <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading your final skill profile…</p>
+            : resultsError ? <><h1 className="text-xl font-bold text-gray-900 dark:text-white">Final results unavailable</h1><p role="alert" className="mt-2 text-sm text-gray-600 dark:text-gray-300">{resultsError === 'not_enrolled' ? 'You are not enrolled in an active batch.' : 'We could not load your results. Please try again.'}</p></>
+            : <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Final results</p>
+                <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Final Skill Profile Locked</h1>
+                <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{resultData?.has_required_assessments
+                  ? `Complete your remaining ${resultData.remaining_required_count} required assessment${resultData.remaining_required_count === 1 ? '' : 's'} to generate your combined competency profile and OJT placement recommendations.`
+                  : 'No required assessments are currently published. Your final skill profile will be available after required work is assigned and completed.'}</p>
+                <p className="mt-4 text-sm font-semibold text-gray-800 dark:text-gray-200">{resultData?.completed_required_count || 0} of {resultData?.total_required_count || 0} required assessments completed</p>
+                <div role="progressbar" aria-label="Required assessment completion" aria-valuemin={0} aria-valuemax={resultData?.total_required_count || 1} aria-valuenow={resultData?.completed_required_count || 0} className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div className="h-full bg-green-600" style={{ width: `${resultData?.total_required_count ? (resultData.completed_required_count / resultData.total_required_count * 100) : 0}%` }} /></div>
+              </>}
+          <button onClick={() => navigate('/student/assessments')} className="mt-6 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2">View Assessments</button>
+        </div>
+      </main>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-12">
@@ -561,20 +263,15 @@ export default function StudentResults() {
         {/* Header with Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-5">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Your results</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Final Skill Profile</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Based on your assessment · {displayCourse} · {displayId}
+              Combined from {resultData?.included_assessments?.map(item => item.title).join(', ') || 'your completed assessments'} · {displayCourse} · {displayId}
             </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generated {resultData?.generated_at ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(resultData.generated_at)) : 'recently'} · Model: {resultData?.model_used || resultData?.active_model || 'configured model'}</p>
           </div>
           <div className="flex items-center gap-2">
 
-            {/* Retake button — visible when instructor enables retake_allowed */}
-            {retakeAllowed && (
-              <button onClick={() => navigate('/student/assessment')} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors shadow-sm">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                Retake Assessment
-              </button>
-            )}
+            <button onClick={() => navigate('/student/assessments')} className="rounded-xl bg-blue-100 px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300">Assessments</button>
           </div>
         </div>
 
@@ -667,14 +364,6 @@ export default function StudentResults() {
             )}
           </div>
         </div>
-
-        {/* ── ANSWER REVIEW — shown after assessment; persists via localStorage so student can return ── */}
-        {reviewData && (
-          <AnswerReview
-            questions={reviewData.questions}
-            answers={reviewData.answers}
-          />
-        )}
 
         {competencyProfile && (
           <div className="mb-8">
@@ -827,8 +516,8 @@ export default function StudentResults() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {sorted.length === 0 && !resultsLoading && (
               <div className="col-span-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No recommendations yet</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Switch to "All Companies" to browse partner companies, or check back after your coordinator adds companies.</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No eligible company positions are currently available.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You can still browse partner companies.</p>
                 <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all companies →</button>
               </div>
             )}

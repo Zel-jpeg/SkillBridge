@@ -282,18 +282,10 @@ def generate_recommendations(student, assessment, categories):
     Location uses an 80 km linear decay; missing coordinates receive a neutral
     50% location score so unavailable data does not crash or dominate ranking.
     """
-    from sklearn.feature_extraction.text import TfidfVectorizer
-
     from .models import (
-        Position, Recommendation, RecommendationConfiguration, SkillScore,
-        StudentCompetencyProfile,
+        SkillScore, StudentCompetencyProfile,
     )
-    from .recommendation_nlp import (
-        build_position_description,
-        generate_competency_insights,
-        location_similarity,
-        preprocess_texts,
-    )
+    from .recommendation_nlp import generate_competency_insights
 
     categories = list(categories)
     skill_scores = list(
@@ -306,9 +298,41 @@ def generate_recommendations(student, assessment, categories):
         assessment=assessment,
         defaults=insights,
     )
+    return _rank_recommendations(student, skill_scores, categories, insights, batch=None)
 
-    student_vec = build_skill_vector(student, assessment, categories)
+
+def update_assessment_profile(student, assessment):
+    """Keep the existing assessment-level narrative independent of final scoring."""
+    from .models import SkillScore, StudentCompetencyProfile
+    from .recommendation_nlp import generate_competency_insights
+
+    scores = list(SkillScore.objects.filter(
+        student=student, assessment=assessment,
+    ).select_related('skill_category'))
+    profile, _ = StudentCompetencyProfile.objects.update_or_create(
+        student=student, assessment=assessment,
+        defaults=generate_competency_insights(scores),
+    )
+    return profile
+
+
+def generate_combined_recommendations(student, batch, combined_scores, profile, categories):
+    """Use persisted weighted category totals and combined text for one batch."""
+    insights = {'competency_profile_text': profile.competency_profile_text}
+    return _rank_recommendations(student, combined_scores, categories, insights, batch=batch)
+
+
+def _rank_recommendations(student, skill_scores, categories, insights, batch):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from .models import Position, Recommendation, RecommendationConfiguration
+    from .recommendation_nlp import build_position_description, location_similarity, preprocess_texts
+
+    categories = list(categories)
+    score_lookup = {score.skill_category_id: score.percentage for score in skill_scores}
+    student_vec = np.array([score_lookup.get(category.id, 0.0) / 100.0 for category in categories], dtype=float)
+
     if student_vec.sum() == 0:
+        Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
         return []
 
     positions = list(
@@ -318,7 +342,7 @@ def generate_recommendations(student, assessment, categories):
     )
     positions = [position for position in positions if position.requirements.all()]
     if not positions:
-        Recommendation.objects.filter(student=student).delete()
+        Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
         return []
 
     profile_text = insights['competency_profile_text']
@@ -337,8 +361,8 @@ def generate_recommendations(student, assessment, categories):
         # Empty vocabulary is possible when all text is stop words.
         nlp_scores = np.zeros(len(positions), dtype=float)
 
+    Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
     results = []
-    scored_position_ids = []
     for index, position in enumerate(positions):
         reqs = {
             requirement.skill_category_id: requirement.required_percentage / 100.0
@@ -360,6 +384,7 @@ def generate_recommendations(student, assessment, categories):
         final_score = 0.60 * category_score + 0.25 * nlp_score + 0.15 * location_score
 
         component_values = {
+            'is_current': True,
             'match_score': round(final_score * 100, 2),
             'category_score_component': round(category_score * 100, 2),
             'nlp_score_component': round(nlp_score * 100, 2),
@@ -370,10 +395,10 @@ def generate_recommendations(student, assessment, categories):
         }
         Recommendation.objects.update_or_create(
             student=student,
+            batch=batch,
             position=position,
             defaults=component_values,
         )
-        scored_position_ids.append(position.id)
         results.append({
             'position_id': position.id,
             'position_title': position.title,
@@ -397,7 +422,6 @@ def generate_recommendations(student, assessment, categories):
             )),
         })
 
-    Recommendation.objects.filter(student=student).exclude(position_id__in=scored_position_ids).delete()
     results.sort(key=lambda item: item['match_score'], reverse=True)
     return results
 

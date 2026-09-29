@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import PrivateRoute from './router/PrivateRoute'
 
 // Auth
@@ -9,6 +9,8 @@ import AdminLogin from './pages/auth/AdminLogin'
 import StudentSetup from './pages/student/StudentSetup'
 import StudentDashboard from './pages/student/StudentDashboard'
 import StudentAssessment from './pages/student/StudentAssessment'
+import StudentAssessments from './pages/student/StudentAssessments'
+import StudentAssessmentResult from './pages/student/StudentAssessmentResult'
 import StudentResults from './pages/student/StudentResults'
 import StudentProfile from './pages/student/StudentProfile'
 
@@ -29,6 +31,16 @@ import AdminSkills from './pages/admin/AdminSkills'
 import AdminAssessments from './pages/admin/AdminAssessments'
 import AdminReports from './pages/admin/AdminReports'
 import AdminPlacements from './pages/admin/AdminPlacements'
+
+function AssessmentTakeRoute() {
+  const { assessmentId } = useParams()
+  return <StudentAssessment key={assessmentId} />
+}
+
+function AssessmentResultRoute() {
+  const { assessmentId } = useParams()
+  return <StudentAssessmentResult key={assessmentId} />
+}
 
 function App() {
   return (
@@ -57,7 +69,16 @@ function App() {
         <PrivateRoute role="student"><StudentDashboard /></PrivateRoute>
       } />
       <Route path="/student/assessment" element={
-        <PrivateRoute role="student"><StudentAssessment /></PrivateRoute>
+        <PrivateRoute role="student"><Navigate to="/student/assessments" replace /></PrivateRoute>
+      } />
+      <Route path="/student/assessments" element={
+        <PrivateRoute role="student"><StudentAssessments /></PrivateRoute>
+      } />
+      <Route path="/student/assessments/:assessmentId/take" element={
+        <PrivateRoute role="student"><AssessmentTakeRoute /></PrivateRoute>
+      } />
+      <Route path="/student/assessments/:assessmentId/results" element={
+        <PrivateRoute role="student"><AssessmentResultRoute /></PrivateRoute>
       } />
       <Route path="/student/results" element={
         <PrivateRoute role="student"><StudentResults /></PrivateRoute>

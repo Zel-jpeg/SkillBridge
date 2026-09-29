@@ -75,6 +75,8 @@ export default function NavBar({ student }) {
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen(prev => !prev)}
+          aria-label="Open profile menu"
+          aria-expanded={open}
           className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 hover:ring-2 hover:ring-green-400 transition-all overflow-hidden"
         >
           {student?.photoUrl
@@ -127,6 +129,8 @@ export default function NavBar({ student }) {
               </div>
               <button
                 onClick={() => setDark(prev => !prev)}
+                aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-pressed={dark}
                 className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${dark ? 'bg-green-600' : 'bg-gray-200'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${dark ? 'translate-x-4' : 'translate-x-0'}`}/>

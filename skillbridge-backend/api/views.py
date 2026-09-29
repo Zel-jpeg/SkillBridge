@@ -12,18 +12,29 @@ from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Sum, Max, Q
+from django.db.models import Count, Sum, Max, Q, F
 from django.db.models.deletion import ProtectedError
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
+from django.http import HttpResponse
+from zoneinfo import ZoneInfo
+from .csv_safety import SafeCSVWriter
+from .request_validation import parse_boolean, parse_choice_flags
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
-    StudentResponse, ResponseAnswer, SkillScore, StudentCompetencyProfile,
+    StudentResponse, ResponseAnswer, SkillScore, AssessmentAttemptHistory,
+    StudentCompetencyProfile,
+    CombinedCategoryScore, CombinedCompetencyProfile,
     Company, Position, PositionRequirement, Recommendation, OJTPlacement,
     RecommendationConfiguration,
 )
 from .serializers import UserSerializer
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
+from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
+from .combined_competency import (
+    combined_is_unlocked, ensure_combined, recalculate_combined,
+    recalculate_enrolled_students, serialize_combined_scores,
+)
 from .recommendation_nlp import (
     MODEL_OPTIONS, model_status, normalize_tags, suggest_position_tags, suggest_skill_tags,
 )
@@ -36,11 +47,13 @@ INTEGRITY_REASON_DISPLAYS = {
     'restricted_shortcut': 'A restricted keyboard shortcut was used.',
     'page_closed': 'The assessment page was refreshed, closed, or left.',
 }
+PROJECT_TIMEZONE = ZoneInfo('Asia/Manila')
 
 
 def serialize_attempt_integrity(response_obj):
     if response_obj is None:
         return {
+            'assessment_id': None,
             'attempt_status': None,
             'is_flagged': False,
             'stopped_reason': '',
@@ -50,6 +63,7 @@ def serialize_attempt_integrity(response_obj):
             'retake_allowed': False,
         }
     return {
+        'assessment_id': response_obj.assessment_id,
         'attempt_status': response_obj.status,
         'is_flagged': response_obj.is_flagged,
         'stopped_reason': response_obj.stopped_reason,
@@ -58,6 +72,57 @@ def serialize_attempt_integrity(response_obj):
         'violation_count': response_obj.violation_count,
         'retake_allowed': response_obj.retake_allowed,
     }
+
+
+def _parse_assessment_datetime(value):
+    if not value:
+        return None
+    if not isinstance(value, str):
+        raise ValueError('Invalid datetime')
+    parsed = parse_datetime(value)
+    if parsed is None:
+        raise ValueError('Invalid datetime')
+    return timezone.make_aware(parsed, PROJECT_TIMEZONE) if timezone.is_naive(parsed) else parsed
+
+
+def _question_error(question):
+    """Return the first publication error without persisting an incomplete key."""
+    if not (question.get('question_text') or '').strip():
+        return 'Question text is required.'
+    if not (question.get('category') or '').strip():
+        return 'Every question needs a skill category.'
+    kind = (question.get('question_type') or 'mcq').lower()
+    if kind not in ('mcq', 'truefalse', 'identification'):
+        return 'Invalid question type.'
+    if kind == 'identification':
+        return None if (question.get('correct_answer') or '').strip() else 'Identification needs a grading answer.'
+    try:
+        parsed_choices = parse_choice_flags(question.get('choices', []))
+    except ValueError as exc:
+        return str(exc)
+    choices = [choice for choice in parsed_choices if isinstance(choice.get('text'), str) and choice['text'].strip()]
+    if len(choices) < 2 or sum(choice['is_correct'] for choice in choices) != 1:
+        return 'Every choice question needs at least two choices and exactly one correct answer.'
+    if kind == 'truefalse' and {choice['text'].strip().lower() for choice in choices} != {'true', 'false'}:
+        return 'True/False questions need True and False choices.'
+    return None
+
+
+def _stored_question_error(assessment):
+    questions = list(assessment.questions.prefetch_related('choices'))
+    if not questions:
+        return 'Add at least one question before publishing.'
+    for question in questions:
+        error = _question_error({
+            'question_text': question.question_text,
+            'question_type': question.question_type,
+            'category': question.skill_category.name if question.skill_category else '',
+            'correct_answer': next((c.choice_text for c in question.choices.all() if c.is_correct), ''),
+            'choices': [{'text': c.choice_text, 'is_correct': c.is_correct} for c in question.choices.all()],
+        })
+        if error:
+            return error
+    return None
 
 
 def get_qualitative_tag(percentage):
@@ -113,10 +178,204 @@ def serialize_competency_profile(profile, include_nlp_text=True):
     }
 
 
-def latest_competency_profiles(student_ids, assessment=None):
+def serialize_combined_profile(profile, include_nlp_text=True):
+    if profile is None:
+        return None
+    return {
+        'orientation_label': profile.orientation_label,
+        'orientation_summary': profile.orientation_summary,
+        **({'competency_profile_text': profile.competency_profile_text} if include_nlp_text else {}),
+        'development_suggestions': profile.development_suggestions or [],
+        'supporting_categories': profile.supporting_categories or [],
+        'text_generation_version': profile.text_generation_version,
+        'active_model': profile.active_model,
+        'model_used': profile.model_used,
+        'generated_at': profile.generated_at,
+        'finalized_at': profile.finalized_at,
+    }
+
+
+def serialize_student_assessment_results(student, batch):
+    """Management detail: every assessment keeps its own attempt and score rows."""
+    responses = {response.assessment_id: response for response in StudentResponse.objects.filter(
+        student=student, assessment__batch=batch,
+    )}
+    history_by_assessment = {}
+    for history in AssessmentAttemptHistory.objects.filter(
+        response_id__in=[response.id for response in responses.values()],
+    ).select_related('response').order_by('attempt_number'):
+        history_by_assessment.setdefault(history.response.assessment_id, []).append({
+            'attempt_number': history.attempt_number,
+            'status': history.status,
+            'started_at': history.started_at,
+            'submitted_at': history.submitted_at,
+            'stopped_at': history.stopped_at,
+            'is_flagged': history.is_flagged,
+            'violation_count': history.violation_count,
+            'stopped_reason': history.stopped_reason,
+            'category_scores': history.category_scores,
+            'answers': history.answers,
+        })
+    scores_by_assessment = {}
+    for score in SkillScore.objects.filter(student=student, assessment__batch=batch).select_related('skill_category'):
+        scores_by_assessment.setdefault(score.assessment_id, []).append({
+            'category_id': score.skill_category_id,
+            'category': score.skill_category.name,
+            'raw_score': score.raw_score,
+            'max_score': score.max_score,
+            'percentage': score.percentage,
+        })
+    return [{
+        'id': assessment.id,
+        'title': assessment.title,
+        'publication_status': assessment.publication_status,
+        'is_required': assessment.is_required,
+        'include_in_competency': assessment.include_in_competency,
+        'attempt_status': responses[assessment.id].status if assessment.id in responses else None,
+        'response_id': responses[assessment.id].id if assessment.id in responses else None,
+        'started_at': responses[assessment.id].started_at if assessment.id in responses else None,
+        'submitted_at': responses[assessment.id].submitted_at if assessment.id in responses else None,
+        'retake_allowed': responses[assessment.id].retake_allowed if assessment.id in responses else False,
+        'is_flagged': responses[assessment.id].is_flagged if assessment.id in responses else False,
+        'violation_count': responses[assessment.id].violation_count if assessment.id in responses else 0,
+        'stopped_reason': responses[assessment.id].stopped_reason_display if assessment.id in responses else '',
+        'category_scores': scores_by_assessment.get(assessment.id, []),
+        'prior_attempts': history_by_assessment.get(assessment.id, []),
+    } for assessment in Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id')]
+
+
+def management_combined_state(student, batch):
+    progress = required_progress(student, batch)
+    profile = CombinedCompetencyProfile.objects.filter(student=student, batch=batch).first()
+    unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress)
+    return {
+        **progress,
+        'recommendations_locked': not unlocked,
+        'combined_category_scores': serialize_combined_scores(student, batch) if unlocked else [],
+        'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+        'assessment_results': serialize_student_assessment_results(student, batch),
+    }, unlocked
+
+
+def bulk_management_states(students, batch):
+    """Build roster/dashboard state in grouped queries without recalculating NLP."""
+    ids = [student.id for student in students]
+    assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
+    required_ids = {a.id for a in assessments if a.publication_status == 'published' and a.is_required and a.include_in_competency}
+    assessment_by_id = {a.id: a for a in assessments}
+    responses = list(StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id))
+    response_map = {(r.student_id, r.assessment_id): r for r in responses}
+    histories = {}
+    for h in AssessmentAttemptHistory.objects.filter(response_id__in=[r.id for r in responses]).order_by('attempt_number'):
+        histories.setdefault(h.response_id, []).append({
+            'attempt_number': h.attempt_number, 'status': h.status, 'started_at': h.started_at,
+            'submitted_at': h.submitted_at, 'stopped_at': h.stopped_at, 'is_flagged': h.is_flagged,
+            'violation_count': h.violation_count, 'stopped_reason': h.stopped_reason,
+            'category_scores': h.category_scores, 'answers': h.answers,
+        })
+    scores = list(SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id).select_related('skill_category'))
+    score_map = {}
+    valid_score_ids = set()
+    for score in scores:
+        score_map.setdefault((score.student_id, score.assessment_id), []).append({
+            'category_id': score.skill_category_id, 'category': score.skill_category.name,
+            'raw_score': score.raw_score, 'max_score': score.max_score, 'percentage': score.percentage,
+        })
+        if score.max_score > 0 and score.raw_score <= score.max_score:
+            valid_score_ids.add((score.student_id, score.assessment_id))
+    profiles = {p.student_id: p for p in CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)}
+    combined_scores = {}
+    for score in CombinedCategoryScore.objects.filter(student_id__in=ids, batch=batch).select_related('skill_category').order_by('skill_category__name', 'skill_category_id'):
+        combined_scores.setdefault(score.student_id, []).append({
+            'category_id': score.skill_category_id, 'category': score.skill_category.name,
+            'raw_score': score.raw_score, 'max_score': score.max_score,
+            'percentage': score.percentage, 'source_assessment_ids': score.source_assessment_ids,
+        })
+    result = {}
+    for student in students:
+        completed = sum(bool((r := response_map.get((student.id, assessment_id))) and
+                             r.status == StudentResponse.STATUS_SUBMITTED and r.submitted_at and not r.is_flagged)
+                        for assessment_id in required_ids)
+        progress = {'has_required_assessments': bool(required_ids),
+                    'all_required_completed': bool(required_ids and completed == len(required_ids)),
+                    'completed_required_count': completed, 'total_required_count': len(required_ids),
+                    'remaining_required_count': len(required_ids) - completed}
+        source_ids = [a.id for a in assessments if a.include_in_competency and a.publication_status in ('published', 'closed') and
+                      (r := response_map.get((student.id, a.id))) and r.status == StudentResponse.STATUS_SUBMITTED and
+                      r.submitted_at and not r.is_flagged and (student.id, a.id) in valid_score_ids]
+        source_ids.sort()
+        profile = profiles.get(student.id)
+        unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids)
+        individual = []
+        for assessment in assessments:
+            response = response_map.get((student.id, assessment.id))
+            individual.append({
+                'id': assessment.id, 'title': assessment.title,
+                'publication_status': assessment.publication_status,
+                'is_required': assessment.is_required,
+                'include_in_competency': assessment.include_in_competency,
+                'attempt_status': response.status if response else None,
+                'response_id': response.id if response else None,
+                'started_at': response.started_at if response else None,
+                'submitted_at': response.submitted_at if response else None,
+                'retake_allowed': response.retake_allowed if response else False,
+                'is_flagged': response.is_flagged if response else False,
+                'violation_count': response.violation_count if response else 0,
+                'stopped_reason': response.stopped_reason_display if response else '',
+                'category_scores': score_map.get((student.id, assessment.id), []),
+                'prior_attempts': histories.get(response.id, []) if response else [],
+            })
+        result[student.id] = ({**progress, 'recommendations_locked': not unlocked,
+                              'combined_category_scores': combined_scores.get(student.id, []) if unlocked else [],
+                              'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+                              'assessment_results': individual}, unlocked)
+    return result
+
+
+def admin_current_management_states(students):
+    """Group system-wide oversight by active batch instead of querying per student."""
+    student_by_id = {student.id: student for student in students}
+    current = {}
+    for enrollment in (BatchEnrollment.objects.filter(student_id__in=student_by_id, batch__status='active')
+                       .select_related('batch', 'batch__instructor').order_by('student_id', '-enrolled_at', '-id')):
+        current.setdefault(enrollment.student_id, enrollment)
+    grouped = {}
+    for student_id, enrollment in current.items():
+        grouped.setdefault(enrollment.batch_id, {'batch': enrollment.batch, 'students': []})['students'].append(student_by_id[student_id])
+    states = {}
+    for group in grouped.values():
+        for student_id, state in bulk_management_states(group['students'], group['batch']).items():
+            states[student_id] = state
+    return current, states
+
+
+def current_recommendations():
+    """Only final, batch-scoped recommendations count as current reporting data."""
+    candidates = list(Recommendation.objects.filter(
+        is_current=True, batch__status='active',
+    ).select_related('student', 'batch'))
+    grouped = {}
+    for recommendation in candidates:
+        entry = grouped.setdefault(recommendation.batch_id, {'batch': recommendation.batch, 'students': {}})
+        entry['students'][recommendation.student_id] = recommendation.student
+    unlocked = {}
+    for group in grouped.values():
+        states = bulk_management_states(list(group['students'].values()), group['batch'])
+        unlocked.update({(student_id, group['batch'].id): state[1] for student_id, state in states.items()})
+    ids = []
+    for recommendation in candidates:
+        key = (recommendation.student_id, recommendation.batch_id)
+        if unlocked.get(key, False):
+            ids.append(recommendation.id)
+    return Recommendation.objects.filter(id__in=ids)
+
+
+def latest_competency_profiles(student_ids, assessment=None, batch=None):
     queryset = StudentCompetencyProfile.objects.filter(student_id__in=student_ids)
     if assessment is not None:
         queryset = queryset.filter(assessment=assessment)
+    if batch is not None:
+        queryset = queryset.filter(assessment__batch=batch)
     result = {}
     for profile in queryset.order_by('student_id', '-generated_at', '-id'):
         result.setdefault(profile.student_id, profile)
@@ -502,6 +761,9 @@ def student_profile(request):
     user.phone     = request.data.get('phone',     user.phone)
     user.address   = address
     user.save(update_fields=['name', 'school_id', 'course', 'phone', 'address'])
+    enrollment = current_enrollment(user)
+    if enrollment and combined_is_unlocked(user, enrollment.batch):
+        recalculate_combined(user, enrollment.batch)
 
     return Response(UserSerializer(user).data)
 
@@ -515,37 +777,40 @@ def student_me(request):
         return Response({'error': 'Not a student'}, status=status.HTTP_403_FORBIDDEN)
 
     # Get the student's current active batch enrollment
-    enrollment = (
-        BatchEnrollment.objects
-        .filter(student=user, batch__status='active')
-        .select_related('batch')
-        .first()
-    )
+    enrollment = current_enrollment(user)
 
     active_assessment = None
     if enrollment:
-        try:
-            assessment = Assessment.objects.get(
-                batch=enrollment.batch,
-                is_active=True
-            )
+        assessment = None
+        for candidate in Assessment.objects.filter(
+            batch=enrollment.batch, publication_status='published', is_required=True,
+        ).select_related('batch').order_by('display_order', 'created_at', 'id'):
+            if assessment_availability(candidate) != 'available':
+                continue
+            attempt = StudentResponse.objects.filter(student=user, assessment=candidate).first()
+            if not attempt or attempt.status != StudentResponse.STATUS_SUBMITTED or attempt.retake_allowed:
+                assessment = candidate
+                break
+        if assessment:
             active_assessment = {
                 'id':               assessment.id,
                 'title':            assessment.title,
                 'duration_minutes': assessment.duration_minutes,
             }
-        except Assessment.DoesNotExist:
-            pass
 
     # Check submission status
     latest_response = (
         StudentResponse.objects
-        .filter(student=user)
+        .filter(student=user, assessment__batch=enrollment.batch if enrollment else None)
         .order_by('-started_at', '-id')
         .first()
     )
 
-    has_submitted  = latest_response is not None and latest_response.submitted_at is not None
+    if enrollment:
+        _, progress, unlocked = ensure_combined(user, enrollment.batch)
+    else:
+        progress, unlocked = None, False
+    has_submitted  = bool(progress and progress['all_required_completed'] and progress['total_required_count'])
     retake_allowed = latest_response.retake_allowed if latest_response else False
     approved_placement = _approved_student_placement(user.id)
 
@@ -553,8 +818,11 @@ def student_me(request):
         **UserSerializer(user).data,
         'has_submitted':      has_submitted,
         'retake_allowed':     retake_allowed,
+        'recommendations_locked': not unlocked,
         **serialize_attempt_integrity(latest_response),
         'active_assessment':  active_assessment,
+        **(progress or {'has_required_assessments': False, 'all_required_completed': False, 'completed_required_count': 0,
+                        'total_required_count': 0, 'remaining_required_count': 0}),
         'batch':              {
             'id':   enrollment.batch.id,
             'name': enrollment.batch.name,
@@ -696,13 +964,15 @@ def instructor_batches(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     if request.method == 'GET':
-        batches = Batch.objects.filter(instructor=request.user).order_by('-created_at')
+        batches = (Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user))
+        batches = batches.select_related('instructor').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
         return Response([{
             'id':          b.id,
             'name':        b.name,
             'status':      b.status,
             'created_at':  b.created_at,
-            'student_count': b.enrollments.count(),
+            'student_count': b.enrolled_total,
+            'instructor_name': b.instructor.name if b.instructor else None,
         } for b in batches])
 
     # POST — create batch
@@ -809,14 +1079,14 @@ def instructor_batch_archive(request, batch_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
     try:
-        batch = Batch.objects.get(id=batch_id, instructor=request.user)
+        batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
+        batch = batch_query.get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
     batch.status      = 'archived'
     batch.archived_at = timezone.now()
     batch.save(update_fields=['status', 'archived_at'])
-    # Deactivate all assessments linked to this batch so students can no longer take them
-    Assessment.objects.filter(batch=batch).update(is_active=False)
+    recalculate_enrolled_students(batch)
     return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at})
 
 
@@ -828,14 +1098,14 @@ def instructor_batch_unarchive(request, batch_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
     try:
-        batch = Batch.objects.get(id=batch_id, instructor=request.user)
+        batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
+        batch = batch_query.get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
     batch.status      = 'active'
     batch.archived_at = None
     batch.save(update_fields=['status', 'archived_at'])
-    # Re-activate assessments linked to this batch
-    Assessment.objects.filter(batch=batch).update(is_active=True)
+    recalculate_enrolled_students(batch)
     return Response({'id': batch.id, 'status': 'active', 'archived_at': None})
 
 
@@ -843,32 +1113,41 @@ def instructor_batch_unarchive(request, batch_id):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def instructor_student_retake(request, student_id):
-    """Toggle retake_allowed for the student's latest submission."""
+    """Approve a specific attempt; legacy omission works only when unambiguous."""
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
-    retake_allowed = request.data.get('retake_allowed', False)
-    if request.user.role == 'instructor':
-        belongs_to_instructor = BatchEnrollment.objects.filter(
-            batch__instructor=request.user,
-            student_id=student_id,
-        ).exists()
-        if not belongs_to_instructor:
-            return Response({'error': 'Student not in your batches'}, status=403)
-
-    latest_response = (
-        StudentResponse.objects
-        .filter(student_id=student_id, submitted_at__isnull=False)
-        .order_by('-started_at', '-id')
-        .first()
-    )
-    if latest_response is None:
-        return Response({'error': 'No submission found for this student'}, status=404)
-    latest_response.retake_allowed = bool(retake_allowed)
-    latest_response.save(update_fields=['retake_allowed'])
+    try:
+        retake_allowed = parse_boolean(request.data['retake_allowed'], 'retake_allowed') if 'retake_allowed' in request.data else None
+    except ValueError as exc:
+        return Response({'error': str(exc), 'field': 'retake_allowed'}, status=400)
+    assessment_id = request.data.get('assessment_id')
+    if assessment_id is not None:
+        try:
+            assessment_id = int(assessment_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid assessment_id'}, status=400)
+    attempts = StudentResponse.objects.filter(student_id=student_id, submitted_at__isnull=False).select_related('assessment')
+    if assessment_id is not None:
+        attempts = attempts.filter(assessment_id=assessment_id)
+    elif attempts.count() != 1:
+        return Response({'error': 'assessment_id is required when the student has multiple or no finalized attempts'}, status=409)
+    attempt = attempts.first()
+    if attempt is None:
+        return Response({'error': 'Assessment attempt not found'}, status=404)
+    if not attempt.assessment.batch_id or not BatchEnrollment.objects.filter(
+        batch_id=attempt.assessment.batch_id, student_id=student_id,
+    ).exists():
+        return Response({'error': 'Student is not enrolled in the assessment batch'}, status=403)
+    if request.user.role == 'instructor' and attempt.assessment.batch.instructor_id != request.user.id:
+        return Response({'error': 'Assessment is not in your batch'}, status=403)
+    if retake_allowed is not None:
+        attempt.retake_allowed = retake_allowed
+        attempt.save(update_fields=['retake_allowed'])
     return Response({
         'student_id': student_id,
-        'retake_allowed': latest_response.retake_allowed,
-        **serialize_attempt_integrity(latest_response),
+        'assessment_id': attempt.assessment_id,
+        'retake_allowed': attempt.retake_allowed,
+        **serialize_attempt_integrity(attempt),
     })
 
 
@@ -907,24 +1186,20 @@ def instructor_batch_students(request, batch_id):
     student_objs = [e.student for e in enrollments]
     student_ids  = [s.id for s in student_objs]
 
-    # Preload the batch's assessment once
-    try:
-        batch_assessment = Assessment.objects.get(batch=batch)
-    except Assessment.DoesNotExist:
-        batch_assessment = None
+    batch_assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
 
     # ── Bulk-load responses and scores for all students ──────────────
     response_map = {}   # student_id -> StudentResponse
     scores_map   = {}   # student_id -> { category_name: percentage }
 
-    if batch_assessment:
+    if batch_assessments:
         for resp in StudentResponse.objects.filter(
-            assessment=batch_assessment, student_id__in=student_ids
-        ):
-            response_map[resp.student_id] = resp
+            assessment__in=batch_assessments, student_id__in=student_ids
+        ).order_by('student_id', '-started_at', '-id'):
+            response_map.setdefault(resp.student_id, resp)
 
         for score in SkillScore.objects.filter(
-            assessment=batch_assessment, student_id__in=student_ids
+            assessment__in=batch_assessments, student_id__in=student_ids
         ).select_related('skill_category'):
             scores_map.setdefault(score.student_id, {})
             scores_map[score.student_id][score.skill_category.name] = {
@@ -932,13 +1207,13 @@ def instructor_batch_students(request, batch_id):
                 'tag': get_qualitative_tag(score.percentage)
             }
 
-    profile_map = latest_competency_profiles(student_ids, batch_assessment) if batch_assessment else {}
+    profile_map = latest_competency_profiles(student_ids, batch=batch)
 
     # ── Bulk-load top-3 company recommendations per student ──────────
     from collections import defaultdict
     all_recs = (
         Recommendation.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, batch=batch, is_current=True)
         .select_related('position', 'position__company')
         .order_by('student_id', '-match_score')
     )
@@ -948,11 +1223,13 @@ def instructor_batch_students(request, batch_id):
             recs_by_student[r.student_id].append(r)
 
     placements_by_student = _visible_placements_by_student(student_ids)
+    combined_states = bulk_management_states(student_objs, batch)
 
     students = []
     for e in enrollments:
         s    = e.student
         resp = response_map.get(s.id)
+        combined_state, unlocked = combined_states[s.id]
         students.append({
             'id':             s.id,
             'name':           s.name,
@@ -960,7 +1237,8 @@ def instructor_batch_students(request, batch_id):
             'school_id':      s.school_id,
             'course':         s.course,
             'photo_url':      s.photo_url,
-            'has_submitted':  bool(resp and resp.submitted_at is not None),
+            'has_submitted': unlocked,
+            **combined_state,
             'retake_allowed': resp.retake_allowed if resp else False,
             **serialize_attempt_integrity(resp),
             'skill_scores':   scores_map.get(s.id, {}),
@@ -983,11 +1261,206 @@ def instructor_batch_students(request, batch_id):
                     'lat':         r.position.company.location_lat,
                     'lng':         r.position.company.location_lng,
                 }
-                for r in recs_by_student.get(s.id, [])
+                for r in recs_by_student.get(s.id, []) if unlocked
             ],
         })
 
-    return Response({'batch': {'id': batch.id, 'name': batch.name}, 'students': students})
+    published = [a for a in batch_assessments if a.publication_status == Assessment.PUBLICATION_PUBLISHED]
+    return Response({
+        'batch': {'id': batch.id, 'name': batch.name},
+        'summary': {
+            'published_required_count': sum(a.is_required and a.include_in_competency for a in published),
+            'optional_count': sum(not a.is_required for a in published),
+            'student_count': len(students),
+            'completed_students': sum(s['all_required_completed'] for s in students),
+            'in_progress_students': sum(not s['all_required_completed'] for s in students),
+            'stopped_or_flagged_students': sum(any(r['is_flagged'] or r['attempt_status'] == StudentResponse.STATUS_STOPPED for r in s['assessment_results']) for s in students),
+            'retake_approved_students': sum(any(r['retake_allowed'] for r in s['assessment_results']) for s in students),
+            'recommendations_unlocked_students': sum(not s['recommendations_locked'] for s in students),
+        },
+        'students': students,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def management_assessment_reports(request):
+    """Scoped assessment reports. JSON powers previews; CSV is a tabular export."""
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    report_type = request.query_params.get('type', 'batch_progress')
+    if report_type not in ('batch_progress', 'student_competency', 'assessment_completion'):
+        return Response({'error': 'Invalid report type'}, status=400)
+    batch_id = request.query_params.get('batch_id')
+    student_id = request.query_params.get('student_id')
+    assessment_id = request.query_params.get('assessment_id')
+    for value in (batch_id, student_id, assessment_id):
+        if value and (not str(value).isdigit() or int(value) < 1):
+            return Response({'error': 'Invalid report filter'}, status=400)
+    batches = Batch.objects.select_related('instructor')
+    if request.user.role == 'instructor':
+        batches = batches.filter(instructor=request.user)
+    if batch_id:
+        batches = batches.filter(id=batch_id)
+    batch_ids = list(batches.values_list('id', flat=True))
+    if batch_id and not batch_ids:
+        return Response({'error': 'Batch not found'}, status=404)
+    all_assessments = list(Assessment.objects.filter(batch_id__in=batch_ids)
+                       .select_related('batch', 'batch__instructor')
+                       .prefetch_related('questions__skill_category')
+                       .order_by('batch__name', 'display_order', 'created_at', 'id'))
+    assessments = all_assessments
+    if assessment_id:
+        assessments = [a for a in assessments if str(a.id) == str(assessment_id)]
+        if not assessments:
+            return Response({'error': 'Assessment not found'}, status=404)
+    enrollments = list(BatchEnrollment.objects.filter(batch_id__in=batch_ids)
+                       .select_related('student', 'batch', 'batch__instructor'))
+    if student_id:
+        enrollments = [e for e in enrollments if str(e.student_id) == str(student_id)]
+        if not enrollments:
+            return Response({'error': 'Student not found'}, status=404)
+    response_map = {(r.student_id, r.assessment_id): r for r in
+                    StudentResponse.objects.filter(assessment__batch_id__in=batch_ids)
+                    .select_related('assessment')}
+    assessment_by_batch = {}
+    for assessment in all_assessments:
+        assessment_by_batch.setdefault(assessment.batch_id, []).append(assessment)
+    report_states = {}
+    for batch_group in batches:
+        group_students = [e.student for e in enrollments if e.batch_id == batch_group.id]
+        if group_students:
+            report_states[batch_group.id] = bulk_management_states(group_students, batch_group)
+    student_rows = []
+    for enrollment in enrollments:
+        assigned = assessment_by_batch.get(enrollment.batch_id, [])
+        state, unlocked = report_states[enrollment.batch_id][enrollment.student_id]
+        student_rows.append({
+            'student_id': enrollment.student_id,
+            'school_id': enrollment.student.school_id,
+            'student': enrollment.student.name,
+            'batch_id': enrollment.batch_id,
+            'batch': enrollment.batch.name,
+            'instructor': enrollment.batch.instructor.name if enrollment.batch.instructor else '',
+            'completed_required_count': state['completed_required_count'],
+            'total_required_count': state['total_required_count'],
+            'remaining_required_count': state['remaining_required_count'],
+            'recommendations_locked': not unlocked,
+            'assessments': [{
+                'id': a.id, 'title': a.title, 'required': a.is_required,
+                'included': a.include_in_competency,
+                'status': response_map[(enrollment.student_id, a.id)].status if (enrollment.student_id, a.id) in response_map else 'not_started',
+                'flagged': bool((r := response_map.get((enrollment.student_id, a.id))) and r.is_flagged),
+                'retake_allowed': bool((r := response_map.get((enrollment.student_id, a.id))) and r.retake_allowed),
+            } for a in assigned if a.publication_status == 'published' and (not assessment_id or str(a.id) == str(assessment_id))],
+        })
+    if report_type == 'assessment_completion':
+        rows = []
+        assigned_counts = {}
+        enrolled_by_batch = {}
+        for enrollment in enrollments:
+            assigned_counts[enrollment.batch_id] = assigned_counts.get(enrollment.batch_id, 0) + 1
+            enrolled_by_batch.setdefault(enrollment.batch_id, set()).add(enrollment.student_id)
+        attempts_by_assessment = {}
+        for attempt in response_map.values():
+            if attempt.student_id in enrolled_by_batch.get(attempt.assessment.batch_id, set()):
+                attempts_by_assessment.setdefault(attempt.assessment_id, []).append(attempt)
+        for a in assessments:
+            attempts = attempts_by_assessment.get(a.id, [])
+            submitted = sum(r.status == StudentResponse.STATUS_SUBMITTED and r.submitted_at and not r.is_flagged for r in attempts)
+            in_progress = sum(r.status == StudentResponse.STATUS_IN_PROGRESS for r in attempts)
+            stopped = sum(r.status == StudentResponse.STATUS_STOPPED or r.is_flagged for r in attempts)
+            assigned = assigned_counts.get(a.batch_id, 0)
+            rows.append({'assessment_id': a.id, 'assessment': a.title, 'batch': a.batch.name,
+                         'instructor': a.batch.instructor.name if a.batch.instructor else '',
+                         'publication_status': a.publication_status, 'required': a.is_required,
+                         'assigned': assigned, 'submitted': submitted, 'in_progress': in_progress,
+                         'not_started': max(assigned - len(attempts), 0), 'stopped_or_flagged': stopped,
+                         'completion_percentage': round(submitted * 100 / assigned, 1) if assigned else 0})
+    elif report_type == 'student_competency':
+        rows = []
+        rec_map = {}
+        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by('student_id', '-match_score', 'id'):
+            rec_map.setdefault((rec.student_id, rec.batch_id), []).append(rec)
+        placements = _visible_placements_by_student([e.student_id for e in enrollments])
+        student_rows_by_key = {(row['student_id'], row['batch_id']): row for row in student_rows}
+        assessment_titles = {assessment.id: assessment.title for assessment in all_assessments}
+        source_ids_by_key = {(profile.student_id, profile.batch_id): profile.included_assessment_ids
+                             for profile in CombinedCompetencyProfile.objects.filter(
+                                 student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids)}
+        for enrollment in enrollments:
+            state, unlocked = report_states[enrollment.batch_id][enrollment.student_id]
+            recs = rec_map.get((enrollment.student_id, enrollment.batch_id), []) if unlocked else []
+            profile = state['combined_competency_profile'] if unlocked else None
+            source_ids = source_ids_by_key.get((enrollment.student_id, enrollment.batch_id), []) if unlocked else []
+            rows.append({**student_rows_by_key[(enrollment.student_id, enrollment.batch_id)],
+                         'individual_results': [{key: result[key] for key in (
+                             'id', 'title', 'attempt_status', 'submitted_at', 'is_required',
+                             'include_in_competency', 'is_flagged', 'category_scores')}
+                             for result in state['assessment_results']
+                             if not assessment_id or str(result['id']) == str(assessment_id)],
+                         'combined_category_scores': state['combined_category_scores'],
+                         'combined_competency_profile': profile,
+                         'included_assessments': [{'id': source_id, 'title': assessment_titles.get(source_id, 'Assessment unavailable')}
+                                                  for source_id in source_ids],
+                         'final_recommendations': [{'rank': rank, **serialize_recommendation(rec)} for rank, rec in enumerate(recs, 1)],
+                         'placement': _serialize_placement_visibility(placements.get(enrollment.student_id), include_unplaced=True)})
+    else:
+        rows = student_rows
+    payload = {'report_type': report_type, 'generated_at': timezone.now(),
+               'filters': {'batch_id': batch_id, 'student_id': student_id, 'assessment_id': assessment_id},
+               'rows': rows}
+    if request.query_params.get('export') != 'csv':
+        return Response(payload)
+    output = HttpResponse(content_type='text/csv; charset=utf-8')
+    generated_local = timezone.localtime(timezone.now(), PROJECT_TIMEZONE)
+    output['Content-Disposition'] = f'attachment; filename="skillbridge-{report_type}-{generated_local.date()}.csv"'
+    output.write('\ufeff')
+    writer = SafeCSVWriter(output)
+    writer.writerow(['SkillBridge Assessment Report', report_type, generated_local.strftime('%Y-%m-%d %H:%M %Z')])
+    writer.writerow(['Filters', f'Batch: {batch_id or "all"}', f'Student: {student_id or "all"}', f'Assessment: {assessment_id or "all"}'])
+    if not rows:
+        writer.writerow(['No records match the selected filters.'])
+    elif report_type == 'assessment_completion':
+        fields = ['assessment_id', 'assessment', 'batch', 'instructor', 'publication_status', 'required', 'assigned', 'submitted', 'in_progress', 'not_started', 'stopped_or_flagged', 'completion_percentage']
+        writer.writerow(fields)
+        for row in rows:
+            writer.writerow([row[field] for field in fields])
+    elif report_type == 'student_competency':
+        writer.writerow(['Student ID', 'Student', 'Batch', 'Instructor', 'Assessment', 'Attempt status',
+                         'Individual category scores', 'Combined category scores', 'Included assessments',
+                         'Combined competency summary', 'Recommendations', 'Final ranked recommendations',
+                         'Placement', 'Completed required', 'Total required'])
+        for row in rows:
+            combined = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({score['percentage']:.1f}%)"
+                                 for score in row['combined_category_scores'])
+            included = '; '.join(assessment['title'] for assessment in row['included_assessments'])
+            recommendations = '; '.join(f"#{rec['rank']} {rec['company']} - {rec['position']} ({rec['match_score']}%)"
+                                        for rec in row['final_recommendations'])
+            placement = row['placement']
+            placement_text = (f"Approved: {placement['company']['name']} - {placement['position']['title']}"
+                              if placement['status'] == 'approved' else placement['status'].replace('_', ' ').title())
+            for result in row['individual_results'] or [{}]:
+                individual = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({score['percentage']:.1f}%)"
+                                       for score in result.get('category_scores', []))
+                writer.writerow([row['school_id'], row['student'], row['batch'], row['instructor'],
+                                 result.get('title', ''), result.get('attempt_status') or 'not_started',
+                                 individual, combined, included,
+                                 (row['combined_competency_profile'] or {}).get('orientation_summary', ''),
+                                 'Locked' if row['recommendations_locked'] else 'Unlocked', recommendations,
+                                 placement_text, row['completed_required_count'], row['total_required_count']])
+    else:
+        writer.writerow(['Student ID', 'Student', 'Batch', 'Instructor', 'Assessment', 'Attempt status', 'Required', 'Flagged', 'Completed required', 'Total required', 'Recommendations locked', 'Combined categories', 'Combined competency summary', 'Final recommendation'])
+        for row in rows:
+            for item in row['assessments'] or [{}]:
+                writer.writerow([row['school_id'], row['student'], row['batch'], row['instructor'],
+                                 item.get('title', ''), item.get('status', ''), item.get('required', ''),
+                                 item.get('flagged', ''), row['completed_required_count'], row['total_required_count'],
+                                 row['recommendations_locked'],
+                                 ', '.join(f"{score['category']}: {score['percentage']:.1f}%" for score in row.get('combined_category_scores', [])),
+                                 (row.get('combined_competency_profile') or {}).get('orientation_summary', ''),
+                                 ', '.join(f"{rec['company']} — {rec['position']} ({rec['match_score']}%)" for rec in row.get('final_recommendations', []))])
+    return output
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1002,17 +1475,43 @@ def instructor_assessments(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     if request.method == 'GET':
-        assessments = Assessment.objects.all().prefetch_related('questions').order_by('-created_at')
+        assessments = (Assessment.objects.all()
+                       .select_related('batch', 'batch__instructor', 'created_by')
+                       .prefetch_related('questions__skill_category')
+                       .annotate(
+                           submission_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED), distinct=True),
+                           completion_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED, responses__submitted_at__isnull=False, responses__is_flagged=False), distinct=True),
+                           flagged_total=Count('responses', filter=Q(responses__is_flagged=True) | Q(responses__status=StudentResponse.STATUS_STOPPED), distinct=True),
+                           attempt_total=Count('responses', distinct=True),
+                           assigned_total=Count('batch__enrollments', distinct=True),
+                       ).order_by('batch__name', 'display_order', 'created_at', 'id'))
+        if request.user.role == 'instructor':
+            assessments = assessments.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user)).distinct()
 
         return Response([{
             'id':               a.id,
             'title':            a.title,
             'batch_id':         a.batch_id,
             'batch_name':       a.batch.name if a.batch else None,
+            'instructor_name':  a.batch.instructor.name if a.batch and a.batch.instructor else a.created_by.name,
             'duration_minutes': a.duration_minutes,
             'is_active':        a.is_active,
-            'question_count':   a.questions.count(),
-            'submission_count': a.responses.filter(submitted_at__isnull=False).count(),
+            'publication_status': a.publication_status,
+            'is_required': a.is_required,
+            'include_in_competency': a.include_in_competency,
+            'display_order': a.display_order,
+            'available_at': a.available_at,
+            'due_at': a.due_at,
+            'question_count':   len(a.questions.all()),
+            'categories': sorted({q.skill_category.name for q in a.questions.all() if q.skill_category}),
+            'submission_count': a.submission_total,
+            'completion_count': a.completion_total,
+            'attempt_count': a.attempt_total,
+            'flagged_count': a.flagged_total,
+            'assigned_count': a.assigned_total,
+            'completion_rate': round(100 * a.completion_total / a.assigned_total, 1) if a.assigned_total else 0,
+            'questions_locked': a.attempt_total > 0,
+            'availability_status': assessment_availability(a),
             'created_at':       a.created_at,
         } for a in assessments])
 
@@ -1021,24 +1520,68 @@ def instructor_assessments(request):
 
     title            = data.get('title', '').strip()
     batch_id         = data.get('batch_id')
-    duration_minutes = int(data.get('duration_minutes', 60))
+    try:
+        duration_minutes = int(data.get('duration_minutes', 60))
+    except (TypeError, ValueError):
+        return Response({'error': 'Duration must be a positive number.', 'field': 'duration_minutes'}, status=400)
     questions_data   = data.get('questions', [])
+    try:
+        is_required = parse_boolean(data.get('is_required', True), 'is_required')
+        include_in_competency = parse_boolean(data.get('include_in_competency', True), 'include_in_competency')
+        legacy_active = parse_boolean(data['is_active'], 'is_active') if 'is_active' in data else None
+        if legacy_active is not None:
+            if 'publication_status' in data and (data['publication_status'] == 'published') != legacy_active:
+                raise ValueError('is_active conflicts with publication_status.')
+        if not isinstance(questions_data, list):
+            raise ValueError('questions must be a list.')
+        normalized_questions = []
+        for index, question in enumerate(questions_data):
+            if not isinstance(question, dict):
+                raise ValueError(f'questions.{index} must be a question object.')
+            normalized_questions.append({**question, 'choices': parse_choice_flags(
+                question.get('choices', []), f'questions.{index}.choices',
+            )})
+        questions_data = normalized_questions
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=400)
 
     if not title:
         return Response({'error': 'title is required'}, status=400)
-    if not questions_data:
-        return Response({'error': 'at least one question is required'}, status=400)
+    if duration_minutes < 1:
+        return Response({'error': 'Duration must be a positive number.', 'field': 'duration_minutes'}, status=400)
 
     # Validate batch belongs to this instructor
     batch = None
     if batch_id:
         try:
-            batch = Batch.objects.get(id=batch_id, instructor=request.user)
+            batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
+            batch = batch_query.get(id=batch_id)
         except Batch.DoesNotExist:
             return Response({'error': 'Batch not found or not yours'}, status=404)
 
-        # Deactivate any existing active assessments for this batch
-        Assessment.objects.filter(batch=batch, is_active=True).update(is_active=False)
+    # Old clients omit publication_status and still publish; the new creator sends draft explicitly.
+    publication_status = data.get('publication_status', 'closed' if legacy_active is False else 'published')
+    if publication_status not in dict(Assessment.PUBLICATION_CHOICES):
+        return Response({'error': 'Invalid publication_status'}, status=400)
+    try:
+        display_order = int(data.get('display_order', 0))
+        available_at = _parse_assessment_datetime(data.get('available_at'))
+        due_at = _parse_assessment_datetime(data.get('due_at'))
+    except (TypeError, ValueError):
+        return Response({'error': 'Invalid assessment metadata'}, status=400)
+    if display_order < 0 or (available_at and due_at and due_at <= available_at):
+        return Response({'error': 'Invalid assessment dates or display order'}, status=400)
+    if publication_status == Assessment.PUBLICATION_PUBLISHED:
+        if batch is None:
+            return Response({'error': 'Choose a batch before publishing.', 'field': 'batch_id'}, status=400)
+        if not questions_data:
+            return Response({'error': 'Add at least one question before publishing.', 'field': 'questions'}, status=400)
+        for index, question in enumerate(questions_data):
+            error = _question_error(question)
+            if error:
+                return Response({'error': error, 'field': f'questions.{index}'}, status=400)
+    elif not questions_data:
+        questions_data = []
 
     # Create the assessment
     assessment = Assessment.objects.create(
@@ -1046,7 +1589,12 @@ def instructor_assessments(request):
         created_by=request.user,
         batch=batch,
         duration_minutes=duration_minutes,
-        is_active=True,
+        publication_status=publication_status,
+        is_required=is_required,
+        include_in_competency=include_in_competency,
+        display_order=display_order,
+        available_at=available_at,
+        due_at=due_at,
     )
 
     created_questions = []
@@ -1092,10 +1640,13 @@ def instructor_assessments(request):
                 AnswerChoice.objects.create(
                     question=question,
                     choice_text=c.get('text', '').strip(),
-                    is_correct=bool(c.get('is_correct', False)),
+                    is_correct=c['is_correct'],
                 )
 
         created_questions.append(question.id)
+
+    if batch and assessment.publication_status == Assessment.PUBLICATION_PUBLISHED and assessment.is_required and assessment.include_in_competency:
+        recalculate_enrolled_students(batch)
 
     return Response({
         'id':               assessment.id,
@@ -1103,6 +1654,7 @@ def instructor_assessments(request):
         'batch_id':         assessment.batch_id,
         'duration_minutes': assessment.duration_minutes,
         'question_count':   len(created_questions),
+        'publication_status': assessment.publication_status,
     }, status=201)
 
 
@@ -1114,25 +1666,91 @@ def instructor_assessment_detail(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        assessment = Assessment.objects.get(id=assessment_id, created_by=request.user)
+        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        assessment = queryset.get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
+
+    old_scoring_state = (
+        assessment.publication_status, assessment.is_required, assessment.include_in_competency,
+    )
 
     # Only allow changing non-question fields after students may have submitted
     if 'title' in request.data:
         assessment.title = request.data['title'].strip()
     if 'duration_minutes' in request.data:
-        assessment.duration_minutes = int(request.data['duration_minutes'])
+        try:
+            assessment.duration_minutes = int(request.data['duration_minutes'])
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid duration_minutes', 'field': 'duration_minutes'}, status=400)
+        if assessment.duration_minutes < 1:
+            return Response({'error': 'Invalid duration_minutes', 'field': 'duration_minutes'}, status=400)
     if 'is_active' in request.data:
-        assessment.is_active = bool(request.data['is_active'])
+        try:
+            is_active = parse_boolean(request.data['is_active'], 'is_active')
+        except ValueError as exc:
+            return Response({'error': str(exc), 'field': 'is_active'}, status=400)
+        if 'publication_status' in request.data and (request.data['publication_status'] == 'published') != is_active:
+            return Response({'error': 'is_active conflicts with publication_status.', 'field': 'is_active'}, status=400)
+        assessment.publication_status = 'published' if is_active else 'closed'
 
-    assessment.save(update_fields=['title', 'duration_minutes', 'is_active'])
+    if 'publication_status' in request.data:
+        if request.data['publication_status'] not in dict(Assessment.PUBLICATION_CHOICES):
+            return Response({'error': 'Invalid publication_status'}, status=400)
+        assessment.publication_status = request.data['publication_status']
+    for field in ('is_required', 'include_in_competency'):
+        if field in request.data:
+            try:
+                setattr(assessment, field, parse_boolean(request.data[field], field))
+            except ValueError as exc:
+                return Response({'error': str(exc), 'field': field}, status=400)
+    if 'display_order' in request.data:
+        try:
+            assessment.display_order = int(request.data['display_order'])
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid display_order'}, status=400)
+        if assessment.display_order < 0:
+            return Response({'error': 'Invalid display_order'}, status=400)
+    for field in ('available_at', 'due_at'):
+        if field in request.data:
+            try:
+                parsed = _parse_assessment_datetime(request.data[field])
+            except (TypeError, ValueError):
+                return Response({'error': f'Invalid {field}'}, status=400)
+            setattr(assessment, field, parsed)
+    if assessment.available_at and assessment.due_at and assessment.due_at <= assessment.available_at:
+        return Response({'error': 'due_at must follow available_at'}, status=400)
+    if not assessment.title:
+        return Response({'error': 'Title is required.', 'field': 'title'}, status=400)
+    if assessment.publication_status == Assessment.PUBLICATION_PUBLISHED:
+        if assessment.batch_id is None:
+            return Response({'error': 'Choose a batch before publishing.', 'field': 'batch_id'}, status=400)
+        error = _stored_question_error(assessment)
+        if error:
+            return Response({'error': error, 'field': 'questions'}, status=400)
+    if (assessment.publication_status == Assessment.PUBLICATION_DRAFT and
+            old_scoring_state[0] != Assessment.PUBLICATION_DRAFT and
+            StudentResponse.objects.filter(assessment=assessment).exists()):
+        return Response({'error': 'An assessment with attempts cannot return to draft.'}, status=409)
+
+    assessment.save()
+    new_scoring_state = (
+        assessment.publication_status, assessment.is_required, assessment.include_in_competency,
+    )
+    if assessment.batch_id and old_scoring_state != new_scoring_state:
+        recalculate_enrolled_students(assessment.batch)
 
     return Response({
         'id':               assessment.id,
         'title':            assessment.title,
         'duration_minutes': assessment.duration_minutes,
         'is_active':        assessment.is_active,
+        'publication_status': assessment.publication_status,
+        'is_required': assessment.is_required,
+        'include_in_competency': assessment.include_in_competency,
+        'display_order': assessment.display_order,
+        'available_at': assessment.available_at,
+        'due_at': assessment.due_at,
     })
 
 
@@ -1145,7 +1763,8 @@ def instructor_assessment_questions(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        assessment = Assessment.objects.get(id=assessment_id)
+        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        assessment = queryset.get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
@@ -1182,7 +1801,7 @@ def instructor_assessment_questions(request, assessment_id):
 def instructor_assessment_add_questions(request, assessment_id):
     """
     Append new questions (from a parsed file upload) to an existing assessment.
-    Also clears all student submissions so everyone retakes with the full set.
+    Once an attempt exists, edits are blocked to preserve submissions and scores.
  
     Body:
     {
@@ -1203,7 +1822,7 @@ def instructor_assessment_add_questions(request, assessment_id):
           "correct_answer": "Central Processing Unit"
         }
       ],
-      "clear_submissions": true    // default true — resets student progress
+      "clear_submissions": true    // accepted for old clients; no records are cleared
     }
  
     Returns:
@@ -1217,15 +1836,25 @@ def instructor_assessment_add_questions(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
  
     try:
-        assessment = Assessment.objects.get(id=assessment_id)
+        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        assessment = queryset.get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
  
     questions_data    = request.data.get('questions', [])
-    clear_submissions = request.data.get('clear_submissions', True)
+    try:
+        if not isinstance(questions_data, list):
+            raise ValueError('questions must be a list.')
+        questions_data = [{**question, 'choices': parse_choice_flags(
+            question.get('choices', []), f'questions.{index}.choices',
+        )} for index, question in enumerate(questions_data)]
+    except (ValueError, AttributeError, TypeError) as exc:
+        return Response({'error': str(exc) if isinstance(exc, ValueError) else 'Each question must be an object.'}, status=400)
  
     if not questions_data:
         return Response({'error': 'at least one question is required'}, status=400)
+    if StudentResponse.objects.filter(assessment=assessment).exists():
+        return Response({'error': 'Questions cannot be added after an attempt exists; existing submissions are preserved.'}, status=409)
  
     # Append after the last existing question
     from django.db.models import Max
@@ -1276,22 +1905,12 @@ def instructor_assessment_add_questions(request, assessment_id):
                     AnswerChoice.objects.create(
                         question=question,
                         choice_text=text,
-                        is_correct=bool(c.get('is_correct', False)),
+                        is_correct=c['is_correct'],
                     )
  
         created_count += 1
  
-    # Clear all student submissions so everyone retakes with the full question set
     submissions_cleared = False
-    if clear_submissions and created_count > 0:
-        response_ids = list(
-            StudentResponse.objects.filter(assessment=assessment).values_list('id', flat=True)
-        )
-        if response_ids:
-            ResponseAnswer.objects.filter(response_id__in=response_ids).delete()
-            StudentResponse.objects.filter(assessment=assessment).delete()
-            SkillScore.objects.filter(assessment=assessment).delete()
-            submissions_cleared = True
  
     total = assessment.questions.count()
     return Response({
@@ -1335,12 +1954,14 @@ def instructor_question_detail(request, question_id):
         else:
             question = Question.objects.select_related(
                 'assessment', 'skill_category'
-            ).prefetch_related('choices').get(
-                id=question_id,
-                assessment__created_by=request.user
-            )
+            ).prefetch_related('choices').filter(
+                Q(assessment__batch__instructor=request.user) | Q(assessment__batch__isnull=True, assessment__created_by=request.user)
+            ).get(id=question_id)
     except Question.DoesNotExist:
         return Response({'error': 'Question not found'}, status=404)
+
+    if StudentResponse.objects.filter(assessment=question.assessment).exists():
+        return Response({'error': 'Question changes are locked after an attempt exists.'}, status=409)
  
     # ── DELETE ────────────────────────────────────────────────────────────────
     if request.method == 'DELETE':
@@ -1349,6 +1970,10 @@ def instructor_question_detail(request, question_id):
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
     data = request.data
+    try:
+        parsed_choices = parse_choice_flags(data['choices']) if 'choices' in data else None
+    except ValueError as exc:
+        return Response({'error': str(exc), 'field': 'choices'}, status=400)
  
     if 'question_text' in data:
         question.question_text = (data['question_text'] or '').strip()
@@ -1384,13 +2009,13 @@ def instructor_question_detail(request, question_id):
                     is_correct=True,
                 )
         else:
-            for c in (data.get('choices') or []):
+            for c in (parsed_choices or []):
                 text = (c.get('text') or '').strip()
                 if text:
                     AnswerChoice.objects.create(
                         question=question,
                         choice_text=text,
-                        is_correct=bool(c.get('is_correct', False)),
+                        is_correct=c['is_correct'],
                     )
  
     # Return refreshed question so the frontend can reconcile its local state
@@ -1414,33 +2039,117 @@ def instructor_question_detail(request, question_id):
 # STUDENT — Assessment Flow
 # ════════════════════════════════════════════════════════════════════════════
 
+def _student_assessment(request, assessment_id, *, require_available=True):
+    """Check role and enrollment; active attempts also require availability."""
+    if request.user.role != 'student':
+        return None, Response({'error': 'Students only'}, status=403)
+    try:
+        assessment_id = int(assessment_id)
+    except (TypeError, ValueError):
+        return None, Response({'error': 'Assessment not found'}, status=404)
+    assessment = Assessment.objects.select_related('batch').filter(id=assessment_id).first()
+    if assessment is None:
+        return None, Response({'error': 'Assessment not found'}, status=404)
+    if not assessment.batch_id or not BatchEnrollment.objects.filter(
+        batch_id=assessment.batch_id, student=request.user,
+    ).exists():
+        return None, Response({'error': 'Assessment not found'}, status=404)
+    if assessment.publication_status == Assessment.PUBLICATION_DRAFT and not require_available:
+        return None, Response({'error': 'Assessment not found'}, status=404)
+    if require_available and assessment_availability(assessment) != 'available':
+        return None, Response({'error': 'Assessment unavailable', 'availability_status': assessment_availability(assessment)}, status=409)
+    return assessment, None
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def assessment_list(request):
+    """Student's current batch assessments, attempts and required progress."""
+    if request.user.role != 'student':
+        return Response({'error': 'Students only'}, status=403)
+    enrollment = current_enrollment(request.user)
+    if enrollment is None:
+        return Response({'error': 'not_enrolled'}, status=404)
+    assessments = list(Assessment.objects.filter(
+        batch=enrollment.batch,
+        publication_status__in=[Assessment.PUBLICATION_PUBLISHED, Assessment.PUBLICATION_CLOSED],
+    )
+                       .prefetch_related('questions__skill_category')
+                       .order_by('display_order', 'created_at', 'id'))
+    responses = {r.assessment_id: r for r in StudentResponse.objects.filter(
+        student=request.user, assessment__in=assessments,
+    )}
+    items = []
+    for assessment in assessments:
+        response = responses.get(assessment.id)
+        if assessment.publication_status == Assessment.PUBLICATION_CLOSED and not (
+            response and response.submitted_at and response.status in (
+                StudentResponse.STATUS_SUBMITTED, StudentResponse.STATUS_STOPPED,
+            )
+        ):
+            continue
+        categories = sorted({q.skill_category.name for q in assessment.questions.all() if q.skill_category})
+        items.append({
+            'id': assessment.id,
+            'title': assessment.title,
+            'duration_minutes': assessment.duration_minutes,
+            'question_count': len(assessment.questions.all()),
+            'categories': categories,
+            'is_required': assessment.is_required,
+            'include_in_competency': assessment.include_in_competency,
+            'publication_status': assessment.publication_status,
+            'availability_status': assessment_availability(assessment),
+            'display_order': assessment.display_order,
+            'available_at': assessment.available_at,
+            'due_at': assessment.due_at,
+            'attempt_status': response.status if response else None,
+            'stopped_reason_display': response.stopped_reason_display if response else '',
+            'started_at': response.started_at if response else None,
+            'submitted_at': response.submitted_at if response else None,
+            'retake_allowed': response.retake_allowed if response else False,
+            'is_flagged': response.is_flagged if response else False,
+            'action': attempt_action(assessment, response),
+        })
+    return Response({'batch': {'id': enrollment.batch_id, 'name': enrollment.batch.name},
+                     'assessments': items, **required_progress(request.user, enrollment.batch)})
+
+
 # ── GET /api/assessments/active/ ─────────────────────────────────
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def assessment_active(request):
     """
-    Returns the single active assessment for the student's current batch.
-    Returns 404 if not enrolled or no active assessment.
+    Temporary compatibility API for the current single-assessment frontend.
+    Selects the first incomplete required published assessment deterministically.
     """
     user = request.user
     if user.role != 'student':
         return Response({'error': 'Students only'}, status=403)
 
-    enrollment = (
-        BatchEnrollment.objects
-        .filter(student=user, batch__status='active')
-        .select_related('batch')
-        .first()
-    )
+    enrollment = current_enrollment(user)
     if not enrollment:
         return Response({'error': 'not_enrolled'}, status=404)
 
-    try:
-        assessment = Assessment.objects.get(batch=enrollment.batch, is_active=True)
-    except Assessment.DoesNotExist:
-        return Response({'error': 'no_active_assessment'}, status=404)
+    candidates = Assessment.objects.filter(
+        batch=enrollment.batch, publication_status='published', is_required=True,
+    ).order_by('display_order', 'created_at', 'id')
+    assessment = None
+    existing = None
+    for candidate in candidates:
+        if assessment_availability(candidate) != 'available':
+            continue
+        attempt = StudentResponse.objects.filter(student=user, assessment=candidate).first()
+        if attempt and attempt.status == StudentResponse.STATUS_SUBMITTED and not attempt.retake_allowed:
+            continue
+        assessment, existing = candidate, attempt
+        break
+    if assessment is None:
+        progress = required_progress(user, enrollment.batch)
+        if progress['all_required_completed']:
+            return Response({'completed': True, 'state': 'completed', **progress})
+        return Response({'error': 'no_available_assessment', 'state': 'unavailable',
+                         **progress}, status=409)
 
-    existing = StudentResponse.objects.filter(student=user, assessment=assessment).first()
     if existing and existing.status == StudentResponse.STATUS_STOPPED and not existing.retake_allowed:
         return Response({
             'id': assessment.id,
@@ -1449,9 +2158,6 @@ def assessment_active(request):
             'batch_name': enrollment.batch.name,
             **serialize_attempt_integrity(existing),
         })
-    if existing and existing.submitted_at is not None and not existing.retake_allowed:
-        return Response({'error': 'already_submitted'}, status=409)
-
     return Response({
         'id':               assessment.id,
         'title':            assessment.title,
@@ -1471,16 +2177,13 @@ def assessment_start(request, assessment_id):
     Returns full shuffled question list (without revealing correct answers).
     """
     user = request.user
-    if user.role != 'student':
-        return Response({'error': 'Students only'}, status=403)
-
-    try:
-        assessment = Assessment.objects.get(id=assessment_id, is_active=True)
-    except Assessment.DoesNotExist:
-        return Response({'error': 'Assessment not found'}, status=404)
+    assessment, access_error = _student_assessment(request, assessment_id)
+    if access_error is not None:
+        return access_error
 
     # Lock the response while its layout is first created. This prevents two
     # near-simultaneous /start/ requests from returning different arrangements.
+    was_retake = False
     with transaction.atomic():
         now = timezone.now()
         response_obj, created = (
@@ -1500,10 +2203,36 @@ def assessment_start(request, assessment_id):
                 return Response({'error': 'Assessment already submitted'}, status=409)
 
             # The existing model keeps one response row per student/assessment.
-            # Starting an allowed retake turns that row into a fresh attempt.
+            # Snapshot its finalized evidence before starting the next attempt.
+            AssessmentAttemptHistory.objects.create(
+                response=response_obj,
+                attempt_number=response_obj.prior_attempts.count() + 1,
+                status=response_obj.status,
+                started_at=response_obj.started_at,
+                submitted_at=response_obj.submitted_at,
+                stopped_at=response_obj.stopped_at,
+                stopped_reason=response_obj.stopped_reason,
+                is_flagged=response_obj.is_flagged,
+                violation_count=response_obj.violation_count,
+                violation_events=response_obj.violation_events,
+                question_layout=response_obj.question_layout,
+                answers=[{
+                    'question_id': answer.question_id,
+                    'selected_choice_id': answer.selected_choice_id,
+                    'text_answer': answer.text_answer,
+                } for answer in response_obj.answers.order_by('id')],
+                category_scores=[{
+                    'category_id': score.skill_category_id,
+                    'raw_score': score.raw_score,
+                    'max_score': score.max_score,
+                    'percentage': score.percentage,
+                } for score in SkillScore.objects.filter(
+                    student=user, assessment=assessment,
+                ).order_by('skill_category_id')],
+            )
             response_obj.answers.all().delete()
             SkillScore.objects.filter(student=user, assessment=assessment).delete()
-            Recommendation.objects.filter(student=user).delete()
+            was_retake = True
             response_obj.started_at = now
             response_obj.submitted_at = None
             response_obj.retake_allowed = False
@@ -1530,6 +2259,9 @@ def assessment_start(request, assessment_id):
                 update_fields.append('question_layout')
             if update_fields:
                 response_obj.save(update_fields=update_fields)
+
+    if was_retake:
+        recalculate_combined(user, assessment.batch)
 
     # Build question list (no correct answer revealed)
     q_list = []
@@ -1562,16 +2294,12 @@ def assessment_submit(request, assessment_id):
     Grade all answers, write SkillScore rows, generate recommendations.
     Body: { "answers": [ { "question_id": 1, "selected_choice_id": 5 }, ... ] }
     """
-    from .scoring import score_submission, generate_recommendations
+    from .scoring import score_submission, update_assessment_profile
 
     user = request.user
-    if user.role != 'student':
-        return Response({'error': 'Students only'}, status=403)
-
-    try:
-        assessment = Assessment.objects.get(id=assessment_id, is_active=True)
-    except Assessment.DoesNotExist:
-        return Response({'error': 'Assessment not found'}, status=404)
+    assessment, access_error = _student_assessment(request, assessment_id)
+    if access_error is not None:
+        return access_error
 
     answers_data = request.data.get('answers', [])
     if not isinstance(answers_data, list):
@@ -1608,26 +2336,16 @@ def assessment_submit(request, assessment_id):
         response_obj.is_flagged = False
         response_obj.save(update_fields=['submitted_at', 'status', 'is_flagged'])
 
-    # ── Generate recommendations (cosine similarity) ─────────────
-    recommendations = generate_recommendations(user, assessment, categories)
-
-    # ── Build correct-answer map for frontend Answer Review ──────────
-    # Safe to expose now — exam is already locked (submitted_at is set).
-    correct_answers = {}
-    for q in assessment.questions.prefetch_related('choices').all():
-        correct_choice = q.choices.filter(is_correct=True).first()
-        if not correct_choice:
-            continue
-        if q.question_type == 'identification':
-            correct_answers[q.id] = {'type': 'identification', 'text': correct_choice.choice_text}
-        else:
-            correct_answers[str(q.id)] = {'type': 'choice', 'id': correct_choice.id, 'text': correct_choice.choice_text}
+    update_assessment_profile(user, assessment)
+    profile, progress, recommendations = recalculate_combined(user, assessment.batch)
+    unlocked = combined_is_unlocked(user, assessment.batch, profile=profile, progress=progress)
 
     return Response({
         'message':         'Assessment submitted successfully.',
         'scores':          score_results,
-        'recommendations': recommendations[:5],   # top 5
-        'correct_answers': correct_answers,
+        'recommendations': recommendations[:5] if unlocked else [],
+        'recommendations_locked': not unlocked,
+        **progress,
     })
 
 
@@ -1636,16 +2354,12 @@ def assessment_submit(request, assessment_id):
 @permission_classes([IsAuthenticated])
 def assessment_stop(request, assessment_id):
     """Finalize an attempt after the first browser integrity rule is triggered."""
-    from .scoring import score_submission, generate_recommendations
+    from .scoring import score_submission
 
     user = request.user
-    if user.role != 'student':
-        return Response({'error': 'Students only'}, status=403)
-
-    try:
-        assessment = Assessment.objects.get(id=assessment_id)
-    except Assessment.DoesNotExist:
-        return Response({'error': 'Assessment not found'}, status=404)
+    assessment, access_error = _student_assessment(request, assessment_id)
+    if access_error is not None:
+        return access_error
 
     reason = request.data.get('reason', '')
     if reason not in INTEGRITY_REASON_DISPLAYS:
@@ -1714,11 +2428,14 @@ def assessment_stop(request, assessment_id):
             'is_flagged', 'retake_allowed',
         ])
 
-    recommendations = generate_recommendations(user, assessment, categories)
+    profile, progress, recommendations = recalculate_combined(user, assessment.batch)
+    unlocked = combined_is_unlocked(user, assessment.batch, profile=profile, progress=progress)
     return Response({
         'message': 'Assessment stopped and completed answers recorded.',
         'scores_saved': True,
-        'recommendations': recommendations[:5],
+        'recommendations': recommendations[:5] if unlocked else [],
+        'recommendations_locked': not unlocked,
+        **progress,
         **serialize_attempt_integrity(response_obj),
     })
 
@@ -1750,7 +2467,7 @@ def instructor_student_recommendations(request):
         .select_related('student', 'batch')
     )
     student_ids = list({e.student_id for e in enrollments})
-    profile_map = latest_competency_profiles(student_ids)
+    profile_map = latest_competency_profiles(student_ids, batch=active_batch)
     response_map = {}
     for attempt in (
         StudentResponse.objects
@@ -1763,7 +2480,7 @@ def instructor_student_recommendations(request):
     from collections import defaultdict
     all_recs = (
         Recommendation.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, batch=active_batch, is_current=True)
         .select_related('position', 'position__company')
         .order_by('student_id', '-match_score')
     )
@@ -1777,18 +2494,20 @@ def instructor_student_recommendations(request):
     # ── Bulk-load all skill scores ─────────────────────────────────
     all_scores = (
         SkillScore.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, assessment__batch=active_batch)
         .select_related('skill_category')
     )
     scores_by_student = defaultdict(list)
     for sc in all_scores:
         scores_by_student[sc.student_id].append({'category': sc.skill_category.name, 'percentage': sc.percentage})
+    combined_states = bulk_management_states([e.student for e in enrollments], active_batch)
 
     # ── Build the result using pre-loaded data ─────────────────────
     results = []
     for e in enrollments:
         student  = e.student
-        top_recs = recs_by_student.get(student.id, [])
+        combined_state, unlocked = combined_states[student.id]
+        top_recs = recs_by_student.get(student.id, []) if unlocked else []
         attempt = response_map.get(student.id)
         # Normalise to the shape InstructorDashboard expects
         top_one  = top_recs[0] if top_recs else None
@@ -1801,10 +2520,12 @@ def instructor_student_recommendations(request):
             'school_id':   student.school_id,
             'course':      student.course,
             'photo_url':   student.photo_url,
-            'has_submitted': bool(attempt and attempt.submitted_at is not None),
+            'has_submitted': unlocked,
+            **combined_state,
             'retake_allowed': attempt.retake_allowed if attempt else False,
             **serialize_attempt_integrity(attempt),
-            'skill_scores': {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])},
+            'skill_scores': ({sc['category']: sc['percentage'] for sc in combined_state['combined_category_scores']}
+                             if unlocked else {sc['category']: sc['percentage'] for sc in scores_by_student.get(student.id, [])}),
             'competency_profile': serialize_competency_profile(profile_map.get(student.id)),
             'batch':       {'id': e.batch.id, 'name': e.batch.name},
             'address':     student.address or {},
@@ -1845,7 +2566,7 @@ def instructor_companies(request):
 
     # Students belonging to this instructor's batches
     batches = Batch.objects.filter(instructor=request.user)
-    enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch')
+    enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch', 'student')
     
     student_batch_info = {}
     for e in enrollments:
@@ -1854,18 +2575,23 @@ def instructor_companies(request):
             'status': e.batch.status
         }
     student_ids = list(student_batch_info.keys())
+    unlocked_batches = {
+        e.student_id: e.batch_id for e in enrollments
+        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch)
+    }
 
     # Bulk-load all recommendations for those students
     from collections import defaultdict
     all_recs = (
         Recommendation.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, is_current=True)
         .select_related('student', 'position')
         .order_by('position_id', '-match_score')
     )
     recs_by_position = defaultdict(list)
     for r in all_recs:
-        recs_by_position[r.position_id].append(r)
+        if r.batch_id is not None and unlocked_batches.get(r.student_id) == r.batch_id:
+            recs_by_position[r.position_id].append(r)
 
     companies = (
         Company.objects
@@ -1986,19 +2712,43 @@ def student_results(request):
     if user.role != 'student':
         return Response({'error': 'Students only'}, status=403)
 
-    skill_scores = SkillScore.objects.filter(student=user).select_related('skill_category')
+    assessment_id = request.query_params.get('assessment_id')
+    if assessment_id:
+        assessment, access_error = _student_assessment(request, assessment_id, require_available=False)
+        if access_error is not None:
+            return access_error
+    else:
+        enrollment = current_enrollment(user)
+        if enrollment is None:
+            return Response({'error': 'not_enrolled'}, status=404)
+        assessments = Assessment.objects.filter(batch=enrollment.batch)
+        if assessments.count() > 1:
+            return Response({'error': 'assessment_id is required for this batch'}, status=409)
+        assessment = assessments.first()
+        if assessment is None:
+            return Response({
+                'skill_scores': [], 'recommendations': [], 'competency_profile': None,
+                'assessment': None, 'recommendations_locked': True,
+                'active_model': RecommendationConfiguration.get_active().active_model,
+                'placement': _serialize_placement_visibility(_approved_student_placement(user.id)),
+                **required_progress(user, enrollment.batch),
+            })
+        assessment, access_error = _student_assessment(request, assessment.id, require_available=False)
+        if access_error is not None:
+            return access_error
+    latest = (StudentResponse.objects.filter(
+        student=user, assessment=assessment, submitted_at__isnull=False,
+        status__in=[StudentResponse.STATUS_SUBMITTED, StudentResponse.STATUS_STOPPED],
+    ).select_related('assessment').first())
+    if latest is None:
+        return Response({'error': 'Finalized attempt not found'}, status=404)
+    combined_profile, progress, unlocked = ensure_combined(user, assessment.batch)
+    skill_scores = SkillScore.objects.filter(student=user, assessment=assessment).select_related('skill_category')
     recommendations = (
         Recommendation.objects
-        .filter(student=user)
+        .filter(student=user, batch=assessment.batch, is_current=True)
         .select_related('position', 'position__company')
         .order_by('-match_score')
-    )
-    latest = (
-        StudentResponse.objects
-        .filter(student=user, submitted_at__isnull=False)
-        .order_by('-submitted_at')
-        .select_related('assessment')
-        .first()
     )
     competency_profile = (
         StudentCompetencyProfile.objects
@@ -2008,25 +2758,15 @@ def student_results(request):
     )
     approved_placement = _approved_student_placement(user.id)
 
-    # Auto-generate missing legacy profiles/recommendations after deployment.
-    if skill_scores.exists() and latest and (not recommendations.exists() or competency_profile is None):
-        try:
-            from .scoring import generate_recommendations
-            cats = list(SkillCategory.objects.all())
-            generate_recommendations(user, latest.assessment, cats)
-            competency_profile = StudentCompetencyProfile.objects.filter(
-                student=user, assessment=latest.assessment
-            ).first()
-            recommendations = (
-                Recommendation.objects
-                .filter(student=user)
-                .select_related('position', 'position__company')
-                .order_by('-match_score')
-            )
-        except Exception:
-            pass
-
     return Response({
+        'assessment': {
+            'id': assessment.id, 'title': assessment.title,
+            'publication_status': assessment.publication_status,
+            'attempt_status': latest.status, 'submitted_at': latest.submitted_at,
+            'stopped_reason_display': latest.stopped_reason_display,
+            'is_required': assessment.is_required,
+            'include_in_competency': assessment.include_in_competency,
+        },
         'skill_scores': [
             {
                 'category':   ss.skill_category.name,
@@ -2037,10 +2777,52 @@ def student_results(request):
             }
             for ss in skill_scores.order_by('-percentage')
         ],
-        'recommendations': [serialize_recommendation(r) for r in recommendations],
+        'recommendations': [serialize_recommendation(r) for r in recommendations] if unlocked else [],
+        'recommendations_locked': not unlocked,
+        'combined_profile_finalized': bool(combined_profile and unlocked),
         'competency_profile': serialize_competency_profile(competency_profile, include_nlp_text=False),
         'active_model': RecommendationConfiguration.get_active().active_model,
         'placement': _serialize_placement_visibility(approved_placement),
+        **progress,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_combined_results(request):
+    """Current batch final result, separate from one assessment's scores."""
+    user = request.user
+    if user.role != 'student':
+        return Response({'error': 'Students only'}, status=403)
+    enrollment = current_enrollment(user)
+    if enrollment is None:
+        return Response({'error': 'not_enrolled'}, status=404)
+    batch = enrollment.batch
+    profile, progress, unlocked = ensure_combined(user, batch)
+    included_ids = profile.included_assessment_ids if profile else []
+    titles = dict(Assessment.objects.filter(id__in=included_ids).values_list('id', 'title'))
+    recommendations = Recommendation.objects.filter(
+        student=user, batch=batch, is_current=True,
+    ).select_related('position', 'position__company').order_by('-match_score') if unlocked else []
+    combined_scores = serialize_combined_scores(user, batch) if unlocked else []
+    overall_raw = sum(score['raw_score'] for score in combined_scores)
+    overall_max = sum(score['max_score'] for score in combined_scores)
+    return Response({
+        'batch': {'id': batch.id, 'name': batch.name},
+        'combined_category_scores': combined_scores,
+        'overall_raw_score': overall_raw if unlocked else None,
+        'overall_max_score': overall_max if unlocked else None,
+        'overall_percentage': round(overall_raw / overall_max * 100, 2) if overall_max else None,
+        'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+        'included_assessments': [{'id': aid, 'title': titles.get(aid, '')} for aid in included_ids] if unlocked else [],
+        'is_finalized': unlocked,
+        'recommendations_locked': not unlocked,
+        'recommendations': [serialize_recommendation(rec) for rec in recommendations],
+        'active_model': profile.active_model if unlocked else RecommendationConfiguration.get_active().active_model,
+        'model_used': profile.model_used if unlocked else None,
+        'generated_at': profile.generated_at if unlocked else None,
+        'placement': _serialize_placement_visibility(_approved_student_placement(user.id)),
+        **progress,
     })
 
 
@@ -2049,22 +2831,37 @@ def student_results(request):
 @permission_classes([IsAuthenticated])
 def student_results_review(request):
     """
-    Returns the student's submitted answers with correct answers from the DB.
-    Bypasses localStorage — always reflects DB truth for the Answer Review.
+    Returns the student's submitted answers and their graded correctness.
+    The answer key is never serialized.
     """
     user = request.user
     if user.role != 'student':
         return Response({'error': 'Students only'}, status=403)
 
-    latest_response = (
-        StudentResponse.objects
-        .filter(student=user, submitted_at__isnull=False)
-        .order_by('-submitted_at')
-        .select_related('assessment')
-        .first()
-    )
+    assessment_id = request.query_params.get('assessment_id')
+    if assessment_id:
+        assessment, access_error = _student_assessment(request, assessment_id, require_available=False)
+        if access_error is not None:
+            return access_error
+    else:
+        enrollment = current_enrollment(user)
+        if enrollment is None:
+            return Response({'error': 'not_enrolled'}, status=404)
+        assessments = Assessment.objects.filter(batch=enrollment.batch)
+        if assessments.count() > 1:
+            return Response({'error': 'assessment_id is required for this batch'}, status=409)
+        assessment = assessments.first()
+        if assessment is None:
+            return Response({'error': 'Assessment not found'}, status=404)
+        assessment, access_error = _student_assessment(request, assessment.id, require_available=False)
+        if access_error is not None:
+            return access_error
+    latest_response = StudentResponse.objects.filter(
+        student=user, assessment=assessment, submitted_at__isnull=False,
+        status__in=[StudentResponse.STATUS_SUBMITTED, StudentResponse.STATUS_STOPPED],
+    ).first()
     if not latest_response:
-        return Response({'questions': [], 'answers': {}})
+        return Response({'error': 'Finalized attempt not found'}, status=404)
 
     questions = ordered_questions(
         latest_response.assessment,
@@ -2091,11 +2888,10 @@ def student_results_review(request):
             'category':      q.skill_category.name if q.skill_category else '',
         }
         if is_ident:
-            q_dict['correct_text'] = correct_choice.choice_text if correct_choice else ''
             q_dict['choices']      = []
         else:
             q_dict['choices'] = [
-                {'id': c.id, 'text': c.choice_text, 'is_correct': c.is_correct}
+                {'id': c.id, 'text': c.choice_text}
                 for c in ordered_choices(q, latest_response.question_layout)
             ]
         q_list.append(q_dict)
@@ -2104,6 +2900,10 @@ def student_results_review(request):
             answers[str(q.id)] = {
                 'selected_choice_id': ra.selected_choice_id if not is_ident else None,
                 'text_answer':        ra.text_answer if is_ident else '',
+                'submitted_answer_correct': bool(correct_choice and (
+                    ra.text_answer.strip().casefold() == correct_choice.choice_text.strip().casefold()
+                    if is_ident else ra.selected_choice_id == correct_choice.id
+                )),
             }
 
     return Response({'questions': q_list, 'answers': answers})
@@ -2121,9 +2921,14 @@ def student_companies(request):
     if user.role != 'student':
         return Response({'error': 'Students only'}, status=403)
 
+    enrollment = current_enrollment(user)
+    if enrollment is None:
+        return Response({'error': 'not_enrolled'}, status=404)
+    _, progress, unlocked = ensure_combined(user, enrollment.batch)
     user_recs = {
         r.position_id: r.match_score
-        for r in Recommendation.objects.filter(student=user)
+        for r in Recommendation.objects.filter(student=user, batch=enrollment.batch, is_current=True)
+        if unlocked
     }
 
     companies = (
@@ -2143,7 +2948,7 @@ def student_companies(request):
                 'id':          p.id,
                 'title':       p.title,
                 'slots':       p.slots_available,
-                'match_score': round(user_recs.get(p.id, 0), 1),
+                'match_score': round(user_recs[p.id], 1) if p.id in user_recs else None,
                 'tags': [
                     req.skill_category.name
                     for req in p.requirements.all()
@@ -2175,13 +2980,14 @@ def admin_student_recommendations(request):
         return Response({'error': 'Admins only'}, status=403)
 
     students = list(User.objects.filter(role='student', is_active=True))
+    current_by_student, management_states = admin_current_management_states(students)
     student_ids = [s.id for s in students]
     profile_map = latest_competency_profiles(student_ids)
 
     # ── Bulk-load ALL recommendations in ONE query ────────────────────
     all_recs = (
         Recommendation.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company', 'student')
         .order_by('student_id', '-match_score')
     )
@@ -2190,8 +2996,7 @@ def admin_student_recommendations(request):
     from collections import defaultdict
     recs_by_student = defaultdict(list)
     for r in all_recs:
-        if len(recs_by_student[r.student_id]) < 3:
-            recs_by_student[r.student_id].append(r)
+        recs_by_student[r.student_id].append(r)
 
     # Also get instructor names via batch enrollments
     enrollments = (
@@ -2206,7 +3011,15 @@ def admin_student_recommendations(request):
 
     results = []
     for student in students:
-        top_recs = recs_by_student.get(student.id, [])
+        enrollment = current_by_student.get(student.id)
+        combined_state, unlocked = management_states.get(student.id, ({
+            'recommendations_locked': True, 'combined_category_scores': [],
+            'combined_competency_profile': None, 'assessment_results': [],
+            'has_required_assessments': False, 'all_required_completed': False,
+            'completed_required_count': 0, 'total_required_count': 0,
+            'remaining_required_count': 0,
+        }, False))
+        top_recs = [r for r in recs_by_student.get(student.id, []) if enrollment and r.batch_id == enrollment.batch_id][:3] if unlocked else []
         top_one  = top_recs[0] if top_recs else None
         results.append({
             'id':               student.id,
@@ -2216,7 +3029,8 @@ def admin_student_recommendations(request):
             'course':           student.course,
             'photo_url':        student.photo_url,
             'instructor_name':  instructor_by_student.get(student.id, ''),
-            'has_submitted':    bool(top_one),
+            'has_submitted':    unlocked,
+            **combined_state,
             'top_match_score':  round(top_one.match_score, 2) if top_one else None,
             'top_position_name': top_one.position.title if top_one else None,
             'top_company_name':  top_one.position.company.name if top_one else None,
@@ -2260,13 +3074,53 @@ def admin_stats(request):
     total_students = User.objects.filter(role='student', is_active=True).count()
     total_companies = Company.objects.count()
     open_positions = Position.objects.aggregate(total=Sum('slots_available')).get('total') or 0
-    recommendations_made = Recommendation.objects.count()
+    recommendations_made = current_recommendations().count()
+    publication_counts = {row['publication_status']: row['total'] for row in Assessment.objects.values('publication_status').annotate(total=Count('id'))}
+    enrollments = (BatchEnrollment.objects.filter(batch__status='active', student__is_active=True)
+                   .select_related('batch').order_by('student_id', '-enrolled_at', '-id'))
+    current_batches = {}
+    for enrollment in enrollments:
+        current_batches.setdefault(enrollment.student_id, enrollment.batch_id)
+    required_by_batch = {}
+    for assessment_id, batch_id in Assessment.objects.filter(
+        batch_id__in=set(current_batches.values()), publication_status='published',
+        is_required=True, include_in_competency=True,
+    ).values_list('id', 'batch_id'):
+        required_by_batch.setdefault(batch_id, set()).add(assessment_id)
+    submitted_by_student = {}
+    for student_id, assessment_id in StudentResponse.objects.filter(
+        student_id__in=current_batches, status=StudentResponse.STATUS_SUBMITTED,
+        submitted_at__isnull=False, is_flagged=False,
+    ).values_list('student_id', 'assessment_id'):
+        submitted_by_student.setdefault(student_id, set()).add(assessment_id)
+    completed_ids = {student_id for student_id, batch_id in current_batches.items()
+                     if required_by_batch.get(batch_id) and
+                     required_by_batch[batch_id].issubset(submitted_by_student.get(student_id, set()))}
+    completed_students = len(completed_ids)
+    finalized_pairs = set(CombinedCompetencyProfile.objects.filter(
+        student_id__in=completed_ids, batch_id__in=set(current_batches.values()), is_finalized=True,
+    ).values_list('student_id', 'batch_id'))
+    unlocked_students = sum((student_id, current_batches[student_id]) in finalized_pairs for student_id in completed_ids)
+    stopped_or_flagged = StudentResponse.objects.filter(Q(status=StudentResponse.STATUS_STOPPED) | Q(is_flagged=True)).count()
+    retake_approved = StudentResponse.objects.filter(retake_allowed=True).count()
 
     return Response({
         'total_students': total_students,
         'total_companies': total_companies,
         'open_positions': open_positions,
         'recommendations_made': recommendations_made,
+        'total_assessments': Assessment.objects.count(),
+        'published_assessments': publication_counts.get('published', 0),
+        'draft_assessments': publication_counts.get('draft', 0),
+        'closed_assessments': publication_counts.get('closed', 0),
+        'completed_required_students': completed_students,
+        'in_progress_students': len(current_batches) - completed_students,
+        'required_completion_rate': round(100 * completed_students / len(current_batches), 1) if current_batches else 0,
+        'stopped_or_flagged_attempts': stopped_or_flagged,
+        'retakes_approved': retake_approved,
+        'final_profiles_generated': CombinedCompetencyProfile.objects.filter(is_finalized=True, batch__status='active').count(),
+        'recommendations_unlocked_students': unlocked_students,
+        'unplaced_students': len(current_batches) - OJTPlacement.objects.filter(student_id__in=current_batches, status='approved').values('student_id').distinct().count(),
     })
 
 
@@ -2277,6 +3131,7 @@ def admin_users(request):
         return Response({'error': 'Admins only'}, status=403)
 
     students            = list(User.objects.filter(role='student', is_active=True).order_by('name'))
+    current_by_student, management_states = admin_current_management_states(students)
     instructors         = list(User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name'))
     pending_instructors = list(User.objects.filter(role='instructor', is_active=True, is_approved=False).order_by('name'))
 
@@ -2285,14 +3140,19 @@ def admin_users(request):
     profile_map = latest_competency_profiles(student_ids)
     all_recs = (
         Recommendation.objects
-        .filter(student_id__in=student_ids)
+        .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company')
+        .prefetch_related('position__requirements__skill_category')
         .order_by('student_id', '-match_score')
     )
     top_rec_by_student = {}
+    recs_by_student = {}
     for r in all_recs:
-        if r.student_id not in top_rec_by_student:
-            top_rec_by_student[r.student_id] = r
+        top_rec_by_student.setdefault((r.student_id, r.batch_id), r)
+        bucket = recs_by_student.setdefault((r.student_id, r.batch_id), [])
+        if len(bucket) < 3:
+            bucket.append(r)
+    placements_by_student = _visible_placements_by_student(student_ids)
 
     response_by_student = {}
     for attempt in (
@@ -2315,11 +3175,19 @@ def admin_users(request):
 
     students_out = []
     for s in students:
-        top_rec = top_rec_by_student.get(s.id)
         attempt = response_by_student.get(s.id)
+        enrollment = current_by_student.get(s.id)
+        combined_state, unlocked = management_states.get(s.id, ({
+            'recommendations_locked': True, 'combined_category_scores': [],
+            'combined_competency_profile': None, 'assessment_results': [],
+            'has_required_assessments': False, 'all_required_completed': False,
+            'completed_required_count': 0, 'total_required_count': 0,
+            'remaining_required_count': 0,
+        }, False))
+        top_rec = top_rec_by_student.get((s.id, enrollment.batch_id)) if enrollment and unlocked else None
         student_status = (
             'stopped' if attempt and attempt.status == StudentResponse.STATUS_STOPPED
-            else 'completed' if attempt and attempt.status == StudentResponse.STATUS_SUBMITTED
+            else 'completed' if unlocked
             else 'pending'
         )
         students_out.append({
@@ -2328,14 +3196,18 @@ def admin_users(request):
             'email':            s.email,
             'student_id':       s.school_id or '',
             'course':           s.course or '',
-            'instructor':       instructor_by_student.get(s.id, 'TBD'),
+            'batch':            {'id': enrollment.batch_id, 'name': enrollment.batch.name} if enrollment else None,
+            'instructor':       enrollment.batch.instructor.name if enrollment and enrollment.batch.instructor else instructor_by_student.get(s.id, 'TBD'),
             'status':           student_status,
+            **combined_state,
             'top_match_score':  round(top_rec.match_score, 2) if top_rec else None,
             'top_position_name': top_rec.position.title if top_rec else None,
             'top_company_name':  top_rec.position.company.name if top_rec else None,
+            'top_recommendations': [serialize_recommendation(r) for r in recs_by_student.get((s.id, enrollment.batch_id), [])] if enrollment and unlocked else [],
             'retake_allowed':    attempt.retake_allowed if attempt else False,
             **serialize_attempt_integrity(attempt),
             'address':           s.address or {},
+            'placement':         _serialize_placement_visibility(placements_by_student.get(s.id), include_unplaced=True),
             'photo_url':         s.photo_url,
             'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
         })
@@ -2624,23 +3496,13 @@ def _rerun_recommendations_for_all_students():
     submitted so the new position gets scored against their existing skill
     profile. Uses update_or_create internally — no duplicates created.
     """
-    try:
-        from .scoring import generate_recommendations
-        cats = list(SkillCategory.objects.all())
-        submitted = (
-            StudentResponse.objects
-            .filter(submitted_at__isnull=False)
-            .order_by('student_id', '-submitted_at')
-            .distinct('student_id')
-            .select_related('student', 'assessment')
-        )
-        for resp in submitted:
-            try:
-                generate_recommendations(resp.student, resp.assessment, cats)
-            except Exception:
-                pass  # Never let one student's failure break the loop
-    except Exception:
-        pass  # Fail silently — position was still created successfully
+    for enrollment in BatchEnrollment.objects.filter(batch__status='active').select_related('student', 'batch'):
+        if not required_progress(enrollment.student, enrollment.batch)['all_required_completed']:
+            continue
+        try:
+            recalculate_combined(enrollment.student, enrollment.batch)
+        except Exception:
+            pass  # Position creation succeeds even if one student's NLP fails.
 
 
 
@@ -2657,21 +3519,13 @@ def admin_rerun_recommendations(request):
         return Response({'error': 'Admins only'}, status=403)
 
     try:
-        from .scoring import generate_recommendations
-        cats = list(SkillCategory.objects.all())
-        submitted = (
-            StudentResponse.objects
-            .filter(submitted_at__isnull=False)
-            .order_by('student_id', '-submitted_at')
-            .distinct('student_id')
-            .select_related('student', 'assessment')
-        )
         count = 0
         errors = 0
-        for resp in submitted:
+        for enrollment in BatchEnrollment.objects.filter(batch__status='active').select_related('student', 'batch'):
             try:
-                generate_recommendations(resp.student, resp.assessment, cats)
-                count += 1
+                _, progress, _ = recalculate_combined(enrollment.student, enrollment.batch)
+                if progress['all_required_completed']:
+                    count += 1
             except Exception:
                 errors += 1
 
@@ -2844,42 +3698,51 @@ def admin_reports(request):
 
     from django.db.models import Count, Avg
 
-    # --- Submission stats ---
+    # --- Submission stats (all required included assessments in the active batch) ---
     total_students      = User.objects.filter(role='student', is_active=True).count()
-    submitted_students  = StudentResponse.objects.filter(submitted_at__isnull=False).values('student').distinct().count()
+    submitted_students = sum(
+        1 for student in User.objects.filter(role='student', is_active=True)
+        if (enrollment := current_enrollment(student)) and required_progress(student, enrollment.batch)['all_required_completed']
+        and required_progress(student, enrollment.batch)['total_required_count']
+    )
     pending_students    = total_students - submitted_students
 
     # --- Recommendation stats ---
-    total_recs = Recommendation.objects.count()
-    strong_matches = Recommendation.objects.filter(match_score__gte=80).count()
-    fair_matches   = Recommendation.objects.filter(match_score__gte=60, match_score__lt=80).count()
-    low_matches    = Recommendation.objects.filter(match_score__lt=60).count()
+    current_recs = current_recommendations()
+    total_recs = current_recs.count()
+    strong_matches = current_recs.filter(match_score__gte=80).count()
+    fair_matches   = current_recs.filter(match_score__gte=60, match_score__lt=80).count()
+    low_matches    = current_recs.filter(match_score__lt=60).count()
 
     # --- Average match score ---
-    avg_score_data = Recommendation.objects.aggregate(avg=Avg('match_score'))
+    avg_score_data = current_recs.aggregate(avg=Avg('match_score'))
     avg_score = round(avg_score_data['avg'] or 0, 1)
 
-    # --- Skill category breakdown (avg score per category) ---
-    skill_scores = (
-        SkillScore.objects
-        .values('skill_category__name')
-        .annotate(avg_pct=Avg('percentage'), student_count=Count('student', distinct=True))
-        .order_by('-avg_pct')
-    )
-    skill_breakdown = [
-        {
-            'category': s['skill_category__name'],
-            'avg_score': round(s['avg_pct'], 1),
-            'student_count': s['student_count'],
-        }
-        for s in skill_scores
-        if s['skill_category__name']
-    ]
+    # Final batch category totals only; stopped/partial assessment scores stay
+    # available in assessment detail but do not enter the competency report.
+    unlocked_pairs = {
+        (profile.student_id, profile.batch_id)
+        for profile in CombinedCompetencyProfile.objects.filter(is_finalized=True).select_related('student', 'batch')
+        if combined_is_unlocked(profile.student, profile.batch, profile=profile)
+    }
+    category_groups = {}
+    for score in CombinedCategoryScore.objects.select_related('skill_category'):
+        if (score.student_id, score.batch_id) not in unlocked_pairs:
+            continue
+        group = category_groups.setdefault(score.skill_category.name, {'sum': 0.0, 'count': 0, 'students': set()})
+        group['sum'] += score.percentage
+        group['count'] += 1
+        group['students'].add(score.student_id)
+    skill_breakdown = sorted(({
+        'category': name,
+        'avg_score': round(group['sum'] / group['count'], 1),
+        'student_count': len(group['students']),
+    } for name, group in category_groups.items()), key=lambda item: -item['avg_score'])
 
     # --- Top matched companies ---
     from django.db.models import Count as DCount, Avg as DAvg
     top_companies = (
-        Recommendation.objects
+        current_recs
         .filter(match_score__gte=60)
         .values('position__company__name')
         .annotate(match_count=DCount('id'), avg_score=DAvg('match_score'))
@@ -2901,13 +3764,11 @@ def admin_reports(request):
         total = b.enrollments.count()
         if total == 0:
             continue
-        try:
-            assessment = Assessment.objects.get(batch=b)
-            submitted = StudentResponse.objects.filter(
-                assessment=assessment, submitted_at__isnull=False
-            ).count()
-        except Assessment.DoesNotExist:
-            submitted = 0
+        submitted = sum(
+            1 for enrollment in b.enrollments.select_related('student').all()
+            if (progress := required_progress(enrollment.student, b))['total_required_count']
+            and progress['all_required_completed']
+        )
         batch_completion.append({
             'batch': b.name,
             'total': total,
@@ -3155,6 +4016,10 @@ def placement_suggestions(request):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
     for enrollment in scoped_enrollments.order_by('student_id', '-enrolled_at', '-id'):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
+    unlocked_pairs = {
+        (student_id, batch.id) for student_id, batch in batch_by_student.items()
+        if combined_is_unlocked(User.objects.get(id=student_id), batch)
+    }
 
     companies = Company.objects.prefetch_related('positions').order_by('name', 'id')
     if company_id:
@@ -3169,13 +4034,14 @@ def placement_suggestions(request):
 
     recommendations = (
         Recommendation.objects
-        .filter(student_id__in=student_ids, position_id__in=position_ids)
+        .filter(student_id__in=student_ids, position_id__in=position_ids, is_current=True)
         .select_related('student', 'position')
         .order_by('position_id', '-match_score', 'student__name', 'id')
     )
     recommendations_by_position = {}
     for recommendation in recommendations:
-        recommendations_by_position.setdefault(recommendation.position_id, []).append(recommendation)
+        if (recommendation.student_id, recommendation.batch_id) in unlocked_pairs:
+            recommendations_by_position.setdefault(recommendation.position_id, []).append(recommendation)
 
     approved_counts = {
         row['position_id']: row['count']
@@ -3312,6 +4178,10 @@ def placement_approve(request):
             recommendation = Recommendation.objects.select_for_update().get(id=recommendation_id)
             if not _can_manage_placement_student(request.user, recommendation.student_id):
                 return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+            if request.user.role == 'instructor' and (
+                recommendation.batch_id is None or recommendation.batch.instructor_id != request.user.id
+            ):
+                return Response({'error': 'Recommendation is outside your batches.'}, status=403)
             student = User.objects.select_for_update().get(id=recommendation.student_id)
             position = Position.objects.select_for_update().select_related('company').get(
                 id=recommendation.position_id,
@@ -3327,6 +4197,11 @@ def placement_approve(request):
                     'error': 'Student already has an approved placement.',
                     'placement': _serialize_placement(current),
                 }, status=409)
+
+            if not recommendation.batch_id or not recommendation.is_current or not combined_is_unlocked(
+                recommendation.student, recommendation.batch,
+            ):
+                return Response({'error': 'Final recommendations are locked for this student.'}, status=409)
 
             approved_count = OJTPlacement.objects.filter(
                 position=position, status=OJTPlacement.STATUS_APPROVED,
@@ -3413,6 +4288,10 @@ def _change_placement_status(request, new_status):
                 ).get(id=recommendation_id)
                 if not _can_manage_placement_student(request.user, recommendation.student_id):
                     return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
+                if request.user.role == 'instructor' and (
+                    recommendation.batch_id is None or recommendation.batch.instructor_id != request.user.id
+                ):
+                    return Response({'error': 'Recommendation is outside your batches.'}, status=403)
                 User.objects.select_for_update().get(id=recommendation.student_id)
                 Position.objects.select_for_update().get(id=recommendation.position_id)
                 placement = _placement_select_related(
@@ -3541,9 +4420,9 @@ def placement_manual_assign(request):
             else:
                 batch = _placement_batch(student.id)
 
-            recommendation = Recommendation.objects.filter(
-                student=student, position=position,
-            ).first()
+            recommendation = (Recommendation.objects.filter(
+                student=student, batch=batch, position=position, is_current=True,
+            ).first() if batch and combined_is_unlocked(student, batch) else None)
             placement = OJTPlacement(
                 student=student,
                 company=position.company,

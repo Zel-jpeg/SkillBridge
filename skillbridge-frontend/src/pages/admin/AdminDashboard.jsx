@@ -11,7 +11,7 @@ import SearchBar   from '../../components/SearchBar'
 import EmptyState  from '../../components/EmptyState'
 import AdminNav    from '../../components/admin/AdminNav'
 import { useAdminDashboard } from '../../hooks/admin/useAdminDashboard'
-import { getInitials, matchColor } from '../../utils/formatters'
+import { matchColor } from '../../utils/formatters'
 import Avatar from '../../components/Avatar'
 
 // ── Local icons (small, page-scoped) ─────────────────────────────
@@ -67,6 +67,14 @@ export default function AdminDashboard() {
     { label: 'Companies Listed',     Icon: IconCompany,  color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: stats.total_companies },
     { label: 'Open Positions',       Icon: IconPos,      color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900', value: stats.open_positions },
     { label: 'Recommendations Made', Icon: IconCheck,    color: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-100 dark:border-green-900', value: stats.recommendations_made },
+    { label: 'Assessments', Icon: IconCheck, color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900', value: stats.total_assessments },
+    { label: 'Published / Draft / Closed', Icon: IconCheck, color: 'bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900', value: `${stats.published_assessments} / ${stats.draft_assessments} / ${stats.closed_assessments}` },
+    { label: 'Required completion', Icon: IconCheck, color: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-100 dark:border-green-900', value: `${stats.required_completion_rate}%` },
+    { label: 'Students complete / in progress', Icon: IconStudents, color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900', value: `${stats.completed_required_students} / ${stats.in_progress_students}` },
+    { label: 'Stopped / flagged', Icon: IconCheck, color: 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-900', value: stats.stopped_or_flagged_attempts },
+    { label: 'Retakes approved', Icon: IconCheck, color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900', value: stats.retakes_approved },
+    { label: 'Final profiles', Icon: IconCheck, color: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-100 dark:border-green-900', value: stats.final_profiles_generated },
+    { label: 'Unplaced students', Icon: IconStudents, color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900', value: stats.unplaced_students },
   ]
 
   return (

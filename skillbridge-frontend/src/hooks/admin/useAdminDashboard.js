@@ -85,6 +85,18 @@ export function useAdminDashboard() {
     total_companies:      statsData?.total_companies      ?? 0,
     open_positions:       statsData?.open_positions       ?? 0,
     recommendations_made: statsData?.recommendations_made ?? 0,
+    total_assessments: statsData?.total_assessments ?? 0,
+    published_assessments: statsData?.published_assessments ?? 0,
+    draft_assessments: statsData?.draft_assessments ?? 0,
+    closed_assessments: statsData?.closed_assessments ?? 0,
+    required_completion_rate: statsData?.required_completion_rate ?? 0,
+    completed_required_students: statsData?.completed_required_students ?? 0,
+    in_progress_students: statsData?.in_progress_students ?? 0,
+    stopped_or_flagged_attempts: statsData?.stopped_or_flagged_attempts ?? 0,
+    retakes_approved: statsData?.retakes_approved ?? 0,
+    final_profiles_generated: statsData?.final_profiles_generated ?? 0,
+    recommendations_unlocked_students: statsData?.recommendations_unlocked_students ?? 0,
+    unplaced_students: statsData?.unplaced_students ?? 0,
   }
 
   return {

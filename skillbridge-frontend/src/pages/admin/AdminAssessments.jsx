@@ -1,244 +1,110 @@
-// src/pages/admin/AdminAssessments.jsx
-// Read-only oversight view of all assessments across all batches/instructors.
+import { useEffect, useMemo, useState } from 'react'
+import AdminNav from '../../components/admin/AdminNav'
+import AssessmentSettings from '../../components/instructor/AssessmentSettings'
+import { manilaApiDate, manilaDateTime, toManilaInput } from '../../utils/assessmentDates'
+import AssessmentStudentDetail from '../../components/AssessmentStudentDetail'
+import ConfirmModal from '../../components/admin/ConfirmModal'
+import api from '../../api/axios'
+import { invalidateCache, useApi } from '../../hooks/useApi'
+import { filterAssessments } from '../../utils/assessmentManagement'
 
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import AdminNav    from '../../components/admin/AdminNav'
-import SearchBar   from '../../components/SearchBar'
-import Pagination  from '../../components/Pagination'
-import EmptyState  from '../../components/EmptyState'
-import { useAdminAssessments } from '../../hooks/admin/useAdminAssessments'
-
-const Spinner = () => (
-  <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-  </svg>
-)
-
-function formatDate(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-
-const XIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-const EyeIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-
-
-const TAB_CLASSES = (active) =>
-  `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-    active
-      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-  }`
-
-function AssessmentModal({ assessment, onClose }) {
-  if (!assessment) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 p-4 sm:p-0">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 animate-in zoom-in-95 duration-200">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-              {assessment.title}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                assessment.is_active 
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-              }`}>
-                {assessment.is_active ? 'Active' : 'Inactive'}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(assessment.created_at)}</span>
-            </div>
-          </div>
-          <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0 self-end sm:self-auto">
-            <XIcon />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Batch</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={assessment.batch_name}>
-              {assessment.batch_name || <span className="italic text-gray-400">None</span>}
-            </p>
-          </div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Duration</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {assessment.duration_minutes ? `${assessment.duration_minutes} minutes` : 'Untimed'}
-            </p>
-          </div>
-          <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30">
-            <p className="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-wider mb-1">Questions</p>
-            <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
-              {assessment.question_count}
-            </p>
-          </div>
-          <div className="p-4 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/30">
-            <p className="text-[10px] font-bold text-green-400 dark:text-green-500 uppercase tracking-wider mb-1">Submissions</p>
-            <p className="text-2xl font-black text-green-600 dark:text-green-400">
-              {assessment.submission_count}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button onClick={onClose}
-            className="px-5 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+const input = 'rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
 
 export default function AdminAssessments() {
-  const {
-    assessments, loading,
-    search, setSearch,
-    filterStatus, setFilterStatus,
-    page, setPage,
-    total, PAGE_SIZE,
-    counts,
-  } = useAdminAssessments()
-
-  const TABS = [
-    { key: 'all',      label: 'All',      count: counts.all      },
-    { key: 'active',   label: 'Active',   count: counts.active   },
-    { key: 'inactive', label: 'Inactive', count: counts.inactive },
-  ]
-
-  const [selectedAssessment, setSelectedAssessment] = useState(null)
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/assessments" />
-      
-      {selectedAssessment && (
-        <AssessmentModal 
-          assessment={selectedAssessment} 
-          onClose={() => setSelectedAssessment(null)} 
-        />
-      )}
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
-
-        {/* Header */}
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment Oversight</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            System-wide view of all assessments created by instructors.
-          </p>
-        </div>
-
-        {/* Table card */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-              {TABS.map(t => (
-                <button key={t.key} onClick={() => setFilterStatus(t.key)} className={TAB_CLASSES(filterStatus === t.key)}>
-                  {t.label}
-                  <span className="ml-1.5 text-[10px] font-bold opacity-60">{t.count}</span>
-                </button>
-              ))}
-            </div>
-            <SearchBar value={search} onChange={setSearch} placeholder="Search by title or batch…" className="w-full sm:max-w-xs" />
-          </div>
-
-          {/* Content */}
-          {loading ? (
-            <div className="flex justify-center py-16"><Spinner /></div>
-          ) : assessments.length === 0 ? (
-            <EmptyState message="No assessments found." onClear={() => { setSearch(''); setFilterStatus('all') }} />
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left px-4 sm:px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Title</th>
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hidden md:table-cell">Batch</th>
-                      <th className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell">Questions</th>
-                      <th className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell">Submissions</th>
-                      <th className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell">Duration</th>
-                      <th className="text-center px-4 sm:px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
-                      <th className="text-right px-4 sm:px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assessments.map((a, i) => (
-                      <tr key={a.id}
-                        onClick={() => setSelectedAssessment(a)}
-                        className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors cursor-pointer ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/10' : ''}`}>
-                        <td className="px-4 sm:px-5 py-4">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{a.title}</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 md:hidden">{a.batch_name || <span className="italic">No batch</span>}</p>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                          {a.batch_name
-                            ? <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-md">{a.batch_name}</span>
-                            : <span className="text-gray-300 dark:text-gray-600 italic text-xs">No batch</span>
-                          }
-                        </td>
-                        <td className="px-5 py-4 text-center hidden sm:table-cell">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300">
-                            {a.question_count}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-center hidden sm:table-cell">
-                          <div className="flex flex-col items-center">
-                            <span className={`text-sm font-bold ${a.submission_count > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-600'}`}>
-                              {a.submission_count}
-                            </span>
-                            {a.submission_count > 0 && (
-                              <span className="text-[10px] text-gray-400 dark:text-gray-500">submitted</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-center text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
-                          {a.duration_minutes ? `${a.duration_minutes} min` : '—'}
-                        </td>
-                        <td className="px-4 sm:px-5 py-4 text-center">
-                          {a.is_active
-                            ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 hidden sm:block" />Active
-                              </span>
-                            : <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                                Inactive
-                              </span>
-                          }
-                        </td>
-                        <td className="px-4 sm:px-5 py-4 text-right">
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedAssessment(a) }} className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
-                            <EyeIcon />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {total > PAGE_SIZE && (
-                <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800">
-                  <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  )
+  const { data, loading, error } = useApi('/api/instructor/assessments/')
+  const assessments = useMemo(() => Array.isArray(data) ? data : [], [data])
+  const [filters, setFilters] = useState({ search: '', instructor: 'all', batch: 'all', state: 'all', required: 'all', category: 'all', completion: 'all' })
+  const [selected, setSelected] = useState(null)
+  const [draft, setDraft] = useState(null)
+  const [roster, setRoster] = useState([])
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [questions, setQuestions] = useState(null)
+  const [confirm, setConfirm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const set = (key, value) => setFilters(prev => ({ ...prev, [key]: value }))
+  const options = key => [...new Set(assessments.map(a => a[key]).filter(Boolean))].sort()
+  const categories = [...new Set(assessments.flatMap(a => a.categories || []))].sort()
+  const filtered = filterAssessments(assessments, filters)
+  useEffect(() => {
+    if (!selected?.batch_id) return
+    let cancelled = false
+    api.get(`/api/instructor/batches/${selected.batch_id}/students/`).then(res => { if (!cancelled) setRoster(res.data.students || []) }).catch(() => { if (!cancelled) setRoster([]) })
+    return () => { cancelled = true }
+  }, [selected?.batch_id])
+  const open = assessment => {
+    setSelected(assessment); setSelectedStudent(null); setQuestions(null); setMessage('')
+    setDraft({ title: assessment.title, duration_minutes: assessment.duration_minutes,
+      publication_status: assessment.publication_status, is_required: assessment.is_required,
+      include_in_competency: assessment.include_in_competency, display_order: String(assessment.display_order),
+      available_at: toManilaInput(assessment.available_at), due_at: toManilaInput(assessment.due_at) })
+  }
+  const save = async () => {
+    setConfirm(false); setSaving(true); setMessage('')
+    try {
+      const response = await api.patch(`/api/instructor/assessments/${selected.id}/`, { ...draft,
+        display_order: Number(draft.display_order), available_at: manilaApiDate(draft.available_at), due_at: manilaApiDate(draft.due_at) })
+      setSelected(prev => ({ ...prev, ...response.data }))
+      const urls = ['/api/instructor/assessments/', '/api/admin/users/', '/api/admin/stats/']
+      urls.forEach(invalidateCache)
+      window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { urls } }))
+      if (selected.batch_id) {
+        try {
+          const latest = await api.get(`/api/instructor/batches/${selected.batch_id}/students/`)
+          setRoster(latest.data.students || [])
+          setSelectedStudent(previous => (latest.data.students || []).find(student => student.id === previous?.id) || null)
+        } catch { setRoster([]); setSelectedStudent(null) }
+      }
+      setMessage('Assessment updated. Student completion and recommendations now reflect the server state.')
+    } catch (err) { setMessage(err.response?.data?.error || 'Update failed. Please retry.') }
+    finally { setSaving(false) }
+  }
+  const retake = async (studentId, assessmentId) => {
+    const student = roster.find(s => s.id === studentId)
+    const attempt = student?.assessment_results.find(a => a.id === assessmentId)
+    if (!attempt) return
+    try {
+      await api.patch(`/api/instructor/students/${studentId}/retake/`, { assessment_id: assessmentId, retake_allowed: !attempt.retake_allowed })
+      const response = await api.get(`/api/instructor/batches/${selected.batch_id}/students/`)
+      setRoster(response.data.students || [])
+      setSelectedStudent((response.data.students || []).find(s => s.id === studentId))
+      invalidateCache('/api/admin/users/')
+      invalidateCache('/api/admin/stats/')
+      setMessage('Assessment-specific retake updated.')
+    } catch (err) { setMessage(err.response?.data?.error || 'Retake update failed.') }
+  }
+  return <div className="min-h-screen bg-gray-50 dark:bg-gray-950"><AdminNav activePath="/admin/assessments" />
+    <main className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6">
+      <header><h1 className="text-xl font-bold text-gray-900 dark:text-white">Assessment oversight</h1><p className="text-sm text-gray-500 dark:text-gray-400">System-wide publication, completion, and integrity status.</p></header>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
+        ['Total', assessments.length], ['Published', assessments.filter(a => a.publication_status === 'published').length],
+        ['Draft', assessments.filter(a => a.publication_status === 'draft').length], ['Closed', assessments.filter(a => a.publication_status === 'closed').length],
+        ['Stopped / flagged', assessments.reduce((n, a) => n + a.flagged_count, 0)],
+      ].map(([name, value]) => <div key={name} className="rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"><strong className="text-xl text-gray-900 dark:text-white">{value}</strong><p className="text-xs text-gray-500 dark:text-gray-400">{name}</p></div>)}</div>
+      <div className="flex flex-wrap gap-2" aria-label="Assessment filters">
+        <input className={`${input} w-full min-w-[180px] sm:flex-1`} aria-label="Search assessments" placeholder="Search title, instructor, batch" value={filters.search} onChange={e => set('search', e.target.value)} />
+        {[
+          ['instructor', 'All instructors', options('instructor_name').map(v => [v, v])],
+          ['batch', 'All batches', assessments.filter(a => a.batch_id).map(a => [String(a.batch_id), a.batch_name])],
+          ['state', 'All states', [['draft', 'Draft'], ['published', 'Published'], ['closed', 'Closed']]],
+          ['required', 'Required + optional', [['required', 'Required'], ['optional', 'Optional']]],
+          ['category', 'All categories', categories.map(v => [v, v])],
+          ['completion', 'Any completion', [['complete', '100% complete'], ['incomplete', 'Below 100%']]],
+        ].map(([key, placeholder, values]) => <select key={key} aria-label={placeholder} className={input} value={filters[key]} onChange={e => set(key, e.target.value)}><option value="all">{placeholder}</option>{[...new Map(values).entries()].map(([v, name]) => <option key={v} value={v}>{name}</option>)}</select>)}
+      </div>
+      {loading ? <p className="text-sm text-gray-500">Loading assessments…</p> : error ? <p role="alert" className="text-sm text-rose-700">Could not load assessments.</p> : filtered.length === 0 ? <p className="rounded-xl bg-white p-8 text-sm text-gray-500 dark:bg-gray-900">No assessments match these filters.</p> :
+        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900"><table className="min-w-[900px] w-full text-left text-xs"><thead className="bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><tr>{['Assessment', 'Instructor / batch', 'State', 'Settings', 'Categories', 'Schedule', 'Progress', 'Integrity'].map(h => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody>{filtered.map(a => <tr key={a.id} className="border-t border-gray-100 dark:border-gray-800"><td className="px-3 py-3"><button className="max-w-48 break-words text-left font-semibold text-green-700 underline dark:text-green-400" onClick={() => open(a)}>{a.title}</button><p>{a.question_count} questions · {a.duration_minutes} min</p></td><td className="px-3 py-3">{a.instructor_name}<br />{a.batch_name || 'Unassigned'}</td><td className="px-3 py-3 capitalize">{a.publication_status}</td><td className="px-3 py-3">{a.is_required ? 'Required' : 'Optional'}<br />{a.include_in_competency ? 'Included' : 'Excluded'} · #{a.display_order}</td><td className="px-3 py-3">{a.categories.join(', ') || 'None'}</td><td className="px-3 py-3">{a.availability_status}<br />Due {manilaDateTime(a.due_at)}</td><td className="px-3 py-3">{a.submission_count}/{a.assigned_count} submitted<br />{a.completion_rate}% complete</td><td className="px-3 py-3">{a.flagged_count} stopped / flagged</td></tr>)}</tbody></table></div>}
+    </main>
+    {selected && draft && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={event => event.target === event.currentTarget && setSelected(null)}><div role="dialog" aria-modal="true" aria-label={`Manage ${selected.title}`} className="flex max-h-[95dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-w-3xl sm:rounded-2xl dark:bg-gray-900"><header className="flex items-start justify-between gap-2 border-b border-gray-100 p-4 dark:border-gray-800"><h2 className="break-words font-bold text-gray-900 dark:text-white">{selected.title} · {selected.batch_name}</h2><button className="text-sm text-gray-500" onClick={() => setSelected(null)}>Close</button></header><div className="space-y-5 overflow-y-auto p-4">
+      {message && <p role="status" className="rounded-lg bg-gray-100 p-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">{message}</p>}
+      <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Title<input className={`${input} mt-1 w-full`} value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Duration · minutes<input type="number" min="1" className={`${input} mt-1 w-full`} value={draft.duration_minutes} onChange={e => setDraft({ ...draft, duration_minutes: e.target.value })} /></label></div>
+      <AssessmentSettings value={draft} onChange={setDraft} />
+      <p className="text-xs text-gray-500 dark:text-gray-400">Changing a required or included assessment can lock or recalculate final recommendations. Existing attempts and scores remain preserved.</p>
+      <button disabled={saving} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setConfirm(true)}>{saving ? 'Saving…' : 'Save metadata'}</button>
+      <section><div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions</h3><button className="text-xs text-green-700 underline dark:text-green-400" onClick={async () => { const res = await api.get(`/api/instructor/assessments/${selected.id}/questions/`); setQuestions(res.data.questions) }}>View authorized answer key</button></div>{questions?.map((q, i) => <p key={q.id} className="border-b border-gray-100 py-2 text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300">{i + 1}. {q.question_text} · {q.category?.name} · Key: {q.choices?.filter(c => c.is_correct).map(c => c.text).join(', ')}</p>)}</section>
+      <section><h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Student attempts · {roster.length} assigned</h3>{roster.length === 0 ? <p className="text-xs text-gray-500">No students enrolled.</p> : roster.map(student => <button key={student.id} className="flex w-full flex-wrap justify-between gap-2 border-b border-gray-100 py-2 text-left text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300" onClick={() => setSelectedStudent(student)}><span>{student.name} · {student.school_id}</span><span>{student.completed_required_count}/{student.total_required_count} required · {student.assessment_results?.find(a => a.id === selected.id)?.attempt_status || 'Not started'}</span></button>)}</section>
+      {selectedStudent && <section className="border-t border-gray-100 pt-3 dark:border-gray-800"><h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">{selectedStudent.name}</h3><AssessmentStudentDetail student={selectedStudent} onToggleRetake={retake} /></section>}
+    </div></div></div>}
+    {confirm && <ConfirmModal tone="confirm" title="Save assessment changes?" message="Publication, required status, and competency inclusion can change student completion and recommendation locks. Existing attempts stay intact. The server will recalculate affected profiles." confirmLabel="Save" onConfirm={save} onCancel={() => setConfirm(false)} />}
+  </div>
 }

@@ -29,6 +29,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
+import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useApi, invalidateCache } from '../useApi'
 import { useSSE } from '../useSSE'
 import { getPalette } from './useInstructorDashboard'
@@ -50,6 +51,10 @@ function normalizeStudent(s) {
       parsedTags[k] = null
     }
   }
+  if (!s.recommendations_locked && s.combined_category_scores?.length) {
+    for (const key of Object.keys(parsedScores)) delete parsedScores[key]
+    for (const score of s.combined_category_scores) parsedScores[score.category] = score.percentage
+  }
 
   return {
     id:                  s.id,
@@ -57,8 +62,9 @@ function normalizeStudent(s) {
     studentId:           s.school_id || '',
     email:               s.email,
     course:              s.course,
-    status:              s.attempt_status === 'stopped' ? 'stopped' : s.has_submitted ? 'completed' : 'pending',
+    status:              s.assessment_results?.some(a => a.attempt_status === 'stopped' || a.is_flagged) ? 'stopped' : s.all_required_completed ? 'completed' : 'pending',
     retakeAllowed:       s.retake_allowed ?? false,
+    assessmentId:       s.assessment_id ?? null,
     isFlagged:           s.is_flagged ?? false,
     stoppedReason:       s.stopped_reason_display || '',
     violationCount:      s.violation_count ?? 0,
@@ -69,6 +75,13 @@ function normalizeStudent(s) {
     placement:           s.placement ?? { status: 'unplaced' },
     address:             s.address        ?? {},
     photoUrl:            s.photo_url      || null,
+    assessmentResults: s.assessment_results ?? [],
+    combinedCategoryScores: s.combined_category_scores ?? [],
+    combinedCompetencyProfile: s.combined_competency_profile ?? null,
+    recommendationsLocked: s.recommendations_locked ?? true,
+    completedRequiredCount: s.completed_required_count ?? 0,
+    totalRequiredCount: s.total_required_count ?? 0,
+    remainingRequiredCount: s.remaining_required_count ?? 0,
   }
 }
 
@@ -236,7 +249,7 @@ export function useEnrolledStudents() {
   // ── Derived: active batch + students ─────────────────────────────
   const viewedBatch = batches.find(b => b.id === activeBatchId)
   const isArchived  = viewedBatch?.status === 'archived'
-  const students    = viewedBatch?.students ?? []
+  const students = useMemo(() => viewedBatch?.students ?? [], [viewedBatch])
   const activeBatch = batches.find(b => b.status === 'active')
 
   // ── Sync selectedStudent with fresh data ────────────────────────────
@@ -296,23 +309,28 @@ export function useEnrolledStudents() {
     showToast(`New batch "${name}" created.`)
   }
 
-  async function handleToggleRetake(studentId) {
+  async function handleToggleRetake(studentId, assessmentId) {
     const st = students.find(s => s.id === studentId)
+    const attempt = st && assessmentRetakeCandidate(st, assessmentId)
+    if (!attempt) {
+      showToast('Select a finalized assessment attempt for retake approval.')
+      return
+    }
     try {
-      await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !st?.retakeAllowed })
+      await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !attempt.retake_allowed, assessment_id: assessmentId })
       // Invalidate so the next page visit re-fetches the updated retake status
       invalidateCache('/api/instructor/batches/')
       invalidateCache('/api/instructor/students/recommendations/')
-    } catch { /* optimistic state remains recoverable by refresh */ }
+    } catch (err) { showToast(err.response?.data?.error || 'Retake update failed.'); return }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
-        ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s) }
+        ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, assessmentResults: s.assessmentResults.map(a => a.id === assessmentId ? { ...a, retake_allowed: !a.retake_allowed } : a) } : s) }
         : b
     ))
     setSelectedStudent(prev =>
-      prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev
+      prev?.id === studentId ? { ...prev, assessmentResults: prev.assessmentResults.map(a => a.id === assessmentId ? { ...a, retake_allowed: !a.retake_allowed } : a) } : prev
     )
-    if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
+    if (st) showToast(attempt.retake_allowed ? `Retake revoked for ${st.name}.` : `Retake approved for ${st.name}.`)
   }
 
   async function handleEnroll(newStudents) {
@@ -373,7 +391,11 @@ export function useEnrolledStudents() {
   const filtered = useMemo(() => {
     let list = [...students]
     if (course !== 'all') list = list.filter(s => s.course === course)
-    if (status !== 'all') list = list.filter(s => s.status === status)
+    if (status === 'unlocked') list = list.filter(s => !s.recommendationsLocked)
+    else if (status === 'retake') list = list.filter(s => s.assessmentResults.some(a => a.retake_allowed))
+    else if (status === 'placed') list = list.filter(s => s.placement?.status === 'approved')
+    else if (status === 'unplaced') list = list.filter(s => s.placement?.status !== 'approved')
+    else if (status !== 'all') list = list.filter(s => s.status === status)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(s =>

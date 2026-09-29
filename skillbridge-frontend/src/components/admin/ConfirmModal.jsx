@@ -18,13 +18,15 @@ export default function ConfirmModal({
   confirmLabel = 'Delete',
   onConfirm,
   onCancel,
+  tone = 'danger',
 }) {
+  const danger = tone === 'danger'
   return (
     <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center shrink-0 text-rose-500">
-            <TrashIcon size={18} />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${danger ? 'bg-rose-50 dark:bg-rose-950 text-rose-500' : 'bg-green-50 dark:bg-green-950 text-green-600'}`}>
+            {danger ? <TrashIcon size={18} /> : <span aria-hidden="true" className="text-lg font-bold">?</span>}
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
@@ -40,7 +42,7 @@ export default function ConfirmModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-green-600 hover:bg-green-700'}`}
           >
             {confirmLabel}
           </button>

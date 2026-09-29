@@ -20,6 +20,7 @@ urlpatterns = [
     path('students/me/',              views.student_me,             name='student_me'),
     path('students/me/profile/',      views.student_profile,        name='student_profile'),
     path('student/results/',          views.student_results,        name='student_results'),
+    path('student/results/combined/', views.student_combined_results, name='student_combined_results'),
     path('student/results/review/',   views.student_results_review, name='student_results_review'),
     path('student/companies/',        views.student_companies,      name='student_companies'),
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path('instructor/batches/<int:batch_id>/archive/',    views.instructor_batch_archive,   name='instructor_batch_archive'),
     path('instructor/batches/<int:batch_id>/unarchive/',  views.instructor_batch_unarchive, name='instructor_batch_unarchive'),
     path('instructor/students/<int:student_id>/retake/',  views.instructor_student_retake,  name='instructor_student_retake'),
+    path('management/assessment-reports/', views.management_assessment_reports, name='management_assessment_reports'),
     path('instructor/students/<int:student_id>/',         views.instructor_student_remove,  name='instructor_student_remove'),
 
     # ── Instructor — Assessments ──────────────────────────────────────────────
@@ -51,6 +53,7 @@ urlpatterns = [
     path('instructor/companies/<int:co_id>/',  views.instructor_company_edit,   name='instructor_company_edit'),
 
     # ── Student — Assessment Flow ─────────────────────────────────────────────
+    path('assessments/',                         views.assessment_list,    name='assessment_list'),
     path('assessments/active/',                  views.assessment_active,  name='assessment_active'),
     path('assessments/<int:assessment_id>/start/',  views.assessment_start,   name='assessment_start'),
     path('assessments/<int:assessment_id>/submit/', views.assessment_submit,  name='assessment_submit'),

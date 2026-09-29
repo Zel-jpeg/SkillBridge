@@ -8,6 +8,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import { SessionProvider } from './context/SessionContext.jsx'
 
+document.documentElement.classList.toggle('dark', localStorage.getItem('sb-theme') === 'dark')
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>

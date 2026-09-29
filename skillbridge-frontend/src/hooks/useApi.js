@@ -140,13 +140,13 @@ function friendlyError(status) {
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
-export function useApi(url, { skip = false, initialData = null } = {}) {
+export function useApi(url, { skip = false, initialData = null, fresh = false } = {}) {
   const { showToast }             = useToast()
   const { triggerSessionExpired } = useSession()
 
   // ── Seed state from cache (in-memory → sessionStorage → null) ────────────
   const getCached = () => {
-    if (!url || skip) return null
+    if (!url || skip || fresh) return null
     // 1. In-memory (fastest)
     const mem = _cache.get(url)
     if (mem) return mem
@@ -173,11 +173,11 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
     if (!url || skip) return
     let cancelled = false
 
-    const entry = _cache.get(url) ?? _loadFromStorage(url)
-    const fresh  = entry && (Date.now() - entry.fetchedAt < CACHE_TTL)
+    const entry = fresh ? null : (_cache.get(url) ?? _loadFromStorage(url))
+    const isFresh = entry && (Date.now() - entry.fetchedAt < CACHE_TTL)
 
     // Fresh cache → nothing to do
-    if (fresh) {
+    if (isFresh) {
       // Ensure state is populated even if the component mounted after a refresh
       if (entry && data === null) setData(entry.data)
       return
@@ -218,7 +218,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       })
 
     return () => { cancelled = true }
-  }, [url, skip]) // eslint-disable-line
+  }, [url, skip, fresh]) // eslint-disable-line
 
   // ── SSE-triggered re-fetch ───────────────────────────────────────────────
   // useSSE.js dispatches 'sse:data_changed' when the server reports a change.
@@ -231,6 +231,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       if (!Array.isArray(urls) || !urls.includes(url)) return
 
       // Cache was already invalidated by useSSE — just re-fetch silently
+      if (fresh) setData(null)
       fetchWithDedup(url)
         .then(res => setData(res.data))
         .catch(() => {})   // component already shows last-good data; ignore errors
@@ -238,7 +239,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
 
     window.addEventListener('sse:data_changed', handler)
     return () => window.removeEventListener('sse:data_changed', handler)
-  }, [url, skip]) // eslint-disable-line
+  }, [url, skip, fresh]) // eslint-disable-line
 
   // ── Manual trigger (POST, PATCH, DELETE) ─────────────────────────────────
   const request = useCallback(async (method, endpoint, payload, { silentError = false } = {}) => {

@@ -100,15 +100,37 @@ class SkillCategory(models.Model):
 
 # ── Assessment ───────────────────────────────────────────────────────────────
 class Assessment(models.Model):
+    PUBLICATION_DRAFT = 'draft'
+    PUBLICATION_PUBLISHED = 'published'
+    PUBLICATION_CLOSED = 'closed'
+    PUBLICATION_CHOICES = [
+        (PUBLICATION_DRAFT, 'Draft'),
+        (PUBLICATION_PUBLISHED, 'Published'),
+        (PUBLICATION_CLOSED, 'Closed'),
+    ]
     title            = models.CharField(max_length=255)
     created_by       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessments')
     batch            = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(default=60)
+    # Legacy UI flag: always mirrors publication_status. Batch archive is checked
+    # separately and never changes either field.
     is_active        = models.BooleanField(default=True)
+    publication_status = models.CharField(max_length=20, choices=PUBLICATION_CHOICES, default=PUBLICATION_PUBLISHED)
+    is_required = models.BooleanField(default=True)
+    include_in_competency = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    available_at = models.DateTimeField(null=True, blank=True)
+    due_at = models.DateTimeField(null=True, blank=True)
     created_at       = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        self.is_active = self.publication_status == self.PUBLICATION_PUBLISHED
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'is_active'}
+        super().save(*args, **kwargs)
 
 
 # ── Question ─────────────────────────────────────────────────────────────────
@@ -195,6 +217,28 @@ class SkillScore(models.Model):
         unique_together = ('student', 'assessment', 'skill_category')
 
 
+class AssessmentAttemptHistory(models.Model):
+    """Immutable snapshot of a finalized attempt before its approved retake."""
+
+    response = models.ForeignKey(StudentResponse, on_delete=models.CASCADE, related_name='prior_attempts')
+    attempt_number = models.PositiveIntegerField()
+    status = models.CharField(max_length=20)
+    started_at = models.DateTimeField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
+    stopped_reason = models.CharField(max_length=50, blank=True, default='')
+    is_flagged = models.BooleanField(default=False)
+    violation_count = models.PositiveIntegerField(default=0)
+    violation_events = models.JSONField(default=list, blank=True)
+    question_layout = models.JSONField(default=dict, blank=True)
+    answers = models.JSONField(default=list, blank=True)
+    category_scores = models.JSONField(default=list, blank=True)
+    archived_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('response', 'attempt_number')
+
+
 class StudentCompetencyProfile(models.Model):
     """Auditable, assessment-level narrative shared by authorized views."""
 
@@ -212,6 +256,44 @@ class StudentCompetencyProfile(models.Model):
 
     def __str__(self):
         return f'{self.student.name} — {self.orientation_label}'
+
+
+class CombinedCategoryScore(models.Model):
+    """Current weighted category total for one student and batch."""
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='combined_category_scores')
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='combined_category_scores')
+    skill_category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    raw_score = models.PositiveIntegerField(default=0)
+    max_score = models.PositiveIntegerField(default=0)
+    percentage = models.FloatField(default=0.0)
+    source_assessment_ids = models.JSONField(default=list, blank=True)
+    generated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'batch', 'skill_category')
+
+
+class CombinedCompetencyProfile(models.Model):
+    """Auditable final narrative and source IDs, distinct from assessment profiles."""
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='combined_profiles')
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='combined_profiles')
+    is_finalized = models.BooleanField(default=False)
+    included_assessment_ids = models.JSONField(default=list, blank=True)
+    orientation_label = models.CharField(max_length=160, blank=True, default='')
+    orientation_summary = models.TextField(blank=True, default='')
+    competency_profile_text = models.TextField(blank=True, default='')
+    development_suggestions = models.JSONField(default=list, blank=True)
+    supporting_categories = models.JSONField(default=list, blank=True)
+    text_generation_version = models.CharField(max_length=80, blank=True, default='')
+    active_model = models.CharField(max_length=40, blank=True, default='')
+    model_used = models.CharField(max_length=40, blank=True, default='')
+    generated_at = models.DateTimeField(auto_now=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('student', 'batch')
 
 
 # ── Company ───────────────────────────────────────────────────────────────────
@@ -251,6 +333,8 @@ class PositionRequirement(models.Model):
 # ── Recommendation ────────────────────────────────────────────────────────────
 class Recommendation(models.Model):
     student      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations')
+    batch        = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, blank=True, related_name='recommendations')
+    is_current   = models.BooleanField(default=True)
     position     = models.ForeignKey(Position, on_delete=models.CASCADE)
     match_score  = models.FloatField(default=0.0)
     category_score_component = models.FloatField(default=0.0)
@@ -262,7 +346,7 @@ class Recommendation(models.Model):
 
     class Meta:
         ordering = ['-match_score']
-        unique_together = ('student', 'position')
+        unique_together = ('student', 'batch', 'position')
 
     def __str__(self):
         return f'{self.student.name} → {self.position.title} ({self.match_score:.0%})'

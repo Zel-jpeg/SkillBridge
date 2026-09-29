@@ -1,2 +1,9 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}

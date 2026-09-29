@@ -8,6 +8,7 @@ import { useApi } from '../../hooks/useApi'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { getQualitativeTag } from '../../utils/formatters'
 import api from '../../api/axios'
+import AssessmentReportPanel from '../../components/AssessmentReportPanel'
 
 const Spinner = () => (
   <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
@@ -165,6 +166,7 @@ export default function AdminReports() {
 
         <NlpConfigurationCard />
         <NlpModelComparison />
+        <AssessmentReportPanel />
 
         {/* ── OJT placement analytics ── */}
         <div>

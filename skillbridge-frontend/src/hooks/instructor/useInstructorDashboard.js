@@ -45,6 +45,8 @@ export function useInstructorDashboard() {
   useSSE(SSE_PATH)
   // Add a cache-buster so the browser doesn't intercept this and serve the old JSON from disk
   const { data: apiData, loading: apiLoading } = useApi('/api/instructor/students/recommendations/')
+  const { data: assessmentsData } = useApi('/api/instructor/assessments/')
+  const assessments = Array.isArray(assessmentsData) ? assessmentsData : []
 
   // ── Normalize API → student shape ─────────────────────────────────
   const studentsList = useMemo(() => {
@@ -66,6 +68,13 @@ export function useInstructorDashboard() {
       placement:           s.placement ?? { status: 'unplaced' },
       address:             s.address ?? {},
       photoUrl:            s.photo_url || null,
+      assessmentResults: s.assessment_results ?? [],
+      combinedCategoryScores: s.combined_category_scores ?? [],
+      combinedCompetencyProfile: s.combined_competency_profile ?? null,
+      recommendationsLocked: s.recommendations_locked ?? true,
+      completedRequiredCount: s.completed_required_count ?? 0,
+      totalRequiredCount: s.total_required_count ?? 0,
+      remainingRequiredCount: s.remaining_required_count ?? 0,
     }))
   }, [apiData])
 
@@ -166,6 +175,12 @@ export function useInstructorDashboard() {
 
   return {
     studentsList, loading: apiLoading,
+    assessmentStats: {
+      total: assessments.length,
+      published: assessments.filter(a => a.publication_status === 'published').length,
+      draft: assessments.filter(a => a.publication_status === 'draft').length,
+      closed: assessments.filter(a => a.publication_status === 'closed').length,
+    },
     // UI state
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },

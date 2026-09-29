@@ -1,7 +1,7 @@
 // src/pages/student/StudentAssessment.jsx
 //
 // Fully wired to real API (Week 4):
-//   GET  /api/assessments/active/     → checks enrollment + active assessment
+//   GET  /api/assessments/            → verifies this route's assigned assessment
 //   POST /api/assessments/{id}/start/ → records started_at, returns questions
 //   POST /api/assessments/{id}/submit/→ auto-scores, writes SkillScore, generates recommendations
 //
@@ -16,7 +16,7 @@
 //   - Question navigator: numbered sidebar (desktop) / collapsible panel (mobile)
 
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import NavBar from '../../components/NavBar'
 import api from '../../api/axios'
 import { useApi, invalidateCache } from '../../hooks/useApi'
@@ -103,10 +103,10 @@ function AssessmentError({ message }) {
           </p>
         </div>
         <button
-          onClick={() => navigate(isSubmitted ? '/student/results' : '/student')}
+          onClick={() => navigate('/student/assessments')}
           className="inline-flex items-center px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-colors"
         >
-          {isSubmitted ? 'View Results →' : '← Back to Dashboard'}
+          Back to assessments
         </button>
       </div>
     </div>
@@ -165,7 +165,7 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
             </label>
             {error && <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>}
             <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
-              <button onClick={() => navigate('/student/dashboard')} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">Back to dashboard</button>
+              <button onClick={() => navigate('/student/assessments')} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">Back to assessments</button>
               <button
                 onClick={onStart}
                 disabled={!accepted || starting}
@@ -181,7 +181,7 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
   )
 }
 
-function AssessmentStopped({ reason, saving = false, saveError = false, onRetry }) {
+function AssessmentStopped({ reason, assessmentId, saving = false, saveError = false, onRetry }) {
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
@@ -197,7 +197,7 @@ function AssessmentStopped({ reason, saving = false, saveError = false, onRetry 
         {saveError && (
           <button onClick={onRetry} className="w-full mt-4 py-3 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">Retry saving now</button>
         )}
-        <button onClick={() => navigate('/student/dashboard')} disabled={saving || saveError} className="w-full mt-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50">Back to dashboard</button>
+        <button onClick={() => navigate(assessmentId ? `/student/assessments/${assessmentId}/results` : '/student/assessments')} disabled={saving || saveError} className="w-full mt-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50">View recorded attempt</button>
       </div>
     </div>
   )
@@ -273,6 +273,7 @@ function QuestionNavigator({ questions, answers, current, onJump, isReview, clas
 // ════════════════════════════════════════════════════════════════════
 export default function StudentAssessment() {
   const navigate = useNavigate()
+  const { assessmentId: routeAssessmentId } = useParams()
 
   // Read cached user for NavBar (instant render)
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
@@ -284,8 +285,12 @@ export default function StudentAssessment() {
     photoUrl:  cachedUser?.photo_url || null,
   }
 
-  // ── Step 1: Check for active assessment ────────────────────────
-  const { data: activeInfo, loading: checkingActive, error: activeError } = useApi('/api/assessments/active/')
+  // Only IDs returned by the student's batch-scoped list can start an attempt.
+  const validRouteId = /^\d+$/.test(routeAssessmentId || '')
+  const { data: assessmentList, loading: checkingActive, error: activeError } = useApi('/api/assessments/', { fresh: true })
+  const activeInfo = validRouteId
+    ? assessmentList?.assessments?.find(item => String(item.id) === routeAssessmentId)
+    : null
 
   // ── Step 2: Agreement, then start the server attempt ───────────
   const [questions,    setQuestions]    = useState([])
@@ -382,7 +387,9 @@ export default function StudentAssessment() {
       const secs = res.data.time_limit_sec ?? activeInfo.duration_minutes * 60
       setInitialSecs(secs)
       const saved = parseInt(localStorage.getItem(`sb_timer_${id}`), 10)
-      const timer = isNaN(saved) || saved <= 0 ? secs : saved
+      const elapsed = res.data.started_at ? Math.floor((Date.now() - new Date(res.data.started_at).getTime()) / 1000) : 0
+      const serverRemaining = Math.max(0, secs - Math.max(0, elapsed))
+      const timer = isNaN(saved) ? serverRemaining : Math.min(serverRemaining, Math.max(0, saved))
       localStorage.setItem(`sb_timer_${id}`, timer)
       localStorage.setItem(`sb_integrity_active_${id}`, JSON.stringify({
         response_id: res.data.response_id,
@@ -448,9 +455,13 @@ export default function StudentAssessment() {
     try {
       const res = await api.post(`/api/assessments/${id}/stop/`, payload)
       clearAttemptStorage(id)
+      invalidateCache('/api/assessments/')
       invalidateCache('/api/assessments/active/')
       invalidateCache('/api/students/me/')
       invalidateCache('/api/student/results/')
+      invalidateCache('/api/student/results/combined/')
+      invalidateCache(`/api/student/results/?assessment_id=${id}`)
+      invalidateCache(`/api/student/results/review/?assessment_id=${id}`)
       updateCachedAttemptStatus('stopped')
       await leaveFullscreen()
       setStoppedAttempt({
@@ -605,7 +616,7 @@ export default function StudentAssessment() {
     const answersArray = answersArrayFrom()
 
     try {
-      const res = await api.post(`/api/assessments/${assessmentId}/submit/`, {
+      await api.post(`/api/assessments/${assessmentId}/submit/`, {
         answers:     answersArray,
         response_id: responseId,
       })
@@ -615,6 +626,10 @@ export default function StudentAssessment() {
 
       // Invalidate results cache so the next page fetches fresh data from DB
       invalidateCache('/api/student/results/')
+      invalidateCache('/api/student/results/combined/')
+      invalidateCache('/api/assessments/')
+      invalidateCache(`/api/student/results/?assessment_id=${assessmentId}`)
+      invalidateCache(`/api/student/results/review/?assessment_id=${assessmentId}`)
       invalidateCache('/api/assessments/active/')
       invalidateCache('/api/students/me/')
 
@@ -624,36 +639,8 @@ export default function StudentAssessment() {
 
       await leaveFullscreen()
 
-      // Build reviewData — enrich questions with correct answers from submit response
-      const correctAnswers = res.data.correct_answers ?? {}
-      const enrichedQuestions = questions.map(q => {
-        const correct = correctAnswers[String(q.id)] ?? correctAnswers[q.id]
-        if (!correct) return { ...q }
-        if (correct.type === 'identification') {
-          return { ...q, correct_text: correct.text }
-        }
-        return {
-          ...q,
-          choices: (q.choices || []).map(c => ({
-            ...c,
-            is_correct: c.id === correct.id,
-          })),
-        }
-      })
-
-      const reviewData = {
-        questions: enrichedQuestions,
-        answers,
-      }
-
       setTimeout(() =>
-        navigate('/student/results', {
-          state: {
-            scores:          res.data.scores,
-            recommendations: res.data.recommendations,
-            reviewData,
-          },
-        })
+        navigate(`/student/assessments/${assessmentId}/results`, { replace: true })
       , 800)
     } catch (err) {
       finalizingRef.current = false
@@ -685,14 +672,18 @@ export default function StudentAssessment() {
       </div>
     </div>
   )
-  if (checkingActive)             return <AssessmentLoading />
-  if (activeError)                return <AssessmentError message={activeError} />
-  if (activeInfo?.attempt_status === 'stopped' && !activeInfo?.retake_allowed) {
-    return <AssessmentStopped reason={activeInfo.stopped_reason_display} />
+  if (checkingActive && !started && !stoppedAttempt) return <AssessmentLoading />
+  if (activeError && !started && !stoppedAttempt) return <AssessmentError message={activeError} />
+  if (!activeInfo && !started && !stoppedAttempt) return <AssessmentError message="unavailable" />
+  if (!started && !stoppedAttempt && activeInfo.availability_status !== 'available') return <AssessmentError message="unavailable" />
+  if (!started && !stoppedAttempt && activeInfo.attempt_status === 'submitted' && !activeInfo.retake_allowed) return <AssessmentError message="already_submitted" />
+  if (!started && !stoppedAttempt && activeInfo?.attempt_status === 'stopped' && !activeInfo?.retake_allowed) {
+    return <AssessmentStopped reason={activeInfo.stopped_reason_display} assessmentId={activeInfo.id} />
   }
   if (stoppedAttempt) return (
     <AssessmentStopped
       reason={stoppedAttempt.reasonDisplay}
+      assessmentId={assessmentId}
       saving={stoppedAttempt.saving}
       saveError={stoppedAttempt.saveError}
       onRetry={() => submitIntegrityStop(stoppedAttempt.reason, stoppedAttempt.detail, { retry: true })}

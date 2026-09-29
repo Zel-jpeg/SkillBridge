@@ -105,7 +105,7 @@ export default function InstructorNav({ activePath }) {
         </div>
 
         {/* Desktop nav links */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-1">
           {links.map(l => (
             <button key={l.label} onClick={() => go(l.path)} className={linkClass(l.path)}>
               {l.label}
@@ -119,7 +119,8 @@ export default function InstructorNav({ activePath }) {
           {/* Hamburger (mobile) */}
           <button
             onClick={() => setMobileOpen(p => !p)}
-            className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label={mobileOpen ? 'Close instructor menu' : 'Open instructor menu'}
+            className="lg:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             {mobileOpen ? <XIcon size={20} /> : <MenuIcon />}
           </button>
@@ -128,6 +129,7 @@ export default function InstructorNav({ activePath }) {
           <div className="relative">
             <button
               onClick={() => setProfileOpen(p => !p)}
+              aria-label="Instructor profile and theme"
               className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 hover:ring-2 hover:ring-blue-400 transition-all overflow-hidden"
             >
               {instructor.photoUrl
@@ -149,7 +151,7 @@ export default function InstructorNav({ activePath }) {
                 </div>
                 <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
                   <span className="text-sm text-gray-700 dark:text-gray-300">{dark ? 'Dark mode' : 'Light mode'}</span>
-                  <button onClick={toggleDark} className={`relative w-9 h-5 rounded-full transition-colors ${dark ? 'bg-green-600' : 'bg-gray-200'}`}>
+                  <button aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={toggleDark} className={`relative w-9 h-5 rounded-full transition-colors ${dark ? 'bg-green-600' : 'bg-gray-200'}`}>
                     <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </div>
@@ -164,7 +166,7 @@ export default function InstructorNav({ activePath }) {
 
       {/* Mobile slide-down menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex flex-col gap-1 sticky top-14 z-10 shadow-sm">
+        <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex flex-col gap-1 sticky top-14 z-10 shadow-sm">
           {links.map(l => (
             <button key={l.label} onClick={() => go(l.path)} className={mobileLinkClass(l.path)}>
               {l.label}

@@ -15,6 +15,7 @@ import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
+import { dashboardAssessmentAction } from './assessmentUiState'
 
 // Read the user object saved by the login response
 // This lets pages render instantly without a skeleton on every navigation.
@@ -201,21 +202,22 @@ export default function StudentDashboard() {
   // ── Real API call (instant via cached sb-user) ────────────────
   // initialData = user object saved at login → renders with no skeleton
   // API refreshes in background to get has_submitted + retake_allowed
-  const { data: student } = useApi('/api/students/me/', { initialData: getCachedUser() })
+  const { data: student } = useApi('/api/students/me/', { fresh: true })
+  const { data: assessmentList } = useApi('/api/assessments/', { fresh: true })
 
 
   // ── Derived display values (safe fallbacks if API is slow/offline) ──
-  const rawFirst        = student?.name?.split(' ')[0] ?? 'Student'
+  const rawFirst        = (student?.name || getCachedUser()?.name || 'Student').split(' ')[0]
   const firstName       = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
   const displayName     = student?.name     ?? 'Student'
   const displayCourse   = student?.course   ?? ''
   const displayId       = student?.school_id ?? ''
   const photoUrl        = student?.photo_url ?? null
-  const attemptStopped   = student?.attempt_status === 'stopped'
-  const hasTakenAssessment = student?.attempt_status
-    ? student.attempt_status === 'submitted'
-    : student?.has_submitted ?? false
-  const retakeAllowed   = student?.retake_allowed  ?? false
+  const attempts = assessmentList?.assessments || []
+  const stoppedAssessment = attempts.find(item => item.attempt_status === 'stopped' && !item.retake_allowed)
+  const retakeAssessment = attempts.find(item => item.retake_allowed && item.availability_status === 'available')
+  const attemptStopped = Boolean(stoppedAssessment)
+  const retakeAllowed = Boolean(retakeAssessment)
 
   // ── NavBar student prop (matches NavBar expected shape) ────────
   const navStudent = {
@@ -232,8 +234,12 @@ export default function StudentDashboard() {
     overallScore,
     topMatches,
     recommendations: allRecs,
+    resultData,
+    recommendationsLocked,
     studentPin,
   } = useStudentResults()
+  const hasTakenAssessment = !recommendationsLocked && resultData?.all_required_completed === true
+  const dashboardAction = dashboardAssessmentAction({ ...resultData, recommendations_locked: recommendationsLocked }, attempts)
 
   const enrichedCompanies = allRecs.filter(r => r.lat != null && r.lng != null)
 
@@ -294,9 +300,9 @@ export default function StudentDashboard() {
       <NavBar student={navStudent} />
 
       {/* ── Retake Available Banner ── */}
-      {retakeAllowed && (hasTakenAssessment || attemptStopped) && (
+      {retakeAllowed && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
-          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 shadow-sm">
+          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -305,12 +311,12 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Retake Assessment Available</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">Your instructor has allowed you to retake the assessment. Your previous answers will be cleared.</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">Your instructor approved a retake of {retakeAssessment?.title}. Your earlier attempt remains on record.</p>
               </div>
             </div>
             <button
-              onClick={() => navigate('/student/assessment')}
-              className="shrink-0 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
+              onClick={() => navigate(`/student/assessments/${retakeAssessment.id}/take`)}
+              className="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap"
             >
               Retake now
             </button>
@@ -324,7 +330,7 @@ export default function StudentDashboard() {
             <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-bold">!</div>
             <div>
               <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">Assessment stopped / flagged</p>
-              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">{student?.stopped_reason_display || 'An assessment integrity rule was triggered.'} Your completed answers were recorded. Contact your instructor, OJT coordinator, or administrator to request a retake.</p>
+              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">{stoppedAssessment?.stopped_reason_display || 'An assessment integrity rule was triggered.'} Your completed answers were recorded. Contact your instructor or administrator to request a retake.</p>
             </div>
           </div>
         </div>
@@ -353,7 +359,7 @@ export default function StudentDashboard() {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                   <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Assessment done
+                Required assessments complete
               </span>
             )}
           </div>
@@ -367,16 +373,16 @@ export default function StudentDashboard() {
                     <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse inline-block" />
                     <span className="text-xs text-green-200 font-medium">Assessment open</span>
                   </div>
-                  <p className="text-white font-semibold text-sm">Take your skills assessment</p>
+                  <p className="text-white font-semibold text-sm">Your skills assessments</p>
                   <p className="text-green-200 text-xs mt-1 leading-relaxed">
-                    Unlock your skill profile and company matches.
+                    {resultData?.total_required_count ? `${resultData.completed_required_count} of ${resultData.total_required_count} required assessments completed. ${resultData.remaining_required_count} remaining.` : 'View your assigned assessments and required progress.'}
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/student/assessment')}
+                  onClick={() => navigate(dashboardAction.to)}
                   className="bg-white text-green-700 font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-green-50 active:bg-green-100 transition-colors text-center"
                 >
-                  Start now →
+                  {dashboardAction.label} →
                 </button>
               </div>
             ) : (
@@ -388,15 +394,15 @@ export default function StudentDashboard() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-green-800 dark:text-green-200">Assessment completed</p>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Skill profile and matches are ready.</p>
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-200">Required assessments complete</p>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Your combined skill profile and matches are ready.</p>
                   </div>
                 </div>
                 <button
                   onClick={() => navigate('/student/results')}
                   className="bg-green-600 text-white font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-green-700 active:bg-green-800 transition-colors text-center"
                 >
-                  View full results →
+                  {dashboardAction.label} →
                 </button>
               </div>
             )}
@@ -407,6 +413,7 @@ export default function StudentDashboard() {
             <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top matches</p>
             {hasTakenAssessment ? (
               <div className="flex flex-col gap-2">
+                {topMatches.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No eligible company positions are currently available.</p>}
                 {topMatches.map((m, idx) => (
                   <div key={m.id ?? idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
                     <div className="min-w-0 mr-2">
@@ -439,7 +446,7 @@ export default function StudentDashboard() {
                     <span className="text-xs font-semibold text-gray-300 dark:text-gray-700">--%</span>
                   </div>
                 ))}
-                <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">Unlocks after assessment</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">Unlocks after all required assessments</p>
               </div>
             )}
           </div>
@@ -450,7 +457,7 @@ export default function StudentDashboard() {
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill profile</p>
               {hasTakenAssessment && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">Assessment result</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Combined result</span>
               )}
             </div>
             {hasTakenAssessment ? (
@@ -497,7 +504,7 @@ export default function StudentDashboard() {
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full" />
                   </div>
                 ))}
-                <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-2">Unlocks after assessment</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">Unlocks after all required assessments</p>
               </div>
             )}
           </div>
@@ -589,7 +596,7 @@ export default function StudentDashboard() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400 dark:text-gray-600 text-center max-w-xs">
-                  Complete your assessment to unlock the nearby companies map.
+                  Complete all required assessments to unlock the nearby companies map.
                 </p>
               </div>
             )}
@@ -661,7 +668,7 @@ export default function StudentDashboard() {
                 <div className="flex flex-col gap-2">
                   {[
                     {
-                      num: '1', label: 'Take assessment',
+                      num: '1', label: 'Complete assessments',
                       sub: 'Complete your skill evaluation',
                       done: false, active: true,
                     },

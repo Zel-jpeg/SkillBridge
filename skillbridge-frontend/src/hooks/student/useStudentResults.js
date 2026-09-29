@@ -1,23 +1,17 @@
 // src/hooks/student/useStudentResults.js
 //
-// Fetches GET /api/student/results/ and enriches recommendations with:
+// Fetches GET /api/student/results/combined/ and enriches recommendations with:
 //   - distKm       — Haversine distance from student's pinned location
 //   - backend-provided hybrid component scores and distance
 //
-// Also accepts `routerState` — the data passed through navigate() state
-// immediately after an assessment submit.  That data is used as the
-// initial display value (zero loading delay) and is persisted to
-// sessionStorage so the same cache as useApi is warmed.
-//
 // Usage:
-//   const { skillScores, recommendations, reviewData, loading, error,
-//           sortMode, setSortMode, hasPin, studentPin } = useStudentResults(routerState)
+//   const { skillScores, recommendations, recommendationsLocked,
+//           sortMode, setSortMode, hasPin, studentPin } = useStudentResults()
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useApi } from '../useApi'
 
-const RESULTS_URL = '/api/student/results/'
-const REVIEW_URL  = '/api/student/results/review/'
+const RESULTS_URL = '/api/student/results/combined/'
 
 // ── Haversine distance (km) ───────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -50,39 +44,18 @@ function readPin() {
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
-export function useStudentResults(routerState = null) {
-  const { data, loading, error }                    = useApi(RESULTS_URL)
-  // Backend review: correct answers from DB — fixes "all wrong" on return visit
-  const { data: reviewRaw, loading: reviewLoading } = useApi(REVIEW_URL)
+export function useStudentResults() {
+  const { data, loading, error } = useApi(RESULTS_URL, { fresh: true })
 
   const studentPin = useMemo(() => readPin(), [])
   const hasPin     = studentPin != null
 
   const [sortMode, setSortMode] = useState('match')
 
-  // ── Review data: router state → backend DB → localStorage ───────────────
-  const reviewData = useMemo(() => {
-    // 1. Freshly enriched from submit response (instant, has is_correct on choices)
-    if (routerState?.reviewData?.questions?.length) {
-      try { localStorage.setItem('sb_review_data', JSON.stringify(routerState.reviewData)) } catch {}
-      return routerState.reviewData
-    }
-    // 2. Backend DB — always correct, bypasses stale localStorage
-    if (reviewRaw?.questions?.length) {
-      return { questions: reviewRaw.questions, answers: reviewRaw.answers }
-    }
-    // 3. localStorage fallback (legacy, may not have is_correct)
-    try {
-      const saved = JSON.parse(localStorage.getItem('sb_review_data'))
-      if (saved?.questions?.length) return saved
-    } catch {}
-    return null
-  }, [routerState, reviewRaw]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Skill scores — formatted for bar charts ─────────────────────────────
   const skillScores = useMemo(() => {
-    if (!data?.skill_scores?.length) return []
-    return data.skill_scores.map((s, i) => ({
+    if (data?.recommendations_locked !== false || !data?.combined_category_scores?.length) return []
+    return data.combined_category_scores.map((s, i) => ({
       label:    s.category,
       pct:      Math.round(s.percentage),
       tag:      s.tag,
@@ -92,14 +65,11 @@ export function useStudentResults(routerState = null) {
     }))
   }, [data])
 
-  const overallScore = useMemo(() => {
-    if (!skillScores.length) return 0
-    return Math.round(skillScores.reduce((sum, s) => sum + s.pct, 0) / skillScores.length)
-  }, [skillScores])
+  const overallScore = data?.recommendations_locked === false ? data?.overall_percentage : null
 
   // ── Recommendations — enriched with distance + scores ───────────────────
   const enrichedRecs = useMemo(() => {
-    if (!data?.recommendations?.length) return []
+    if (data?.recommendations_locked !== false || !data?.recommendations?.length) return []
     return data.recommendations.map(r => {
       const match = Math.round(r.match_score)
       const localDistance = hasPin && r.lat != null && r.lng != null
@@ -130,10 +100,11 @@ export function useStudentResults(routerState = null) {
 
   return {
     skillScores, overallScore,
-    competencyProfile: data?.competency_profile ?? null,
+    competencyProfile: data?.combined_competency_profile ?? null,
+    resultData: data,
+    recommendationsLocked: data?.recommendations_locked !== false,
     placement: data?.placement ?? null,
     recommendations, topMatches,
-    reviewData, reviewLoading,
     loading, error,
     sortMode, setSortMode,
     hasPin, studentPin, haversineKm,

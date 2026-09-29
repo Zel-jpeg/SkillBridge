@@ -21,6 +21,8 @@ from .models import (
     SkillScore,
     StudentResponse,
     StudentCompetencyProfile,
+    CombinedCategoryScore,
+    CombinedCompetencyProfile,
     User,
 )
 
@@ -192,9 +194,10 @@ class AssessmentRandomizationTests(APITestCase):
             [choice['id'] for choice in review_mcq['choices']],
             [choice['id'] for choice in randomized_mcq_ids],
         )
-        self.assertTrue(next(
-            choice for choice in review_mcq['choices'] if choice['id'] == self.mcq_choices[0].id
-        )['is_correct'])
+        self.assertNotIn('is_correct', review_mcq['choices'][0])
+        self.assertTrue(review.data['answers'][str(self.mcq.id)]['submitted_answer_correct'])
+        self.assertNotIn('correct_answers', submit.data)
+        self.assertNotIn('correct_text', next(q for q in review.data['questions'] if q['id'] == self.identification.id))
 
     def test_allowed_retake_gets_a_fresh_layout(self):
         self._start_as(self.student)
@@ -346,6 +349,10 @@ class HybridRecommendationTests(APITestCase):
         self.assessment = Assessment.objects.create(
             title='Hybrid Test', created_by=self.admin,
         )
+        self.batch = Batch.objects.create(name='Hybrid Batch', instructor=self.admin)
+        self.assessment.batch = self.batch
+        self.assessment.save(update_fields=['batch'])
+        BatchEnrollment.objects.create(batch=self.batch, student=self.student)
         StudentResponse.objects.create(
             student=self.student,
             assessment=self.assessment,
@@ -469,6 +476,35 @@ class OJTPlacementAPITests(APITestCase):
         BatchEnrollment.objects.create(batch=self.batch, student=self.student_two)
         BatchEnrollment.objects.create(batch=self.other_batch, student=self.student_three)
 
+        # Placement fixtures represent students whose required assessment is
+        # complete; placement suggestions now reject incomplete profiles.
+        placement_category = SkillCategory.objects.create(name='Placement skills', created_by=self.admin)
+        for batch, batch_students in (
+            (self.batch, (self.student_one, self.student_two)),
+            (self.other_batch, (self.student_three,)),
+        ):
+            assessment = Assessment.objects.create(
+                title=f'{batch.name} assessment', created_by=batch.instructor, batch=batch,
+            )
+            for student in batch_students:
+                StudentResponse.objects.create(
+                    student=student, assessment=assessment, started_at=timezone.now(),
+                    submitted_at=timezone.now(), status=StudentResponse.STATUS_SUBMITTED,
+                )
+                SkillScore.objects.create(
+                    student=student, assessment=assessment, skill_category=placement_category,
+                    raw_score=1, max_score=1, percentage=100,
+                )
+                CombinedCategoryScore.objects.create(
+                    student=student, batch=batch, skill_category=placement_category,
+                    raw_score=1, max_score=1, percentage=100,
+                    source_assessment_ids=[assessment.id],
+                )
+                CombinedCompetencyProfile.objects.create(
+                    student=student, batch=batch, is_finalized=True,
+                    included_assessment_ids=[assessment.id],
+                )
+
         self.company = Company.objects.create(name='Company One', added_by=self.admin)
         self.other_company = Company.objects.create(name='Company Two', added_by=self.admin)
         self.position = Position.objects.create(
@@ -479,6 +515,7 @@ class OJTPlacementAPITests(APITestCase):
         )
         self.recommendation_one = Recommendation.objects.create(
             student=self.student_one,
+            batch=self.batch,
             position=self.position,
             match_score=95,
             category_score_component=90,
@@ -488,6 +525,7 @@ class OJTPlacementAPITests(APITestCase):
         )
         self.recommendation_two = Recommendation.objects.create(
             student=self.student_two,
+            batch=self.batch,
             position=self.position,
             match_score=80,
             category_score_component=82,
@@ -497,6 +535,7 @@ class OJTPlacementAPITests(APITestCase):
         )
         self.other_recommendation = Recommendation.objects.create(
             student=self.student_one,
+            batch=self.batch,
             position=self.other_position,
             match_score=75,
             category_score_component=80,
@@ -515,7 +554,8 @@ class OJTPlacementAPITests(APITestCase):
 
     def test_suggestions_are_ranked_and_instructor_is_batch_scoped(self):
         Recommendation.objects.create(
-            student=self.student_three, position=self.position, match_score=99,
+            student=self.student_three, batch=self.other_batch,
+            position=self.position, match_score=99,
         )
         self.client.force_authenticate(self.instructor)
         response = self.client.get(reverse('placement_suggestions'))

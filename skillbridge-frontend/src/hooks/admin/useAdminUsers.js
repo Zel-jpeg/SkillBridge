@@ -11,6 +11,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useApi, invalidateCache } from '../useApi'
+import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useSSE } from '../useSSE'
 
 const PAGE_SIZE = 10
@@ -71,8 +72,11 @@ export function useAdminUsers() {
       email:            s.email         || '',
       course:           s.course        || '',
       instructor:       s.instructor    || 'TBD',
+      batch:            s.batch ?? null,
+      placement:        s.placement ?? null,
       status:           s.status        || 'pending',
       retakeAllowed:    !!s.retake_allowed,
+      assessmentId:     s.assessment_id ?? null,
       isFlagged:        !!s.is_flagged,
       stoppedReason:    s.stopped_reason_display || '',
       violationCount:   s.violation_count ?? 0,
@@ -84,6 +88,14 @@ export function useAdminUsers() {
       address:          s.address           ?? {},
       photoUrl:         s.photo_url         || null,
       competencyProfile: s.competency_profile ?? null,
+      assessmentResults: s.assessment_results ?? [],
+      combinedCategoryScores: s.combined_category_scores ?? [],
+      combinedCompetencyProfile: s.combined_competency_profile ?? null,
+      recommendationsLocked: s.recommendations_locked ?? true,
+      completedRequiredCount: s.completed_required_count ?? 0,
+      totalRequiredCount: s.total_required_count ?? 0,
+      remainingRequiredCount: s.remaining_required_count ?? 0,
+      top_recommendations: s.recommendations_locked ? [] : (s.top_recommendations ?? []),
     })))
 
     setInstructors(approved.map(i => ({
@@ -121,7 +133,6 @@ export function useAdminUsers() {
       if (fresh) setSelectedUser(fresh)
     } else {
       const fresh = studentsList.find(s => s.id === selectedUser.id)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (fresh) setSelectedUser(fresh)
     }
   }, [studentsList, instructors]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -190,15 +201,18 @@ export function useAdminUsers() {
     setConfirmRejectPending(null)
   }
 
-  async function handleToggleRetake(studentId) {
+  async function handleToggleRetake(studentId, assessmentId) {
     const st = studentsList.find(s => s.id === studentId)
     if (!st) return
-    const next = !st.retakeAllowed
-    const res = await request('patch', `/api/instructor/students/${studentId}/retake/`, { retake_allowed: next })
+    const attempt = assessmentRetakeCandidate(st, assessmentId)
+    if (!attempt) return
+    const next = !attempt.retake_allowed
+    const res = await request('patch', `/api/instructor/students/${studentId}/retake/`, { retake_allowed: next, assessment_id: assessmentId })
     if (!res.ok) return
-    setStudentsList(prev => prev.map(s => s.id === studentId ? { ...s, retakeAllowed: !s.retakeAllowed } : s))
-    setSelectedUser(prev => prev?.id === studentId ? { ...prev, retakeAllowed: !prev.retakeAllowed } : prev)
-    if (st) showToast(st.retakeAllowed ? `Retake revoked for ${st.name}.` : `Retake allowed for ${st.name}.`)
+    const update = s => ({ ...s, assessmentResults: s.assessmentResults.map(a => a.id === assessmentId ? { ...a, retake_allowed: next } : a) })
+    setStudentsList(prev => prev.map(s => s.id === studentId ? update(s) : s))
+    setSelectedUser(prev => prev?.id === studentId ? update(prev) : prev)
+    showToast(next ? `Retake approved for ${st.name}.` : `Retake revoked for ${st.name}.`)
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
   }
 

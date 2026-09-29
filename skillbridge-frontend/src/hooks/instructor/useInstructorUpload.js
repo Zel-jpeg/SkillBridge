@@ -11,7 +11,7 @@
 //
 // Question types supported: mcq | truefalse | identification
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import api from '../../api/axios'
 import { useApi } from '../useApi'
 
@@ -27,13 +27,13 @@ export const QUESTION_TYPES = [
 
 // ── Draft persistence helpers ─────────────────────────────────────
 function saveDraft(data) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() })) } catch {}
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() })) } catch { /* Storage may be disabled. */ }
 }
 function loadDraft() {
   try { const raw = localStorage.getItem(DRAFT_KEY); return raw ? JSON.parse(raw) : null } catch { return null }
 }
 function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY) } catch {}
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* Storage may be disabled. */ }
 }
 export function formatDraftAge(ts) {
   const mins = Math.floor((Date.now() - ts) / 60000)
@@ -210,6 +210,25 @@ export function useInstructorUpload() {
   const [title,           setTitle]           = useState('')
   const [duration,        setDuration]        = useState('')
   const [selectedBatchId, setSelectedBatchId] = useState(null)
+  const [publicationStatus, setPublicationStatus] = useState('draft')
+  const [isRequired, setIsRequired] = useState(true)
+  const [includeInCompetency, setIncludeInCompetency] = useState(true)
+  const [displayOrder, setDisplayOrder] = useState('0')
+  const [availableAt, setAvailableAt] = useState('')
+  const [dueAt, setDueAt] = useState('')
+  const restoredOrder = useRef(null)
+  const { data: existingAssessments } = useApi('/api/instructor/assessments/')
+
+  useEffect(() => {
+    if (!selectedBatchId || !Array.isArray(existingAssessments)) return
+    if (restoredOrder.current?.batchId === selectedBatchId) {
+      setDisplayOrder(restoredOrder.current.order)
+      restoredOrder.current = null
+      return
+    }
+    const orders = existingAssessments.filter(a => a.batch_id === selectedBatchId).map(a => Number(a.display_order) || 0)
+    setDisplayOrder(String(Math.max(0, ...orders) + 1))
+  }, [selectedBatchId, existingAssessments])
 
   // Skill categories — pre-populated from the global admin-managed list
   const [categories, setCategories] = useState([])
@@ -275,18 +294,29 @@ export function useInstructorUpload() {
     if (published) return
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      saveDraft({ title, duration, categories, questions, selectedBatchId })
+      saveDraft({ title, duration, categories, questions, selectedBatchId,
+        publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt })
       setLastSaved(Date.now())
     }, 1000)
     return () => clearTimeout(saveTimer.current)
-  }, [title, duration, categories, questions, selectedBatchId, published])
+  }, [title, duration, categories, questions, selectedBatchId, publicationStatus,
+    isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published])
 
   // ── Draft actions ─────────────────────────────────────────────
   function handleRestoreDraft() {
     if (!draftBanner) return
     if (draftBanner.title)               setTitle(draftBanner.title)
     if (draftBanner.duration)            setDuration(String(draftBanner.duration))
-    if (draftBanner.selectedBatchId)     setSelectedBatchId(draftBanner.selectedBatchId)
+    if (draftBanner.selectedBatchId) {
+      restoredOrder.current = { batchId: draftBanner.selectedBatchId, order: String(draftBanner.displayOrder ?? 0) }
+      setSelectedBatchId(draftBanner.selectedBatchId)
+    }
+    if (draftBanner.publicationStatus) setPublicationStatus(draftBanner.publicationStatus)
+    if (typeof draftBanner.isRequired === 'boolean') setIsRequired(draftBanner.isRequired)
+    if (typeof draftBanner.includeInCompetency === 'boolean') setIncludeInCompetency(draftBanner.includeInCompetency)
+    if (draftBanner.displayOrder != null) setDisplayOrder(String(draftBanner.displayOrder))
+    setAvailableAt(draftBanner.availableAt || '')
+    setDueAt(draftBanner.dueAt || '')
     if (draftBanner.categories?.length) {
       setCategories(draftBanner.categories)
       _cid = Math.max(_cid, ...draftBanner.categories.map(c => c.id + 1))
@@ -576,11 +606,14 @@ export function useInstructorUpload() {
   function validate() {
     const e = {}
     if (!title.trim()) e.title = 'Assessment title is required'
+    if (publicationStatus === 'published' && !selectedBatchId) e.batch_id = 'Choose a batch before publishing'
+    if (!/^\d+$/.test(String(displayOrder))) e.display_order = 'Enter a non-negative order'
+    if (availableAt && dueAt && dueAt <= availableAt) e.due_at = 'Due time must be after availability time'
     if (!duration || isNaN(Number(duration)) || Number(duration) < 1) e.duration = 'Enter a valid duration in minutes'
-    if (categories.length === 0) e.categories = 'Add at least one skill category'
-    if (questions.length === 0)  e.questions  = 'Add at least one question'
+    if (publicationStatus === 'published' && categories.length === 0) e.categories = 'Add at least one skill category'
+    if (publicationStatus === 'published' && questions.length === 0) e.questions = 'Add at least one question'
 
-    questions.forEach(q => {
+    if (publicationStatus === 'published') questions.forEach(q => {
       if (!q.text.trim()) e[`q_${q.id}_text`] = 'Question text is required'
       if (q.categoryId === null) e[`q_${q.id}_categoryId`] = 'Tag a skill category'
 
@@ -616,6 +649,12 @@ export function useInstructorUpload() {
       title:            title.trim(),
       batch_id:         selectedBatchId || undefined,
       duration_minutes: Number(duration),
+      publication_status: publicationStatus,
+      is_required: isRequired,
+      include_in_competency: includeInCompetency,
+      display_order: Number(displayOrder),
+      available_at: availableAt ? `${availableAt}:00+08:00` : null,
+      due_at: dueAt ? `${dueAt}:00+08:00` : null,
       questions:        questions.map(q => {
         const categoryName = categories.find(c => c.id === q.categoryId)?.name || ''
 
@@ -668,6 +707,8 @@ export function useInstructorUpload() {
 
   function resetForm() {
     setTitle(''); setDuration(''); setSelectedBatchId(null)
+    setPublicationStatus('draft'); setIsRequired(true); setIncludeInCompetency(true)
+    setDisplayOrder('0'); setAvailableAt(''); setDueAt('')
     setCategories([]); setCatInput('')
     setQuestions([makeQuestion(nextQid(), 'mcq')]); setQuestionMode('manual')
     setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(null); setXlsxImported(false)
@@ -693,6 +734,9 @@ export function useInstructorUpload() {
     batches, loadingBatches, selectedBatchId, setSelectedBatchId,
     // Metadata
     title, setTitle, duration, setDuration,
+    publicationStatus, setPublicationStatus, isRequired, setIsRequired,
+    includeInCompetency, setIncludeInCompetency, displayOrder, setDisplayOrder,
+    availableAt, setAvailableAt, dueAt, setDueAt,
     // Categories
     categories, catInput, setCatInput, catRef,
     addCategory, removeCategory,

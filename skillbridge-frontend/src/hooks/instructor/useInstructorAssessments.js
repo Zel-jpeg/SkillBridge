@@ -24,6 +24,8 @@ import { useState, useMemo, useCallback } from 'react'
 import api from '../../api/axios'
 import { useApi, invalidateCache, _setCache } from '../useApi'
 import { useSSE } from '../useSSE'
+import { manilaApiDate, toManilaInput } from '../../utils/assessmentDates'
+import { filterAssessments } from '../../utils/assessmentManagement'
 
 const SSE_PATH = '/api/instructor/events/'
 
@@ -120,13 +122,15 @@ export function useInstructorAssessments() {
   const { data: assessmentsRaw, loading: loadingList } = useApi('/api/instructor/assessments/')
   const { data: batchesRaw }                           = useApi('/api/instructor/batches/')
 
-  const assessments  = Array.isArray(assessmentsRaw) ? assessmentsRaw : []
-  const batchOptions = Array.isArray(batchesRaw)     ? batchesRaw     : []
+  const assessments = useMemo(() => Array.isArray(assessmentsRaw) ? assessmentsRaw : [], [assessmentsRaw])
+  const batchOptions = useMemo(() => Array.isArray(batchesRaw) ? batchesRaw : [], [batchesRaw])
 
   // ── Summary stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
     total:       assessments.length,
-    active:      assessments.filter(a => a.is_active).length,
+    active:      assessments.filter(a => a.publication_status === 'published').length,
+    draft:       assessments.filter(a => a.publication_status === 'draft').length,
+    closed:      assessments.filter(a => a.publication_status === 'closed').length,
     questions:   assessments.reduce((s, a) => s + (a.question_count   || 0), 0),
     submissions: assessments.reduce((s, a) => s + (a.submission_count || 0), 0),
   }), [assessments])
@@ -135,21 +139,17 @@ export function useInstructorAssessments() {
   const [search,       setSearch]       = useState('')
   const [filterBatch,  setFilterBatch]  = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterRequired, setFilterRequired] = useState('all')
+  const [filterIncluded, setFilterIncluded] = useState('all')
+  const [filterCategory, setFilterCategory] = useState('all')
+  const [filterAvailability, setFilterAvailability] = useState('all')
 
   const filtered = useMemo(() => {
-    let list = [...assessments]
-    if (filterBatch !== 'all')  list = list.filter(a => String(a.batch_id) === String(filterBatch))
-    if (filterStatus === 'active')   list = list.filter(a =>  a.is_active)
-    if (filterStatus === 'inactive') list = list.filter(a => !a.is_active)
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(a =>
-        a.title?.toLowerCase().includes(q) ||
-        a.batch_name?.toLowerCase().includes(q)
-      )
-    }
-    return list
-  }, [assessments, search, filterBatch, filterStatus])
+    return filterAssessments(assessments, { search, batch: filterBatch, state: filterStatus,
+      required: filterRequired, included: filterIncluded, category: filterCategory,
+      availability: filterAvailability })
+  }, [assessments, search, filterBatch, filterStatus, filterRequired, filterIncluded, filterCategory, filterAvailability])
+  const categoryOptions = [...new Set(assessments.flatMap(a => a.categories || []))].sort()
 
   // ── Modal state ───────────────────────────────────────────────────────────
   const [selected,         setSelected]         = useState(null)  // selected assessment obj
@@ -158,7 +158,7 @@ export function useInstructorAssessments() {
   // ── Assessment metadata edit fields ──────────────────────────────────────
   const [editTitle,    setEditTitle]    = useState('')
   const [editDuration, setEditDuration] = useState('')
-  const [editActive,   setEditActive]   = useState(true)
+  const [editSettings, setEditSettings] = useState({})
 
   // ── Question edit state ───────────────────────────────────────────────────
   const [editedQuestions, setEditedQuestions] = useState([])
@@ -193,7 +193,9 @@ export function useInstructorAssessments() {
     setSelected(a)
     setEditTitle(a.title || '')
     setEditDuration(String(a.duration_minutes ?? 60))
-    setEditActive(a.is_active ?? true)
+    setEditSettings({ publication_status: a.publication_status, is_required: a.is_required,
+      include_in_competency: a.include_in_competency, display_order: String(a.display_order ?? 0),
+      available_at: toManilaInput(a.available_at), due_at: toManilaInput(a.due_at) })
     setEditedQuestions([])
     setShowSaveConfirm(false)
     setLoadingQuestions(true)
@@ -313,31 +315,26 @@ export function useInstructorAssessments() {
   // ── Save all changes ──────────────────────────────────────────────────────
   const saveAllChanges = useCallback(async () => {
     if (!selected) return
+    if (!editTitle.trim() || !Number.isInteger(Number(editDuration)) || Number(editDuration) < 1 ||
+        !/^\d+$/.test(String(editSettings.display_order)) ||
+        (editSettings.available_at && editSettings.due_at && editSettings.due_at <= editSettings.available_at)) {
+      showToast('Check title, duration, display order, and dates before saving.')
+      return
+    }
     setSaving(true)
     setShowSaveConfirm(false)
 
     try {
-      // 1 ── Assessment metadata
-      await api.patch(`/api/instructor/assessments/${selected.id}/`, {
-        title:            editTitle.trim() || selected.title,
-        duration_minutes: Number(editDuration) || selected.duration_minutes,
-        is_active:        editActive,
-      })
-
-      // 2 ── Categorise changes
+      // Question mutations finish before publication so the server validates the final key.
       const toDelete = editedQuestions.filter(q => q._deleted && !q._isNew)
       const toPatch  = editedQuestions.filter(q => !q._deleted && !q._isNew && q._dirty)
       const toAdd    = editedQuestions.filter(q => !q._deleted && q._isNew)
 
       // 3 ── Delete removed questions
-      const deleteResults = await Promise.allSettled(
-        toDelete.map(q => api.delete(`/api/instructor/questions/${q.id}/`))
-      )
+      for (const q of toDelete) await api.delete(`/api/instructor/questions/${q.id}/`)
 
       // 4 ── Patch edited questions
-      const patchResults = await Promise.allSettled(
-        toPatch.map(q => api.patch(`/api/instructor/questions/${q.id}/`, questionPayload(q)))
-      )
+      for (const q of toPatch) await api.patch(`/api/instructor/questions/${q.id}/`, questionPayload(q))
 
       // 5 ── Add new questions (clear_submissions: false — the instructor is just
       //      refining the assessment, not replacing it wholesale)
@@ -348,14 +345,22 @@ export function useInstructorAssessments() {
         )
       }
 
-      // 6 ── Count errors
-      const errorCount = [
-        ...deleteResults.filter(r => r.status === 'rejected'),
-        ...patchResults.filter(r => r.status === 'rejected'),
-      ].length
+      const saved = await api.patch(`/api/instructor/assessments/${selected.id}/`, {
+        title: editTitle.trim(), duration_minutes: Number(editDuration),
+        publication_status: editSettings.publication_status,
+        is_required: editSettings.is_required,
+        include_in_competency: editSettings.include_in_competency,
+        display_order: Number(editSettings.display_order),
+        available_at: manilaApiDate(editSettings.available_at),
+        due_at: manilaApiDate(editSettings.due_at),
+      })
 
       // 7 ── Invalidate list cache + re-fetch so question/submission counts refresh on next visit
-      invalidateCache('/api/instructor/assessments/')
+      const changedUrls = ['/api/instructor/assessments/', '/api/instructor/dashboard/',
+        '/api/admin/stats/', '/api/admin/users/']
+      if (selected.batch_id) changedUrls.push(`/api/instructor/batches/${selected.batch_id}/students/`)
+      changedUrls.forEach(invalidateCache)
+      window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { urls: changedUrls } }))
       try {
         const listRes = await api.get('/api/instructor/assessments/')
         if (listRes.data) _setCache('/api/instructor/assessments/', listRes.data)
@@ -371,21 +376,16 @@ export function useInstructorAssessments() {
         ...prev,
         title:            editTitle.trim() || prev.title,
         duration_minutes: Number(editDuration) || prev.duration_minutes,
-        is_active:        editActive,
+        ...saved.data,
         question_count:   freshQs.length,
       }))
-
-      if (errorCount > 0) {
-        showToast(`Saved with ${errorCount} error${errorCount > 1 ? 's' : ''}. Some questions may not have been updated.`)
-      } else {
-        showToast('Assessment saved successfully.')
-      }
+      showToast('Assessment saved successfully.')
     } catch (err) {
       showToast(err.response?.data?.error || 'Save failed. Please try again.')
     } finally {
       setSaving(false)
     }
-  }, [selected, editTitle, editDuration, editActive, editedQuestions, showToast])
+  }, [selected, editTitle, editDuration, editSettings, editedQuestions, showToast])
 
   // ─────────────────────────────────────────────────────────────────────────
   return {
@@ -395,13 +395,15 @@ export function useInstructorAssessments() {
     search, setSearch,
     filterBatch,  setFilterBatch,
     filterStatus, setFilterStatus,
+    filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
+    filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
     // ── Modal open/close ──────────────────────────────────────────────────────
     selected, loadingQuestions,
     openAssessment, closeAssessment,
     // ── Assessment metadata edit ──────────────────────────────────────────────
     editTitle,    setEditTitle,
     editDuration, setEditDuration,
-    editActive,   setEditActive,
+    editSettings, setEditSettings,
     // ── Question state ────────────────────────────────────────────────────────
     visibleQuestions, questionStats, categories,
     expandAll, collapseAll, allExpanded,

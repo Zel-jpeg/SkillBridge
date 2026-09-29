@@ -48,7 +48,7 @@ function SortIndicator({ col, sortBy, sortDir }) {
 export default function InstructorDashboard() {
   const navigate = useNavigate()
   const {
-    studentsList, loading,
+    studentsList, loading, assessmentStats,
     search, setSearch, filterStatus, setFilter,
     sortBy, sortDir, toggleSort,
     view, setView, page, setPage,
@@ -85,7 +85,8 @@ export default function InstructorDashboard() {
         <StudentModal
           student={selectedStudent}
           onClose={() => setSelectedStudent(null)}
-          onToggleRetake={() => {}} // read-only in dashboard; retake managed in students page
+          isArchived
+          onToggleRetake={() => {}} // Retakes are managed in the batch roster.
         />
       )}
 
@@ -127,9 +128,14 @@ export default function InstructorDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: 'Enrolled',  value: studentsList.length, sub: 'total students',    green: false, amber: false },
-            { label: 'Completed', value: completed.length,    sub: 'took the assessment', green: true,  amber: false },
-            { label: 'Pending',   value: pending.length,      sub: 'have not started',  green: false, amber: pending.length > 0 },
-            { label: 'Avg score', value: `${avgOverall}%`,    sub: 'across all skills', green: false, amber: false },
+            { label: 'Required complete', value: completed.length, sub: 'all required submitted', green: true, amber: false },
+            { label: 'In progress', value: pending.length, sub: 'requirements remaining', green: false, amber: pending.length > 0 },
+            { label: 'Avg skill score', value: `${avgOverall}%`, sub: 'finalized students', green: false, amber: false },
+            { label: 'Stopped / flagged', value: studentsList.filter(s => s.isFlagged || s.status === 'stopped').length, sub: 'integrity review', green: false, amber: true },
+            { label: 'Retakes approved', value: studentsList.filter(s => s.assessmentResults.some(a => a.retake_allowed)).length, sub: 'students with approval', green: false, amber: false },
+            { label: 'Recommendations unlocked', value: studentsList.filter(s => !s.recommendationsLocked).length, sub: 'final profiles ready', green: true, amber: false },
+            { label: 'Assessments', value: assessmentStats.total, sub: `${assessmentStats.published} published · ${assessmentStats.draft} draft · ${assessmentStats.closed} closed`, green: false, amber: false },
+            { label: 'Still unplaced', value: studentsList.filter(s => s.placement?.status !== 'approved').length, sub: 'active batch students', green: false, amber: false },
           ].map(card => (
             <div key={card.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5">
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">{card.label}</p>

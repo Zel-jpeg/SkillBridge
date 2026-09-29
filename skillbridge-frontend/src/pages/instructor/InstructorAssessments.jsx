@@ -25,7 +25,11 @@ import InstructorNav                     from '../../components/instructor/Instr
 import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
 import { useAssessmentUpload }           from '../../hooks/instructor/useAssessmentUpload'
+import AssessmentSettings from '../../components/instructor/AssessmentSettings'
+import { manilaDateTime } from '../../utils/assessmentDates'
+import AssessmentReportPanel from '../../components/AssessmentReportPanel'
 
+/* eslint-disable react-hooks/refs -- The upload hook returns refs alongside ordinary state and callbacks. */
 // ── Type meta ─────────────────────────────────────────────────────────────────
 const TYPE_META = {
   mcq:            { label: 'MCQ',   color: 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'       },
@@ -140,6 +144,7 @@ function EditableQuestionCard({ q, index, categories, onUpdate, onChangeType, on
 
   useEffect(() => {
     if (!q.question_text || q.question_text.trim() === '') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestedCategory(null)
       return
     }
@@ -156,7 +161,7 @@ function EditableQuestionCard({ q, index, categories, onUpdate, onChangeType, on
         } else {
           setSuggestedCategory(null)
         }
-      } catch (e) {
+      } catch {
         // silently ignore
       }
     }, 1000)
@@ -391,11 +396,11 @@ function AssessmentCard({ a, onClick }) {
           {a.title}
         </h3>
         <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-          a.is_active
+          a.publication_status === 'published'
             ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
         }`}>
-          {a.is_active ? 'Active' : 'Inactive'}
+          {a.publication_status}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -412,7 +417,14 @@ function AssessmentCard({ a, onClick }) {
           <ClockIcon /> {a.duration_minutes} min
         </span>
       </div>
-      <div className="flex items-center gap-4 pt-1 border-t border-gray-50 dark:border-gray-800">
+      <div className="flex flex-wrap gap-1.5 text-[11px] text-gray-600 dark:text-gray-300">
+        <span>{a.is_required ? 'Required' : 'Optional'}</span><span>·</span>
+        <span>{a.include_in_competency ? 'Competency included' : 'Result only'}</span><span>·</span>
+        <span>Order {a.display_order}</span><span>·</span><span>{a.availability_status}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">{a.categories?.map(c => <span key={c} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-700 dark:bg-gray-800 dark:text-gray-300">{c}</span>)}</div>
+      <p className="text-[11px] text-gray-500 dark:text-gray-400">Available {manilaDateTime(a.available_at)} · Due {manilaDateTime(a.due_at)}</p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-gray-50 dark:border-gray-800">
         <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           <LayersIcon />
           <span className="font-semibold text-gray-700 dark:text-gray-300">{a.question_count}</span> questions
@@ -421,6 +433,7 @@ function AssessmentCard({ a, onClick }) {
           <UsersIcon />
           <span className="font-semibold text-gray-700 dark:text-gray-300">{a.submission_count}</span> submitted
         </span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{a.flagged_count} stopped/flagged</span>
         <span className="ml-auto text-[10px] text-gray-300 dark:text-gray-600">{created}</span>
       </div>
     </button>
@@ -454,11 +467,13 @@ export default function InstructorAssessments() {
     loadingList, filtered, stats, batchOptions,
     search, setSearch,
     filterBatch, setFilterBatch, filterStatus, setFilterStatus,
+    filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
+    filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
     selected, loadingQuestions,
     openAssessment, closeAssessment,
     editTitle, setEditTitle,
     editDuration, setEditDuration,
-    editActive, setEditActive,
+    editSettings, setEditSettings,
     visibleQuestions, questionStats, categories,
     expandAll, collapseAll, allExpanded,
     updateQuestion, changeQuestionType, updateChoice, setCorrectChoice,
@@ -497,7 +512,7 @@ export default function InstructorAssessments() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Assessments</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Review, edit, and manage all published assessments</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage assessments by batch, publication state, and competency settings.</p>
           </div>
           <button
             onClick={() => navigate('/instructor/assessment/create')}
@@ -517,7 +532,7 @@ export default function InstructorAssessments() {
 
         {/* ── Filters ──────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-180px">
+          <div className="relative w-full min-w-[180px] sm:w-56 lg:flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><SearchIcon /></span>
             <input
               type="text"
@@ -535,9 +550,12 @@ export default function InstructorAssessments() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500/30">
             <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="draft">Draft</option><option value="published">Published</option><option value="closed">Closed</option>
           </select>
+          <select aria-label="Required status" value={filterRequired} onChange={e => setFilterRequired(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">Required + optional</option><option value="required">Required</option><option value="optional">Optional</option></select>
+          <select aria-label="Competency inclusion" value={filterIncluded} onChange={e => setFilterIncluded(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">All scoring</option><option value="included">Included</option><option value="excluded">Excluded</option></select>
+          <select aria-label="Skill category" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">All categories</option>{categoryOptions.map(c => <option key={c}>{c}</option>)}</select>
+          <select aria-label="Availability" value={filterAvailability} onChange={e => setFilterAvailability(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">Any availability</option><option value="available">Available</option><option value="upcoming">Upcoming</option><option value="overdue">Overdue</option><option value="closed">Closed</option></select>
         </div>
 
         {/* ── Assessment grid ───────────────────────────────────────────────── */}
@@ -568,6 +586,7 @@ export default function InstructorAssessments() {
             ))}
           </div>
         )}
+        <AssessmentReportPanel />
       </main>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -595,6 +614,7 @@ export default function InstructorAssessments() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => { setShowUpload(true); upload.reset() }}
+                    disabled={selected.questions_locked}
                     className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     <UploadIcon /> Upload Questions
@@ -626,24 +646,17 @@ export default function InstructorAssessments() {
                     {selected.batch_name}
                   </span>
                 )}
-                <button
-                  onClick={() => setEditActive(v => !v)}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full transition-colors ${
-                    editActive
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  {editActive ? '● Active' : '○ Inactive'} — tap to toggle
-                </button>
                 {/* Mobile upload button */}
-                <button
+                  <button
                   onClick={() => { setShowUpload(true); upload.reset() }}
+                  disabled={selected.questions_locked}
                   className="flex sm:hidden items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   <UploadIcon /> Upload
                 </button>
               </div>
+              <AssessmentSettings value={editSettings} onChange={setEditSettings} />
+              {selected.questions_locked && <p className="text-xs text-amber-700 dark:text-amber-300">Question editing is locked because an attempt exists. Metadata and publication settings remain editable; attempts and scores are preserved.</p>}
 
               {/* Stats + expand/collapse toggle */}
               {!loadingQuestions && visibleQuestions.length > 0 && (
@@ -692,22 +705,22 @@ export default function InstructorAssessments() {
                     </div>
                   )}
 
-                  {visibleQuestions.map((q, i) => (
+                  {selected.questions_locked ? visibleQuestions.map((q, i) => <div key={q.id || q._tempId} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><strong>{i + 1}. {q.question_text}</strong><p className="text-xs">{q.category?.name || 'Uncategorized'} · {q.question_type}</p><p className="mt-1 text-xs">Grading answer: {q.question_type === 'identification' ? q.identAnswer : q.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></div>) : visibleQuestions.map((q, i) => (
                     <EditableQuestionCard
                       key={q._tempId}
                       q={q}
                       index={i}
                       categories={categories}
-                      onUpdate={updateQuestion}
-                      onChangeType={changeQuestionType}
-                      onUpdateChoice={updateChoice}
-                      onSetCorrect={setCorrectChoice}
-                      onRemove={removeQuestion}
+                      onUpdate={selected.questions_locked ? () => {} : updateQuestion}
+                      onChangeType={selected.questions_locked ? () => {} : changeQuestionType}
+                      onUpdateChoice={selected.questions_locked ? () => {} : updateChoice}
+                      onSetCorrect={selected.questions_locked ? () => {} : setCorrectChoice}
+                      onRemove={selected.questions_locked ? () => {} : removeQuestion}
                     />
                   ))}
 
                   {/* Add question buttons */}
-                  <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
+                  {!selected.questions_locked && <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
                     {[
                       { type: 'mcq',            label: '+ Add Multiple Choice' },
                       { type: 'truefalse',       label: '+ Add True / False'   },
@@ -721,7 +734,7 @@ export default function InstructorAssessments() {
                         {t.label}
                       </button>
                     ))}
-                  </div>
+                  </div>}
                 </div>
               )}
             </div>
@@ -760,7 +773,7 @@ export default function InstructorAssessments() {
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Save all changes?</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
               This will update the assessment metadata, edited questions, and any new or deleted questions.
-              Students who have already submitted <strong>will not be affected</strong>.
+              Existing attempts and scores stay intact. Publication, required status, and competency inclusion can lock or recalculate final recommendations. The server determines the final state.
             </p>
             <div className="flex gap-3">
               <button
@@ -815,7 +828,7 @@ export default function InstructorAssessments() {
             <div className="mx-6 mt-4 flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 shrink-0">
               <span className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><WarnIcon /></span>
               <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                New questions will be <strong>appended</strong> to the existing {selected.question_count} questions. Student submissions will be <strong>cleared</strong> so everyone retakes from scratch.
+                New questions can be appended only before any student attempt. Existing submissions and scores are never cleared.
               </p>
             </div>
 
