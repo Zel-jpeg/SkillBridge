@@ -1,7 +1,6 @@
 // src/pages/admin/AdminReports.jsx
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
 
-import AdminNav from '../../components/admin/AdminNav'
 import NlpModelComparison from '../../components/admin/NlpModelComparison'
 import { useEffect, useState } from 'react'
 import { useApi } from '../../hooks/useApi'
@@ -124,8 +123,8 @@ export default function AdminReports() {
 
   if (loading || placementLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <AdminNav activePath="/admin/reports" />
+      <div className="min-w-0">
+
         <div className="flex justify-center py-24"><Spinner /></div>
       </div>
     )
@@ -151,10 +150,10 @@ export default function AdminReports() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/reports" />
+    <div className="min-w-0">
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
 
         {/* Page header */}
         <div>
@@ -405,7 +404,7 @@ export default function AdminReports() {
           </SectionCard>
         </div>
 
-      </main>
+      </section>
     </div>
   )
 }

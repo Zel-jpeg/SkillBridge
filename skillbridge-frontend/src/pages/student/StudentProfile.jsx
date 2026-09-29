@@ -16,9 +16,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import NavBar from '../../components/NavBar'
 import AddressDropdowns from '../../components/AddressDropdowns'
-import { useApi, invalidateCache } from '../../hooks/useApi'
+import { useApi, invalidateCache, updateCachedData } from '../../hooks/useApi'
 import api from '../../api/axios'
 
 function getCachedUser() {
@@ -68,7 +67,7 @@ async function geocodeAddress({ barangay, city, province }) {
     )
     const [hit] = await res.json()
     if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch {}
+  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
   return { lat: 7.3072, lng: 125.6839, zoom }   // fallback: Panabo City
 }
 
@@ -229,7 +228,7 @@ export default function StudentProfile() {
       const pl = user?.address?.pinLat
       const pg = user?.address?.pinLng
       if (pl != null && pg != null) return { lat: pl, lng: pg }
-    } catch {}
+    } catch { /* Fall back to the locally saved map pin. */ }
     try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
   })
   const [mapCenter,   setMapCenter]   = useState(null)
@@ -321,7 +320,7 @@ export default function StudentProfile() {
       } else {
         localStorage.removeItem('sb_pin_location')
       }
-      invalidateCache('/api/students/me/')
+      updateCachedData('/api/students/me/', res.data)
       invalidateCache('/api/student/results/')
 
       setSaved(true)
@@ -342,26 +341,14 @@ export default function StudentProfile() {
   const boardingAddressStr = [boardingAddr.barangay, boardingAddr.city, boardingAddr.province]
     .filter(Boolean).join(', ') || '—'
 
-  const stayingAtLabel = {
-    boarding: 'Boarding house / rented room near school',
-    home:     'My family home (I will commute)',
-    open:     'Open to anywhere, no preference',
-  }[stayingAt] ?? '—'
 
-  const navStudent = {
-    name:      displayName,
-    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
-    studentId: displayId,
-    course:    displayCourse,
-    photoUrl,
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-w-0">
 
-      <NavBar student={navStudent} />
 
-      <main className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
+
+      <section className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
 
         {/* Back */}
         <button
@@ -748,7 +735,7 @@ export default function StudentProfile() {
           )}
         </div>
 
-      </main>
+      </section>
     </div>
   )
 }

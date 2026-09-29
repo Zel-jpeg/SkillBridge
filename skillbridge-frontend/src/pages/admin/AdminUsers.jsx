@@ -3,7 +3,6 @@
 // All modals now in components/admin/
 
 import { useState } from 'react'
-import AdminNav          from '../../components/admin/AdminNav'
 import ConfirmModal      from '../../components/admin/ConfirmModal'
 import AddInstructorModal from '../../components/admin/AddInstructorModal'
 import UserDetailModal   from '../../components/admin/UserDetailModal'
@@ -76,8 +75,8 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/users" />
+    <div className="min-w-0">
+
 
       {/* Toast */}
       {toast && (
@@ -141,7 +140,7 @@ export default function AdminUsers() {
         />
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
@@ -333,7 +332,7 @@ export default function AdminUsers() {
             <Pagination total={displayed.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
           </div>
         )}
-      </main>
+      </section>
     </div>
   )
 }

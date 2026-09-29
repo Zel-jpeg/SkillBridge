@@ -1,11 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { assessmentAction } from './assessmentUiState'
-
-function cachedStudent() {
-  try { return JSON.parse(localStorage.getItem('sb-user')) || {} } catch { return {} }
-}
 
 function dateLabel(value) {
   if (!value) return ''
@@ -69,12 +64,6 @@ function AssessmentCard({ item }) {
 export default function StudentAssessments() {
   const navigate = useNavigate()
   const { data, loading, error } = useApi('/api/assessments/', { fresh: true })
-  const student = cachedStudent()
-  const navStudent = {
-    name: student.name || 'Student',
-    initials: (student.name || 'ST').split(' ').map(part => part[0]).slice(0, 2).join(''),
-    studentId: student.school_id || '', course: student.course || '', photoUrl: student.photo_url || null,
-  }
   const completed = data?.completed_required_count || 0
   const total = data?.total_required_count || 0
   const remaining = data?.remaining_required_count || 0
@@ -82,9 +71,9 @@ export default function StudentAssessments() {
   const assessments = data?.assessments || []
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <NavBar student={navStudent} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="min-w-0">
+
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <button onClick={() => navigate('/student/dashboard')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400 focus-visible:outline-2">← Dashboard</button>
         <header className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-7">
           <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">{data?.batch?.name || 'Your batch'}</p>
@@ -113,7 +102,7 @@ export default function StudentAssessments() {
               {assessments.map(item => <AssessmentCard key={item.id} item={item} />)}
             </section>
           : <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">No published assessments are assigned to your batch yet. Check back with your instructor.</div>)}
-      </main>
+      </section>
     </div>
   )
 }

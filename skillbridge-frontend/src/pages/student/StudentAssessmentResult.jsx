@@ -1,10 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
-
-function cachedStudent() {
-  try { return JSON.parse(localStorage.getItem('sb-user')) || {} } catch { return {} }
-}
 
 function AnswerReview({ questions, answers }) {
   if (!questions?.length) return null
@@ -49,11 +44,6 @@ export default function StudentAssessmentResult() {
   const { data, loading, error } = useApi(resultUrl, { fresh: true })
   const { data: review, loading: reviewLoading, error: reviewError } = useApi(reviewUrl, { fresh: true, skip: !data?.assessment })
   const reviewPending = reviewLoading || (!review && !reviewError)
-  const student = cachedStudent()
-  const navStudent = {
-    name: student.name || 'Student', initials: (student.name || 'ST').split(' ').map(part => part[0]).slice(0, 2).join(''),
-    studentId: student.school_id || '', course: student.course || '', photoUrl: student.photo_url || null,
-  }
   const scores = data?.skill_scores || []
   const raw = scores.reduce((sum, row) => sum + row.raw_score, 0)
   const maximum = scores.reduce((sum, row) => sum + row.max_score, 0)
@@ -64,9 +54,9 @@ export default function StudentAssessmentResult() {
   const unanswered = Math.max(0, (review?.questions?.length || 0) - answerValues.length)
   const stopped = data?.assessment?.attempt_status === 'stopped'
 
-  return <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-    <NavBar student={navStudent} />
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+  return <div className="min-w-0">
+
+    <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400 focus-visible:outline-2">← Skills Assessments</button>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">Assessment Result</p>
@@ -98,6 +88,6 @@ export default function StudentAssessmentResult() {
         </div>)}</div> : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No scored answers were recorded.</p>}
       </section>}
       {data?.assessment && !loading && !error && (reviewPending ? <p role="status" className="mt-5 text-sm text-gray-600 dark:text-gray-300">Loading submitted answers…</p> : reviewError ? <p role="alert" className="mt-5 text-sm text-rose-700 dark:text-rose-300">Submitted answers could not be loaded. Your score is still available above.</p> : <AnswerReview questions={review?.questions} answers={review?.answers} />)}
-    </main>
+    </section>
   </div>
 }

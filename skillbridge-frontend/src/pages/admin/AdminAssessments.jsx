@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import AdminNav from '../../components/admin/AdminNav'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import { manilaApiDate, manilaDateTime, toManilaInput } from '../../utils/assessmentDates'
 import AssessmentStudentDetail from '../../components/AssessmentStudentDetail'
@@ -73,8 +72,8 @@ export default function AdminAssessments() {
       setMessage('Assessment-specific retake updated.')
     } catch (err) { setMessage(err.response?.data?.error || 'Retake update failed.') }
   }
-  return <div className="min-h-screen bg-gray-50 dark:bg-gray-950"><AdminNav activePath="/admin/assessments" />
-    <main className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6">
+  return <div className="min-w-0">
+    <section className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6">
       <header><h1 className="text-xl font-bold text-gray-900 dark:text-white">Assessment oversight</h1><p className="text-sm text-gray-500 dark:text-gray-400">System-wide publication, completion, and integrity status.</p></header>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
         ['Total', assessments.length], ['Published', assessments.filter(a => a.publication_status === 'published').length],
@@ -94,7 +93,7 @@ export default function AdminAssessments() {
       </div>
       {loading ? <p className="text-sm text-gray-500">Loading assessments…</p> : error ? <p role="alert" className="text-sm text-rose-700">Could not load assessments.</p> : filtered.length === 0 ? <p className="rounded-xl bg-white p-8 text-sm text-gray-500 dark:bg-gray-900">No assessments match these filters.</p> :
         <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900"><table className="min-w-[900px] w-full text-left text-xs"><thead className="bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><tr>{['Assessment', 'Instructor / batch', 'State', 'Settings', 'Categories', 'Schedule', 'Progress', 'Integrity'].map(h => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody>{filtered.map(a => <tr key={a.id} className="border-t border-gray-100 dark:border-gray-800"><td className="px-3 py-3"><button className="max-w-48 break-words text-left font-semibold text-green-700 underline dark:text-green-400" onClick={() => open(a)}>{a.title}</button><p>{a.question_count} questions · {a.duration_minutes} min</p></td><td className="px-3 py-3">{a.instructor_name}<br />{a.batch_name || 'Unassigned'}</td><td className="px-3 py-3 capitalize">{a.publication_status}</td><td className="px-3 py-3">{a.is_required ? 'Required' : 'Optional'}<br />{a.include_in_competency ? 'Included' : 'Excluded'} · #{a.display_order}</td><td className="px-3 py-3">{a.categories.join(', ') || 'None'}</td><td className="px-3 py-3">{a.availability_status}<br />Due {manilaDateTime(a.due_at)}</td><td className="px-3 py-3">{a.submission_count}/{a.assigned_count} submitted<br />{a.completion_rate}% complete</td><td className="px-3 py-3">{a.flagged_count} stopped / flagged</td></tr>)}</tbody></table></div>}
-    </main>
+    </section>
     {selected && draft && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={event => event.target === event.currentTarget && setSelected(null)}><div role="dialog" aria-modal="true" aria-label={`Manage ${selected.title}`} className="flex max-h-[95dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-w-3xl sm:rounded-2xl dark:bg-gray-900"><header className="flex items-start justify-between gap-2 border-b border-gray-100 p-4 dark:border-gray-800"><h2 className="break-words font-bold text-gray-900 dark:text-white">{selected.title} · {selected.batch_name}</h2><button className="text-sm text-gray-500" onClick={() => setSelected(null)}>Close</button></header><div className="space-y-5 overflow-y-auto p-4">
       {message && <p role="status" className="rounded-lg bg-gray-100 p-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">{message}</p>}
       <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Title<input className={`${input} mt-1 w-full`} value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Duration · minutes<input type="number" min="1" className={`${input} mt-1 w-full`} value={draft.duration_minutes} onChange={e => setDraft({ ...draft, duration_minutes: e.target.value })} /></label></div>

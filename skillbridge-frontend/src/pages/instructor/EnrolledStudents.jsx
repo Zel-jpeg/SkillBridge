@@ -3,7 +3,6 @@
 // Modals now in components/instructor/ and components/admin/
 
 import { useNavigate }         from 'react-router-dom'
-import InstructorNav           from '../../components/instructor/InstructorNav'
 import StudentModal            from '../../components/instructor/StudentModal'
 import { SkillScoreRow }       from '../../components/SkillTagBadge'
 import EnrollModal             from '../../components/instructor/EnrollModal'
@@ -67,8 +66,8 @@ export default function EnrolledStudents() {
   const bsis = students.filter(s => s.course === 'BSIS')
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav activePath="/instructor/students" />
+    <div className="min-w-0">
+
 
       {/* Toast */}
       {toast && (
@@ -134,7 +133,7 @@ export default function EnrolledStudents() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -390,7 +389,7 @@ export default function EnrolledStudents() {
           <p className="text-xs text-gray-400 dark:text-gray-600 mr-1">Score key:</p>
           {[{l:'≥ 80% Strong',c:'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'},{l:'60–79% Fair',c:'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300'},{l:'< 60% Needs work',c:'bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300'}].map(x => <span key={x.l} className={`text-xs font-medium px-2.5 py-1 rounded-full ${x.c}`}>{x.l}</span>)}
         </div>
-      </main>
+      </section>
     </div>
   )
 }

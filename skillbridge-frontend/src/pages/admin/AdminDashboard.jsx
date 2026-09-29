@@ -9,7 +9,6 @@ import StatusBadge from '../../components/StatusBadge'
 import PageHeader  from '../../components/PageHeader'
 import SearchBar   from '../../components/SearchBar'
 import EmptyState  from '../../components/EmptyState'
-import AdminNav    from '../../components/admin/AdminNav'
 import { useAdminDashboard } from '../../hooks/admin/useAdminDashboard'
 import { matchColor } from '../../utils/formatters'
 import Avatar from '../../components/Avatar'
@@ -78,10 +77,10 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/dashboard" />
+    <div className="min-w-0">
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         <PageHeader
           title="Admin Dashboard"
@@ -273,7 +272,7 @@ export default function AdminDashboard() {
           ].map(l => <span key={l.label} className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.cls}`}>{l.label}</span>)}
         </div>
 
-      </main>
+      </section>
     </div>
   )
 }

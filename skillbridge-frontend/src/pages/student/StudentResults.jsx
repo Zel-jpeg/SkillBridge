@@ -11,7 +11,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
-import NavBar        from '../../components/NavBar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
@@ -19,9 +18,6 @@ import CompetencyInsights from '../../components/CompetencyInsights'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 
 
-function getCachedUser() {
-  try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
-}
 
 
 // ────────────────────────────────────────────────────────────────
@@ -207,25 +203,14 @@ export default function StudentResults() {
   const [animated, setAnimated] = useState(false)
   useEffect(() => { const t = setTimeout(() => setAnimated(true), 100); return () => clearTimeout(t) }, [])
 
-  // ── Student info ───────────────────────────────────────────────────────
-  const { data: apiStudent } = useApi('/api/students/me/', { initialData: getCachedUser() })
-  const displayName   = apiStudent?.name      ?? 'Student'
-  const displayId     = apiStudent?.school_id ?? ''
-  const displayCourse = apiStudent?.course    ?? ''
-  const navStudent    = {
-    name:      displayName,
-    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
-    studentId: displayId,
-    course:    displayCourse,
-    photoUrl:  apiStudent?.photo_url ?? null,
-  }
-
-
+  const { data: apiStudent } = useApi('/api/students/me/')
+  const displayId = apiStudent?.school_id ?? ''
+  const displayCourse = apiStudent?.course ?? ''
 
   if (resultsLoading || !resultData || resultsError || recommendationsLocked) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <NavBar student={navStudent} />
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="min-w-0">
+
+      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400">← Skills Assessments</button>
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 sm:p-8">
           {resultsLoading || (!resultData && !resultsError) ? <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading your final skill profile…</p>
@@ -241,15 +226,15 @@ export default function StudentResults() {
               </>}
           <button onClick={() => navigate('/student/assessments')} className="mt-6 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2">View Assessments</button>
         </div>
-      </main>
+      </section>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-12">
-      <NavBar student={navStudent} />
+    <div className="min-w-0 pb-12">
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* Back */}
         <button onClick={() => navigate('/student/dashboard')}
@@ -614,8 +599,8 @@ export default function StudentResults() {
           )}
         </div>
 
-      </main>
-      
+      </section>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <p className="text-xs text-gray-400 dark:text-gray-600 text-center py-6 mt-8 border-t border-gray-200 dark:border-gray-800">
           Final placement decisions are made by your OJT coordinator. This list is for reference only.

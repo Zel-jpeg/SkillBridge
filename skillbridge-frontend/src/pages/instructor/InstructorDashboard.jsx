@@ -4,7 +4,6 @@
 
 import { useState }             from 'react'
 import { useNavigate }          from 'react-router-dom'
-import InstructorNav            from '../../components/instructor/InstructorNav'
 import StudentModal             from '../../components/instructor/StudentModal'
 import SkillLeaderboardModal    from '../../components/instructor/SkillLeaderboardModal'
 import Pagination               from '../../components/Pagination'
@@ -71,8 +70,8 @@ export default function InstructorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav instructor={instructor} activePath="/instructor/dashboard" />
+    <div className="min-w-0">
+
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
@@ -100,7 +99,7 @@ export default function InstructorDashboard() {
         />
       )}
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -386,7 +385,7 @@ export default function InstructorDashboard() {
             ))}
           </div>
         </div>
-      </main>
+      </section>
     </div>
   )
 }
