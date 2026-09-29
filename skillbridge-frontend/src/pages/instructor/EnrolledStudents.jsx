@@ -88,7 +88,7 @@ export default function EnrolledStudents() {
         />
       )}
       {showModal && <EnrollModal existingStudents={students} onClose={() => setShowModal(false)} onEnroll={handleEnroll} />}
-      {selectedStudent && <StudentModal student={selectedStudent} isArchived={isArchived} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
+      {selectedStudent && <StudentModal student={selectedStudent} instructorName={instructor.name} isArchived={isArchived} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
 
       {/* Archive confirmation */}
       {showArchiveConf && (
@@ -264,7 +264,7 @@ export default function EnrolledStudents() {
               {paginated.map(s => {
                 const overall = avg(s.scores), top = topSkill(s.scores)
                 return (
-                  <div key={s.id} onClick={() => setSelectedStudent(s)}
+                  <div key={s.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); setSelectedStudent(s) }}
                     className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 transition-all cursor-pointer">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
@@ -343,7 +343,7 @@ export default function EnrolledStudents() {
                   </tr></thead>
                   <tbody>
                     {paginated.map((s, i) => { const overall = avg(s.scores); return (
-                      <tr key={s.id} onClick={() => setSelectedStudent(s)}
+                      <tr key={s.id} tabIndex={0} aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); setSelectedStudent(s) }}
                         className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i%2?'bg-gray-50/30 dark:bg-gray-800/20':''}`}>
                         <td className="px-5 py-4"><div className="flex items-center gap-3">
                           <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />

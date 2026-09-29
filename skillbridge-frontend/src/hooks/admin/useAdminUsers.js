@@ -71,7 +71,7 @@ export function useAdminUsers() {
       studentId:        s.student_id    || '',
       email:            s.email         || '',
       course:           s.course        || '',
-      instructor:       s.instructor    || 'TBD',
+      instructor:       s.instructor    || '',
       batch:            s.batch ?? null,
       placement:        s.placement ?? null,
       status:           s.status        || 'pending',

@@ -1,7 +1,7 @@
 # Skill Sources and Demonstration Guide
 
-Prepared on September 29, 2026. This project contains five skills: two original
-SkillBridge workflows and three complete downloaded skill folders. The supporting
+Prepared on September 29, 2026. This project contains six skills: two original
+SkillBridge workflows and four complete downloaded skill folders. The supporting
 `AGENTS.md` and knowledge files are separate from the minimum four-skill requirement.
 
 ## Authorship and provenance
@@ -13,6 +13,7 @@ SkillBridge workflows and three complete downloaded skill folders. The supportin
 | vercel-react-best-practices | Vercel Engineering / Vercel Labs | [SKILL.md](../.agents/skills/vercel-react-best-practices/SKILL.md) | MIT, as declared in upstream skill frontmatter |
 | webapp-testing | Anthropic | [SKILL.md](../.agents/skills/webapp-testing/SKILL.md) | Apache 2.0; retained [LICENSE.txt](../.agents/skills/webapp-testing/LICENSE.txt) |
 | frontend-design | Anthropic | [SKILL.md](../.agents/skills/frontend-design/SKILL.md) | Apache 2.0; retained [LICENSE.txt](../.agents/skills/frontend-design/LICENSE.txt) |
+| design-taste-frontend | Leonxlnx / Taste Skill community project | [SKILL.md](../.agents/skills/design-taste-frontend/SKILL.md) | MIT; retained repository-root [LICENSE](../.agents/skills/design-taste-frontend/LICENSE) |
 
 ### Vercel React Best Practices
 
@@ -43,6 +44,18 @@ SkillBridge workflows and three complete downloaded skill folders. The supportin
 - Installed as an additional fifth skill; the original four remain available.
 - Complete upstream contents are retained without modifications. Raw files at the pinned commit preserve original bytes after sparse Git checkout on Windows.
 - Provides visual design guidance for new and existing interfaces. Installing it does not redesign the application or change UI code.
+
+### Taste Skill
+
+- Repository: [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), linked by the project's [documentation](https://www.tasteskill.dev/docs).
+- Upstream folder: `skills/taste-skill`; frontmatter name: `design-taste-frontend`.
+- Downloaded commit: `ce26fc25c0e5e8cab638f883de62d9a86ee5e45b`.
+- Pinned source: [complete skill folder](https://github.com/Leonxlnx/taste-skill/tree/ce26fc25c0e5e8cab638f883de62d9a86ee5e45b/skills/taste-skill).
+- The core skill is v2 experimental. It is community-authored, separate from Anthropic's official skills.
+- The upstream folder contains only `SKILL.md`. The complete file is retained without changes, with the repository-root MIT license copied alongside it. The proposed block library is described as future work in the skill; no block files are supplied at this revision.
+- Scope: landing pages, portfolios and visual redesigns. Upstream explicitly excludes dashboards, data tables, admin panels and multi-step product UI. Prefer the existing `frontend-design` skill for authenticated SkillBridge screens.
+- Apply contextual guidance while preserving the user's brief, current React/Vite architecture, shared icon source and dependency constraints. Next.js, extra icon libraries and animation packages are not requirements for SkillBridge.
+- Installation adds instruction files only; it does not modify the application, install frontend packages, deploy or change data.
 
 ## Example prompts and expected outputs
 
@@ -110,6 +123,18 @@ review and accessibility checks. Follow the user's brief rather than imposing a
 generic dashboard template. This prompt authorizes UI work only when submitted
 as a separate task; the skill installation itself does not perform it.
 
+### 6. Downloaded Taste Skill
+
+**Prompt:** "Use $design-taste-frontend to review SkillBridge's public landing
+page. Keep the DNSC audience, green branding and current React/Vite stack.
+Suggest focused improvements to typography, spacing and visual hierarchy. Keep
+motion restrained, reuse existing icons and do not add dependencies or edit code."
+
+**Expected output:** A brief design read and a prioritized visual review grounded
+in the public page. Respect the existing functionality and provide recommendations
+only. This skill does not replace product UX research or authorize changes to
+authenticated dashboards.
+
 ## How the downloads were made
 
 Both sources were resolved to commit IDs and installed with Codex's
@@ -123,6 +148,11 @@ so the final copies retain the exact upstream bytes.
 
 The additional `frontend-design` skill also used the installer with sparse Git
 checkout, followed by raw downloads at its pinned commit to preserve exact bytes.
+
+Taste Skill used the same installer with archive download, the pinned commit above,
+`--name design-taste-frontend` and project-local `--dest .agents/skills`. Its root
+MIT license was downloaded from the same commit. No upstream installer scripts,
+`npx` commands or application package installs were executed.
 
 For a manual download:
 
@@ -143,10 +173,11 @@ Completed checks:
 - Anthropic's `scripts/with_server.py --help` command succeeded.
 - The additional `frontend-design` entry point passed the same validator; both supplied files matched the pinned Git blob hashes byte for byte.
 - After adding the fifth skill, all five entry points were present and all 32 links in `AGENTS.md` and the knowledge documents resolved.
+- After adding Taste Skill, its frontmatter name and description, two-file inventory and MIT license were checked. Its `SKILL.md` and license matched the pinned upstream Git blob hashes exactly, and all 34 local links across `AGENTS.md`, `PROJECT_OVERVIEW.md` and this source guide resolved.
 
 The validator's PyYAML dependency was installed in a temporary folder, without
 changing application dependencies. Repeat resource and provenance checks when
 updating either external skill.
 
-Application code is unchanged. Example prompts document how to demonstrate the
+Skill installation leaves application code unchanged. Example prompts document how to demonstrate the
 skills; runtime assessment and browser demonstrations are separate work.

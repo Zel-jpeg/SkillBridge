@@ -165,8 +165,9 @@ export function useEnrolledStudents() {
   // Escape closes all modals
   useEffect(() => {
     const onKey = (e) => {
+      // Native dialogs handle only the topmost modal, including retake confirmations.
+      if (document.querySelector('dialog[open]')) return
       if (e.key === 'Escape') {
-        setSelectedStudent(null)
         setShowNewBatch(false)
         setShowArchiveConf(false)
       }
@@ -186,7 +187,7 @@ export function useEnrolledStudents() {
       await Promise.all(batchList.map(async (b) => {
         try {
           const r = await api.get(`/api/instructor/batches/${b.id}/students/?_t=${Date.now()}`)
-          const fresh = (r.data.students || []).map(normalizeStudent)
+          const fresh = (r.data.students || []).map(s => ({ ...normalizeStudent(s), batch: r.data.batch ?? { id: b.id, name: b.name } }))
           setBatches(prev => prev.map(pb =>
             pb.id === b.id ? { ...pb, students: fresh } : pb
           ))

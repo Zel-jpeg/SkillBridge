@@ -16,6 +16,8 @@ export default function ScoreLabel({ label }) {
   const timer = useRef(null)
   const pinned = useRef(false)
   const [position, setPosition] = useState(null)
+  const [portalTarget, setPortalTarget] = useState(null)
+  const open = Boolean(position)
 
   function close() {
     clearTimeout(timer.current)
@@ -25,6 +27,7 @@ export default function ScoreLabel({ label }) {
   function show() {
     clearTimeout(timer.current)
     const rect = button.current.getBoundingClientRect()
+    setPortalTarget(button.current.closest('dialog') || document.body)
     const width = Math.min(288, window.innerWidth - 24)
     const above = rect.bottom + 140 > window.innerHeight
     setPosition({ left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
@@ -34,6 +37,7 @@ export default function ScoreLabel({ label }) {
     if (!pinned.current) timer.current = setTimeout(() => setPosition(null), 150)
   }
   useEffect(() => {
+    if (!open) return
     function outside(event) {
       if (!button.current?.contains(event.target) && !tooltip.current?.contains(event.target)) close()
     }
@@ -49,7 +53,7 @@ export default function ScoreLabel({ label }) {
       window.removeEventListener('resize', close)
       window.removeEventListener('scroll', close, true)
     }
-  }, [])
+  }, [open])
 
   return <>
     <button ref={button} type="button" aria-label={`${label}: explanation`}
@@ -63,6 +67,6 @@ export default function ScoreLabel({ label }) {
       onMouseEnter={() => clearTimeout(timer.current)} onMouseLeave={leave}
       style={position} className="fixed z-[1000] rounded-xl bg-gray-900 px-3 py-2.5 text-left text-xs font-normal leading-relaxed text-white shadow-xl border border-gray-700">
       {explanations[label]}
-    </span>, document.body)}
+    </span>, portalTarget || document.body)}
   </>
 }

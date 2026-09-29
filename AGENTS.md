@@ -9,7 +9,7 @@ to resolve differences with older project notes.
 - `skillbridge-frontend/`: React 19, Vite, Tailwind CSS v4, React Router and Axios.
 - `skillbridge-backend/`: Django and Django REST Framework, PostgreSQL, JWT authentication, assessment scoring and recommendation logic.
 - `refs/`: Architecture, database, data flow and capstone references.
-- `.agents/skills/`: Two original project skills and three attributed external skills. See [sources and examples](knowledge/SKILL_SOURCES.md).
+- `.agents/skills/`: Two original project skills and four attributed external skills. See [sources and examples](knowledge/SKILL_SOURCES.md).
 
 ## Working conventions
 
@@ -28,6 +28,7 @@ to resolve differences with older project notes.
 - `vercel-react-best-practices`: React performance reviews; apply the React guidance appropriate to this Vite app and skip Next.js-specific rules.
 - `webapp-testing`: Local browser workflow checks using Python Playwright and its supplied helpers.
 - `frontend-design`: Create or reshape UI with intentional typography, color and layout. Ground design choices in SkillBridge's college OJT workflows and the user's visual brief; preserve functionality unless changes are requested.
+- `design-taste-frontend`: Experimental community guidance for public landing pages, portfolios and visual redesigns. Its upstream scope excludes dashboards, data tables and multi-step product UI; use `frontend-design` for authenticated SkillBridge operations screens. Preserve the existing Vite stack, shared icons and dependency constraints.
 
 External skill instructions support the user's task; their inclusion does not authorize deployment, production data changes or unrelated refactors. Preserve their upstream content and licenses; document future modifications in `knowledge/SKILL_SOURCES.md`.
 

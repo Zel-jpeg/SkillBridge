@@ -8,6 +8,12 @@
 
 // ── Navigation ────────────────────────────────────────────────────
 
+export const LockIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+  </svg>
+)
+
 export const PanelIcon = ({ size = 20, collapsed = false }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />

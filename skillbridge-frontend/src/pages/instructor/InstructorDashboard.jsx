@@ -83,9 +83,9 @@ export default function InstructorDashboard() {
       {selectedStudent && (
         <StudentModal
           student={selectedStudent}
+          instructorName={cachedUser?.name}
           onClose={() => setSelectedStudent(null)}
-          isArchived
-          onToggleRetake={() => {}} // Retakes are managed in the batch roster.
+          readOnly // Retakes are managed in the batch roster.
         />
       )}
 
@@ -228,7 +228,7 @@ export default function InstructorDashboard() {
                   const topEntry = Object.entries(s.scores).reduce((a, b) => b[1] > a[1] ? b : a, ['', -1])
                   const top = topEntry[1] >= 0 ? topEntry : null
                   return (
-                    <div key={s.id} onClick={() => setSelectedStudent(s)}
+                    <div key={s.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); setSelectedStudent(s) }}
                       className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 transition-all cursor-pointer">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
@@ -324,7 +324,7 @@ export default function InstructorDashboard() {
                       {paginated.map((s, i) => {
                         const overall = avgOf(s.scores)
                         return (
-                          <tr key={s.id} onClick={() => setSelectedStudent(s)}
+                          <tr key={s.id} tabIndex={0} aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); setSelectedStudent(s) }}
                             className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 cursor-pointer transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">

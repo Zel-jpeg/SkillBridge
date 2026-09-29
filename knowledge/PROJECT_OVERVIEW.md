@@ -45,9 +45,11 @@ and fallback when explaining results.
 
 ## Assignment deliverables
 
-The five skills are two original SkillBridge review workflows and three downloaded
-skills from Vercel Labs and Anthropic, including the additional `frontend-design`
-skill for UI work. `AGENTS.md` and the knowledge files are
+The six skills are two original SkillBridge review workflows and four downloaded
+skills from Vercel Labs, Anthropic and Leonxlnx, including `frontend-design`
+for UI work and experimental `design-taste-frontend` for public landing-page work.
+Taste Skill's upstream scope excludes dashboards and dense product UI.
+`AGENTS.md` and the knowledge files are
 supporting documentation, separate from the minimum four-skill requirement. Original workflows
 were generated with Codex for the SkillBridge project; external workflows retain
 their original authorship. This setup changes documentation and skill packages,

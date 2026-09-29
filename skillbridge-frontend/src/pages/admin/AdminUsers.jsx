@@ -249,7 +249,7 @@ export default function AdminUsers() {
                 {displayed.map(u => {
                   const role = u.role || (u.instructorId ? 'instructor' : 'student')
                   return (
-                    <div key={u.id} onClick={() => openUser(u, role)}
+                    <div key={u.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); openUser(u, role) }}
                       className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md cursor-pointer transition-shadow">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
@@ -300,7 +300,7 @@ export default function AdminUsers() {
                       {displayed.map((u, i) => {
                         const role = u.role || (u.instructorId ? 'instructor' : 'student')
                         return (
-                          <tr key={u.id} onClick={() => openUser(u, role)}
+                          <tr key={u.id} tabIndex={0} aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); openUser(u, role) }}
                             className={`border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
