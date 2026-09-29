@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import NavBar from '../../components/NavBar'
+import FocusedStudentHeader from '../../components/layout/FocusedStudentHeader'
 import api from '../../api/axios'
 import { useApi, invalidateCache } from '../../hooks/useApi'
 
@@ -129,7 +129,7 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <NavBar student={student} />
+      <FocusedStudentHeader student={student} />
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-sm overflow-hidden">
           <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900 px-6 sm:px-8 py-6">
@@ -275,7 +275,7 @@ export default function StudentAssessment() {
   const navigate = useNavigate()
   const { assessmentId: routeAssessmentId } = useParams()
 
-  // Read cached user for NavBar (instant render)
+  // Read cached user for the focused agreement header (instant render)
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
   const navStudent = {
     name:      cachedUser?.name     || 'Student',

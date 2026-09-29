@@ -12,9 +12,7 @@
 
 import { createContext, useContext, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearAllCache } from '../hooks/useApi'
-import { resetPrefetch } from '../api/prefetch'
-import { closeSSE } from '../hooks/useSSE'    // ← close SSE on logout
+import { logoutSession } from '../api/logout'
 
 const SessionContext = createContext(null)
 
@@ -28,28 +26,19 @@ export function SessionProvider({ children }) {
 
   function handleReLogin() {
     setExpired(false)
-    // Clear all auth tokens
-    localStorage.removeItem('sb-token')
-    localStorage.removeItem('sb-refresh')
-    localStorage.removeItem('sb-role')
-    localStorage.removeItem('sb-user')
-    // Clear API cache and prefetch state so next login re-fetches fresh data
-    clearAllCache()
-    resetPrefetch()
-    // Close SSE so the singleton doesn't try to reconnect after logout
-    closeSSE()
-    // Replace history so back button can't go back to the protected page
-    navigate('/login', { replace: true })
+    logoutSession(navigate)
   }
 
   return (
-    <SessionContext.Provider value={{ triggerSessionExpired }}>
+    <SessionContext.Provider value={{ triggerSessionExpired, expired }}>
       {children}
       {expired && <SessionExpiredModal onReLogin={handleReLogin} />}
     </SessionContext.Provider>
   )
 }
 
+// This existing provider module also exposes its context hook.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSession() {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error('useSession must be used inside <SessionProvider>')

@@ -16,7 +16,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import AddressDropdowns from '../../components/AddressDropdowns'
-import AdminNav        from '../../components/admin/AdminNav'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
@@ -57,7 +56,7 @@ async function geocodeAddress({ barangay, city, province }) {
     if (hits && hits.length > 0) {
       return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
     }
-    
+
     // Fallback: If barangay search failed, try searching just the city
     if (barangay && city) {
       q = [city, province, 'Philippines'].filter(Boolean).join(', ')
@@ -71,7 +70,7 @@ async function geocodeAddress({ barangay, city, province }) {
         return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
       }
     }
-  } catch {}
+  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
   return { lat: 7.1907, lng: 125.4553, zoom: 12 }  // fallback: Davao City
 }
 
@@ -878,8 +877,8 @@ export default function AdminCompanies() {
   const pinnedCount = companies.filter(c => c.lat != null).length
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/companies" />
+    <div className="min-w-0">
+
 
       {/* ── Modals ───────────────────────────────────────────────────── */}
 
@@ -951,7 +950,7 @@ export default function AdminCompanies() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 
         {/* ── Page header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
@@ -1118,7 +1117,7 @@ export default function AdminCompanies() {
             </div>
           ))}
         </div>
-      </main>
+      </section>
     </div>
   )
 }

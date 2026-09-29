@@ -9,7 +9,6 @@
 
 import { useState }     from 'react'
 import { useNavigate }  from 'react-router-dom'
-import InstructorNav    from '../../components/instructor/InstructorNav'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import {
@@ -96,12 +95,6 @@ export default function InstructorUpload() {
   const navigate = useNavigate()
   const [confirmPublish, setConfirmPublish] = useState(false)
 
-  const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
-  const instructor = {
-    name:     cachedUser?.name    || 'Instructor',
-    initials: (cachedUser?.name || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
-    subject:  cachedUser?.course  || 'OJT Coordinator',
-  }
 
   const {
     // Batches
@@ -140,8 +133,8 @@ export default function InstructorUpload() {
   // ── Published success screen ──────────────────────────────────
   if (published) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <InstructorNav instructor={instructor} activePath="/instructor/assessment/create" />
+      <div className="min-w-0">
+
         <div className="max-w-md mx-auto px-4 py-20 flex flex-col items-center gap-5 text-center">
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl flex items-center justify-center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -172,10 +165,10 @@ export default function InstructorUpload() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav instructor={instructor} activePath="/instructor/assessment/create" />
+    <div className="min-w-0">
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
 
         {/* Draft restore banner */}
         {draftBanner && (
@@ -685,7 +678,7 @@ export default function InstructorUpload() {
           onCancel={() => setConfirmPublish(false)} />}
 
         <div className="h-4" />
-      </main>
+      </section>
     </div>
   )
 }

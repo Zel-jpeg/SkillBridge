@@ -5,10 +5,8 @@
 // Edit modal: AddressDropdowns + drop-pin map (no manual lat/lng typing).
 
 import { useState, useEffect, useRef } from 'react'
-import InstructorNav              from '../../components/instructor/InstructorNav'
 import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
-import { getInitials }            from '../../utils/formatters'
 import Avatar                     from '../../components/Avatar'
 import NlpTextPreview from '../../components/NlpTextPreview'
 import api                        from '../../api/axios'
@@ -44,7 +42,7 @@ async function geocodeAddress({ barangay, city, province }) {
     )
     const [hit] = await res.json()
     if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch {}
+  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
   return { lat: 7.1907, lng: 125.4553, zoom } // fallback: Davao City
 }
 
@@ -729,12 +727,14 @@ export default function InstructorCompanies() {
   useEffect(() => {
     if (!selected) return
     const fresh = companies.find(c => c.id === selected.id)
+    // Preserve the existing open detail view when company data refreshes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fresh) setSelected(fresh)
   }, [companies]) // eslint-disable-line
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav activePath="/instructor/companies" />
+    <div className="min-w-0">
+
 
       {/* Toast */}
       {toast && (
@@ -764,7 +764,7 @@ export default function InstructorCompanies() {
         />
       )}
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
 
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -826,7 +826,7 @@ export default function InstructorCompanies() {
             ))}
           </div>
         )}
-      </main>
+      </section>
 
       <style>{`
         @keyframes sheetUp {

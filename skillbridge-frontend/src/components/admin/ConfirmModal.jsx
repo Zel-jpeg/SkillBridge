@@ -1,53 +1,13 @@
-// src/components/admin/ConfirmModal.jsx
-//
-// Generic delete/confirm dialog. Used anywhere a destructive action
-// requires user confirmation before proceeding.
-//
-// Props:
-//   title        — heading text
-//   message      — body text explaining consequence
-//   confirmLabel — label for destructive button (default: "Delete")
-//   onConfirm    — called when user clicks the destructive button
-//   onCancel     — called when user cancels
-
+import DialogShell from '../DialogShell'
 import { TrashIcon } from '../Icons'
 
-export default function ConfirmModal({
-  title,
-  message,
-  confirmLabel = 'Delete',
-  onConfirm,
-  onCancel,
-  tone = 'danger',
-}) {
+/** The same confirmation flow, in the native top layer above its parent dialog. */
+export default function ConfirmModal({ title, message, confirmLabel = 'Delete', onConfirm, onCancel, tone = 'danger' }) {
   const danger = tone === 'danger'
-  return (
-    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${danger ? 'bg-rose-50 dark:bg-rose-950 text-rose-500' : 'bg-green-50 dark:bg-green-950 text-green-600'}`}>
-            {danger ? <TrashIcon size={18} /> : <span aria-hidden="true" className="text-lg font-bold">?</span>}
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{message}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-green-600 hover:bg-green-700'}`}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  return <DialogShell size="confirm" title={title} description={message} onClose={onCancel} closeLabel="Close confirmation"
+    avatar={danger ? <span aria-hidden="true" className="mt-2 text-rose-700 dark:text-rose-300"><TrashIcon size={20} /></span> : undefined}
+    footer={<div className="flex gap-3">
+      <button type="button" onClick={onCancel} className="min-h-11 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium dark:border-gray-600">Cancel</button>
+      <button type="button" onClick={onConfirm} className={`min-h-11 flex-1 rounded-lg px-3 py-2 text-sm font-medium text-white ${danger ? 'bg-rose-700 hover:bg-rose-800' : 'bg-green-700 hover:bg-green-800'}`}>{confirmLabel}</button>
+    </div>} />
 }

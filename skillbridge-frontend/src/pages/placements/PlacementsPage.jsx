@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react'
-import AdminNav from '../../components/admin/AdminNav'
-import InstructorNav from '../../components/instructor/InstructorNav'
 import Avatar from '../../components/Avatar'
 import ScoreLabel from '../../components/ScoreLabel'
 import EmptyState from '../../components/EmptyState'
@@ -223,8 +221,6 @@ function ApprovedStudents({ placements }) {
 export default function PlacementsPage({ role = 'admin' }) {
   const isAdmin = role === 'admin'
   const canManage = ['admin', 'instructor'].includes(role)
-  const Nav = isAdmin ? AdminNav : InstructorNav
-  const activePath = isAdmin ? '/admin/placements' : '/instructor/placements'
   const placement = usePlacements()
   const [tab, setTab] = useState('suggestions')
   const [search, setSearch] = useState('')
@@ -290,13 +286,13 @@ export default function PlacementsPage({ role = 'admin' }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Nav activePath={activePath} />
+    <div className="min-w-0">
+
       <ActionModal key={action ? `${action.type}-${action.suggestion.recommendation_id}` : 'closed'} action={action} busy={placement.mutating} onClose={() => setAction(null)} onSubmit={submitAction} />
       <DetailModal detail={detail} onClose={() => setDetail(null)} />
       {manualRequest && <ManualAssignmentModal students={placement.students} positions={placement.positions} approvedByStudent={approvedByStudent} initialPositionId={manualRequest.positionId} busy={placement.mutating} onClose={() => setManualRequest(null)} onSubmit={placement.manualAssign} />}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         <PageHeader title="OJT Placement Management" subtitle={isAdmin ? 'Review ranked recommendations and turn them into approved OJT placements.' : 'Manage OJT placements for students enrolled in your batches.'} action={<><button type="button" onClick={() => setReportsOpen(value => !value)} className={`px-3 py-2 rounded-xl border text-xs font-semibold ${reportsOpen ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-900 dark:text-green-300' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>{reportsOpen ? 'Hide reports' : 'Download reports'}</button><button type="button" onClick={placement.refresh} disabled={placement.refreshing} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50"><span className={placement.refreshing ? 'animate-spin' : ''}><RefreshIcon /></span>Refresh</button>{canManage && <button type="button" onClick={() => setManualRequest({})} disabled={!placement.students.length || !placement.positions.length} className="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold disabled:opacity-50">Manual assignment</button>}</>} />
 
         {reportsOpen && <PlacementReportPanel companies={placement.companies} positions={placement.positions} placements={placement.placements} students={placement.students} role={role} />}
@@ -343,7 +339,7 @@ export default function PlacementsPage({ role = 'admin' }) {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredHistory.map(item => <tr key={item.id} className="text-sm text-gray-700 dark:text-gray-300 align-top"><td className="px-4 py-4"><p className="font-semibold text-gray-900 dark:text-white">{item.student.name}</p><p className="text-xs text-gray-400 mt-0.5">{item.student.school_id || 'No school ID'} · {item.student.course || 'No course'} · {item.batch?.name || 'No batch'}</p></td><td className="px-4 py-4"><p className="font-medium">{item.position.title}</p><p className="text-xs text-gray-400 mt-0.5">{item.company.name}</p></td><td className="px-4 py-4 font-semibold">{item.match_score_at_assignment == null ? 'Manual / no score' : `${Math.round(item.match_score_at_assignment)}%`}</td><td className="px-4 py-4"><StatusPill status={item.status} /></td><td className="px-4 py-4 text-xs"><p>{formatDate(item.updated_at)}</p><p className="text-gray-400 mt-1">by {item.approved_by?.name || item.removed_by?.name || item.rejected_by?.name || item.assigned_by?.name || 'System'}</p></td><td className="px-4 py-4 text-xs max-w-60 text-gray-500 dark:text-gray-400">{item.remarks || '—'}</td></tr>)}</tbody></table>
           </div>
         )}
-      </main>
+      </section>
     </div>
   )
 }

@@ -11,7 +11,6 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
-import NavBar from '../../components/NavBar'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
@@ -178,9 +177,8 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
 function DashboardSkeleton() {
   const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl animate-pulse'
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="h-14 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800" />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="min-w-0">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className={`${tile} px-5 py-4 sm:col-span-2 h-16`} />
           <div className={`${tile} p-5 h-36`} />
@@ -188,7 +186,7 @@ function DashboardSkeleton() {
           <div className={`${tile} p-5 sm:col-span-2 h-48`} />
           <div className={`${tile} sm:col-span-2 h-72`} />
         </div>
-      </main>
+      </section>
     </div>
   )
 }
@@ -209,24 +207,14 @@ export default function StudentDashboard() {
   // ── Derived display values (safe fallbacks if API is slow/offline) ──
   const rawFirst        = (student?.name || getCachedUser()?.name || 'Student').split(' ')[0]
   const firstName       = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
-  const displayName     = student?.name     ?? 'Student'
   const displayCourse   = student?.course   ?? ''
   const displayId       = student?.school_id ?? ''
-  const photoUrl        = student?.photo_url ?? null
   const attempts = assessmentList?.assessments || []
   const stoppedAssessment = attempts.find(item => item.attempt_status === 'stopped' && !item.retake_allowed)
   const retakeAssessment = attempts.find(item => item.retake_allowed && item.availability_status === 'available')
   const attemptStopped = Boolean(stoppedAssessment)
   const retakeAllowed = Boolean(retakeAssessment)
 
-  // ── NavBar student prop (matches NavBar expected shape) ────────
-  const navStudent = {
-    name:      displayName,
-    initials:  displayName.split(' ').map(n => n[0]).slice(0, 2).join(''),
-    studentId: displayId,
-    course:    displayCourse,
-    photoUrl:  photoUrl,
-  }
 
   // ── Results data (cached — same key as StudentResults, zero duplicate fetch if visited) ──
   const {
@@ -259,7 +247,7 @@ export default function StudentDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-w-0">
 
       {/*
         ── Bento grid CSS ───────────────────────────────────────
@@ -297,7 +285,7 @@ export default function StudentDashboard() {
         }
       `}</style>
 
-      <NavBar student={navStudent} />
+
 
       {/* ── Retake Available Banner ── */}
       {retakeAllowed && (
@@ -336,7 +324,7 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/*
           HTML order optimised for mobile reading:
             greeting → status → matches → skills → map → nearest
@@ -729,7 +717,7 @@ export default function StudentDashboard() {
           )}
 
         </div>
-      </main>
+      </section>
     </div>
   )
 }

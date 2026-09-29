@@ -57,6 +57,7 @@ export function useInstructorDashboard() {
       studentId:           s.school_id    || s.student_id || '',
       email:               s.email        || '',
       course:              s.course       || '',
+      batch:               s.batch ?? null,
       status:              s.attempt_status === 'stopped' ? 'stopped' : s.has_submitted ? 'completed' : 'pending',
       scores:              s.skill_scores  || {},
       retakeAllowed:       s.retake_allowed ?? false,
@@ -91,13 +92,6 @@ export function useInstructorDashboard() {
   const showToast = useCallback((msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
-  }, [])
-
-  // Escape closes modal
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSelectedStudent(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   // ── Sync selectedStudent with fresh data ────────────────────────────

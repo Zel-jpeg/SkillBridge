@@ -21,7 +21,6 @@
 import { useState, useEffect }           from 'react'
 import { useNavigate }                   from 'react-router-dom'
 import api                               from '../../api/axios'
-import InstructorNav                     from '../../components/instructor/InstructorNav'
 import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
 import { useAssessmentUpload }           from '../../hooks/instructor/useAssessmentUpload'
@@ -456,13 +455,6 @@ function StatCard({ label, value, accent }) {
 export default function InstructorAssessments() {
   const navigate = useNavigate()
 
-  const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
-  const instructor = {
-    name:     cachedUser?.name   || 'Instructor',
-    initials: (cachedUser?.name  || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
-    subject:  cachedUser?.course || 'OJT Coordinator',
-  }
-
   const {
     loadingList, filtered, stats, batchOptions,
     search, setSearch,
@@ -496,8 +488,8 @@ export default function InstructorAssessments() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <InstructorNav instructor={instructor} activePath="/instructor/assessments" />
+    <div className="min-w-0">
+
 
       {/* Global toast */}
       {toast && (
@@ -506,7 +498,7 @@ export default function InstructorAssessments() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <section className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
 
         {/* ── Page header ──────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -587,7 +579,7 @@ export default function InstructorAssessments() {
           </div>
         )}
         <AssessmentReportPanel />
-      </main>
+      </section>
 
       {/* ════════════════════════════════════════════════════════════════════
           FULL EDIT MODAL

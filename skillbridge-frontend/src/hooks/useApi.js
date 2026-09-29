@@ -36,6 +36,15 @@ const STORAGE_PREFIX  = 'sb_api_'       // sessionStorage key prefix
 // ── In-memory cache (fast path) ───────────────────────────────────────────────
 const _cache    = new Map()  // url → { data, fetchedAt }
 const _inflight = new Map()  // url → Promise (deduplicates simultaneous requests)
+const _subscribers = new Map()
+let _cacheGeneration = 0
+
+/** Publish a mutation response to mounted consumers without another request. */
+export function updateCachedData(url, data) {
+  _cache.set(url, { data, fetchedAt: Date.now() })
+  _saveToStorage(url, data)
+  _subscribers.get(url)?.forEach(callback => callback(data))
+}
 
 // ── sessionStorage helpers (persistence layer) ────────────────────────────────
 
@@ -60,7 +69,7 @@ function _loadFromStorage(url) {
 }
 
 function _removeFromStorage(url) {
-  try { sessionStorage.removeItem(STORAGE_PREFIX + url) } catch {}
+  try { sessionStorage.removeItem(STORAGE_PREFIX + url) } catch { /* Storage may be unavailable. */ }
 }
 
 function _clearAllStorage() {
@@ -68,7 +77,7 @@ function _clearAllStorage() {
     Object.keys(sessionStorage)
       .filter(k => k.startsWith(STORAGE_PREFIX))
       .forEach(k => sessionStorage.removeItem(k))
-  } catch {}
+  } catch { /* Storage may be unavailable. */ }
 }
 
 // ── Public cache utilities ────────────────────────────────────────────────────
@@ -81,6 +90,7 @@ export function invalidateCache(url) {
 
 /** Wipe the entire cache — call on logout. */
 export function clearAllCache() {
+  _cacheGeneration += 1
   _cache.clear()
   _inflight.clear()
   _clearAllStorage()
@@ -94,8 +104,7 @@ export function clearAllCache() {
 export function _setCache(url, data) {
   const existing = _cache.get(url)
   if (existing && (Date.now() - existing.fetchedAt < CACHE_TTL)) return
-  _cache.set(url, { data, fetchedAt: Date.now() })
-  _saveToStorage(url, data)
+  updateCachedData(url, data)
 }
 
 /**
@@ -104,20 +113,19 @@ export function _setCache(url, data) {
  */
 export function fetchWithDedup(url) {
   if (_inflight.has(url)) return _inflight.get(url)
+  const generation = _cacheGeneration
 
   // Prevent browser caching without destroying the useApi string cache key
   const fetchUrl = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`
 
   const promise = api.get(fetchUrl)
     .then(res => {
-      const entry = { data: res.data, fetchedAt: Date.now() }
-      _cache.set(url, entry)
-      _saveToStorage(url, res.data)   // persist to sessionStorage
-      _inflight.delete(url)
+      if (generation === _cacheGeneration) updateCachedData(url, res.data)
+      if (_inflight.get(url) === promise) _inflight.delete(url)
       return res
     })
     .catch(err => {
-      _inflight.delete(url)
+      if (_inflight.get(url) === promise) _inflight.delete(url)
       throw err
     })
   _inflight.set(url, promise)
@@ -168,6 +176,17 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
   // Tracks whether the current fetch is a silent background revalidation
   const isBg = useRef(false)
 
+  useEffect(() => {
+    if (!url || skip) return
+    const listeners = _subscribers.get(url) ?? new Set()
+    listeners.add(setData)
+    _subscribers.set(url, listeners)
+    return () => {
+      listeners.delete(setData)
+      if (!listeners.size) _subscribers.delete(url)
+    }
+  }, [url, skip])
+
   // ── Auto-fetch on mount ──────────────────────────────────────────────────
   useEffect(() => {
     if (!url || skip) return
@@ -179,6 +198,8 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
     // Fresh cache → nothing to do
     if (isFresh) {
       // Ensure state is populated even if the component mounted after a refresh
+      // Preserve synchronous cache seeding for existing hook consumers.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (entry && data === null) setData(entry.data)
       return
     }

@@ -9,7 +9,7 @@ function formatApprovalDate(value) {
   }).format(date)
 }
 
-export default function PlacementStatusCard({ placement, audience = 'student', compact = false }) {
+export default function PlacementStatusCard({ placement, audience = 'student', compact = false, detail = false }) {
   const status = placement?.status || 'unplaced'
   const approved = status === 'approved'
   const company = placement?.company
@@ -59,9 +59,9 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
     : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50'
 
   return (
-    <div className={`rounded-2xl border p-4 sm:p-5 ${approvedStyles}`}>
+    <div className={`${detail ? 'rounded-lg border p-4 wrap-anywhere' : 'rounded-2xl border p-4 sm:p-5'} ${approvedStyles}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className={`text-sm font-bold ${approved ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-white'}`}>
             {approved ? (audience === 'student' ? 'Your OJT placement has been approved' : 'Approved OJT placement') : 'OJT placement status'}
           </p>
@@ -75,18 +75,20 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
         <StatusBadge status={status} size="md" />
       </div>
 
+      {detail && !approved && <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">No approved OJT placement yet. Placement approval is separate from recommendation ranking.</p>}
+
       {(company || score != null || approvalDate) && (
-        <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+        <div className={`mt-4 grid grid-cols-1 gap-3 text-xs ${detail ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
           <div>
-            <p className="font-medium text-gray-400 dark:text-gray-500">Company location</p>
+            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>Company location</p>
             <p className="mt-0.5 text-gray-700 dark:text-gray-300">{company?.address_text || 'Location not provided'}</p>
           </div>
           <div>
-            <p className="font-medium text-gray-400 dark:text-gray-500">Match at assignment</p>
+            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>Match at assignment</p>
             <p className="mt-0.5 font-semibold text-gray-800 dark:text-gray-200">{score != null ? `${Math.round(score)}%` : 'Manual assignment'}</p>
           </div>
           <div>
-            <p className="font-medium text-gray-400 dark:text-gray-500">Approval date</p>
+            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>Approval date</p>
             <p className="mt-0.5 text-gray-700 dark:text-gray-300">{approvalDate || 'Not approved'}</p>
           </div>
         </div>

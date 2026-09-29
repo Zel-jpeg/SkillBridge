@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import AdminNav from '../../components/admin/AdminNav'
 import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import SearchBar from '../../components/SearchBar'
@@ -145,8 +144,8 @@ export default function AdminSkills() {
   } = useAdminSkills()
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AdminNav activePath="/admin/skills" />
+    <div className="min-w-0">
+
 
       {toast && (
         <div className="fixed top-4 right-4 z-60 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -174,7 +173,7 @@ export default function AdminSkills() {
         />
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         <TaxonomyQuality />
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -248,7 +247,7 @@ export default function AdminSkills() {
             </div>
           )}
         </div>
-      </main>
+      </section>
     </div>
   )
 }
