@@ -1,4 +1,3 @@
-import threading
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
 from rest_framework.decorators import api_view, permission_classes
@@ -9,7 +8,6 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Sum, Max, Q, F
@@ -465,87 +463,8 @@ def get_student_enrollment_email_html(student_name, instructor_name, batch_name,
 import os
 
 def send_instructor_email(user, subject, body, html_body=None):
-    print(f"[SkillBridge DEBUG] send_instructor_email called for user: {user.email}")
-    def _send():
-        print(f"[SkillBridge DEBUG] Thread started for sending email to {user.email}")
-        try:
-            api_key = os.getenv('BREVO_API_KEY')
-            from_email = os.getenv('EMAIL_HOST_USER', 'azelmv14@gmail.com')
-            print(f"[SkillBridge DEBUG] BREVO_API_KEY present: {bool(api_key)}")
-            print(f"[SkillBridge DEBUG] from_email: {from_email}")
-            
-            if api_key:
-                # -------------------------------------------------------------
-                # 100% FREE HTTP API ROUTE (Bypasses Railway SMTP Block on Port 443)
-                # -------------------------------------------------------------
-                payload = {
-                    "sender": {"name": "Skill Bridge", "email": from_email},
-                    "to": [{"email": user.email, "name": user.name}],
-                    "subject": subject,
-                    "htmlContent": html_body if html_body else f"<p>{body}</p>"
-                }
-                headers = {
-                    "accept": "application/json",
-                    "api-key": api_key,
-                    "content-type": "application/json"
-                }
-                print(f"[SkillBridge DEBUG] Sending to Brevo API...")
-                
-                # http_requests is imported as `import requests as http_requests` at the top of views.py
-                res = http_requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
-                print(f"[SkillBridge DEBUG] Brevo API Response Status: {res.status_code}")
-                print(f"[SkillBridge DEBUG] Brevo API Response Text: {res.text}")
-                res.raise_for_status() 
-                print(f'[SkillBridge] Async HTTP API email successfully sent to {user.email}')
-            
-            else:
-                # -------------------------------------------------------------
-                # STANDARD SMTP ROUTE (Fails gracefully on Railway free tier)
-                # -------------------------------------------------------------
-                print(f"[SkillBridge DEBUG] Falling back to standard SMTP route...")
-                send_mail(
-                    subject=subject,
-                    message=body,
-                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
-                    recipient_list=[user.email],
-                    fail_silently=False,
-                    html_message=html_body,
-                )
-                print(f'[SkillBridge] Async SMTP email successfully sent to {user.email}')
-                
-        except http_requests.exceptions.HTTPError as e:
-            status_code = e.response.status_code if e.response is not None else None
-            print(f'[SkillBridge] Brevo HTTP Error for {user.email}: {status_code} | {e.response.text if e.response is not None else "no response"}')
-            # 401 = IP not whitelisted in Brevo — fall back to Django SMTP
-            if status_code == 401:
-                print(f'[SkillBridge] Brevo IP not authorized. Trying SMTP fallback for {user.email}...')
-                try:
-                    send_mail(
-                        subject=subject,
-                        message=body,
-                        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@skillbridge.local'),
-                        recipient_list=[user.email],
-                        fail_silently=False,
-                        html_message=html_body,
-                    )
-                    print(f'[SkillBridge] SMTP fallback succeeded for {user.email}')
-                except Exception as smtp_err:
-                    print(f'[SkillBridge] SMTP fallback also failed for {user.email}: {smtp_err}')
-        except Exception as e:
-            import traceback
-            print(f'[SkillBridge DEBUG] Async email send FAILED for {user.email} Exception details: {e}')
-            traceback.print_exc()
-
-    try:
-        t = threading.Thread(target=_send)
-        t.daemon = True
-        t.start()
-        print(f"[SkillBridge DEBUG] Thread successfully started for {user.email}")
-        return True
-    except Exception as e:
-        print(f"[SkillBridge DEBUG] Failed to start email thread: {e}")
-        return False
-
+    from .email_service import queue_email
+    return queue_email(user, subject, body, html_body)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -984,91 +903,54 @@ def instructor_batches(request):
     return Response({'id': batch.id, 'name': batch.name, 'status': batch.status}, status=201)
 
 
-# ── POST /api/instructor/batches/{id}/enroll/ ────────────────────
+def _enrollment_request(request, batch_id, preview=False):
+    from .enrollment_import import review_rows, summary, review_token, verify_token, confirm_rows
+    from django.utils.html import escape
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    if not isinstance(request.data, dict):
+        return Response({'error': 'Provide a JSON object with student rows.'}, status=400)
+    batches = Batch.objects.filter(status='active')
+    if request.user.role == 'instructor':
+        batches = batches.filter(instructor=request.user)
+    batch = batches.select_related('instructor').filter(pk=batch_id).first()
+    if batch is None:
+        return Response({'error': 'Active batch not found'}, status=404)
+    items = request.data.get('students')
+    if preview:
+        try:
+            rows = review_rows(items, batch)
+        except ValueError as error:
+            return Response({'error': str(error)}, status=400)
+        return Response({'rows': rows, 'summary': summary(rows),
+                         'review_token': review_token(rows, batch, request.user)})
+    if not verify_token(request.data.get('review_token'), items, batch, request.user):
+        return Response({'error': 'Preview the current rows before confirming. Reviews expire after 30 minutes.'}, status=400)
+    def notify(student, enrollment_id):
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        html = get_student_enrollment_email_html(
+            escape(student.name), escape(batch.instructor.name), escape(batch.name), escape(frontend_url),
+        )
+        return send_instructor_email(
+            student, 'You have been enrolled in SkillBridge — Complete your OJT Assessment',
+            f'Hi {student.name}, your OJT instructor {batch.instructor.name} has enrolled you in {batch.name}. '
+            f'Sign in with your DNSC Google account at {frontend_url}/login to take your assessment.', html,
+        )
+    rows = confirm_rows(items, batch, notify)
+    return Response({'rows': rows, 'summary': summary(rows),
+                     'enrolled': [r for r in rows if r['status'] == 'enrolled']})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def instructor_batch_enroll_preview(request, batch_id):
+    return _enrollment_request(request, batch_id, preview=True)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def instructor_batch_enroll(request, batch_id):
-    if request.user.role not in ('instructor', 'admin'):
-        return Response({'error': 'Forbidden'}, status=403)
-
-    try:
-        batch = Batch.objects.get(id=batch_id, instructor=request.user)
-    except Batch.DoesNotExist:
-        return Response({'error': 'Batch not found'}, status=404)
-
-    students_data = request.data.get('students', [])
-    # Each item: { email, name, course?, studentId? }
-    enrolled = []
-    errors   = []
-
-    for item in students_data:
-        email     = item.get('email', '').strip().lower()
-        name      = item.get('name',  '').strip()
-        course    = item.get('course', '').strip()
-        school_id = item.get('studentId', item.get('student_id', '')).strip()
-        if not email:
-            errors.append({'email': email, 'error': 'email required'})
-            continue
-
-        try:
-            student = User.objects.get(email=email, role='student')
-            # If student self-registered but is still pending, auto-approve when enrolled.
-            update_fields = []
-            if not student.is_approved:
-                student.is_approved = True
-                update_fields.append('is_approved')
-            # Update course/school_id if provided by instructor and student hasn't set them yet
-            if course and not student.course:
-                student.course = course
-                update_fields.append('course')
-            if school_id and not student.school_id:
-                student.school_id = school_id
-                update_fields.append('school_id')
-            if update_fields:
-                student.save(update_fields=update_fields)
-        except User.DoesNotExist:
-            # Auto-create student account (will log in via Google)
-            student = User.objects.create(
-                email=email,
-                name=name or email.split('@')[0],
-                role='student',
-                course=course,
-                school_id=school_id,
-                is_approved=True,
-                is_active=True,
-            )
-            student.set_unusable_password()
-            student.save()
-
-        _, created = BatchEnrollment.objects.get_or_create(batch=batch, student=student)
-        enrolled.append({'email': email, 'name': student.name, 'created': created})
-
-        # ── Send enrollment notification email (only for new enrollments) ──
-        print(f"[SkillBridge DEBUG] Processing enrollment for {email}. Enrollment created? {created}")
-        if created:
-            print(f"[SkillBridge DEBUG] Preparing to send enrollment email to {student.email}")
-            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-            html = get_student_enrollment_email_html(
-                student_name=student.name,
-                instructor_name=request.user.name,
-                batch_name=batch.name,
-                frontend_url=frontend_url,
-            )
-            send_instructor_email(
-                user=student,
-                subject='You have been enrolled in SkillBridge — Complete your OJT Assessment',
-                body=(
-                    f'Hi {student.name},\n\n'
-                    f'Your OJT instructor {request.user.name} has enrolled you in {batch.name} on SkillBridge.\n'
-                    f'Sign in with your DNSC Google account at {frontend_url}/login to take your assessment.\n\n'
-                    f'— SkillBridge, Davao del Norte State College'
-                ),
-                html_body=html,
-            )
-        else:
-            print(f"[SkillBridge DEBUG] Enrollment not newly created for {email}, skipping email send.")
-
-    return Response({'enrolled': enrolled, 'errors': errors}, status=200)
+    return _enrollment_request(request, batch_id)
 
 
 # ── POST /api/instructor/batches/{id}/archive/ ───────────────────

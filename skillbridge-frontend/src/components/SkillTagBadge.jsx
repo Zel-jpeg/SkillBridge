@@ -40,17 +40,14 @@ export function SkillTagBadge({ tag, pct, size = 'xs' }) {
 
 export function SkillScoreRow({ category, score, tag, compact = false }) {
   const resolved = tag ?? getQualitativeTag(score)
-  const StatusDot = () => {
-    const color = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-400' : 'bg-rose-400'
-    return <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${color}`} />
-  }
+  const statusDotColor = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-400' : 'bg-rose-400'
 
   if (compact) {
     return (
       <div className="flex flex-col gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-2 py-1.5">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <StatusDot />
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColor}`} />
             <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium leading-tight truncate">{category}</span>
           </div>
           <span className={`text-[11px] font-bold shrink-0 ${scoreColor(score)}`}>{score}%</span>

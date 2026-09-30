@@ -58,7 +58,7 @@ async function geocodeAddress({ barangay, city, province }) {
     )
     const [hit] = await res.json()
     if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch {}
+  } catch { /* Use the Panabo fallback when geocoding is unavailable. */ }
   return { lat: 7.3072, lng: 125.6839, zoom }   // fallback: Panabo City
 }
 

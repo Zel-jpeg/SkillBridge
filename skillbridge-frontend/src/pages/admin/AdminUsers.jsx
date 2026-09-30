@@ -3,6 +3,7 @@
 // All modals now in components/admin/
 
 import { useState } from 'react'
+import StudentEnrollmentModal from '../../components/enrollment/StudentEnrollmentModal'
 import ConfirmModal      from '../../components/admin/ConfirmModal'
 import AddInstructorModal from '../../components/admin/AddInstructorModal'
 import UserDetailModal   from '../../components/admin/UserDetailModal'
@@ -29,9 +30,11 @@ function RolePill({ role }) {
 }
 
 export default function AdminUsers() {
+  const [showEnrollment, setShowEnrollment] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
   const {
     instructors, pendingInstructors,
+    handleEnrollmentComplete,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser, selectedUserType, setSelectedUserType,
     selectedPending, setSelectedPending,
@@ -87,6 +90,7 @@ export default function AdminUsers() {
       )}
 
       {/* Modals */}
+      {showEnrollment && <StudentEnrollmentModal onClose={() => setShowEnrollment(false)} onEnrolled={handleEnrollmentComplete} />}
       {showAddInstr && (
         <AddInstructorModal
           existingInstructors={instructors}
@@ -143,11 +147,12 @@ export default function AdminUsers() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">User Management</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage students, instructors, and pending requests.</p>
           </div>
+          <button onClick={() => setShowEnrollment(true)} className="px-3 py-2.5 border border-green-700 text-green-800 dark:text-green-300 rounded-xl text-sm font-medium">Import / Enroll Students</button>
           <button onClick={() => setShowAddInstr(true)}
             className="flex items-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0">
             <PlusIcon /> Add Instructor

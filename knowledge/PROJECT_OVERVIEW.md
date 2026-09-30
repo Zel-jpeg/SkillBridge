@@ -36,6 +36,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [IAMS enrollment import](IAMS_ENROLLMENT_IMPORT.md): Shared instructor/admin
+  review workflow, institutional ID mapping, identity constraints, email dispatch
+  configuration, isolated verification and controlled live-test restrictions.
+
 - [Master project context](../refs/SKILLBRIDGE_MASTER_CONTEXT.md): Broad background and historical status; some details predate the current code.
 - [Entity relationship reference](../refs/SkillBridge_ERD.md): Database design reference.
 - [Data flow reference](../refs/SkillBridge_DataFlowDiagram.md): System process reference.

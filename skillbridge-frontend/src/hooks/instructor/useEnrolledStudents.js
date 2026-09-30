@@ -334,29 +334,11 @@ export function useEnrolledStudents() {
     if (st) showToast(attempt.retake_allowed ? `Retake revoked for ${st.name}.` : `Retake approved for ${st.name}.`)
   }
 
-  async function handleEnroll(newStudents) {
-    if (!activeBatchId) { showToast('No active batch. Create one first.'); return }
-    try {
-      const res = await api.post(`/api/instructor/batches/${activeBatchId}/enroll/`, { students: newStudents })
-      const added = (res.data.enrolled || newStudents).map(s => ({
-        id:            s.id || Date.now() + Math.random(),
-        name:          s.name,
-        studentId:     s.school_id || s.student_id || newStudents.find(n => n.email === s.email)?.studentId || '',
-        email:         s.email,
-        course:        s.course,
-        status:        'pending',
-        retakeAllowed: false,
-        scores:        {},
-      }))
-      setStudents(p => [...p, ...added])
-      // Invalidate cache so navigating away and back shows the new students
-      invalidateCache('/api/instructor/batches/')
-      invalidateCache('/api/instructor/students/recommendations/')
-      showToast(`${added.length} student${added.length > 1 ? 's' : ''} enrolled successfully`)
-    } catch (err) {
-      showToast(`❌ ${err.response?.data?.error || 'Enrollment failed. Please try again.'}`)
-    }
-    setShowModal(false)
+  function handleEnroll(result) {
+    invalidateCache('/api/instructor/batches/')
+    invalidateCache('/api/instructor/students/recommendations/')
+    fetchStudentsForBatches(batches)
+    showToast(`${result.summary.enrolled} students enrolled. See notification results in the review.`)
     setPage(1)
   }
 

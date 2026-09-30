@@ -140,6 +140,11 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False') == 'True'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@skillbridge.local')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', DEFAULT_FROM_EMAIL)
+# Explicit opt-in for local/supported environments; Railway uses HTTPS only.
+ENROLLMENT_SMTP_FALLBACK = os.getenv('ENROLLMENT_SMTP_FALLBACK', 'False').lower() == 'true'
+RAILWAY_ENVIRONMENT = bool(os.getenv('RAILWAY_ENVIRONMENT_ID') or os.getenv('RAILWAY_PROJECT_ID'))
 
 
 # Password validation

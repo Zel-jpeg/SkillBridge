@@ -13,7 +13,6 @@
 //   onSelectStudent(student) — opens StudentModal for a student
 
 import { XIcon } from '../Icons'
-import { getInitials } from '../../utils/formatters'
 import Avatar from '../Avatar'
 
 // ── Score helpers (local, no import needed) ────────────────────────
@@ -78,7 +77,7 @@ const ClockSmallIcon = ({ size = 13 }) => (
 )
 
 // ── Podium card for top 3 ──────────────────────────────────────────
-function PodiumCard({ student, rank, score, category, onSelectStudent }) {
+function PodiumCard({ student, rank, score, onSelectStudent }) {
   const MedalIcon = rank === 1 ? GoldMedalIcon : rank === 2 ? SilverMedalIcon : BronzeMedalIcon
 
   const cardStyle = rank === 1
@@ -86,12 +85,6 @@ function PodiumCard({ student, rank, score, category, onSelectStudent }) {
     : rank === 2
     ? 'bg-white dark:bg-gray-900 border border-slate-200 dark:border-slate-700'
     : 'bg-white dark:bg-gray-900 border border-orange-100 dark:border-orange-900/50'
-
-  const avatarStyle = rank === 1
-    ? 'bg-gradient-to-br from-amber-400 to-yellow-600 text-white shadow shadow-amber-300 dark:shadow-amber-900'
-    : rank === 2
-    ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white'
-    : 'bg-gradient-to-br from-orange-300 to-orange-500 text-white'
 
   const avatarSize = rank === 1 ? 'w-14 h-14 text-base' : 'w-11 h-11 text-sm'
 
@@ -144,7 +137,7 @@ function PodiumCard({ student, rank, score, category, onSelectStudent }) {
 }
 
 // ── Main modal ─────────────────────────────────────────────────────
-export default function SkillLeaderboardModal({ skill, allStudents, palette, onClose, onSelectStudent }) {
+export default function SkillLeaderboardModal({ skill, allStudents, onClose, onSelectStudent }) {
   const { category } = skill
 
   // Sort completed students for this skill, descending by score
@@ -229,7 +222,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, palette, onC
                   : top3.length === 2 ? 'grid-cols-2'
                   : 'grid-cols-3'
                 }`}>
-                  {podiumOrder.map((s, i) => {
+                  {podiumOrder.map((s) => {
                     // Map display position back to actual rank
                     const actualRank = top3.indexOf(s) + 1
                     return (
@@ -241,7 +234,6 @@ export default function SkillLeaderboardModal({ skill, allStudents, palette, onC
                           student={s}
                           rank={actualRank}
                           score={s.scores[category]}
-                          category={category}
                           onSelectStudent={onSelectStudent}
                         />
                       </div>

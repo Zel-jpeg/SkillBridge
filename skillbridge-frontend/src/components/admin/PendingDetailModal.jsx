@@ -11,7 +11,6 @@
 
 import { useState } from 'react'
 import { XIcon } from '../Icons'
-import { getInitials } from '../../utils/formatters'
 import Avatar from '../Avatar'
 
 export default function PendingDetailModal({ user, onClose, onApprove, onReject }) {

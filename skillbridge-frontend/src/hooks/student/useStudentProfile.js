@@ -52,7 +52,7 @@ export function useStudentProfile() {
       const pl = user?.address?.pinLat
       const pg = user?.address?.pinLng
       if (pl != null && pg != null) return { lat: pl, lng: pg }
-    } catch {}
+    } catch { /* A missing cached user falls through to the saved pin. */ }
     // Fallback to localStorage (set by StudentSetup or previous profile save)
     try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
   })

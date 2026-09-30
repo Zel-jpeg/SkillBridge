@@ -21,7 +21,12 @@ export function useAdminUsers() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
-  const { data: usersData, request } = useApi('/api/admin/users/')
+  const { data: usersData, request, setData } = useApi('/api/admin/users/')
+
+  async function handleEnrollmentComplete() {
+    const result = await request('get', '/api/admin/users/')
+    if (result.ok) setData(result.data)
+  }
 
   // ── Raw data state ────────────────────────────────────────────────
   const [studentsList,       setStudentsList]       = useState([])
@@ -317,6 +322,7 @@ export function useAdminUsers() {
   const instructorsList = [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
 
   return {
+    handleEnrollmentComplete,
     studentsList, instructors, pendingInstructors,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser,

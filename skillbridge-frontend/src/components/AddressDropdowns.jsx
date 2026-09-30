@@ -55,6 +55,8 @@ export default function AddressDropdowns({ label = '', onChange, error }) {
   useEffect(() => {
     const cached = ssGet('psgc_provinces')
     if (cached) {
+      // Restore the external session cache on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProvinces(JSON.parse(cached))
       setLoading(prev => ({ ...prev, provinces: false }))
       return

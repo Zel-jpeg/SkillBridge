@@ -74,7 +74,7 @@ export function useAdminSkills() {
       setSkills(prev => prev.filter(s => s.id !== deleteConfirm.id))
       setDeleteConfirm(null)
       showToast('Skill deleted successfully.')
-    } catch (err) {
+    } catch {
       alert('Failed to delete skill. It might be in use by an assessment or position.')
       setDeleteConfirm(null)
     }
