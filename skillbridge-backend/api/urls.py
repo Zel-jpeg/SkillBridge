@@ -31,6 +31,7 @@ urlpatterns = [
 
     # ── Instructor — Batches ──────────────────────────────────────────────────
     path('instructor/batches/',                           views.instructor_batches,         name='instructor_batches'),
+    path('instructor/batches/<int:batch_id>/enroll/preview/', views.instructor_batch_enroll_preview, name='instructor_batch_enroll_preview'),
     path('instructor/batches/<int:batch_id>/enroll/',     views.instructor_batch_enroll,    name='instructor_batch_enroll'),
     path('instructor/batches/<int:batch_id>/students/',   views.instructor_batch_students,  name='instructor_batch_students'),
     path('instructor/batches/<int:batch_id>/archive/',    views.instructor_batch_archive,   name='instructor_batch_archive'),

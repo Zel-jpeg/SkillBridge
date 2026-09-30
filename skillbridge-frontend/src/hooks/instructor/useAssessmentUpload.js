@@ -140,7 +140,7 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
           if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
             return { ...r, suggestedCategory: res.data.suggested_category }
           }
-        } catch(e) {}
+        } catch { /* Suggestions are optional; keep the parsed question. */ }
         return r
       }))
 
@@ -168,7 +168,7 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
           if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
             return { ...r, suggestedCategory: res.data.suggested_category }
           }
-        } catch(e) {}
+        } catch { /* Suggestions are optional; keep the parsed question. */ }
         return r
       }))
 

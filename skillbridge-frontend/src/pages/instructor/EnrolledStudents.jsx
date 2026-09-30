@@ -87,7 +87,7 @@ export default function EnrolledStudents() {
           onCancel={() => setConfirmRemove(null)}
         />
       )}
-      {showModal && <EnrollModal existingStudents={students} onClose={() => setShowModal(false)} onEnroll={handleEnroll} />}
+      {showModal && <EnrollModal batchId={activeBatchId} onClose={() => setShowModal(false)} onEnrolled={handleEnroll} />}
       {selectedStudent && <StudentModal student={selectedStudent} instructorName={instructor.name} isArchived={isArchived} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
 
       {/* Archive confirmation */}

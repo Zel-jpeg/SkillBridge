@@ -55,8 +55,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD  = 'email'
     REQUIRED_FIELDS = ['name', 'role']
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['school_id'], condition=~models.Q(school_id=''),
+                                    name='unique_populated_school_id'),
+            models.UniqueConstraint(models.functions.Lower('email'), name='unique_normalized_user_email'),
+        ]
+
     def save(self, *args, **kwargs):
-        if self.name:
+        if self.name and self.role != 'student':
             self.name = self.name.title()
         super().save(*args, **kwargs)
 

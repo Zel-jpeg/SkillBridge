@@ -80,6 +80,8 @@ export function useAdminCompanies() {
   useEffect(() => {
     if (!companiesData) return
     const raw = Array.isArray(companiesData) ? companiesData : []
+    // Keep optimistic rows in local state, resyncing when the external API cache changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCompanies(raw.map(normalizeCompany))
   }, [companiesData])
 
