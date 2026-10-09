@@ -22,7 +22,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import api from '../../api/axios'
-import { useApi, invalidateCache, _setCache } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 import { useSSE } from '../useSSE'
 import { manilaApiDate, toManilaInput } from '../../utils/assessmentDates'
 import { filterAssessments } from '../../utils/assessmentManagement'
@@ -362,8 +362,7 @@ export function useInstructorAssessments() {
       changedUrls.forEach(invalidateCache)
       window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { urls: changedUrls } }))
       try {
-        const listRes = await api.get('/api/instructor/assessments/')
-        if (listRes.data) _setCache('/api/instructor/assessments/', listRes.data)
+        await fetchWithDedup('/api/instructor/assessments/')
       } catch { /* non-critical — next mount will fetch fresh */ }
 
       // 8 ── Reload questions into clean state

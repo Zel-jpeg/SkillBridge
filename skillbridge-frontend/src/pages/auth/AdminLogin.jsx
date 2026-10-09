@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { prefetchForRole } from '../../api/prefetch'
+import { resetSessionData } from '../../api/logout'
 
 // ================================================================
 const SYSTEM_NAME     = "SkillBridge"
@@ -44,6 +45,7 @@ export default function AdminLogin() {
     try {
       const res = await api.post('/api/auth/login/', { email: username, password })
       const { access, refresh, user } = res.data
+      resetSessionData()
 
       localStorage.setItem('sb-token',   access)
       localStorage.setItem('sb-refresh', refresh)

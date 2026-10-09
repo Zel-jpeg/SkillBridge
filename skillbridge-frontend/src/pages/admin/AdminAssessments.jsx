@@ -4,7 +4,7 @@ import { manilaApiDate, manilaDateTime, toManilaInput } from '../../utils/assess
 import AssessmentStudentDetail from '../../components/AssessmentStudentDetail'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import api from '../../api/axios'
-import { invalidateCache, useApi } from '../../hooks/useApi'
+import { fetchWithDedup, invalidateCache, useApi } from '../../hooks/useApi'
 import { filterAssessments } from '../../utils/assessmentManagement'
 
 const input = 'rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
@@ -15,7 +15,9 @@ export default function AdminAssessments() {
   const [filters, setFilters] = useState({ search: '', instructor: 'all', batch: 'all', state: 'all', required: 'all', category: 'all', completion: 'all' })
   const [selected, setSelected] = useState(null)
   const [draft, setDraft] = useState(null)
-  const [roster, setRoster] = useState([])
+  const rosterUrl = selected?.batch_id ? `/api/instructor/batches/${selected.batch_id}/students/` : null
+  const { data: rosterData } = useApi(rosterUrl)
+  const roster = rosterData?.students || []
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [questions, setQuestions] = useState(null)
   const [confirm, setConfirm] = useState(false)
@@ -26,11 +28,11 @@ export default function AdminAssessments() {
   const categories = [...new Set(assessments.flatMap(a => a.categories || []))].sort()
   const filtered = filterAssessments(assessments, filters)
   useEffect(() => {
-    if (!selected?.batch_id) return
-    let cancelled = false
-    api.get(`/api/instructor/batches/${selected.batch_id}/students/`).then(res => { if (!cancelled) setRoster(res.data.students || []) }).catch(() => { if (!cancelled) setRoster([]) })
-    return () => { cancelled = true }
-  }, [selected?.batch_id])
+    if (selectedStudent && rosterData) {
+      const latest = roster.find(student => student.id === selectedStudent.id)
+      if (latest && latest !== selectedStudent) setSelectedStudent(latest)
+    }
+  }, [rosterData]) // eslint-disable-line react-hooks/exhaustive-deps
   const open = assessment => {
     setSelected(assessment); setSelectedStudent(null); setQuestions(null); setMessage('')
     setDraft({ title: assessment.title, duration_minutes: assessment.duration_minutes,
@@ -49,10 +51,10 @@ export default function AdminAssessments() {
       window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { urls } }))
       if (selected.batch_id) {
         try {
-          const latest = await api.get(`/api/instructor/batches/${selected.batch_id}/students/`)
-          setRoster(latest.data.students || [])
+          invalidateCache(rosterUrl)
+          const latest = await fetchWithDedup(rosterUrl)
           setSelectedStudent(previous => (latest.data.students || []).find(student => student.id === previous?.id) || null)
-        } catch { setRoster([]); setSelectedStudent(null) }
+        } catch { /* Keep the last roster on refresh failure. */ }
       }
       setMessage('Assessment updated. Student completion and recommendations now reflect the server state.')
     } catch (err) { setMessage(err.response?.data?.error || 'Update failed. Please retry.') }
@@ -64,8 +66,8 @@ export default function AdminAssessments() {
     if (!attempt) return
     try {
       await api.patch(`/api/instructor/students/${studentId}/retake/`, { assessment_id: assessmentId, retake_allowed: !attempt.retake_allowed })
-      const response = await api.get(`/api/instructor/batches/${selected.batch_id}/students/`)
-      setRoster(response.data.students || [])
+      invalidateCache(rosterUrl)
+      const response = await fetchWithDedup(rosterUrl)
       setSelectedStudent((response.data.students || []).find(s => s.id === studentId))
       invalidateCache('/api/admin/users/')
       invalidateCache('/api/admin/stats/')

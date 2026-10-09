@@ -8,8 +8,8 @@
 //   • sessionStorage is the persistence layer — survives page refreshes, cleared
 //     automatically when the browser tab is closed.
 //   • On mount: in-memory cache → sessionStorage → fetch (in that priority order).
-//   • Cache TTL is 5 minutes. SSE events invalidate specific keys instantly so
-//     the long TTL doesn't cause stale data — the server pushes changes.
+//   • Mounted queries refresh every 30 seconds while visible and on tab return.
+//     SSE events also invalidate specific keys immediately.
 //   • Call invalidateCache(url) after mutations so the next GET is fresh.
 //
 // ── SSE integration ──────────────────────────────────────────────────────────
@@ -24,76 +24,47 @@
 //   const { request, loading } = useApi()
 //   await request('patch', '/api/students/me/profile/', { phone: '...' })
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
+import { createCacheStore } from '../api/cacheStore'
+import { startVisibleRefresh } from '../api/queryRefresh'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 
 // ── Cache constants ───────────────────────────────────────────────────────────
-const CACHE_TTL       = 60_000           // 60 seconds — short enough that stale data after a missed invalidation expires quickly
-const STORAGE_PREFIX  = 'sb_api_'       // sessionStorage key prefix
-
-// ── In-memory cache (fast path) ───────────────────────────────────────────────
-const _cache    = new Map()  // url → { data, fetchedAt }
-const _inflight = new Map()  // url → Promise (deduplicates simultaneous requests)
-const _subscribers = new Map()
-let _cacheGeneration = 0
+const CACHE_TTL = 30_000
+const cache = createCacheStore(
+  url => api.get(url),
+  globalThis.sessionStorage,
+  () => {
+    let userId = ''
+    try { userId = JSON.parse(localStorage.getItem('sb-user'))?.id ?? '' } catch { /* Invalid user data is a new identity. */ }
+    return `${localStorage.getItem('sb-role') ?? ''}:${userId}`
+  },
+)
 
 /** Publish a mutation response to mounted consumers without another request. */
 export function updateCachedData(url, data) {
-  _cache.set(url, { data, fetchedAt: Date.now() })
-  _saveToStorage(url, data)
-  _subscribers.get(url)?.forEach(callback => callback(data))
+  cache.publish(url, data)
 }
 
-// ── sessionStorage helpers (persistence layer) ────────────────────────────────
-
-function _saveToStorage(url, data) {
-  try {
-    sessionStorage.setItem(
-      STORAGE_PREFIX + url,
-      JSON.stringify({ data, fetchedAt: Date.now() })
-    )
-  } catch {
-    // QuotaExceededError or private browsing — silently ignore
-  }
-}
-
-function _loadFromStorage(url) {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_PREFIX + url)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function _removeFromStorage(url) {
-  try { sessionStorage.removeItem(STORAGE_PREFIX + url) } catch { /* Storage may be unavailable. */ }
-}
-
-function _clearAllStorage() {
-  try {
-    Object.keys(sessionStorage)
-      .filter(k => k.startsWith(STORAGE_PREFIX))
-      .forEach(k => sessionStorage.removeItem(k))
-  } catch { /* Storage may be unavailable. */ }
+export function getCachedData(url) {
+  return cache.read(url)?.data ?? null
 }
 
 // ── Public cache utilities ────────────────────────────────────────────────────
 
 /** Call after mutations to force the next GET to bypass the cache. */
 export function invalidateCache(url) {
-  _cache.delete(url)
-  _removeFromStorage(url)
+  cache.invalidate(url)
+  if (cache.hasSubscribers(url) && document.visibilityState === 'visible') {
+    fetchWithDedup(url).catch(() => {})
+  }
 }
 
 /** Wipe the entire cache — call on logout. */
 export function clearAllCache() {
-  _cacheGeneration += 1
-  _cache.clear()
-  _inflight.clear()
-  _clearAllStorage()
+  cache.clear()
 }
 
 /**
@@ -102,7 +73,7 @@ export function clearAllCache() {
  * useEffect response doesn't get overwritten by a slow prefetch.
  */
 export function _setCache(url, data) {
-  const existing = _cache.get(url)
+  const existing = cache.read(url)
   if (existing && (Date.now() - existing.fetchedAt < CACHE_TTL)) return
   updateCachedData(url, data)
 }
@@ -112,24 +83,7 @@ export function _setCache(url, data) {
  * existing Promise so we don't fire duplicate requests.
  */
 export function fetchWithDedup(url) {
-  if (_inflight.has(url)) return _inflight.get(url)
-  const generation = _cacheGeneration
-
-  // Prevent browser caching without destroying the useApi string cache key
-  const fetchUrl = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`
-
-  const promise = api.get(fetchUrl)
-    .then(res => {
-      if (generation === _cacheGeneration) updateCachedData(url, res.data)
-      if (_inflight.get(url) === promise) _inflight.delete(url)
-      return res
-    })
-    .catch(err => {
-      if (_inflight.get(url) === promise) _inflight.delete(url)
-      throw err
-    })
-  _inflight.set(url, promise)
-  return promise
+  return cache.fetch(url)
 }
 
 // ── Friendly error messages ───────────────────────────────────────────────────
@@ -148,43 +102,25 @@ function friendlyError(status) {
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
-export function useApi(url, { skip = false, initialData = null, fresh = false } = {}) {
+export function useApi(url, { skip = false, initialData = null } = {}) {
   const { showToast }             = useToast()
   const { triggerSessionExpired } = useSession()
 
   // ── Seed state from cache (in-memory → sessionStorage → null) ────────────
-  const getCached = () => {
-    if (!url || skip || fresh) return null
-    // 1. In-memory (fastest)
-    const mem = _cache.get(url)
-    if (mem) return mem
-    // 2. sessionStorage (survives page refresh)
-    const stored = _loadFromStorage(url)
-    if (stored) {
-      _cache.set(url, stored)   // warm in-memory cache from storage
-      return stored
-    }
-    return null
-  }
+  const seed = url && !skip ? cache.read(url) : null
 
-  const seed = getCached()
-
-  const [data,    setData]    = useState(seed?.data ?? initialData)
+  const [result, setResult] = useState({ url, data: seed?.data ?? initialData })
+  const data = result.url === url ? result.data : seed?.data ?? initialData
+  const setData = useCallback(value => setResult(previous => ({
+    url,
+    data: typeof value === 'function' ? value(previous.url === url ? previous.data : null) : value,
+  })), [url])
   const [loading, setLoading] = useState(!!url && !skip && !seed && !initialData)
   const [error,   setError]   = useState(null)
 
-  // Tracks whether the current fetch is a silent background revalidation
-  const isBg = useRef(false)
-
   useEffect(() => {
     if (!url || skip) return
-    const listeners = _subscribers.get(url) ?? new Set()
-    listeners.add(setData)
-    _subscribers.set(url, listeners)
-    return () => {
-      listeners.delete(setData)
-      if (!listeners.size) _subscribers.delete(url)
-    }
+    return cache.subscribe(url, value => setResult({ url, data: value }))
   }, [url, skip])
 
   // ── Auto-fetch on mount ──────────────────────────────────────────────────
@@ -192,7 +128,7 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
     if (!url || skip) return
     let cancelled = false
 
-    const entry = fresh ? null : (_cache.get(url) ?? _loadFromStorage(url))
+    const entry = cache.read(url)
     const isFresh = entry && (Date.now() - entry.fetchedAt < CACHE_TTL)
 
     // Fresh cache → nothing to do
@@ -200,30 +136,31 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
       // Ensure state is populated even if the component mounted after a refresh
       // Preserve synchronous cache seeding for existing hook consumers.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (entry && data === null) setData(entry.data)
+      if (entry) setData(entry.data)
+      setLoading(false)
       return
     }
 
     if (entry || initialData) {
       // Stale data exists or initialData provided → show it + refresh quietly in background
-      isBg.current = true
+      setData(entry?.data ?? initialData)
+      setLoading(false)
     } else {
       // No cache and no initialData → show spinner
       setLoading(true)
     }
-    setError(null)
+    if (!entry && !initialData) setError(null)
 
     fetchWithDedup(url)
       .then(res => {
         if (cancelled) return
-        setData(res.data)
+        if (cache.read(url)?.data === res.data) setData(res.data)
         setLoading(false)
-        isBg.current = false
+        setError(null)
       })
       .catch(err => {
         if (cancelled) return
         setLoading(false)
-        isBg.current = false
         const status = err.response?.status
 
         if (status === 401) {
@@ -232,14 +169,14 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
         }
 
         const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
-        setError(msg)
+        if (!cache.read(url) && !initialData) setError(msg)
         // 409 = intentional "conflict" state (e.g. already submitted assessment)
         // The consuming component handles this with its own UI — skip the generic toast.
         if (!entry && status !== 409) showToast(msg, 'error')
       })
 
     return () => { cancelled = true }
-  }, [url, skip, fresh]) // eslint-disable-line
+  }, [url, skip]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SSE-triggered re-fetch ───────────────────────────────────────────────
   // useSSE.js dispatches 'sse:data_changed' when the server reports a change.
@@ -252,19 +189,32 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
       if (!Array.isArray(urls) || !urls.includes(url)) return
 
       // Cache was already invalidated by useSSE — just re-fetch silently
-      if (fresh) setData(null)
       fetchWithDedup(url)
-        .then(res => setData(res.data))
-        .catch(() => {})   // component already shows last-good data; ignore errors
+        .catch(err => { if (err.response?.status === 401) triggerSessionExpired() })
     }
 
     window.addEventListener('sse:data_changed', handler)
     return () => window.removeEventListener('sse:data_changed', handler)
-  }, [url, skip, fresh]) // eslint-disable-line
+  }, [url, skip, triggerSessionExpired])
+
+  // Mounted queries alone refresh. Hidden tabs neither poll nor start return
+  // requests until visible again; the store deduplicates all other triggers.
+  useEffect(() => {
+    if (!url || skip) return
+    return startVisibleRefresh(url, {
+      documentTarget: document,
+      windowTarget: window,
+      read: key => cache.read(key),
+      revalidate: key => {
+        fetchWithDedup(key).catch(err => { if (err.response?.status === 401) triggerSessionExpired() })
+      },
+      intervalMs: CACHE_TTL,
+    })
+  }, [url, skip, triggerSessionExpired])
 
   // ── Manual trigger (POST, PATCH, DELETE) ─────────────────────────────────
   const request = useCallback(async (method, endpoint, payload, { silentError = false } = {}) => {
-    setLoading(true)
+    if (!url || !cache.read(url)) setLoading(true)
     setError(null)
     try {
       const res = await api[method](endpoint, payload)
@@ -284,7 +234,7 @@ export function useApi(url, { skip = false, initialData = null, fresh = false } 
       if (!silentError) showToast(msg, 'error')
       return { ok: false, status, message: msg, raw: err.response?.data }
     }
-  }, [showToast, triggerSessionExpired])
+  }, [showToast, triggerSessionExpired, url])
 
   return { data, loading, error, request, setData }
 }

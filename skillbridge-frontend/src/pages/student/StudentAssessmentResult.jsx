@@ -41,8 +41,8 @@ export default function StudentAssessmentResult() {
   const validId = /^\d+$/.test(assessmentId || '')
   const resultUrl = validId ? `/api/student/results/?assessment_id=${assessmentId}` : null
   const reviewUrl = validId ? `/api/student/results/review/?assessment_id=${assessmentId}` : null
-  const { data, loading, error } = useApi(resultUrl, { fresh: true })
-  const { data: review, loading: reviewLoading, error: reviewError } = useApi(reviewUrl, { fresh: true, skip: !data?.assessment })
+  const { data, loading, error } = useApi(resultUrl)
+  const { data: review, loading: reviewLoading, error: reviewError } = useApi(reviewUrl, { skip: !data?.assessment })
   const reviewPending = reviewLoading || (!review && !reviewError)
   const scores = data?.skill_scores || []
   const raw = scores.reduce((sum, row) => sum + row.raw_score, 0)

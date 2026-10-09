@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
 import axios from 'axios'
 import { prefetchForRole } from '../../api/prefetch'
+import { resetSessionData } from '../../api/logout'
 
 const SYSTEM_NAME        = "SkillBridge"
 const SCHOOL_NAME        = "Davao del Norte State College"
@@ -34,6 +35,7 @@ export default function LoginPage() {
         )
 
         const { access, refresh, user } = res.data
+        resetSessionData()
         localStorage.setItem('sb-token',   access)
         localStorage.setItem('sb-refresh', refresh)
         localStorage.setItem('sb-role',    user.role)

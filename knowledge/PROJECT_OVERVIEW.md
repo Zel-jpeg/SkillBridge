@@ -30,6 +30,17 @@ Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 6. Ranking combines category, NLP and location similarity. The current implementation uses weights of 60%, 25% and 15%; inspect current code when auditing rather than assuming these remain fixed.
 7. Placement approval applies additional rules and saves snapshots. A high recommendation score alone does not establish approval eligibility.
 
+## Frontend data freshness
+
+Authenticated GET views use the shared `useApi` cache, which keeps last-good
+data in memory and session storage for immediate repeat navigation. Mounted
+queries revalidate about every 30 seconds while the tab is visible and when
+the user returns to it; instructor and admin SSE events can refresh them sooner.
+Student assessment status therefore updates on an open page within the polling
+interval. Mutation responses or local state update the acting user's view, then
+the affected GETs reconcile with the server. Cache and prefetch state are reset
+at login and logout. The server still decides assessment and placement access.
+
 NLP models are optional and loaded lazily. The implementation has deterministic
 regex preprocessing when optional models are unavailable; record the actual model
 and fallback when explaining results.

@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react'
 import api from '../../api/axios'
-import { useApi, invalidateCache, _setCache } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 
 const URL = '/api/instructor/companies/'
 
@@ -73,9 +73,8 @@ export function useInstructorCompanies() {
       // Invalidate + re-fetch so the cache has fresh data for the next navigation
       invalidateCache(URL)
       try {
-        const fresh = await api.get(URL)
+        const fresh = await fetchWithDedup(URL)
         if (fresh.data) {
-          _setCache(URL, fresh.data)  // warm cache for next navigation
           setLocalData(null)          // let the cache drive data from here
         }
       } catch { /* keep optimistic data if re-fetch fails */ }
