@@ -196,7 +196,7 @@ export default function StudentResults() {
 
   // ── All companies tab ───────────────────────────────────────────
   const [companyTab, setCompanyTab] = useState('recommended') // 'recommended' | 'all'
-  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked, fresh: true })
+  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked })
   const allCompanies = allCompaniesRaw ?? []
 
   // Animated skill bars

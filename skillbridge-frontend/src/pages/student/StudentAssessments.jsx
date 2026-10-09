@@ -63,7 +63,7 @@ function AssessmentCard({ item }) {
 
 export default function StudentAssessments() {
   const navigate = useNavigate()
-  const { data, loading, error } = useApi('/api/assessments/', { fresh: true })
+  const { data, loading, error } = useApi('/api/assessments/')
   const completed = data?.completed_required_count || 0
   const total = data?.total_required_count || 0
   const remaining = data?.remaining_required_count || 0

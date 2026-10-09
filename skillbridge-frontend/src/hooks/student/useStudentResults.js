@@ -45,7 +45,7 @@ function readPin() {
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
 export function useStudentResults() {
-  const { data, loading, error } = useApi(RESULTS_URL, { fresh: true })
+  const { data, loading, error } = useApi(RESULTS_URL)
 
   const studentPin = useMemo(() => readPin(), [])
   const hasPin     = studentPin != null

@@ -287,7 +287,7 @@ export default function StudentAssessment() {
 
   // Only IDs returned by the student's batch-scoped list can start an attempt.
   const validRouteId = /^\d+$/.test(routeAssessmentId || '')
-  const { data: assessmentList, loading: checkingActive, error: activeError } = useApi('/api/assessments/', { fresh: true })
+  const { data: assessmentList, loading: checkingActive, error: activeError } = useApi('/api/assessments/')
   const activeInfo = validRouteId
     ? assessmentList?.assessments?.find(item => String(item.id) === routeAssessmentId)
     : null

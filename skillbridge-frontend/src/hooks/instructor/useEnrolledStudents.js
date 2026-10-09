@@ -15,8 +15,7 @@
 //   useSSE() opens a singleton EventSource to /api/instructor/events/.
 //   When a student submits an assessment the server detects the submission
 //   count change and sends { invalidate: ['/api/instructor/batches/', ...] }.
-//   useApi re-fetches the batch list silently, which triggers a useEffect
-//   that re-fetches per-batch student data → statuses update automatically.
+//   The selected roster revalidates through useApi; SSE also refreshes it.
 //
 // API:
 //   GET  /api/instructor/batches/                       → list batches
@@ -27,10 +26,10 @@
 //   PATCH /api/instructor/students/:id/retake/          → toggle retake
 //   DELETE /api/instructor/students/:id/                → remove student
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
-import { useApi, invalidateCache } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup, getCachedData, updateCachedData } from '../useApi'
 import { useSSE } from '../useSSE'
 import { getPalette } from './useInstructorDashboard'
 export { getPalette }
@@ -109,26 +108,13 @@ export function useEnrolledStudents() {
   // mount, so batchesRaw is available here. Without this, batches starts as []
   // for one render even when cache exists → the stats show 0 for one frame → flicker.
   const [batches, setBatches] = useState(() => {
-    try {
-      const cached = sessionStorage.getItem('sb_instructor_students_cache')
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
-      }
-    } catch { /* sessionStorage may be unavailable */ }
-
     if (!batchesRaw || !Array.isArray(batchesRaw)) return []
     return batchesRaw.map(b => ({
       id: b.id, name: b.name, status: b.status,
-      archivedAt: b.archived_at ?? null, students: [],
+      archivedAt: b.archived_at ?? null,
+      students: (getCachedData(`/api/instructor/batches/${b.id}/students/`)?.students ?? []).map(normalizeStudent),
     }))
   })
-
-  useEffect(() => {
-    if (batches.length > 0) {
-      sessionStorage.setItem('sb_instructor_students_cache', JSON.stringify(batches))
-    }
-  }, [batches])
 
   const [activeBatchId, setActiveBatchId] = useState(() => {
     if (batches.length > 0) {
@@ -140,8 +126,18 @@ export function useEnrolledStudents() {
     return active?.id ?? batchesRaw[batchesRaw.length - 1]?.id ?? null
   })
 
-  // Track whether per-batch student fetches are running
-  const fetchingRef = useRef(false)
+  const rosterUrl = activeBatchId ? `/api/instructor/batches/${activeBatchId}/students/` : null
+  const { data: rosterRaw } = useApi(rosterUrl)
+
+  useEffect(() => {
+    if (!rosterRaw || !activeBatchId) return
+    const fresh = (rosterRaw.students || []).map(s => ({
+      ...normalizeStudent(s), batch: rosterRaw.batch ?? { id: activeBatchId },
+    }))
+    // Mirror the shared roster into this hook's existing optimistic batch state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBatches(prev => prev.map(b => b.id === activeBatchId ? { ...b, students: fresh } : b))
+  }, [rosterRaw, activeBatchId])
 
   // ── Modal / UI state ──────────────────────────────────────────────
   const [search,          setSearch]          = useState('')
@@ -176,29 +172,15 @@ export function useEnrolledStudents() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // ── Fetch per-batch students ──────────────────────────────────────
-  // Called whenever the batch list changes (initial load OR SSE re-fetch).
-  // Preserves existing optimistic student state where possible so actions
-  // like retake-toggle don't flicker back on a background refresh.
-  const fetchStudentsForBatches = useCallback(async (batchList) => {
-    if (fetchingRef.current) return
-    fetchingRef.current = true
+  // Refresh only the selected roster after an action or relevant SSE event.
+  const refreshSelectedRoster = useCallback(async () => {
+    if (!activeBatchId) return
+    const url = `/api/instructor/batches/${activeBatchId}/students/`
+    invalidateCache(url)
     try {
-      await Promise.all(batchList.map(async (b) => {
-        try {
-          const r = await api.get(`/api/instructor/batches/${b.id}/students/?_t=${Date.now()}`)
-          const fresh = (r.data.students || []).map(s => ({ ...normalizeStudent(s), batch: r.data.batch ?? { id: b.id, name: b.name } }))
-          setBatches(prev => prev.map(pb =>
-            pb.id === b.id ? { ...pb, students: fresh } : pb
-          ))
-        } catch {
-          // Keep existing student data if a per-batch fetch fails
-        }
-      }))
-    } finally {
-      fetchingRef.current = false
-    }
-  }, [])
+      await fetchWithDedup(url)
+    } catch { /* Keep the last roster on a background failure. */ }
+  }, [activeBatchId])
 
   // ── React to batch list changes (initial load + SSE re-fetches) ──────
   useEffect(() => {
@@ -209,11 +191,12 @@ export function useEnrolledStudents() {
       name:       b.name,
       status:     b.status,
       archivedAt: b.archived_at ?? null,
-      students:   [],   // populated by fetchStudentsForBatches below
+      students:   [],
     }))
 
     // Preserve existing student arrays during SSE background refreshes
     // so the UI doesn't flash empty while we re-fetch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatches(prev => normalized.map(nb => {
       const existing = prev.find(pb => pb.id === nb.id)
       return existing ? { ...nb, students: existing.students } : nb
@@ -226,8 +209,7 @@ export function useEnrolledStudents() {
       return active?.id ?? normalized[normalized.length - 1]?.id ?? null
     })
 
-    fetchStudentsForBatches(normalized)
-  }, [batchesRaw, fetchStudentsForBatches])
+  }, [batchesRaw])
 
   // ── SSE: re-fetch students when submissions change ────────────────
   // useApi already handles re-fetching /api/instructor/batches/ when SSE
@@ -240,12 +222,13 @@ export function useEnrolledStudents() {
       const urls = e.detail?.urls
       if (!Array.isArray(urls)) return
       const relevant = urls.some(u => u.includes('/api/instructor/'))
-      if (!relevant || !batches.length) return
-      fetchStudentsForBatches(batches)
+      if (!relevant || !activeBatchId) return
+      if (urls.includes(rosterUrl)) return // useApi already revalidates this key.
+      refreshSelectedRoster()
     }
     window.addEventListener('sse:data_changed', handler)
     return () => window.removeEventListener('sse:data_changed', handler)
-  }, [batches, fetchStudentsForBatches])
+  }, [activeBatchId, rosterUrl, refreshSelectedRoster])
 
   // ── Derived: active batch + students ─────────────────────────────
   const viewedBatch = batches.find(b => b.id === activeBatchId)
@@ -257,6 +240,7 @@ export function useEnrolledStudents() {
   useEffect(() => {
     if (!selectedStudent) return
     const fresh = students.find(s => s.id === selectedStudent.id)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fresh) setSelectedStudent(fresh)
   }, [students]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -318,7 +302,17 @@ export function useEnrolledStudents() {
       return
     }
     try {
-      await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !attempt.retake_allowed, assessment_id: assessmentId })
+      const response = await api.patch(`/api/instructor/students/${studentId}/retake/`, { retake_allowed: !attempt.retake_allowed, assessment_id: assessmentId })
+      if (rosterUrl && rosterRaw) {
+        updateCachedData(rosterUrl, {
+          ...rosterRaw,
+          students: rosterRaw.students.map(student => student.id === studentId ? {
+            ...student,
+            assessment_results: student.assessment_results.map(result => result.id === assessmentId
+              ? { ...result, retake_allowed: response.data.retake_allowed } : result),
+          } : student),
+        })
+      }
       // Invalidate so the next page visit re-fetches the updated retake status
       invalidateCache('/api/instructor/batches/')
       invalidateCache('/api/instructor/students/recommendations/')
@@ -331,13 +325,14 @@ export function useEnrolledStudents() {
     setSelectedStudent(prev =>
       prev?.id === studentId ? { ...prev, assessmentResults: prev.assessmentResults.map(a => a.id === assessmentId ? { ...a, retake_allowed: !a.retake_allowed } : a) } : prev
     )
+    refreshSelectedRoster()
     if (st) showToast(attempt.retake_allowed ? `Retake revoked for ${st.name}.` : `Retake approved for ${st.name}.`)
   }
 
   function handleEnroll(result) {
     invalidateCache('/api/instructor/batches/')
     invalidateCache('/api/instructor/students/recommendations/')
-    fetchStudentsForBatches(batches)
+    refreshSelectedRoster()
     showToast(`${result.summary.enrolled} students enrolled. See notification results in the review.`)
     setPage(1)
   }

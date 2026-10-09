@@ -21,7 +21,7 @@
 //     handleSave,
 //   } = useStudentProfile()
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApi, invalidateCache, _setCache } from '../useApi'
 import api from '../../api/axios'
 
@@ -35,6 +35,7 @@ export function useStudentProfile() {
     '/api/students/me/',
     { initialData: getCachedUser() }
   )
+  const formSeeded = useRef(false)
 
   // ── Editable fields — seeded from API on first load ─────────────────────
   const [phone,              setPhone]              = useState('')
@@ -59,7 +60,8 @@ export function useStudentProfile() {
 
   // Seed editable fields once API data is available
   useEffect(() => {
-    if (!apiStudent) return
+    if (!apiStudent || formSeeded.current) return
+    formSeeded.current = true
     setPhone(apiStudent.phone ?? '')
     setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
     setStayingAt(apiStudent.address?.stayingAt ?? 'home')

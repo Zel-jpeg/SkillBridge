@@ -179,6 +179,7 @@ export default function StudentProfile() {
 
   // ── Real API call ───────────────────────────────────────────────
   const { data: apiStudent, loading: apiLoading } = useApi('/api/students/me/', { initialData: getCachedUser() })
+  const formSeeded = useRef(false)
 
   // Derive read-only display values from real API data
   const displayName   = apiStudent?.name      ?? ''
@@ -201,7 +202,8 @@ export default function StudentProfile() {
 
   // Seed editable fields once API data arrives
   useEffect(() => {
-    if (!apiStudent) return
+    if (!apiStudent || formSeeded.current) return
+    formSeeded.current = true
     setEditName(apiStudent.name ?? '')
     setEditStudentId(apiStudent.school_id ?? '')
     setEditCourse(apiStudent.course ?? '')

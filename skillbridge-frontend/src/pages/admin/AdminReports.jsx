@@ -2,8 +2,8 @@
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
 
 import NlpModelComparison from '../../components/admin/NlpModelComparison'
-import { useEffect, useState } from 'react'
-import { useApi } from '../../hooks/useApi'
+import { useEffect, useRef, useState } from 'react'
+import { updateCachedData, useApi, invalidateCache } from '../../hooks/useApi'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { getQualitativeTag } from '../../utils/formatters'
 import api from '../../api/axios'
@@ -55,23 +55,29 @@ function BarRow({ label, value, max, colorClass, right, tag }) {
 }
 
 function NlpConfigurationCard() {
-  const [config, setConfig] = useState(null)
+  const { data: config, error: configError } = useApi('/api/admin/nlp-configuration/')
   const [selected, setSelected] = useState('spacy_md')
+  const selectedSeeded = useRef(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    api.get('/api/admin/nlp-configuration/').then(({ data }) => {
-      setConfig(data)
-      setSelected(data.active_model)
-    }).catch(() => setMessage('Could not load NLP model configuration.'))
-  }, [])
+    if (config && !selectedSeeded.current) {
+      selectedSeeded.current = true
+      setSelected(config.active_model)
+    }
+  }, [config])
+  useEffect(() => {
+    if (configError && !config) setMessage('Could not load NLP model configuration.')
+  }, [configError, config])
 
   async function saveModel() {
     setBusy(true)
     try {
       const { data } = await api.patch('/api/admin/nlp-configuration/', { active_model: selected })
-      setConfig(data)
+      updateCachedData('/api/admin/nlp-configuration/', data)
+      invalidateCache('/api/admin/reports/')
+      invalidateCache('/api/admin/students/recommendations/')
       setMessage(data.message)
     } catch (err) {
       setMessage(err.response?.data?.error || 'Could not update the active model.')
@@ -83,6 +89,7 @@ function NlpConfigurationCard() {
     try {
       const { data } = await api.post('/api/admin/rerun-recommendations/')
       setMessage(data.message || 'Recommendations refreshed.')
+      ;['/api/admin/reports/', '/api/admin/students/recommendations/', '/api/instructor/students/recommendations/'].forEach(invalidateCache)
     } catch (err) {
       setMessage(err.response?.data?.error || 'Could not re-run recommendations.')
     } finally { setBusy(false) }

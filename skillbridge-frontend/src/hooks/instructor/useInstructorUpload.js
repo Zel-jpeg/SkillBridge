@@ -217,36 +217,38 @@ export function useInstructorUpload() {
   const [availableAt, setAvailableAt] = useState('')
   const [dueAt, setDueAt] = useState('')
   const restoredOrder = useRef(null)
+  const orderSeededForBatch = useRef(null)
   const { data: existingAssessments } = useApi('/api/instructor/assessments/')
 
   useEffect(() => {
     if (!selectedBatchId || !Array.isArray(existingAssessments)) return
+    if (orderSeededForBatch.current === selectedBatchId) return
     if (restoredOrder.current?.batchId === selectedBatchId) {
       setDisplayOrder(restoredOrder.current.order)
       restoredOrder.current = null
+      orderSeededForBatch.current = selectedBatchId
       return
     }
     const orders = existingAssessments.filter(a => a.batch_id === selectedBatchId).map(a => Number(a.display_order) || 0)
     setDisplayOrder(String(Math.max(0, ...orders) + 1))
+    orderSeededForBatch.current = selectedBatchId
   }, [selectedBatchId, existingAssessments])
 
   // Skill categories — pre-populated from the global admin-managed list
   const [categories, setCategories] = useState([])
   const [catInput,   setCatInput]   = useState('')
   const catRef = useRef(null)
+  const { data: sharedCategories } = useApi('/api/categories/')
+  const categoriesSeeded = useRef(false)
 
   // Pre-load global skill categories so instructors see the shared list
   useEffect(() => {
-    api.get('/api/categories/').then(res => {
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        const loaded = res.data.map(c => makeCategory(c.id, c.name))
-        setCategories(loaded)
-        // Bump ID counter so new locally-added categories don't clash
-        const maxId = Math.max(...res.data.map(c => c.id))
-        _cid = Math.max(_cid, maxId + 1)
-      }
-    }).catch(() => { /* fail silently — instructor can still add manually */ })
-  }, [])
+    if (categoriesSeeded.current || categories.length || !Array.isArray(sharedCategories) || !sharedCategories.length) return
+    categoriesSeeded.current = true
+    setCategories(sharedCategories.map(c => makeCategory(c.id, c.name)))
+    const maxId = Math.max(...sharedCategories.map(c => c.id))
+    _cid = Math.max(_cid, maxId + 1)
+  }, [sharedCategories, categories.length])
 
   // Questions
   const [questions,    setQuestions]    = useState(() => [makeQuestion(nextQid(), 'mcq')])
@@ -318,6 +320,7 @@ export function useInstructorUpload() {
     setAvailableAt(draftBanner.availableAt || '')
     setDueAt(draftBanner.dueAt || '')
     if (draftBanner.categories?.length) {
+      categoriesSeeded.current = true
       setCategories(draftBanner.categories)
       _cid = Math.max(_cid, ...draftBanner.categories.map(c => c.id + 1))
     }

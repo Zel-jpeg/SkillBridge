@@ -200,8 +200,8 @@ export default function StudentDashboard() {
   // ── Real API call (instant via cached sb-user) ────────────────
   // initialData = user object saved at login → renders with no skeleton
   // API refreshes in background to get has_submitted + retake_allowed
-  const { data: student } = useApi('/api/students/me/', { fresh: true })
-  const { data: assessmentList } = useApi('/api/assessments/', { fresh: true })
+  const { data: student } = useApi('/api/students/me/')
+  const { data: assessmentList } = useApi('/api/assessments/')
 
 
   // ── Derived display values (safe fallbacks if API is slow/offline) ──

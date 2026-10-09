@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import api from '../../api/axios'
+import { fetchWithDedup, updateCachedData, useApi } from '../useApi'
+
+const SKILLS_URL = '/api/admin/skills/'
 
 export function useAdminSkills() {
-  const [skills, setSkills] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { data, loading, error: loadError } = useApi(SKILLS_URL)
+  const skills = Array.isArray(data) ? data : []
+  const error = loadError ? 'Failed to load skills.' : null
 
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -13,24 +16,6 @@ export function useAdminSkills() {
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [toast, setToast] = useState('')
-
-  const fetchSkills = async () => {
-    try {
-      setLoading(true)
-      const res = await api.get('/api/admin/skills/')
-      setSkills(res.data)
-      setError(null)
-    } catch (err) {
-      console.error('Failed to fetch skills', err)
-      setError('Failed to load skills.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchSkills()
-  }, [])
 
   const filteredSkills = skills.filter(s => 
     s.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -49,16 +34,17 @@ export function useAdminSkills() {
       if (skillData.id) {
         // Edit
         const res = await api.put(`/api/admin/skills/${skillData.id}/`, skillData)
-        setSkills(prev => prev.map(s => s.id === skillData.id ? res.data : s))
+        updateCachedData(SKILLS_URL, skills.map(s => s.id === skillData.id ? res.data : s))
         showToast('Skill updated successfully.')
       } else {
         // Add
         const res = await api.post('/api/admin/skills/', skillData)
-        setSkills(prev => [...prev, res.data].sort((a, b) => a.name.localeCompare(b.name)))
+        updateCachedData(SKILLS_URL, [...skills, res.data].sort((a, b) => a.name.localeCompare(b.name)))
         showToast('Skill added successfully.')
       }
       setShowModal(false)
       setSelectedSkill(null)
+      fetchWithDedup(SKILLS_URL).catch(() => {})
       return { ok: true }
     } catch (err) {
       return { ok: false, error: err.response?.data?.error || 'Failed to save skill.' }
@@ -71,7 +57,8 @@ export function useAdminSkills() {
     if (!deleteConfirm) return
     try {
       await api.delete(`/api/admin/skills/${deleteConfirm.id}/`)
-      setSkills(prev => prev.filter(s => s.id !== deleteConfirm.id))
+      updateCachedData(SKILLS_URL, skills.filter(s => s.id !== deleteConfirm.id))
+      fetchWithDedup(SKILLS_URL).catch(() => {})
       setDeleteConfirm(null)
       showToast('Skill deleted successfully.')
     } catch {

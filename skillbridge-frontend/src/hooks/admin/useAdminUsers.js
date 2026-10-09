@@ -10,7 +10,7 @@
 //   useApi re-fetches /api/admin/users/ silently → useEffect re-normalizes.
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useApi, invalidateCache } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useSSE } from '../useSSE'
 
@@ -21,11 +21,11 @@ export function useAdminUsers() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
-  const { data: usersData, request, setData } = useApi('/api/admin/users/')
+  const { data: usersData, request } = useApi('/api/admin/users/')
 
   async function handleEnrollmentComplete() {
-    const result = await request('get', '/api/admin/users/')
-    if (result.ok) setData(result.data)
+    invalidateCache('/api/admin/users/')
+    try { await fetchWithDedup('/api/admin/users/') } catch { /* Keep the last user list. */ }
   }
 
   // ── Raw data state ────────────────────────────────────────────────
