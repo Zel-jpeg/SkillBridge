@@ -9,7 +9,8 @@
 
 import { useState, useCallback } from 'react'
 import api from '../../api/axios'
-import { useApi, invalidateCache, fetchWithDedup, updateCachedData } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup, updateCachedData, applyDataChange } from '../useApi'
+import { companyRequest } from '../../utils/companyImages'
 
 const URL = '/api/instructor/companies/'
 
@@ -51,13 +52,15 @@ export function useInstructorCompanies() {
     setSaving(true)
     setSaveError(null)
     try {
-      await api.patch(`/api/instructor/companies/${editing.id}/`, payload)
+      const { image, ...details } = payload
+      const response = await api.patch(`/api/instructor/companies/${editing.id}/`, companyRequest(details, image))
 
       // Optimistic local update for instant feedback
       updateCachedData(URL, (raw ?? []).map(co =>
         co.id !== editing.id ? co : {
           ...co,
           name:    payload.name,
+          image_url: response.data.image_url ?? null,
           address: payload.address,
           lat:     payload.lat,
           lng:     payload.lng,
@@ -75,6 +78,7 @@ export function useInstructorCompanies() {
       } catch { /* keep optimistic data if re-fetch fails */ }
 
       showToast(`${payload.name} updated`)
+      applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
       closeEdit()
     } catch (err) {
       setSaveError(err.response?.data?.error ?? 'Failed to save. Please try again.')

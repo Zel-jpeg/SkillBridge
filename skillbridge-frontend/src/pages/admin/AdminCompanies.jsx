@@ -20,6 +20,10 @@ import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
 import NlpTextPreview from '../../components/NlpTextPreview'
+import CompanyImage from '../../components/CompanyImage'
+import CompanyImageInput from '../../components/CompanyImageInput'
+import CompanyEditDialog from '../../components/CompanyEditDialog'
+import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../components/Icons'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN, singleton promise prevents duplicate injection
@@ -119,13 +123,14 @@ function makePinIcon(L) {
 // ════════════════════════════════════════════════════════════════════════════
 // PinMap — interactive drop-pin map inside modals
 // ════════════════════════════════════════════════════════════════════════════
-function PinMap({ center, pinned, onPin }) {
+function PinMap({ center, pinned, onPin, height = 248 }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
   useEffect(() => {
     let alive = true
+    let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
@@ -138,7 +143,7 @@ function PinMap({ center, pinned, onPin }) {
         maxZoom: 19,
       }).addTo(map)
       map.zoomControl.setPosition('bottomright')
-      setTimeout(() => map.invalidateSize(), 150)
+      resizeTimer = setTimeout(() => map.invalidateSize(), 150)
 
       function placeMk(lat, lng) {
         if (mkRef.current) {
@@ -161,6 +166,7 @@ function PinMap({ center, pinned, onPin }) {
     })
     return () => {
       alive = false
+      clearTimeout(resizeTimer)
       mapRef.current?.remove()
       mapRef.current = null
       mkRef.current  = null
@@ -174,9 +180,16 @@ function PinMap({ center, pinned, onPin }) {
     }
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
 
+  useEffect(() => {
+    if (!pinned && mkRef.current) {
+      mkRef.current.remove()
+      mkRef.current = null
+    }
+  }, [pinned])
+
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
-      style={{ height: 248, isolation: 'isolate' }}>
+      style={{ height, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
@@ -379,7 +392,7 @@ function SkillLevelSelector({ category, value, onChange }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// CompanyModal — unified add + edit, 2-step flow
+// CompanyModal — two-step creation and a spacious single-screen editor
 //
 // mode='add'  → blank form, "Add Company" submit
 // mode='edit' → pre-filled from initialData, "Save Changes" submit
@@ -387,6 +400,8 @@ function SkillLevelSelector({ category, value, onChange }) {
 //   • Step 2: interactive pin map (edit: pre-centered on existing pin)
 // ════════════════════════════════════════════════════════════════════════════
 function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
+  const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
+  const [saveError, setSaveError] = useState('')
   const isEdit = mode === 'edit'
 
   const [step,    setStep]    = useState(1)
@@ -436,20 +451,27 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
     }
   }
 
-  function handleNextStep() {
-    if (!name.trim()) { setNameErr('Company name is required.'); return }
+  function validateDetails() {
+    if (!name.trim()) { setNameErr('Company name is required.'); return false }
     // Address validation: required in add mode, or in edit mode when changing address
     if (!isEdit || changeAddr) {
       if (!addrParts.province || !addrParts.city) {
         setAddrErr('Please select at least a province and city.')
-        return
+        return false
       }
     }
     setNameErr(''); setAddrErr('')
+    return true
+  }
+
+  function handleNextStep() {
+    if (!validateDetails()) return
     setStep(2)
   }
 
   async function handleSubmit() {
+    if (image.error || saving || !validateDetails()) return
+    setSaveError('')
     // Build the final addressParts to submit
     const finalAddrParts = (isEdit && !changeAddr)
       ? { ...(initialData?.addressParts || {}), street: street.trim() }
@@ -460,11 +482,13 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
       ...(initialData || {}),
       name:         name.trim(),
       addressParts: finalAddrParts,
+      image,
       lat:          pinned?.lat ?? null,
       lng:          pinned?.lng ?? null,
     })
     setSaving(false)
     if (result?.ok) onClose()
+    else setSaveError(result?.message || 'Could not save company. Your input is preserved; please retry.')
   }
 
   // Address preview string shown in Step 2
@@ -476,6 +500,62 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
     `w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white
      placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500
      ${err ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700'}`
+
+  if (isEdit) return <CompanyEditDialog saving={saving} saveError={saveError} invalid={Boolean(image.error)}
+    onSave={handleSubmit} onClose={onClose} saveLabel="Save Changes"
+    details={<>
+      <div>
+        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Company name <span className="text-rose-500">*</span></label>
+        <input id="company-edit-name" value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
+          placeholder="e.g. Azeus Systems Philippines" className={inputCls(nameErr)} aria-invalid={Boolean(nameErr)} />
+        {nameErr && <p className="mt-1 text-xs text-rose-600">{nameErr}</p>}
+      </div>
+      <CompanyImageInput name={name} imageUrl={initialData?.image_url} value={image} onChange={setImage} disabled={saving} />
+      <div>
+        <label htmlFor="company-edit-street" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Street / Building / Unit <span className="ml-1 font-normal text-gray-400">(optional)</span></label>
+        <input id="company-edit-street" value={street} onChange={e => setStreet(e.target.value)}
+          placeholder="e.g. IT Park, Km 7, 3rd Floor" className={inputCls('')} />
+      </div>
+      <details className="company-edit-positions">
+        <summary>
+          <span aria-hidden="true" className="text-slate-500 dark:text-gray-400"><BriefcaseIcon size={23} /></span>
+          <span className="min-w-0"><span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Positions <span className="ml-1 font-normal text-gray-400">({initialData.positions.length})</span></span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">View roles associated with this company</span></span>
+          <ChevronRightIcon size={18} />
+        </summary>
+        <div className="company-edit-positions-content space-y-2">
+          {initialData.positions.map(position => <div key={position.id} className="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800">
+            <span className="min-w-0 break-words font-medium">{position.title}</span><span className="shrink-0 text-gray-500 dark:text-gray-400">{position.slots} slots</span>
+          </div>)}
+          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Add or edit positions from the company card.</p>
+        </div>
+      </details>
+    </>}
+    location={<>
+      <div>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Address</p>
+          <button type="button" onClick={() => { setChangeAddr(!changeAddr); setAddrErr('') }}
+            className="min-h-9 rounded-lg border border-blue-100 bg-blue-50 px-3 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+            {changeAddr ? 'Keep current address' : 'Change address'}
+          </button>
+        </div>
+        {changeAddr ? <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
+          : <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">{initialData.address || 'No address set'}</div>}
+        {geocoding && <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">{geocodingLabel}</p>}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Map location</p>
+        <p className="mb-3 mt-1 text-xs text-gray-500 dark:text-gray-400">Click the map to place a pin. Drag it to adjust the location.</p>
+        <PinMap center={mapCenter} pinned={pinned} onPin={setPinned} height={300} />
+        <div className="mt-3 flex min-h-9 items-center justify-between gap-3 text-xs">
+          <span className="flex min-w-0 items-center gap-2 text-gray-500 dark:text-gray-400"><LocationIcon size={15} />
+            {pinned ? `${pinned.lat.toFixed(5)}, ${pinned.lng.toFixed(5)}` : 'No pin set. You can save without one.'}
+          </span>
+          {pinned && <button type="button" onClick={() => setPinned(null)} className="shrink-0 rounded-lg px-2 py-2 text-gray-500 hover:bg-gray-100 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-gray-800">Clear pin</button>}
+        </div>
+      </div>
+    </>} />
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
@@ -498,6 +578,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         </div>
 
         {/* Step indicator */}
+        {saveError && <p role="alert" className="text-xs text-rose-600">{saveError}</p>}
         <div className="flex items-center gap-2">
           {['Company Details', 'Pin Location'].map((label, idx) => {
             const s = idx + 1
@@ -536,6 +617,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
             </div>
 
             {/* Street / building */}
+            <CompanyImageInput name={name} imageUrl={initialData?.image_url} value={image} onChange={setImage} disabled={saving} />
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
                 Street / Building / Unit
@@ -591,7 +673,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleNextStep}
+              <button onClick={handleNextStep} disabled={Boolean(image.error)}
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center gap-1.5">
                 Next: Pin Location <ArrowRight />
               </button>
@@ -639,7 +721,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-1.5">
                 <ArrowLeft /> Back
               </button>
-              <button onClick={handleSubmit} disabled={saving}
+              <button onClick={handleSubmit} disabled={saving || Boolean(image.error)}
                 className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-1.5">
                 {saving
                   ? <><Spinner /> Saving…</>
@@ -1025,9 +1107,7 @@ export default function AdminCompanies() {
               {/* Company header */}
               <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0">
-                    {company.name[0]}
-                  </div>
+                  <CompanyImage name={company.name} imageUrl={company.image_url} className="w-9 h-9 rounded-xl" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{company.name}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">

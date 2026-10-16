@@ -17,6 +17,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
+import Avatar from '../../components/Avatar'
 import { useApi, invalidateCache, updateCachedData } from '../../hooks/useApi'
 import api from '../../api/axios'
 
@@ -374,24 +375,7 @@ export default function StudentProfile() {
         {/* ── Photo — read-only, sourced from DNSC Google account ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-6 flex items-center gap-4 sm:gap-5">
           <div className="shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center overflow-hidden">
-              {photoUrl
-                ? <img
-                    src={photoUrl}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex' }}
-                  />
-                : null
-              }
-              <span
-                className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-300 w-full h-full items-center justify-center"
-                style={{ display: photoUrl ? 'none' : 'flex' }}
-              >
-                {displayName.split(' ').map(n => n[0]).slice(0, 2).join('') || '?'}
-              </span>
-            </div>
+            <Avatar name={displayName} photoUrl={photoUrl} tone="neutral" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full text-xl sm:text-2xl" />
           </div>
 
           <div className="flex flex-col gap-1 min-w-0">

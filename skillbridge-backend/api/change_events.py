@@ -37,7 +37,7 @@ TOPICS = {
     'recommendations': ['results', 'students', 'placements'],
     'placement': ['placements', 'students', 'results', 'capacity'],
     'users': ['users', 'students', 'batches'],
-    'identity': ['users', 'students', 'batches'],
+    'identity': ['users', 'students', 'batches', 'placements'],
 }
 
 

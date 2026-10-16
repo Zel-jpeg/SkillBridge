@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Avatar from '../../components/Avatar'
+import CompanyImage from '../../components/CompanyImage'
 import ScoreLabel from '../../components/ScoreLabel'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
@@ -90,7 +91,7 @@ function ActionModal({ action, busy, onClose, onSubmit }) {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white pr-10">{title}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
         <div className="mt-4 rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">{action.suggestion.student.name}</p>
+          <div className="flex items-center gap-2"><Avatar name={action.suggestion.student.name} photoUrl={action.suggestion.student.photo_url} /><p className="text-sm font-semibold text-gray-900 dark:text-white">{action.suggestion.student.name}</p></div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{action.position.title} at {action.company.name}</p>
           <p className="text-xs text-gray-400 mt-1">{action.position.remaining_slots} of {action.position.slots_available} slots remaining</p>
         </div>
@@ -113,10 +114,11 @@ function DetailModal({ detail, onClose }) {
     <ModalShell onClose={onClose} width="max-w-2xl">
       <div className="p-6">
         <div className="flex items-center gap-3 pr-10">
-          <Avatar name={suggestion.student.name} className="w-12 h-12 rounded-xl text-sm" />
+          <Avatar name={suggestion.student.name} photoUrl={suggestion.student.photo_url} className="w-12 h-12 rounded-xl text-sm" />
           <div className="min-w-0"><h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{suggestion.student.name}</h2><p className="text-xs text-gray-500 dark:text-gray-400">{suggestion.student.school_id || 'No school ID'} · {suggestion.student.course || 'No course'} · {suggestion.batch?.name || 'No batch'}</p></div>
         </div>
         <div className="mt-5 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 flex flex-wrap items-center justify-between gap-2">
+          <CompanyImage name={company.name} imageUrl={company.image_url} />
           <div><p className="text-sm font-semibold text-gray-900 dark:text-white">{position.title}</p><p className="text-xs text-gray-500 dark:text-gray-400">{company.name}{addressText(company.address) ? ` · ${addressText(company.address)}` : ''}</p></div><StatusPill status={suggestion.placement_status} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -156,7 +158,7 @@ function ManualAssignmentModal({ students, positions, approvedByStudent, initial
             <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">Find student</label>
             <input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Name, school ID, course, or batch" className={inputClass} />
             <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
-              {filteredStudents.map(student => { const approved = approvedByStudent.get(student.id); return <button key={student.id} type="button" onClick={() => setStudentId(String(student.id))} className={`w-full text-left px-3 py-2.5 transition-colors ${studentId === String(student.id) ? 'bg-green-50 dark:bg-green-950/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}><p className="text-sm font-medium text-gray-900 dark:text-white">{student.name}</p><p className="text-[11px] text-gray-500 dark:text-gray-400">{student.student_id || 'No school ID'} · {student.course || 'No course'} · {student.batch?.name || 'No batch'}</p>{approved && <p className="text-[11px] text-violet-600 dark:text-violet-400 mt-0.5">Already placed at {approved.company.name}</p>}</button> })}
+              {filteredStudents.map(student => { const approved = approvedByStudent.get(student.id); return <button key={student.id} type="button" onClick={() => setStudentId(String(student.id))} className={`w-full text-left px-3 py-2.5 transition-colors ${studentId === String(student.id) ? 'bg-green-50 dark:bg-green-950/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}><div className="flex items-center gap-2"><Avatar name={student.name} photoUrl={student.photo_url} className="w-8 h-8 rounded-lg text-xs" /><p className="text-sm font-medium text-gray-900 dark:text-white">{student.name}</p></div><p className="text-[11px] text-gray-500 dark:text-gray-400">{student.student_id || 'No school ID'} · {student.course || 'No course'} · {student.batch?.name || 'No batch'}</p>{approved && <p className="text-[11px] text-violet-600 dark:text-violet-400 mt-0.5">Already placed at {approved.company.name}</p>}</button> })}
               {!filteredStudents.length && <p className="p-4 text-xs text-center text-gray-400">No students found.</p>}
             </div>
           </div>
@@ -186,7 +188,7 @@ function SuggestionRow({ suggestion, company, position, canManage, onAction, onV
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(220px,1.35fr)_90px_minmax(250px,1fr)_auto] gap-3 xl:items-center px-4 py-4 border-t border-gray-100 dark:border-gray-800 first:border-t-0">
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar name={suggestion.student.name} className="w-10 h-10 rounded-xl text-xs" />
+        <Avatar name={suggestion.student.name} photoUrl={suggestion.student.photo_url} className="w-10 h-10 rounded-xl text-xs" />
         <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{suggestion.student.name}</p><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{suggestion.student.school_id || 'No school ID'} · {suggestion.student.course || 'No course'}</p><p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{suggestion.batch?.name || 'No batch'}</p></div>
       </div>
       <div><p className={`text-lg font-bold ${matchColor(Number(suggestion.match_score ?? 0))}`}>{Math.round(Number(suggestion.match_score ?? 0))}%</p><p className="text-[10px] text-gray-400"><ScoreLabel label="Hybrid match" /></p></div>
@@ -212,7 +214,7 @@ function ApprovedStudents({ placements }) {
     <div className="px-4 py-3 bg-green-50/60 dark:bg-green-950/20 border-b border-green-100 dark:border-green-900/40">
       <p className="text-[11px] font-bold uppercase tracking-wide text-green-700 dark:text-green-300 mb-2">Current approved students</p>
       <div className="flex flex-wrap gap-2">
-        {placements.map(placement => <div key={placement.id} className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-gray-900 border border-green-100 dark:border-green-900 px-2.5 py-2"><Avatar name={placement.student.name} className="w-7 h-7 rounded-lg text-[10px]" /><div><p className="text-xs font-semibold text-gray-900 dark:text-white">{placement.student.name}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{placement.student.school_id || 'No school ID'}{placement.recommendation_id ? ' · Recommended' : ' · Manual'}</p></div></div>)}
+        {placements.map(placement => <div key={placement.id} className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-gray-900 border border-green-100 dark:border-green-900 px-2.5 py-2"><Avatar name={placement.student.name} photoUrl={placement.student.photo_url} className="w-7 h-7 rounded-lg text-[10px]" /><div><p className="text-xs font-semibold text-gray-900 dark:text-white">{placement.student.name}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{placement.student.school_id || 'No school ID'}{placement.recommendation_id ? ' · Recommended' : ' · Manual'}</p></div></div>)}
       </div>
     </div>
   )
@@ -237,6 +239,11 @@ export default function PlacementsPage({ role = 'admin' }) {
   const liveDetail = detail && placement.companies.flatMap(company => company.positions.flatMap(position =>
     position.suggested_students.map(suggestion => ({ company, position, suggestion }))
   )).find(item => item.suggestion.recommendation_id === detail.suggestion.recommendation_id)
+  // Identity/capacity can refresh without remounting the action form or
+  // replacing its locally typed remarks. Missing scoped records hide the form.
+  const liveAction = action && placement.companies.flatMap(company => company.positions.flatMap(position =>
+    position.suggested_students.map(suggestion => ({ company, position, suggestion, type: action.type }))
+  )).find(item => item.suggestion.recommendation_id === action.suggestion.recommendation_id)
 
   const approvedPlacements = useMemo(() => placement.placements.filter(item => item.status === 'approved'), [placement.placements])
   const approvedByStudent = useMemo(() => new Map(approvedPlacements.map(item => [item.student.id, item])), [approvedPlacements])
@@ -293,7 +300,7 @@ export default function PlacementsPage({ role = 'admin' }) {
   return (
     <div className="min-w-0">
 
-      <ActionModal key={action ? `${action.type}-${action.suggestion.recommendation_id}` : 'closed'} action={action} busy={placement.mutating} onClose={() => setAction(null)} onSubmit={submitAction} />
+      <ActionModal key={action ? `${action.type}-${action.suggestion.recommendation_id}` : 'closed'} action={liveAction ?? null} busy={placement.mutating} onClose={() => setAction(null)} onSubmit={submitAction} />
       <DetailModal detail={liveDetail ?? null} onClose={() => setDetail(null)} />
       {manualRequest && <ManualAssignmentModal students={placement.students} positions={placement.positions} approvedByStudent={approvedByStudent} initialPositionId={manualRequest.positionId} busy={placement.mutating} onClose={() => setManualRequest(null)} onSubmit={placement.manualAssign} />}
 
@@ -325,7 +332,7 @@ export default function PlacementsPage({ role = 'admin' }) {
           filteredCompanies.length === 0 ? <EmptyState message="No companies or positions match these filters." onClear={clearFilters} /> : <div className="space-y-6">{filteredCompanies.map(company => (
             <section key={company.id} className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
-                <div><h2 className="text-base font-semibold text-gray-900 dark:text-white">{company.name}</h2><p className="text-xs text-gray-400 dark:text-gray-500">{addressText(company.address) || 'Address not provided'}</p></div>
+                <div className="flex items-center gap-3"><CompanyImage name={company.name} imageUrl={company.image_url} /><div><h2 className="text-base font-semibold text-gray-900 dark:text-white">{company.name}</h2><p className="text-xs text-gray-400 dark:text-gray-500">{addressText(company.address) || 'Address not provided'}</p></div></div>
                 <div className="flex flex-wrap gap-2 text-[11px]"><span className="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">{company.total_positions} position{company.total_positions !== 1 ? 's' : ''}</span><span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">{company.totals.slots} slots</span><span className="px-2.5 py-1 rounded-lg bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300">{company.totals.approved} approved</span><span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">{company.totals.remaining} remaining</span></div>
               </div>
               {company.positions.map(position => <div key={position.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
@@ -341,7 +348,7 @@ export default function PlacementsPage({ role = 'admin' }) {
         ) : filteredHistory.length === 0 ? <EmptyState message="No placement history matches these filters." onClear={clearFilters} /> : (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-x-auto shadow-sm">
             <table className="w-full min-w-225 text-left"><thead className="bg-gray-50 dark:bg-gray-800/60 text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Placement</th><th className="px-4 py-3">Score snapshot</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Decision</th><th className="px-4 py-3">Remarks</th></tr></thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredHistory.map(item => <tr key={item.id} className="text-sm text-gray-700 dark:text-gray-300 align-top"><td className="px-4 py-4"><p className="font-semibold text-gray-900 dark:text-white">{item.student.name}</p><p className="text-xs text-gray-400 mt-0.5">{item.student.school_id || 'No school ID'} · {item.student.course || 'No course'} · {item.batch?.name || 'No batch'}</p></td><td className="px-4 py-4"><p className="font-medium">{item.position.title}</p><p className="text-xs text-gray-400 mt-0.5">{item.company.name}</p></td><td className="px-4 py-4 font-semibold">{item.match_score_at_assignment == null ? 'Manual / no score' : `${Math.round(item.match_score_at_assignment)}%`}</td><td className="px-4 py-4"><StatusPill status={item.status} /></td><td className="px-4 py-4 text-xs"><p>{formatDate(item.updated_at)}</p><p className="text-gray-400 mt-1">by {item.approved_by?.name || item.removed_by?.name || item.rejected_by?.name || item.assigned_by?.name || 'System'}</p></td><td className="px-4 py-4 text-xs max-w-60 text-gray-500 dark:text-gray-400">{item.remarks || '—'}</td></tr>)}</tbody></table>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredHistory.map(item => <tr key={item.id} className="text-sm text-gray-700 dark:text-gray-300 align-top"><td className="px-4 py-4"><div className="flex items-center gap-2"><Avatar name={item.student.name} photoUrl={item.student.photo_url} className="w-8 h-8 rounded-lg text-xs" /><p className="font-semibold text-gray-900 dark:text-white">{item.student.name}</p></div><p className="text-xs text-gray-400 mt-0.5">{item.student.school_id || 'No school ID'} · {item.student.course || 'No course'} · {item.batch?.name || 'No batch'}</p></td><td className="px-4 py-4"><p className="font-medium">{item.position.title}</p><p className="text-xs text-gray-400 mt-0.5">{item.company.name}</p></td><td className="px-4 py-4 font-semibold">{item.match_score_at_assignment == null ? 'Manual / no score' : `${Math.round(item.match_score_at_assignment)}%`}</td><td className="px-4 py-4"><StatusPill status={item.status} /></td><td className="px-4 py-4 text-xs"><p>{formatDate(item.updated_at)}</p><p className="text-gray-400 mt-1">by {item.approved_by?.name || item.removed_by?.name || item.rejected_by?.name || item.assigned_by?.name || 'System'}</p></td><td className="px-4 py-4 text-xs max-w-60 text-gray-500 dark:text-gray-400">{item.remarks || '—'}</td></tr>)}</tbody></table>
           </div>
         )}
       </section>

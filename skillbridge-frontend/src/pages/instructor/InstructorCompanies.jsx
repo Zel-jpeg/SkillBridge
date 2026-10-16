@@ -9,6 +9,10 @@ import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import Avatar                     from '../../components/Avatar'
 import NlpTextPreview from '../../components/NlpTextPreview'
+import CompanyImage from '../../components/CompanyImage'
+import CompanyImageInput from '../../components/CompanyImageInput'
+import CompanyEditDialog from '../../components/CompanyEditDialog'
+import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../components/Icons'
 import api                        from '../../api/axios'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
@@ -94,6 +98,7 @@ function ViewMap({ company }) {
   useEffect(() => {
     if (!company?.lat || !company?.lng) return
     let alive = true
+    let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current, { zoomControl: false })
@@ -104,10 +109,10 @@ function ViewMap({ company }) {
       }).addTo(map)
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       L.marker([company.lat, company.lng], { icon: makeViewIcon(L, company.name) }).addTo(map)
-      setTimeout(() => map.invalidateSize(), 150)
+      resizeTimer = setTimeout(() => map.invalidateSize(), 150)
       mapRef.current = map
     })
-    return () => { alive = false; mapRef.current?.remove(); mapRef.current = null }
+    return () => { alive = false; clearTimeout(resizeTimer); mapRef.current?.remove(); mapRef.current = null }
   }, [company?.id]) // eslint-disable-line
 
   if (!company?.lat || !company?.lng) {
@@ -128,13 +133,14 @@ function ViewMap({ company }) {
 }
 
 // ── Drop-pin map (edit modal) ─────────────────────────────────────────────────
-function PinMap({ center, pinned, onPin }) {
+function PinMap({ center, pinned, onPin, height = 220 }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
   useEffect(() => {
     let alive = true
+    let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current, { zoomControl: false })
@@ -144,7 +150,7 @@ function PinMap({ center, pinned, onPin }) {
         maxZoom: 19,
       }).addTo(map)
       L.control.zoom({ position: 'bottomright' }).addTo(map)
-      setTimeout(() => map.invalidateSize(), 150)
+      resizeTimer = setTimeout(() => map.invalidateSize(), 150)
 
       function placeMk(lat, lng) {
         if (mkRef.current) {
@@ -163,7 +169,7 @@ function PinMap({ center, pinned, onPin }) {
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
     })
-    return () => { alive = false; mapRef.current?.remove(); mapRef.current = null; mkRef.current = null }
+    return () => { alive = false; clearTimeout(resizeTimer); mapRef.current?.remove(); mapRef.current = null; mkRef.current = null }
   }, []) // eslint-disable-line
 
   // Re-center when address changes
@@ -173,8 +179,15 @@ function PinMap({ center, pinned, onPin }) {
     }
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
 
+  useEffect(() => {
+    if (!pinned && mkRef.current) {
+      mkRef.current.remove()
+      mkRef.current = null
+    }
+  }, [pinned])
+
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 220, isolation: 'isolate' }}>
+    <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
       {!pinned && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
@@ -265,6 +278,7 @@ const UserIcon   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="n
 // Edit Modal — self-contained state. Calls onSave(payload) on submit.
 // ─────────────────────────────────────────────────────────────────────────────
 function EditModal({ company, saving, saveError, onSave, onClose }) {
+  const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
   // Basic fields
   const [name,      setName]      = useState(company.name)
   const [nameErr,   setNameErr]   = useState('')
@@ -328,6 +342,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
   }
 
   async function handleSubmit() {
+    if (image.error || saving) return
     if (!name.trim()) { setNameErr('Company name is required.'); return }
     if (changingAddr && (!newAddr.province || !newAddr.city)) {
       setAddrErr('Please select at least a province and city.')
@@ -339,6 +354,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
       : (company.address ?? {})
 
     onSave({
+      image,
       name:     name.trim(),
       address,
       lat:      pinned?.lat ?? null,
@@ -352,158 +368,85 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
     })
   }
 
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
-  }, [])
-
   const inputCls = (err) =>
     `w-full px-3 py-2.5 text-sm rounded-xl border ${err ? 'border-rose-400 dark:border-rose-600' : 'border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors`
 
-  return (
-    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm px-0 sm:px-4"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '94vh', animation: 'sheetUp 0.25s cubic-bezier(0.34,1.05,0.64,1) both' }}>
-
-        {/* Drag handle — mobile only */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Edit Company</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-[220px]">{company.name}</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
-            <XIcon />
-          </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-5 flex flex-col gap-5">
-
-            {/* ── Company name ── */}
-            <div>
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block">Company Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
-                className={inputCls(nameErr)} placeholder="e.g. Azeus Systems Philippines" />
-              {nameErr && <p className="text-xs text-rose-500 mt-1">{nameErr}</p>}
-            </div>
-
-            {/* ── Address ── */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Address</label>
-                {changingAddr
-                  ? <button onClick={() => { setChangingAddr(false); setAddrErr('') }}
-                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                      ← Keep current
-                    </button>
-                  : <button onClick={() => setChangingAddr(true)}
-                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                      Change
-                    </button>
-                }
-              </div>
-              {changingAddr ? (
-                <div className="flex flex-col gap-1">
-                  <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
-                  {geocoding && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mt-1">
-                      <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
-                      Finding location on map…
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="px-3 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300">
-                  {currentAddr || <span className="italic text-gray-400">No address set</span>}
-                </div>
-              )}
-            </div>
-
-            {/* ── Map / pin ── */}
-            <div>
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block">
-                Pin Exact Location
-              </label>
-              <PinMap center={mapCenter} pinned={pinned} onPin={setPinned} />
-              <p className="text-xs text-center mt-1.5">
-                {pinned
-                  ? <span className="text-blue-600 dark:text-blue-400 font-mono">📍 {pinned.lat.toFixed(5)}, {pinned.lng.toFixed(5)}</span>
-                  : <span className="text-gray-400 dark:text-gray-600">Tap the map to place a pin — drag to adjust</span>
-                }
-              </p>
-              {pinned && (
-                <button onClick={() => setPinned(null)}
-                  className="mt-1 block mx-auto text-xs text-rose-500 dark:text-rose-400 hover:underline">
-                  Remove pin
-                </button>
-              )}
-            </div>
-
-            {/* ── Positions ── */}
-            {positions.length > 0 && (
+  return <CompanyEditDialog saving={saving} saveError={saveError} invalid={Boolean(image.error)}
+    onSave={handleSubmit} onClose={onClose}
+    details={<>
+      <div>
+        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Company name <span className="text-rose-500">*</span></label>
+        <input id="company-edit-name" value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
+          className={inputCls(nameErr)} placeholder="e.g. Azeus Systems Philippines" aria-invalid={Boolean(nameErr)} />
+        {nameErr && <p className="mt-1 text-xs text-rose-600">{nameErr}</p>}
+      </div>
+      <CompanyImageInput name={name} imageUrl={company.image_url} value={image} onChange={setImage} disabled={saving} />
+      {positions.length > 0 && <details className="company-edit-positions">
+        <summary>
+          <span aria-hidden="true" className="text-slate-500 dark:text-gray-400"><BriefcaseIcon size={23} /></span>
+          <span className="min-w-0"><span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Positions <span className="ml-1 font-normal text-gray-400">({positions.length})</span></span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Manage roles associated with this company</span></span>
+          <ChevronRightIcon size={18} />
+        </summary>
+        <div className="company-edit-positions-content flex flex-col gap-3">
+          {positions.map((pos, idx) => (
+            <div key={pos.id} className="company-position-card space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3 block">Positions</label>
-                <div className="flex flex-col gap-3">
-                  {positions.map((pos, idx) => (
-                    <div key={pos.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex flex-col gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Title</label>
-                        <input value={pos.title} onChange={e => setPosField(idx, 'title', e.target.value)}
-                          className={inputCls('')} />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Position Tags</label>
-                          <button type="button" onClick={() => suggestTags(idx)} disabled={suggestingFor === idx}
-                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50">
-                            {suggestingFor === idx ? 'Suggesting…' : 'Suggest Tags'}
-                          </button>
-                        </div>
-                        <textarea value={pos.tags} onChange={e => setPosField(idx, 'tags', e.target.value)} rows={2}
-                          placeholder="Django, REST API, PostgreSQL"
-                          className={inputCls('')} />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Slots Available</label>
-                        <input type="number" min="0" value={pos.slots} onChange={e => setPosField(idx, 'slots', e.target.value)}
-                          className="w-24 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
-                      </div>
-                    </div>
-                  ))}
+                <label htmlFor={`position-${pos.id}-title`} className="mb-2 block text-xs font-semibold text-gray-600 dark:text-gray-300">Position title</label>
+                <input id={`position-${pos.id}-title`} value={pos.title} onChange={e => setPosField(idx, 'title', e.target.value)}
+                  placeholder="e.g. Database Support Intern" className={inputCls('')} />
+              </div>
+              <div>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor={`position-${pos.id}-tags`} className="text-xs font-semibold text-gray-600 dark:text-gray-300">Position tags</label>
+                  <button type="button" onClick={() => suggestTags(idx)} disabled={suggestingFor === idx}
+                    className="min-h-8 cursor-pointer rounded-lg border border-blue-100 bg-blue-50/70 px-2.5 text-[11px] font-semibold text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-wait disabled:opacity-50 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/60">
+                    {suggestingFor === idx ? 'Suggesting…' : 'Suggest Tags'}
+                  </button>
                 </div>
+                <textarea id={`position-${pos.id}-tags`} value={pos.tags} onChange={e => setPosField(idx, 'tags', e.target.value)} rows={4}
+                  placeholder="Django, REST API, PostgreSQL" aria-describedby={`position-${pos.id}-tags-help`}
+                  className={`${inputCls('')} min-h-28 resize-y leading-6`} />
+                <p id={`position-${pos.id}-tags-help`} className="mt-1.5 text-[11px] leading-5 text-gray-400 dark:text-gray-500">Separate tags with commas.</p>
               </div>
-            )}
-
-            {saveError && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-4 py-3">
-                <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{saveError}</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
+                <div>
+                  <label htmlFor={`position-${pos.id}-slots`} className="block text-xs font-semibold text-gray-600 dark:text-gray-300">Slots available</label>
+                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Open seats for this role</p>
+                </div>
+                <input id={`position-${pos.id}-slots`} type="number" min="0" value={pos.slots} onChange={e => setPosField(idx, 'slots', e.target.value)}
+                  className="w-24 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
               </div>
-            )}
-          </div>
+            </div>
+          ))}
         </div>
-
-        {/* Footer */}
-        <div className="shrink-0 border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
-            Cancel
+      </details>}
+    </>}
+    location={<>
+      <div>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Address</p>
+          <button type="button" onClick={() => { setChangingAddr(!changingAddr); setAddrErr('') }}
+            className="min-h-9 rounded-lg border border-blue-100 bg-blue-50 px-3 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+            {changingAddr ? 'Keep current address' : 'Change address'}
           </button>
-          <button onClick={handleSubmit} disabled={saving}
-            className="flex-1 py-2.5 text-sm font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl transition-colors">
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
+        </div>
+        {changingAddr ? <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
+          : <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">{currentAddr || 'No address set'}</div>}
+        {geocoding && <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">Finding location on map…</p>}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Map location</p>
+        <p className="mb-3 mt-1 text-xs text-gray-500 dark:text-gray-400">Click the map to place a pin. Drag it to adjust the location.</p>
+        <PinMap center={mapCenter} pinned={pinned} onPin={setPinned} height={300} />
+        <div className="mt-3 flex min-h-9 items-center justify-between gap-3 text-xs">
+          <span className="flex min-w-0 items-center gap-2 text-gray-500 dark:text-gray-400"><LocationIcon size={15} />
+            {pinned ? `${pinned.lat.toFixed(5)}, ${pinned.lng.toFixed(5)}` : 'No pin set. You can save without one.'}
+          </span>
+          {pinned && <button type="button" onClick={() => setPinned(null)} className="shrink-0 rounded-lg px-2 py-2 text-gray-500 hover:bg-gray-100 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-gray-800">Clear pin</button>}
         </div>
       </div>
-    </div>
-  )
+    </>} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -533,9 +476,7 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-            <HomeIcon />
-          </div>
+          <CompanyImage name={company.name} imageUrl={company.image_url} className="w-9 h-9 rounded-xl" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight truncate">{company.name}</p>
             {addr && (
@@ -658,9 +599,7 @@ function CompanyCard({ company, onClick }) {
     <button onClick={onClick}
       className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 active:scale-[0.98] hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md transition-all duration-200 cursor-pointer">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-          <HomeIcon />
-        </div>
+        <CompanyImage name={company.name} imageUrl={company.image_url} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {company.name}
