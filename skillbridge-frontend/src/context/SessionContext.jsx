@@ -10,9 +10,9 @@
 //   - Resets prefetch state
 //   - Closes the SSE connection (useSSE) so it doesn't reconnect after logout
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { logoutSession } from '../api/logout'
+import { logoutSession, resetSessionData } from '../api/logout'
 
 const SessionContext = createContext(null)
 
@@ -21,8 +21,15 @@ export function SessionProvider({ children }) {
   const navigate = useNavigate()
 
   const triggerSessionExpired = useCallback(() => {
+    if (!localStorage.getItem('sb-token')) return
+    resetSessionData()
     setExpired(true)
   }, [])
+
+  useEffect(() => {
+    window.addEventListener('auth:expired', triggerSessionExpired)
+    return () => window.removeEventListener('auth:expired', triggerSessionExpired)
+  }, [triggerSessionExpired])
 
   function handleReLogin() {
     setExpired(false)

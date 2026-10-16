@@ -35,11 +35,17 @@ Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 Authenticated GET views use the shared `useApi` cache, which keeps last-good
 data in memory and session storage for immediate repeat navigation. Mounted
 queries revalidate about every 30 seconds while the tab is visible and when
-the user returns to it; instructor and admin SSE events can refresh them sooner.
-Student assessment status therefore updates on an open page within the polling
-interval. Mutation responses or local state update the acting user's view, then
+the user returns to it. Admin, approved instructor and enrolled/approved student
+SSE streams consume recipient-scoped database invalidations published after
+complete successful operations commit. Streams check the event log about once
+per second; reconnection resynchronizes active live queries. The visible-page
+fallback also handles availability changes caused by time passing. Mutation
+responses or local state update the acting user's view, then
 the affected GETs reconcile with the server. Cache and prefetch state are reset
-at login and logout. The server still decides assessment and placement access.
+at login and logout. Generated reports/comparisons remain explicit snapshots and
+show possible staleness rather than automatically rerunning. The server still
+decides assessment and placement access. See [live data freshness](LIVE_DATA_FRESHNESS.md)
+for the coverage map, transport/configuration, verification and deployment limits.
 
 NLP models are optional and loaded lazily. The implementation has deterministic
 regex preprocessing when optional models are unavailable; record the actual model

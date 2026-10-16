@@ -232,6 +232,11 @@ export default function PlacementsPage({ role = 'admin' }) {
   const [detail, setDetail] = useState(null)
   const [manualRequest, setManualRequest] = useState(null)
   const [reportsOpen, setReportsOpen] = useState(false)
+  // Read-only details follow current scoped suggestions; action forms retain
+  // their drafts and the backend validates them again when submitted.
+  const liveDetail = detail && placement.companies.flatMap(company => company.positions.flatMap(position =>
+    position.suggested_students.map(suggestion => ({ company, position, suggestion }))
+  )).find(item => item.suggestion.recommendation_id === detail.suggestion.recommendation_id)
 
   const approvedPlacements = useMemo(() => placement.placements.filter(item => item.status === 'approved'), [placement.placements])
   const approvedByStudent = useMemo(() => new Map(approvedPlacements.map(item => [item.student.id, item])), [approvedPlacements])
@@ -289,7 +294,7 @@ export default function PlacementsPage({ role = 'admin' }) {
     <div className="min-w-0">
 
       <ActionModal key={action ? `${action.type}-${action.suggestion.recommendation_id}` : 'closed'} action={action} busy={placement.mutating} onClose={() => setAction(null)} onSubmit={submitAction} />
-      <DetailModal detail={detail} onClose={() => setDetail(null)} />
+      <DetailModal detail={liveDetail ?? null} onClose={() => setDetail(null)} />
       {manualRequest && <ManualAssignmentModal students={placement.students} positions={placement.positions} approvedByStudent={approvedByStudent} initialPositionId={manualRequest.positionId} busy={placement.mutating} onClose={() => setManualRequest(null)} onSubmit={placement.manualAssign} />}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">

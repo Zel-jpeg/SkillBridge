@@ -506,3 +506,14 @@ class RecommendationConfiguration(models.Model):
 
     def __str__(self):
         return f'Active recommendation NLP model: {self.get_active_model_display()}'
+
+
+class ChangeEvent(models.Model):
+    """Small recipient-scoped invalidation metadata, never business records."""
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE)
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['recipient', 'id'], name='change_recipient_cursor_idx')]

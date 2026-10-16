@@ -13,9 +13,17 @@ api.interceptors.request.use(config => {
     delete config.headers.Authorization
     return config
   }
-  const token = localStorage.getItem('sb-token')
+  const token = config._sbToken ?? localStorage.getItem('sb-token')
+  config._sbToken = token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
+})
+
+api.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401 && error.config?._sbToken === localStorage.getItem('sb-token') && !isAuthenticationRequest(error.config?.url)) {
+    window.dispatchEvent(new Event('auth:expired'))
+  }
+  return Promise.reject(error)
 })
 
 

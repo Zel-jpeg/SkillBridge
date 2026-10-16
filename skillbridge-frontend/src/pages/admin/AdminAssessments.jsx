@@ -13,13 +13,16 @@ export default function AdminAssessments() {
   const { data, loading, error } = useApi('/api/instructor/assessments/')
   const assessments = useMemo(() => Array.isArray(data) ? data : [], [data])
   const [filters, setFilters] = useState({ search: '', instructor: 'all', batch: 'all', state: 'all', required: 'all', category: 'all', completion: 'all' })
-  const [selected, setSelected] = useState(null)
+  const [selection, setSelected] = useState(null)
+  const selected = assessments.find(item => item.id === selection?.id) ?? null
   const [draft, setDraft] = useState(null)
   const rosterUrl = selected?.batch_id ? `/api/instructor/batches/${selected.batch_id}/students/` : null
-  const { data: rosterData } = useApi(rosterUrl)
+  const { data: rosterData, errorStatus: rosterErrorStatus } = useApi(rosterUrl)
   const roster = rosterData?.students || []
   const [selectedStudent, setSelectedStudent] = useState(null)
-  const [questions, setQuestions] = useState(null)
+  const [questionsVisible, setQuestionsVisible] = useState(false)
+  const { data: questionData } = useApi(selected ? `/api/instructor/assessments/${selected.id}/questions/` : null, { skip: !questionsVisible })
+  const questions = questionsVisible ? questionData?.questions : null
   const [confirm, setConfirm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -28,13 +31,13 @@ export default function AdminAssessments() {
   const categories = [...new Set(assessments.flatMap(a => a.categories || []))].sort()
   const filtered = filterAssessments(assessments, filters)
   useEffect(() => {
-    if (selectedStudent && rosterData) {
+    if (selectedStudent && (rosterData || [403, 404].includes(rosterErrorStatus))) {
       const latest = roster.find(student => student.id === selectedStudent.id)
-      if (latest && latest !== selectedStudent) setSelectedStudent(latest)
+      if (latest !== selectedStudent) setSelectedStudent(latest ?? null)
     }
-  }, [rosterData]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rosterData, rosterErrorStatus]) // eslint-disable-line react-hooks/exhaustive-deps
   const open = assessment => {
-    setSelected(assessment); setSelectedStudent(null); setQuestions(null); setMessage('')
+    setSelected(assessment); setSelectedStudent(null); setQuestionsVisible(false); setMessage('')
     setDraft({ title: assessment.title, duration_minutes: assessment.duration_minutes,
       publication_status: assessment.publication_status, is_required: assessment.is_required,
       include_in_competency: assessment.include_in_competency, display_order: String(assessment.display_order),
@@ -102,7 +105,7 @@ export default function AdminAssessments() {
       <AssessmentSettings value={draft} onChange={setDraft} />
       <p className="text-xs text-gray-500 dark:text-gray-400">Changing a required or included assessment can lock or recalculate final recommendations. Existing attempts and scores remain preserved.</p>
       <button disabled={saving} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setConfirm(true)}>{saving ? 'Saving…' : 'Save metadata'}</button>
-      <section><div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions</h3><button className="text-xs text-green-700 underline dark:text-green-400" onClick={async () => { const res = await api.get(`/api/instructor/assessments/${selected.id}/questions/`); setQuestions(res.data.questions) }}>View authorized answer key</button></div>{questions?.map((q, i) => <p key={q.id} className="border-b border-gray-100 py-2 text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300">{i + 1}. {q.question_text} · {q.category?.name} · Key: {q.choices?.filter(c => c.is_correct).map(c => c.text).join(', ')}</p>)}</section>
+      <section><div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions</h3><button className="text-xs text-green-700 underline dark:text-green-400" onClick={() => setQuestionsVisible(value => !value)}>View authorized answer key</button></div>{questions?.map((q, i) => <p key={q.id} className="border-b border-gray-100 py-2 text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300">{i + 1}. {q.question_text} · {q.category?.name} · Key: {q.choices?.filter(c => c.is_correct).map(c => c.text).join(', ')}</p>)}</section>
       <section><h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Student attempts · {roster.length} assigned</h3>{roster.length === 0 ? <p className="text-xs text-gray-500">No students enrolled.</p> : roster.map(student => <button key={student.id} className="flex w-full flex-wrap justify-between gap-2 border-b border-gray-100 py-2 text-left text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300" onClick={() => setSelectedStudent(student)}><span>{student.name} · {student.school_id}</span><span>{student.completed_required_count}/{student.total_required_count} required · {student.assessment_results?.find(a => a.id === selected.id)?.attempt_status || 'Not started'}</span></button>)}</section>
       {selectedStudent && <section className="border-t border-gray-100 pt-3 dark:border-gray-800"><h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">{selectedStudent.name}</h3><AssessmentStudentDetail student={selectedStudent} onToggleRetake={retake} /></section>}
     </div></div></div>}

@@ -2,7 +2,7 @@ from django.urls import path
 from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
-from .sse import admin_events, instructor_events   # ← SSE views
+from .sse import admin_events, instructor_events, student_events
 
 urlpatterns = [
     path('admin/taxonomy-quality/', taxonomy_quality, name='taxonomy_quality'),
@@ -97,4 +97,5 @@ urlpatterns = [
     # ── Instructor — Real-time SSE ────────────────────────────────────────────
     # Fires when students submit assessments or student roster changes.
     path('instructor/events/', instructor_events, name='instructor_events'),
+    path('student/events/', student_events, name='student_events'),
 ]

@@ -13,9 +13,10 @@
 //   • Call invalidateCache(url) after mutations so the next GET is fresh.
 //
 // ── SSE integration ──────────────────────────────────────────────────────────
-//   • useSSE.js dispatches 'sse:data_changed' CustomEvents on the window.
-//   • Every useApi instance listens for its own URL in that event.
-//   • On match → background re-fetch → setData() → component re-renders.
+//   • useSSE.js applies coalesced topic/path invalidation to the shared store.
+//   • Mounted parameter variants refetch; unmounted entries become stale.
+//   • Cache subscribers update without duplicate per-hook event requests.
+//   • Legacy local mutation URL events remain supported below.
 //
 // Usage — one-time fetch on mount:
 //   const { data, loading, error } = useApi('/api/students/me/')
@@ -28,6 +29,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
 import { createCacheStore } from '../api/cacheStore'
 import { startVisibleRefresh } from '../api/queryRefresh'
+import { invalidateQueries } from '../api/queryInvalidation'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 
@@ -56,10 +58,17 @@ export function getCachedData(url) {
 
 /** Call after mutations to force the next GET to bypass the cache. */
 export function invalidateCache(url) {
+  // URL paths invalidate all parameter variants, including persisted entries.
   cache.invalidate(url)
-  if (cache.hasSubscribers(url) && document.visibilityState === 'visible') {
-    fetchWithDedup(url).catch(() => {})
-  }
+  invalidateQueries(cache, { urls: [url] }, document.visibilityState === 'visible')
+}
+
+/** Apply one coalesced server invalidation to mounted and persisted queries. */
+export function applyDataChange(change) {
+  const urls = invalidateQueries(cache, change, document.visibilityState === 'visible', error => {
+    if (!error.staleIdentity && error.response?.status === 401) window.dispatchEvent(new Event('auth:expired'))
+  })
+  window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { ...change, urls, handled: true } }))
 }
 
 /** Wipe the entire cache — call on logout. */
@@ -104,7 +113,7 @@ function friendlyError(status) {
 // ── Main hook ─────────────────────────────────────────────────────────────────
 export function useApi(url, { skip = false, initialData = null } = {}) {
   const { showToast }             = useToast()
-  const { triggerSessionExpired } = useSession()
+  const { triggerSessionExpired, expired } = useSession()
 
   // ── Seed state from cache (in-memory → sessionStorage → null) ────────────
   const seed = url && !skip ? cache.read(url) : null
@@ -117,15 +126,20 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
   })), [url])
   const [loading, setLoading] = useState(!!url && !skip && !seed && !initialData)
   const [error,   setError]   = useState(null)
+  const [errorStatus, setErrorStatus] = useState(null)
 
   useEffect(() => {
-    if (!url || skip) return
-    return cache.subscribe(url, value => setResult({ url, data: value }))
-  }, [url, skip])
+    if (!url || skip || expired) return
+    return cache.subscribe(url, (value, err) => {
+      setResult({ url, data: value })
+      setError(err ? friendlyError(err.response?.status) : null)
+      setErrorStatus(err?.response?.status ?? null)
+    })
+  }, [url, skip, expired])
 
   // ── Auto-fetch on mount ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!url || skip) return
+    if (!url || skip || expired) return
     let cancelled = false
 
     const entry = cache.read(url)
@@ -159,7 +173,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
         setError(null)
       })
       .catch(err => {
-        if (cancelled) return
+        if (cancelled || err.staleIdentity) return
         setLoading(false)
         const status = err.response?.status
 
@@ -176,44 +190,45 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       })
 
     return () => { cancelled = true }
-  }, [url, skip]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [url, skip, expired]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SSE-triggered re-fetch ───────────────────────────────────────────────
   // useSSE.js dispatches 'sse:data_changed' when the server reports a change.
   // If this hook's URL is in the invalidated list → silent background re-fetch.
   useEffect(() => {
-    if (!url || skip) return
+    if (!url || skip || expired) return
 
     const handler = (event) => {
       const urls = event.detail?.urls
-      if (!Array.isArray(urls) || !urls.includes(url)) return
+      if (event.detail?.handled || !Array.isArray(urls) || !urls.includes(url)) return
 
       // Cache was already invalidated by useSSE — just re-fetch silently
       fetchWithDedup(url)
-        .catch(err => { if (err.response?.status === 401) triggerSessionExpired() })
+        .catch(err => { if (!err.staleIdentity && err.response?.status === 401) triggerSessionExpired() })
     }
 
     window.addEventListener('sse:data_changed', handler)
     return () => window.removeEventListener('sse:data_changed', handler)
-  }, [url, skip, triggerSessionExpired])
+  }, [url, skip, expired, triggerSessionExpired])
 
   // Mounted queries alone refresh. Hidden tabs neither poll nor start return
   // requests until visible again; the store deduplicates all other triggers.
   useEffect(() => {
-    if (!url || skip) return
+    if (!url || skip || expired) return
     return startVisibleRefresh(url, {
       documentTarget: document,
       windowTarget: window,
       read: key => cache.read(key),
       revalidate: key => {
-        fetchWithDedup(key).catch(err => { if (err.response?.status === 401) triggerSessionExpired() })
+        fetchWithDedup(key).catch(err => { if (!err.staleIdentity && err.response?.status === 401) triggerSessionExpired() })
       },
       intervalMs: CACHE_TTL,
     })
-  }, [url, skip, triggerSessionExpired])
+  }, [url, skip, expired, triggerSessionExpired])
 
   // ── Manual trigger (POST, PATCH, DELETE) ─────────────────────────────────
   const request = useCallback(async (method, endpoint, payload, { silentError = false } = {}) => {
+    const requestToken = localStorage.getItem('sb-token')
     if (!url || !cache.read(url)) setLoading(true)
     setError(null)
     try {
@@ -225,7 +240,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       const status = err.response?.status
 
       if (status === 401) {
-        triggerSessionExpired()
+        if (requestToken === localStorage.getItem('sb-token')) triggerSessionExpired()
         return { ok: false, status }
       }
 
@@ -236,5 +251,5 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
     }
   }, [showToast, triggerSessionExpired, url])
 
-  return { data, loading, error, request, setData }
+  return { data, loading, error, errorStatus, request, setData }
 }

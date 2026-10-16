@@ -3,7 +3,7 @@
 // Final combined skill profile and company matches.
 // GET /api/student/results/combined/ is the source of final scores and lock state.
 //
-// If student has pinned their location (sb_pin_location in localStorage):
+// If the student's shared profile has a pinned location:
 //   - Map shows student pin (blue) + company pins (green)
 //   - Distance in km on each card
 //   - Sort modes: Best Match | Nearest | Combined
@@ -90,6 +90,9 @@ function makeStudentIcon(L) {
 function ResultsMap({ companies, studentPin }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
+  const [ready, setReady] = useState(false)
+  const framed = useRef(false)
+  const openMarker = useRef(null)
 
   useEffect(() => {
     let alive = true
@@ -104,46 +107,8 @@ function ResultsMap({ companies, studentPin }) {
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 300)
 
-      const allMarkers = []
-
-      // Company pins — add in reverse so top match renders last (on top)
-      const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
-      ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
-        if (co.lat == null) return
-        const isTopMatch = idx === 0
-        // co.distKm is pre-computed by useStudentResults hook (no haversineKm needed here)
-        const dist    = co.distKm ?? null
-        const distTxt = dist != null ? `<span style="color:#2563eb;font-weight:600">${dist.toFixed(1)} km away</span>` : ''
-        const mk = L.marker([co.lat, co.lng], {
-          icon: makeCompanyIcon(L, co.company, isTopMatch),
-          zIndexOffset: isTopMatch ? 1000 : idx * -10,
-        })
-          .addTo(map)
-          .bindPopup(`
-            <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-              <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${co.company}</p>
-              <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
-              <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${co.match}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
-            </div>`)
-        allMarkers.push(mk)
-      })
-
-      // Student pin
-      if (studentPin) {
-        const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
-          .addTo(map)
-          .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
-        allMarkers.push(mk)
-      }
-
-      // Fit all markers
-      if (allMarkers.length > 1) {
-        map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
-      } else if (allMarkers.length === 1) {
-        map.setView(allMarkers[0].getLatLng(), 13)
-      }
-
       mapRef.current = map
+      setReady(true)
 
       // ── Resize observer: force Leaflet to recalculate when container changes ──
       if (typeof ResizeObserver !== 'undefined') {
@@ -159,6 +124,59 @@ function ResultsMap({ companies, studentPin }) {
       mapRef.current = null
     }
   }, []) // intentional
+  useEffect(() => {
+    if (!ready || !mapRef.current || !window.L) return
+    const map = mapRef.current
+    const L = window.L
+    const allMarkers = []
+
+    // Company pins — add in reverse so top match renders last (on top)
+    const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
+    ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
+      if (co.lat == null) return
+      const isTopMatch = idx === 0
+      // co.distKm is pre-computed by useStudentResults hook (no haversineKm needed here)
+      const dist    = co.distKm ?? null
+      const distTxt = dist != null ? `<span style="color:#2563eb;font-weight:600">${dist.toFixed(1)} km away</span>` : ''
+      const mk = L.marker([co.lat, co.lng], {
+        icon: makeCompanyIcon(L, co.company, isTopMatch),
+        zIndexOffset: isTopMatch ? 1000 : idx * -10,
+      })
+        .addTo(map)
+        .bindPopup(`
+          <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${co.company}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
+            <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${co.match}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
+          </div>`)
+      mk._freshnessKey = `company:${co.id ?? idx}`
+      if (openMarker.current === mk._freshnessKey) mk.openPopup()
+      allMarkers.push(mk)
+    })
+
+    // Student pin
+    if (studentPin) {
+      const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
+      mk._freshnessKey = 'student'
+      if (openMarker.current === 'student') mk.openPopup()
+      allMarkers.push(mk)
+    }
+
+    // Fit all markers
+    if (!framed.current && allMarkers.length > 1) {
+      map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
+    } else if (!framed.current && allMarkers.length === 1) {
+      map.setView(allMarkers[0].getLatLng(), 13)
+    }
+    if (allMarkers.length) framed.current = true
+    return () => {
+      openMarker.current = allMarkers.find(marker => marker.isPopupOpen())?._freshnessKey ?? null
+      allMarkers.forEach(marker => marker.remove())
+    }
+  }, [ready, companies, studentPin])
+
 
   return (
     <div className="w-full relative" style={{ paddingBottom: 'clamp(280px, 45vw, 460px)', minHeight: 280 }}>
@@ -296,7 +314,7 @@ export default function StudentResults() {
               {resultsLoading && !sorted.length ? (
                 <div className="w-full h-full bg-gray-50 dark:bg-gray-800 animate-pulse rounded-xl" style={{ minHeight: 280 }} />
               ) : (
-                <ResultsMap key={`${sortMode}-${sorted.map(c => c.id).join('-')}`} companies={sorted} studentPin={studentPin} />
+                <ResultsMap key={sortMode} companies={sorted} studentPin={studentPin} />
               )}
             </div>
           </div>

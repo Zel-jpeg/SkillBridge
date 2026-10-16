@@ -78,7 +78,8 @@ export function useAdminDashboard() {
     return list
   }, [students, search, filterStatus])
 
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+  const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
 
   const stats = {
     total_students:       statsData?.total_students       ?? 0,
@@ -107,7 +108,7 @@ export function useAdminDashboard() {
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
     view, setView,
-    page, setPage,
+    page: visiblePage, setPage,
     filtered,
     paginated,
     PAGE_SIZE,

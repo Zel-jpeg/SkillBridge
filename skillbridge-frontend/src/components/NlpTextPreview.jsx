@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import api from '../api/axios'
+import { useApi } from '../hooks/useApi'
 
 export function GeneratedText({ label, text, note }) {
   // Presentation only: keep the exact supplied input available below. Never
@@ -42,23 +42,10 @@ export function GeneratedText({ label, text, note }) {
 }
 
 export default function NlpTextPreview({ studentId, positionId }) {
-  const [data, setData] = useState(null)
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  async function toggle() {
-    if (open) { setOpen(false); return }
-    setOpen(true)
-    setBusy(true)
-    setError('')
-    setData(null)
-    try {
-      const url = studentId ? `/api/nlp/students/${studentId}/text/` : `/api/nlp/positions/${positionId}/text/`
-      const response = await api.get(url)
-      setData(response.data)
-    } catch (err) { setError(err.response?.data?.error || 'Could not load generated text.') }
-    finally { setBusy(false) }
-  }
+  const url = studentId ? `/api/nlp/students/${studentId}/text/` : `/api/nlp/positions/${positionId}/text/`
+  const { data, loading: busy, error } = useApi(url, { skip: !open })
+  function toggle() { setOpen(value => !value) }
   return <div className="my-2 min-w-0">
     <button type="button" onClick={toggle} disabled={busy} aria-expanded={open}
       className="text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline disabled:opacity-50">

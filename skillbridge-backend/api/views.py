@@ -26,6 +26,7 @@ from .models import (
     Company, Position, PositionRequirement, Recommendation, OJTPlacement,
     RecommendationConfiguration,
 )
+from .change_events import category_created, notify_changes
 from .serializers import UserSerializer
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
@@ -538,6 +539,7 @@ def me(request):
 # ── POST /api/auth/google/ ────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@notify_changes('identity')
 def google_login(request):
     access_token = request.data.get('token')
     if not access_token:
@@ -590,6 +592,7 @@ def google_login(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@notify_changes('identity')
 def register_role(request):
     access_token = request.data.get('token')
     role = request.data.get('role', '').strip().lower()
@@ -652,6 +655,7 @@ def register_role(request):
 # ── PATCH /api/students/me/profile/ ──────────────────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
+@notify_changes('student')
 def student_profile(request):
     user = request.user
     if user.role != 'student':
@@ -759,6 +763,7 @@ def student_me(request):
 # ── GET /api/categories/   POST /api/categories/ ─────────────────
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('taxonomy')
 def categories(request):
     if request.method == 'GET':
         cats = SkillCategory.objects.all().order_by('name')
@@ -853,6 +858,7 @@ def _nlp_config_payload(config, include_status=False):
 
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
+@notify_changes('configuration')
 def admin_nlp_configuration(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -878,6 +884,7 @@ def admin_nlp_configuration(request):
 # ── GET /api/instructor/batches/   POST /api/instructor/batches/ ─
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('batch')
 def instructor_batches(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -949,6 +956,7 @@ def instructor_batch_enroll_preview(request, batch_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('batch')
 def instructor_batch_enroll(request, batch_id):
     return _enrollment_request(request, batch_id)
 
@@ -956,6 +964,7 @@ def instructor_batch_enroll(request, batch_id):
 # ── POST /api/instructor/batches/{id}/archive/ ───────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('batch')
 def instructor_batch_archive(request, batch_id):
     """Mark a batch as archived (read-only). Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -975,6 +984,7 @@ def instructor_batch_archive(request, batch_id):
 # ── POST /api/instructor/batches/{id}/unarchive/ ─────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('batch')
 def instructor_batch_unarchive(request, batch_id):
     """Mark a batch as active. Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -994,6 +1004,7 @@ def instructor_batch_unarchive(request, batch_id):
 # ── PATCH /api/instructor/students/{id}/retake/ ──────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
+@notify_changes('attempt')
 def instructor_student_retake(request, student_id):
     """Approve a specific attempt; legacy omission works only when unambiguous."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1036,6 +1047,7 @@ def instructor_student_retake(request, student_id):
 # ── DELETE /api/instructor/students/{id}/ ────────────────────────
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@notify_changes('student')
 def instructor_student_remove(request, student_id):
     """Unenroll a student from all of this instructor's batches."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1352,6 +1364,7 @@ def management_assessment_reports(request):
 # ── GET /api/instructor/assessments/   POST /api/instructor/assessments/ ─
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('assessment')
 def instructor_assessments(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1495,10 +1508,11 @@ def instructor_assessments(request):
         # Auto-create category if needed
         cat = None
         if cat_name:
-            cat, _ = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
+            category_created(cat_created)
 
         question = Question.objects.create(
             assessment=assessment,
@@ -1543,6 +1557,7 @@ def instructor_assessments(request):
 # ── PATCH /api/instructor/assessments/{id}/ ──────────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
+@notify_changes('assessment')
 def instructor_assessment_detail(request, assessment_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1680,6 +1695,7 @@ def instructor_assessment_questions(request, assessment_id):
 # ── POST /api/instructor/assessments/{id}/questions/add/ ──────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('question')
 def instructor_assessment_add_questions(request, assessment_id):
     """
     Append new questions (from a parsed file upload) to an existing assessment.
@@ -1760,10 +1776,11 @@ def instructor_assessment_add_questions(request, assessment_id):
         # Auto-create category if needed (same pattern as assessment creation)
         cat = None
         if cat_name:
-            cat, _ = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
+            category_created(cat_created)
  
         question = Question.objects.create(
             assessment=assessment,
@@ -1804,6 +1821,7 @@ def instructor_assessment_add_questions(request, assessment_id):
 # ── PATCH / DELETE  /api/instructor/questions/{id}/ ──────────────────────────
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@notify_changes('question')
 def instructor_question_detail(request, question_id):
     """
     PATCH  → update question text, type, choices, category.
@@ -1868,10 +1886,11 @@ def instructor_question_detail(request, question_id):
     if 'category' in data:
         cat_name = (data['category'] or '').strip()
         if cat_name:
-            cat, _ = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
+            category_created(cat_created)
             question.skill_category = cat
         else:
             question.skill_category = None
@@ -2052,6 +2071,7 @@ def assessment_active(request):
 # ── POST /api/assessments/{id}/start/ ────────────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('attempt')
 def assessment_start(request, assessment_id):
     """
     Called when the student loads the first question.
@@ -2171,6 +2191,7 @@ def assessment_start(request, assessment_id):
 # ── POST /api/assessments/{id}/submit/ ───────────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('attempt')
 def assessment_submit(request, assessment_id):
     """
     Grade all answers, write SkillScore rows, generate recommendations.
@@ -2234,6 +2255,7 @@ def assessment_submit(request, assessment_id):
 # ── POST /api/assessments/{id}/stop/ ──────────────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('attempt')
 def assessment_stop(request, assessment_id):
     """Finalize an attempt after the first browser integrity rule is triggered."""
     from .scoring import score_submission
@@ -2531,6 +2553,7 @@ def instructor_companies(request):
 # ── PATCH /api/instructor/companies/<co_id>/ ────────────────────────
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
+@notify_changes('catalog')
 def instructor_company_edit(request, co_id):
     """
     Allows instructors to edit company info and position details.
@@ -3115,6 +3138,7 @@ def admin_users(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('users')
 def admin_instructors(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3179,6 +3203,7 @@ def admin_instructors(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('users')
 def admin_approve_instructor(request, user_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3215,6 +3240,7 @@ def admin_approve_instructor(request, user_id):
 # ── GET /api/admin/companies/   POST /api/admin/companies/ ────────
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('catalog')
 def admin_companies(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3273,6 +3299,7 @@ def admin_companies(request):
 # Replace the existing admin_company_detail function (was DELETE-only)
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@notify_changes('catalog')
 def admin_company_detail(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3322,6 +3349,7 @@ def admin_company_detail(request, company_id):
 # ── POST /api/admin/companies/{id}/positions/ ─────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('catalog')
 def admin_company_positions(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3391,6 +3419,7 @@ def _rerun_recommendations_for_all_students():
 # ── POST /api/admin/rerun-recommendations/ ────────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('recommendations')
 def admin_rerun_recommendations(request):
     """
     Manually re-run recommendation scoring for ALL students who have
@@ -3426,6 +3455,7 @@ def admin_rerun_recommendations(request):
 # Replace the existing admin_position_detail function (was DELETE-only)
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@notify_changes('catalog')
 def admin_position_detail(request, position_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3507,6 +3537,7 @@ def admin_position_detail(request, position_id):
 # ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('taxonomy')
 def admin_skills(request):
     if request.user.role != 'admin':
         return Response({'error': 'Forbidden'}, status=403)
@@ -3538,6 +3569,7 @@ def admin_skills(request):
 # ── PUT/DELETE /api/admin/skills/<id>/ ────────────────────────────────────
 @api_view(['PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@notify_changes('taxonomy')
 def admin_skill_detail(request, skill_id):
     if request.user.role != 'admin':
         return Response({'error': 'Forbidden'}, status=403)
@@ -4046,6 +4078,7 @@ def placement_suggestions(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('placement')
 def placement_approve(request):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -4237,18 +4270,21 @@ def _change_placement_status(request, new_status):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('placement')
 def placement_remove(request):
     return _change_placement_status(request, OJTPlacement.STATUS_REMOVED)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('placement')
 def placement_reject(request):
     return _change_placement_status(request, OJTPlacement.STATUS_REJECTED)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@notify_changes('placement')
 def placement_manual_assign(request):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)

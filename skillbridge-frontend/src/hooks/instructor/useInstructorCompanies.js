@@ -9,15 +9,13 @@
 
 import { useState, useCallback } from 'react'
 import api from '../../api/axios'
-import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
+import { useApi, invalidateCache, fetchWithDedup, updateCachedData } from '../useApi'
 
 const URL = '/api/instructor/companies/'
 
 export function useInstructorCompanies() {
   const { data: raw, loading } = useApi(URL)
-  const [localData, setLocalData] = useState(null)
-
-  const companies = localData ?? raw ?? []
+  const companies = raw ?? []
 
   // ── Edit state ─────────────────────────────────────────────────────
   const [editing,   setEditing]   = useState(null)   // Company object
@@ -56,7 +54,7 @@ export function useInstructorCompanies() {
       await api.patch(`/api/instructor/companies/${editing.id}/`, payload)
 
       // Optimistic local update for instant feedback
-      setLocalData(prev => (prev ?? raw ?? []).map(co =>
+      updateCachedData(URL, (raw ?? []).map(co =>
         co.id !== editing.id ? co : {
           ...co,
           name:    payload.name,
@@ -73,10 +71,7 @@ export function useInstructorCompanies() {
       // Invalidate + re-fetch so the cache has fresh data for the next navigation
       invalidateCache(URL)
       try {
-        const fresh = await fetchWithDedup(URL)
-        if (fresh.data) {
-          setLocalData(null)          // let the cache drive data from here
-        }
+        await fetchWithDedup(URL)
       } catch { /* keep optimistic data if re-fetch fails */ }
 
       showToast(`${payload.name} updated`)
@@ -89,7 +84,7 @@ export function useInstructorCompanies() {
   }, [editing, raw])
 
   return {
-    companies: filtered,
+    companies: filtered, allCompanies: companies,
     allCount:  companies.length,
     loading,
     // Search

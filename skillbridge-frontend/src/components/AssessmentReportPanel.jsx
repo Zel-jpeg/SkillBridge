@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '../api/axios'
 import { useApi } from '../hooks/useApi'
+import { useSnapshotFreshness } from '../hooks/useSnapshotFreshness'
 import { manilaDateTime } from '../utils/assessmentDates'
 import { buildAssessmentReportPdf } from '../utils/assessmentReportPdf'
 
@@ -19,10 +20,12 @@ export default function AssessmentReportPanel() {
   const [payload, setPayload] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const freshness = useSnapshotFreshness(['students', 'batches', 'assessments', 'results', 'placements', 'taxonomy', 'catalog'])
   const params = () => ({ type: kind, ...(batch && { batch_id: batch }), ...(assessment && { assessment_id: assessment }), ...(student && { student_id: student }) })
   const generate = async () => {
     setBusy(true); setError('')
-    try { setPayload((await api.get('/api/management/assessment-reports/', { params: params() })).data) }
+    const revision = freshness.begin()
+    try { setPayload((await api.get('/api/management/assessment-reports/', { params: params() })).data); freshness.complete(revision) }
     catch (err) { setError(err.response?.data?.error || 'Report could not be generated.') }
     finally { setBusy(false) }
   }
@@ -61,6 +64,7 @@ export default function AssessmentReportPanel() {
       <button disabled={busy || !payload} className="rounded-lg border border-green-600 px-4 py-2 text-sm font-semibold text-green-700 disabled:opacity-50 dark:text-green-400" onClick={pdf}>Download PDF</button>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-rose-700 dark:text-rose-400">{error}</p>}
+    {payload && freshness.stale && <p role="status" className="mt-3 text-sm text-amber-700 dark:text-amber-400">Underlying data may have changed. This report still shows its generated snapshot. <button type="button" onClick={generate} disabled={busy} className="underline">Regenerate report</button></p>}
     {payload && <div className="mt-4"><p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Generated {manilaDateTime(payload.generated_at)} · {payload.rows.length} records</p>{payload.rows.length === 0 ? <p className="text-sm text-gray-500">No records match the selected filters.</p> : <div className="max-h-72 overflow-auto"><table className="min-w-[650px] w-full text-left text-xs text-gray-700 dark:text-gray-300"><thead className="sticky top-0 bg-gray-100 dark:bg-gray-800"><tr>{kind === 'assessment_completion' ? ['Assessment', 'Batch', 'Assigned', 'Submitted', 'In progress', 'Not started', 'Stopped/flagged', 'Completion'].map(h => <th key={h} className="p-2">{h}</th>) : ['Student', 'Batch', 'Progress', 'Recommendations', 'Assessments'].map(h => <th key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{payload.rows.map((r, i) => <tr key={i} className="border-t border-gray-100 dark:border-gray-800">{kind === 'assessment_completion' ? [r.assessment, r.batch, r.assigned, r.submitted, r.in_progress, r.not_started, r.stopped_or_flagged, `${r.completion_percentage}%`].map((v, j) => <td key={j} className="p-2">{v}</td>) : [r.student, r.batch, `${r.completed_required_count}/${r.total_required_count}`, r.recommendations_locked ? 'Locked' : 'Unlocked', r.assessments.map(a => `${a.title}: ${a.status}`).join(' · ')].map((v, j) => <td key={j} className="p-2">{v}</td>)}</tr>)}</tbody></table></div>}</div>}
   </section>
 }

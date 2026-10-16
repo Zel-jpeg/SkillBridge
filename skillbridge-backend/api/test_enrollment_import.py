@@ -200,7 +200,8 @@ console.log(JSON.stringify(parseWorkbook(book)));
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             response = self.confirm()
             mail.assert_not_called()
-        self.assertEqual(len(callbacks), 1)
+        # One email callback and one coalesced data-change publication.
+        self.assertEqual(len(callbacks), 2)
         mail.assert_called_once()
         student = User.objects.get(school_id='2026-01982')
         self.assertIsInstance(student.pk, int)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import api from '../../api/axios'
 import { GeneratedText } from '../NlpTextPreview'
 import TaxonomyQuality, { TaxonomyWarnings } from './TaxonomyQuality'
+import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
 
 const modes = { evaluation_dataset: 'Prepared evaluation dataset', real_placement_data: 'Real placement data' }
 const metrics = [['top1_accuracy', 'Top-1 accuracy'], ['top3_accuracy', 'Top-3 accuracy'],
@@ -12,14 +13,17 @@ export default function NlpModelComparison() {
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const freshness = useSnapshotFreshness(['taxonomy', 'catalog', 'placements', 'results', 'configuration'])
 
   async function run() {
     setBusy(true)
     setError('')
     setResult(null)
+    const revision = freshness.begin()
     try {
       const { data } = await api.post('/api/admin/nlp-model-comparison/', { mode })
       setResult(data)
+      freshness.complete(revision)
     } catch (err) {
       setError(err.response?.data?.error || 'Comparison could not finish. Check the backend connection and try again.')
     } finally { setBusy(false) }
@@ -51,6 +55,7 @@ export default function NlpModelComparison() {
     <div aria-live="polite" aria-busy={busy}>
       {busy && <p className="text-sm text-violet-600 dark:text-violet-300">Loading local models and evaluating cases. The first run can take longer.</p>}
       {error && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{error}</p>}
+      {result && freshness.stale && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">Inputs may have changed since this comparison. Use Run comparison to regenerate; saved recommendations are unchanged by this preview.</p>}
       {result && <div className="space-y-3">
         <p className="text-xs text-gray-600 dark:text-gray-300">{modes[result.mode]} · {result.ranking} · {result.case_count} cases · {result.position_count} positions · {new Date(result.evaluated_at).toLocaleString()}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">{result.dataset.description}</p>

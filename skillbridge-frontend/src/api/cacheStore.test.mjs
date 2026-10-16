@@ -79,3 +79,47 @@ test('account changes clear persisted data and discard in-flight responses', asy
   assert.equal(cache.read('/api/students/me/'), null)
   assert.equal(session.getItem('sb_api_/api/students/me/'), null)
 })
+
+test('events during an in-flight GET serialize one fresh follow-up without losing invalidations', async () => {
+  const old = deferred(), fresh = deferred(), newest = deferred()
+  const responses = [old, fresh, newest]
+  let calls = 0
+  const cache = createCacheStore(() => responses[calls++].promise, storage(), () => 'admin:1')
+  cache.publish('/api/admin/users/', ['last good'])
+  const first = cache.fetch('/api/admin/users/')
+  cache.invalidate('/api/admin/users/')
+  cache.invalidate('/api/admin/users/')
+  assert.equal(cache.fetch('/api/admin/users/'), first)
+  assert.equal(calls, 1)
+  old.resolve({ data: ['obsolete'] }); await Promise.resolve(); await Promise.resolve()
+  assert.equal(calls, 2)
+  assert.deepEqual(cache.read('/api/admin/users/').data, ['last good'])
+  cache.invalidate('/api/admin/users/')
+  fresh.resolve({ data: ['also obsolete'] }); await Promise.resolve(); await Promise.resolve()
+  assert.equal(calls, 3)
+  newest.resolve({ data: ['newest'] })
+  await first
+  assert.deepEqual(cache.read('/api/admin/users/').data, ['newest'])
+})
+
+test('definitive loss of access clears cached and subscribed read-only data', async () => {
+  const cache = createCacheStore(async () => { throw { response: { status: 404 } } }, storage(), () => 'student:1')
+  const url = '/api/student/results/?assessment_id=1'
+  cache.publish(url, { assessment: { id: 1 } })
+  let selected
+  cache.subscribe(url, value => { selected = value })
+  await assert.rejects(cache.fetch(url))
+  assert.equal(cache.read(url), null)
+  assert.equal(selected, null)
+})
+
+test('late errors from the previous identity are marked obsolete', async () => {
+  const pending = deferred()
+  let user = 'student:1'
+  const cache = createCacheStore(() => pending.promise, storage(), () => user)
+  const prior = cache.fetch('/api/students/me/')
+  user = 'student:2'
+  pending.reject({ response: { status: 401 } })
+  await assert.rejects(prior, error => error.staleIdentity === true)
+  assert.equal(cache.read('/api/students/me/'), null)
+})

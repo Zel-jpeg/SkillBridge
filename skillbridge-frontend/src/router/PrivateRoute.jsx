@@ -17,6 +17,13 @@
 // Public routes (login pages) need NO wrapper.
 
 import { Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { startSSE, closeSSE } from '../hooks/useSSE'
+
+function LiveSession({ children }) {
+  useEffect(() => { startSSE(); return closeSSE }, [])
+  return children
+}
 
 const ROLE_REDIRECTS = {
   admin:      '/admin/login',
@@ -40,5 +47,5 @@ export default function PrivateRoute({ children, role }) {
     return <Navigate to={loginPage} replace />
   }
 
-  return children
+  return <LiveSession key={`${userRole}:${token}`}>{children}</LiveSession>
 }

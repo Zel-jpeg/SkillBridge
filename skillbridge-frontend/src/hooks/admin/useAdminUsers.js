@@ -135,12 +135,19 @@ export function useAdminUsers() {
     if (selectedUserType === 'instructor') {
       const fresh = instructors.find(i => i.id === selectedUser.id)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (fresh) setSelectedUser(fresh)
+      setSelectedUser(fresh ?? null)
     } else {
       const fresh = studentsList.find(s => s.id === selectedUser.id)
-      if (fresh) setSelectedUser(fresh)
+      setSelectedUser(fresh ?? null)
     }
   }, [studentsList, instructors]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedPending) return
+    // Pending detail is read-only; another admin may have approved the account.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedPending(pendingInstructors.find(item => item.id === selectedPending.id) ?? null)
+  }, [pendingInstructors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ───────────────────────────────────────────────────────
 
@@ -309,7 +316,8 @@ export function useAdminUsers() {
     sortCol, sortDir, studentsList, instructors, pendingInstructors, activeTab,
   ])
 
-  const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+  const displayed = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
 
   const counts = {
     all:         [...studentsList, ...instructors].filter(u => !u.archived).length,
@@ -335,7 +343,7 @@ export function useAdminUsers() {
     filterCourse, setFilterCourse: (v) => { setFilterCourse(v); setPage(1) },
     filterInstructor, setFilterInstructor: (v) => { setFilterInstr(v); setPage(1) },
     sortCol, sortDir, toggleSort,
-    page, setPage,
+    page: visiblePage, setPage,
     view, setView,
     filtered, displayed, counts, instructorsList,
     PAGE_SIZE,

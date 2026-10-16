@@ -47,7 +47,12 @@ function readPin() {
 export function useStudentResults() {
   const { data, loading, error } = useApi(RESULTS_URL)
 
-  const studentPin = useMemo(() => readPin(), [])
+  const { data: student } = useApi('/api/students/me/')
+  const studentPin = useMemo(() => {
+    if (!student) return readPin()
+    const lat = student.address?.pinLat, lng = student.address?.pinLng
+    return lat != null && lng != null ? { lat, lng } : null
+  }, [student])
   const hasPin     = studentPin != null
 
   const [sortMode, setSortMode] = useState('match')

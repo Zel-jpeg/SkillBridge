@@ -62,7 +62,6 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
   function invalidate(url) {
     ensureOwner()
     versions.set(url, (versions.get(url) ?? 0) + 1)
-    inflight.delete(url)
     const entry = read(url)
     if (entry) {
       const stale = { ...entry, fetchedAt: 0 }
@@ -74,6 +73,17 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
   function clear() {
     clearEntries()
     owner = null
+    listeners.forEach(callbacks => callbacks.forEach(callback => callback(null)))
+  }
+
+  function urls() {
+    ensureOwner()
+    const keys = new Set([...cache.keys(), ...listeners.keys(), ...inflight.keys()])
+    try {
+      Object.keys(storage).filter(key => key.startsWith(prefix) && key !== ownerKey)
+        .forEach(key => keys.add(key.slice(prefix.length)))
+    } catch { /* In-memory entries remain available. */ }
+    return [...keys]
   }
 
   function subscribe(url, callback) {
@@ -101,8 +111,31 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
       ensureOwner()
       if (owner === currentOwner && epoch === currentEpoch && (versions.get(url) ?? 0) === version) {
         publish(url, response.data)
+      } else if (owner === currentOwner && epoch === currentEpoch && inflight.get(url) === promise) {
+        // An event arrived during this GET. Discard its result and serialize
+        // one follow-up GET; every caller continues to share the same promise.
+        inflight.delete(url)
+        return fetch(url)
       }
       return response
+    }).catch(error => {
+      ensureOwner()
+      if ((owner !== currentOwner || epoch !== currentEpoch) && error && typeof error === 'object') {
+        error.staleIdentity = true
+      }
+      if (owner === currentOwner && epoch === currentEpoch && inflight.get(url) === promise) {
+        if ((versions.get(url) ?? 0) !== version) {
+          inflight.delete(url)
+          return fetch(url)
+        }
+        if ([403, 404].includes(error.response?.status)) {
+          // Access loss/deletion is definitive, unlike a transient failure.
+          cache.delete(url)
+          try { storage.removeItem(prefix + url) } catch { /* Storage unavailable. */ }
+          listeners.get(url)?.forEach(callback => callback(null, error))
+        }
+      }
+      throw error
     }).finally(() => {
       if (inflight.get(url) === promise) inflight.delete(url)
     })
@@ -110,5 +143,5 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
     return promise
   }
 
-  return { read, publish, invalidate, clear, subscribe, hasSubscribers, fetch }
+  return { read, publish, invalidate, clear, subscribe, hasSubscribers, fetch, urls }
 }

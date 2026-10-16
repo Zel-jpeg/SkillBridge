@@ -54,6 +54,7 @@ def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids
 def recalculate_combined(student, batch):
     """Replace current batch totals from assessment rows, then rank if unlocked."""
     from .scoring import generate_combined_recommendations
+    from .change_events import combined_changed
 
     progress = required_progress(student, batch)
     included_ids, assessment_scores = eligible_evidence(student, batch)
@@ -101,6 +102,7 @@ def recalculate_combined(student, batch):
 
     if not ready:
         Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
+        combined_changed(student, batch)
         return profile, progress, []
 
     categories = list(SkillCategory.objects.all().order_by('id'))
@@ -111,6 +113,7 @@ def recalculate_combined(student, batch):
     profile.finalized_at = timezone.now()
     profile.model_used = recommendations[0]['model_used'] if recommendations else requested_model
     profile.save(update_fields=['is_finalized', 'finalized_at', 'model_used', 'generated_at'])
+    combined_changed(student, batch)
     return profile, progress, recommendations
 
 

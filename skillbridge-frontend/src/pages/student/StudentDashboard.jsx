@@ -5,9 +5,9 @@
 //   - hasTakenAssessment now comes from API has_submitted field
 //   - retakeAllowed now comes from API retake_allowed field
 //   - Shows a loading skeleton while the API call is in flight
-//   - studentPin still read from localStorage (set during profile setup)
+//   - studentPin follows the shared student profile (local fallback during load)
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
@@ -98,6 +98,10 @@ function makeStudentIcon(L) {
 function NearbyMap({ companies, studentPin, initialCenter }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
+  const [ready, setReady] = useState(false)
+  const framed = useRef(false)
+  const openMarker = useRef(null)
+  const initialView = useRef(initialCenter)
 
   useEffect(() => {
     let alive = true
@@ -105,10 +109,10 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
       if (!alive || !elRef.current || mapRef.current) return
 
       // Center on student's pinned location if available, otherwise Panabo City
-      const center = initialCenter
-        ? [initialCenter.lat, initialCenter.lng]
+      const center = initialView.current
+        ? [initialView.current.lat, initialView.current.lng]
         : [7.3072, 125.6839]
-      const zoom = initialCenter ? 13 : 11
+      const zoom = initialView.current ? 13 : 11
 
       const map = L.map(elRef.current).setView(center, zoom)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -118,47 +122,8 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 150)
 
-      const allMarkers = []
-
-      // Company pins — add in reverse so top match (highest rank) renders last = on top
-      const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
-      ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
-        if (co.lat == null) return
-        const isTopMatch = idx === 0
-        const distTxt = studentPin
-          ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
-          : ''
-        const mk = L.marker([co.lat, co.lng], {
-          icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
-          zIndexOffset: isTopMatch ? 1000 : idx * -10,
-        })
-          .addTo(map)
-          .bindPopup(`
-            <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
-              <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.company ?? co.name ?? 'Company'}</p>
-              <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
-              <div style="display:flex;gap:8px;font-size:11px;margin:0">
-                <span style="color:#16a34a;font-weight:600">${co.match}% match</span>
-                ${distTxt ? '· ' + distTxt : ''}
-              </div>
-            </div>`)
-        allMarkers.push(mk)
-      })
-
-      if (studentPin) {
-        const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
-          .addTo(map)
-          .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
-        allMarkers.push(mk)
-      }
-
-      if (allMarkers.length > 1) {
-        map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
-      } else if (allMarkers.length === 1) {
-        map.setView(allMarkers[0].getLatLng(), 13)
-      }
-
       mapRef.current = map
+      setReady(true)
     })
     return () => {
       alive = false
@@ -166,6 +131,60 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
       mapRef.current = null
     }
   }, []) // intentional
+  useEffect(() => {
+    if (!ready || !mapRef.current || !window.L) return
+    const map = mapRef.current
+    const L = window.L
+    const allMarkers = []
+
+    // Company pins — add in reverse so top match (highest rank) renders last = on top
+    const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
+    ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
+      if (co.lat == null) return
+      const isTopMatch = idx === 0
+      const distTxt = studentPin
+        ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
+        : ''
+      const mk = L.marker([co.lat, co.lng], {
+        icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
+        zIndexOffset: isTopMatch ? 1000 : idx * -10,
+      })
+        .addTo(map)
+        .bindPopup(`
+          <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.company ?? co.name ?? 'Company'}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
+            <div style="display:flex;gap:8px;font-size:11px;margin:0">
+              <span style="color:#16a34a;font-weight:600">${co.match}% match</span>
+              ${distTxt ? '· ' + distTxt : ''}
+            </div>
+          </div>`)
+      mk._freshnessKey = `company:${co.id ?? idx}`
+      if (openMarker.current === mk._freshnessKey) mk.openPopup()
+      allMarkers.push(mk)
+    })
+
+    if (studentPin) {
+      const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
+      mk._freshnessKey = 'student'
+      if (openMarker.current === 'student') mk.openPopup()
+      allMarkers.push(mk)
+    }
+
+    if (!framed.current && allMarkers.length > 1) {
+      map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
+    } else if (!framed.current && allMarkers.length === 1) {
+      map.setView(allMarkers[0].getLatLng(), 13)
+    }
+    if (allMarkers.length) framed.current = true
+    return () => {
+      openMarker.current = allMarkers.find(marker => marker.isPopupOpen())?._freshnessKey ?? null
+      allMarkers.forEach(marker => marker.remove())
+    }
+  }, [ready, companies, studentPin])
+
 
   // Fill 100% of parent — parent must have an explicit height or use flex-1
   return <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" style={{ isolation: 'isolate' }} />

@@ -714,7 +714,7 @@ function CompanyCard({ company, onClick }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InstructorCompanies() {
   const {
-    companies, allCount, loading,
+    companies, allCompanies, allCount, loading,
     search, setSearch,
     editing, openEdit, closeEdit,
     saving, saveError, handleSave,
@@ -726,11 +726,11 @@ export default function InstructorCompanies() {
   // Keep selected fresh after data changes
   useEffect(() => {
     if (!selected) return
-    const fresh = companies.find(c => c.id === selected.id)
+    const fresh = allCompanies.find(c => c.id === selected.id)
     // Preserve the existing open detail view when company data refreshes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (fresh) setSelected(fresh)
-  }, [companies]) // eslint-disable-line
+    setSelected(fresh ?? null)
+  }, [allCompanies]) // eslint-disable-line
 
   return (
     <div className="min-w-0">

@@ -13,9 +13,8 @@
 //
 // ── Real-time updates ────────────────────────────────────────────────────────
 //   useSSE() opens a singleton EventSource to /api/instructor/events/.
-//   When a student submits an assessment the server detects the submission
-//   count change and sends { invalidate: ['/api/instructor/batches/', ...] }.
-//   The selected roster revalidates through useApi; SSE also refreshes it.
+//   Complete committed operations publish scoped invalidation topics.
+//   The selected roster revalidates through useApi's shared dependency contract.
 //
 // API:
 //   GET  /api/instructor/batches/                       → list batches
@@ -127,17 +126,17 @@ export function useEnrolledStudents() {
   })
 
   const rosterUrl = activeBatchId ? `/api/instructor/batches/${activeBatchId}/students/` : null
-  const { data: rosterRaw } = useApi(rosterUrl)
+  const { data: rosterRaw, errorStatus: rosterErrorStatus } = useApi(rosterUrl)
 
   useEffect(() => {
-    if (!rosterRaw || !activeBatchId) return
-    const fresh = (rosterRaw.students || []).map(s => ({
+    if (!activeBatchId || (!rosterRaw && ![403, 404].includes(rosterErrorStatus))) return
+    const fresh = (rosterRaw?.students || []).map(s => ({
       ...normalizeStudent(s), batch: rosterRaw.batch ?? { id: activeBatchId },
     }))
     // Mirror the shared roster into this hook's existing optimistic batch state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatches(prev => prev.map(b => b.id === activeBatchId ? { ...b, students: fresh } : b))
-  }, [rosterRaw, activeBatchId])
+  }, [rosterRaw, activeBatchId, rosterErrorStatus])
 
   // ── Modal / UI state ──────────────────────────────────────────────
   const [search,          setSearch]          = useState('')
@@ -211,25 +210,6 @@ export function useEnrolledStudents() {
 
   }, [batchesRaw])
 
-  // ── SSE: re-fetch students when submissions change ────────────────
-  // useApi already handles re-fetching /api/instructor/batches/ when SSE
-  // fires (which triggers the useEffect above). This listener catches the
-  // same event to also refresh per-batch student statuses (pending→completed)
-  // independently in case the batch list hasn't changed but a student's
-  // submission status has.
-  useEffect(() => {
-    const handler = (e) => {
-      const urls = e.detail?.urls
-      if (!Array.isArray(urls)) return
-      const relevant = urls.some(u => u.includes('/api/instructor/'))
-      if (!relevant || !activeBatchId) return
-      if (urls.includes(rosterUrl)) return // useApi already revalidates this key.
-      refreshSelectedRoster()
-    }
-    window.addEventListener('sse:data_changed', handler)
-    return () => window.removeEventListener('sse:data_changed', handler)
-  }, [activeBatchId, rosterUrl, refreshSelectedRoster])
-
   // ── Derived: active batch + students ─────────────────────────────
   const viewedBatch = batches.find(b => b.id === activeBatchId)
   const isArchived  = viewedBatch?.status === 'archived'
@@ -241,7 +221,7 @@ export function useEnrolledStudents() {
     if (!selectedStudent) return
     const fresh = students.find(s => s.id === selectedStudent.id)
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (fresh) setSelectedStudent(fresh)
+    setSelectedStudent(fresh ?? null)
   }, [students]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function setStudents(updater) {
@@ -385,7 +365,8 @@ export function useEnrolledStudents() {
     return list
   }, [search, course, status, students])
 
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+  const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
 
   return {
     instructor,
@@ -407,7 +388,7 @@ export function useEnrolledStudents() {
     course, setCourse: (v) => { setCourse(v); setPage(1) },
     status, setStatus: (v) => { setStatus(v); setPage(1) },
     view, setView,
-    page, setPage,
+    page: visiblePage, setPage,
     // Derived
     filtered, paginated, categories,
     // Toast

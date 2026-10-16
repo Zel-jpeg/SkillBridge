@@ -99,7 +99,7 @@ export function useInstructorDashboard() {
     if (!selectedStudent) return
     const fresh = studentsList.find(s => s.id === selectedStudent.id)
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (fresh) setSelectedStudent(fresh)
+    setSelectedStudent(fresh ?? null)
   }, [studentsList]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived stats ─────────────────────────────────────────────────
@@ -157,10 +157,11 @@ export function useInstructorDashboard() {
     return list
   }, [studentsList, search, filterStatus, sortBy, sortDir])
 
+  const visiblePage = Math.min(page, Math.max(1, Math.ceil(displayed.length / PAGE_SIZE)))
   const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
+    const start = (visiblePage - 1) * PAGE_SIZE
     return displayed.slice(start, start + PAGE_SIZE)
-  }, [displayed, page])
+  }, [displayed, visiblePage])
 
   function toggleSort(col) {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -180,7 +181,7 @@ export function useInstructorDashboard() {
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
     sortBy, sortDir, toggleSort,
     view, setView,
-    page, setPage,
+    page: visiblePage, setPage,
     selectedStudent, setSelectedStudent,
     toast, showToast,
     // Derived

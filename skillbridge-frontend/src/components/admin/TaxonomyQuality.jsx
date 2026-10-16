@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '../../api/axios'
+import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
 
 export function TaxonomyWarnings({ data, label = 'Taxonomy warnings' }) {
   if (!data) return null
@@ -18,10 +19,12 @@ export default function TaxonomyQuality() {
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const freshness = useSnapshotFreshness(['taxonomy'])
   async function check() {
     setBusy(true)
     setError('')
-    try { const response = await api.get('/api/admin/taxonomy-quality/'); setData(response.data) }
+    const revision = freshness.begin()
+    try { const response = await api.get('/api/admin/taxonomy-quality/'); setData(response.data); freshness.complete(revision) }
     catch (err) { setError(err.response?.data?.error || 'Could not check taxonomy quality.') }
     finally { setBusy(false) }
   }
@@ -29,5 +32,6 @@ export default function TaxonomyQuality() {
     <button type="button" onClick={check} disabled={busy} className="text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline disabled:opacity-50">{busy ? 'Checking…' : 'Check saved taxonomy quality'}</button>
     {error && <p role="alert" className="text-xs text-rose-600">{error}</p>}
     <TaxonomyWarnings data={data} label="Saved system taxonomy" />
+    {data && freshness.stale && <p role="status" className="text-xs text-amber-700 dark:text-amber-400">Taxonomy may have changed. Check saved taxonomy quality again to update this snapshot.</p>}
   </div>
 }

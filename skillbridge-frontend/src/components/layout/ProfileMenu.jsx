@@ -11,7 +11,7 @@ export default function ProfileMenu({ role, open, onToggle, onClose, student }) 
   const navigate = useNavigate()
   const { expired } = useSession()
   const [cachedUser] = useState(() => readCachedUser(localStorage))
-  const { data } = useApi(role === 'student' ? '/api/students/me/' : null, { initialData: cachedUser })
+  const { data } = useApi(role === 'student' ? '/api/students/me/' : '/api/auth/me/', { initialData: cachedUser })
   const identity = profileIdentity(role, data ?? cachedUser)
   // The focused pre-start assessment supplies its existing identity shape.
   const hasIdentity = typeof data?.name === 'string' && data.name.trim().length > 0
