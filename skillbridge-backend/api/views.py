@@ -28,6 +28,7 @@ from .models import (
 )
 from .change_events import category_created, notify_changes
 from .serializers import UserSerializer
+from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
 from .combined_competency import (
@@ -143,6 +144,7 @@ def serialize_recommendation(recommendation):
         'position_id': position.id,
         'position': position.title,
         'company': company.name,
+        **image_fields(company, 'company_'),
         'slots': position.slots_available,
         'match_score': round(recommendation.match_score, 1),
         'category_score_component': round(recommendation.category_score_component, 1),
@@ -563,9 +565,6 @@ def google_login(request):
 
     try:
         user = User.objects.get(email=email)
-        user.name = name
-        user.photo_url = photo_url
-        user.save(update_fields=['name', 'photo_url'])
     except User.DoesNotExist:
         return Response(
             {'error': 'role_selection_required', 'email': email, 'name': name},
@@ -582,6 +581,9 @@ def google_login(request):
         if not has_enrollment:
             return Response({'error': 'student_not_enrolled'}, status=status.HTTP_403_FORBIDDEN)
 
+    user.name = name
+    user.photo_url = photo_url or ''
+    user.save(update_fields=['name', 'photo_url'])
     refresh = RefreshToken.for_user(user)
     return Response({
         'access':  str(refresh.access_token),
@@ -620,11 +622,12 @@ def register_role(request):
     existing = User.objects.filter(email=email).first()
     if existing:
         existing.name = name or existing.name
-        existing.photo_url = photo_url or existing.photo_url
+        existing.photo_url = photo_url or ''
         existing.save(update_fields=['name', 'photo_url'])
         return Response({
             'ok': True,
             'already_exists': True,
+            'id': existing.id,
             'role': existing.role,
             'is_approved': existing.is_approved,
         })
@@ -642,6 +645,7 @@ def register_role(request):
 
     return Response({
         'ok': True,
+        'id': user.id,
         'role': user.role,
         'is_approved': user.is_approved,
         'message': 'Account created and pending approval/enrollment.',
@@ -1146,6 +1150,7 @@ def instructor_batch_students(request, batch_id):
                 {
                     'position':    r.position.title,
                     'company':     r.position.company.name,
+                    **image_fields(r.position.company, 'company_'),
                     'match_score': round(r.match_score, 2),
                     'category_score_component': round(r.category_score_component, 2),
                     'nlp_score_component': round(r.nlp_score_component, 2),
@@ -2440,6 +2445,7 @@ def instructor_student_recommendations(request):
                 {
                     'position':    r.position.title,
                     'company':     r.position.company.name,
+                    **image_fields(r.position.company, 'company_'),
                     'match_score': r.match_score,
                     'category_score_component': r.category_score_component,
                     'nlp_score_component': r.nlp_score_component,
@@ -2540,6 +2546,7 @@ def instructor_companies(request):
         result.append({
             'id':            company.id,
             'name':          company.name,
+            **image_fields(company),
             'address':       company.address or {},
             'lat':           company.location_lat,
             'lng':           company.location_lng,
@@ -2564,48 +2571,44 @@ def instructor_company_edit(request, co_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    try:
-        company = Company.objects.get(id=co_id)
-    except Company.DoesNotExist:
-        return Response({'error': 'Not found'}, status=404)
+    data = company_data(request)
+    with CompanyImageChange(request, data) as image_change:
+        with transaction.atomic():
+            try:
+                company = Company.objects.select_for_update().get(id=co_id)
+            except Company.DoesNotExist:
+                return Response({'error': 'Not found'}, status=404)
 
-    data = request.data
-    # Never let a slot edit make an existing approved placement over capacity.
-    for pos_data in data.get('positions', []):
-        if 'slots' not in pos_data:
-            continue
-        try:
-            position = company.positions.get(id=pos_data['id'])
-            requested_slots = int(pos_data['slots'])
-        except (KeyError, TypeError, ValueError, Position.DoesNotExist):
-            return Response({'error': 'Invalid position or slots value.'}, status=400)
-        approved_count = position.ojt_placements.filter(
-            status=OJTPlacement.STATUS_APPROVED,
-        ).count()
-        if requested_slots < approved_count:
-            return Response({
-                'error': 'slots cannot be lower than the approved placement count.',
-                'position_id': position.id,
-                'approved_count': approved_count,
-            }, status=409)
+            # Validate all positions before uploading or persisting any changes.
+            positions = []
+            for pos_data in data.get('positions', []):
+                try:
+                    pos = company.positions.select_for_update().get(id=pos_data['id'])
+                    requested_slots = int(pos_data.get('slots', pos.slots_available))
+                    if requested_slots < 0:
+                        raise ValueError()
+                except (KeyError, TypeError, ValueError, Position.DoesNotExist):
+                    return Response({'error': 'Invalid position or slots value.'}, status=400)
+                approved_count = pos.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
+                if requested_slots < approved_count:
+                    return Response({
+                        'error': 'slots cannot be lower than the approved placement count.',
+                        'position_id': pos.id, 'approved_count': approved_count,
+                    }, status=409)
+                positions.append((pos, pos_data, requested_slots))
 
-    if 'name'    in data: company.name         = data['name']
-    if 'address' in data: company.address      = data['address']
-    if 'lat'     in data: company.location_lat  = data['lat']
-    if 'lng'     in data: company.location_lng  = data['lng']
-    company.save()
+            if 'name' in data: company.name = data['name']
+            if 'address' in data: company.address = data['address']
+            if 'lat' in data: company.location_lat = data['lat']
+            if 'lng' in data: company.location_lng = data['lng']
+            image_change.save(company)
+            for pos, pos_data, slots in positions:
+                if 'title' in pos_data: pos.title = pos_data['title']
+                pos.slots_available = slots
+                if 'tags' in pos_data: pos.tags = normalize_tags(pos_data.get('tags'))
+                pos.save()
 
-    for pos_data in data.get('positions', []):
-        try:
-            pos = company.positions.get(id=pos_data['id'])
-            if 'title' in pos_data: pos.title           = pos_data['title']
-            if 'slots' in pos_data: pos.slots_available = pos_data['slots']
-            if 'tags' in pos_data: pos.tags = normalize_tags(pos_data.get('tags'))
-            pos.save()
-        except Position.DoesNotExist:
-            pass
-
-    return Response({'ok': True, 'id': company.id, 'name': company.name})
+    return Response({'ok': True, 'id': company.id, 'name': company.name, **image_fields(company)})
 
 
 # ── GET /api/student/results/ ─────────────────────────────────────
@@ -2864,6 +2867,7 @@ def student_companies(request):
         result.append({
             'id':       company.id,
             'name':     company.name,
+            **image_fields(company),
             'address':  ', '.join(filter(None, [
                 (company.address or {}).get('barangay', ''),
                 (company.address or {}).get('city', ''),
@@ -2952,6 +2956,7 @@ def admin_student_recommendations(request):
                 {
                     'position':    r.position.title,
                     'company':     r.position.company.name,
+                    **image_fields(r.position.company, 'company_'),
                     'match_score': r.match_score,
                     'category_score_component': r.category_score_component,
                     'nlp_score_component': r.nlp_score_component,
@@ -3268,6 +3273,7 @@ def admin_companies(request):
             data.append({
                 'id':       co.id,
                 'name':     co.name,
+                **image_fields(co),
                 'address':  co.address,
                 'lat':      co.location_lat,
                 'lng':      co.location_lng,
@@ -3277,22 +3283,26 @@ def admin_companies(request):
         return Response(data)
 
     # POST — add company
-    name    = request.data.get('name', '').strip()
-    address = request.data.get('address')   # JSONField { province, city, barangay }
-    lat     = request.data.get('lat')
-    lng     = request.data.get('lng')
+    data = company_data(request)
+    name    = data.get('name', '').strip()
+    address = data.get('address')
+    lat     = data.get('lat')
+    lng     = data.get('lng')
 
     if not name:
         return Response({'error': 'name is required'}, status=400)
 
-    company = Company.objects.create(
+    company = Company(
         name=name,
         address=address,
         location_lat=lat,
         location_lng=lng,
         added_by=request.user,
     )
-    return Response({'id': company.id, 'name': company.name}, status=201)
+    with CompanyImageChange(request, data) as image_change:
+        with transaction.atomic():
+            image_change.save(company)
+    return Response({'id': company.id, 'name': company.name, **image_fields(company)}, status=201)
 
 
 # ── PATCH + DELETE  /api/admin/companies/{id}/ ────────────────────────────────
@@ -3303,14 +3313,15 @@ def admin_companies(request):
 def admin_company_detail(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
-    try:
-        company = Company.objects.get(id=company_id)
-    except Company.DoesNotExist:
-        return Response({'error': 'Company not found'}, status=404)
- 
     if request.method == 'DELETE':
         try:
-            company.delete()
+            with transaction.atomic():
+                company = Company.objects.select_for_update().get(id=company_id)
+                old_key = company.image_key
+                company.delete()
+                transaction.on_commit(lambda: cleanup_image(old_key), robust=True)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
         except ProtectedError:
             return Response({
                 'error': 'Company cannot be deleted while placement history references it.',
@@ -3318,24 +3329,18 @@ def admin_company_detail(request, company_id):
         return Response(status=204)
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
-    if 'name' in request.data:
-        name = (request.data['name'] or '').strip()
-        if name:
-            company.name = name
- 
-    if 'address' in request.data:
-        # Store the structured PSGC JSON object { street, barangay, city, province }
-        company.address = request.data['address']
- 
-    if 'lat' in request.data:
-        val = request.data.get('lat')
-        company.location_lat = float(val) if val is not None else None
- 
-    if 'lng' in request.data:
-        val = request.data.get('lng')
-        company.location_lng = float(val) if val is not None else None
- 
-    company.save()
+    data = company_data(request)
+    with CompanyImageChange(request, data) as image_change:
+        with transaction.atomic():
+            try:
+                company = Company.objects.select_for_update().get(id=company_id)
+            except Company.DoesNotExist:
+                return Response({'error': 'Company not found'}, status=404)
+            if data.get('name', '').strip(): company.name = data['name'].strip()
+            if 'address' in data: company.address = data['address']
+            if 'lat' in data: company.location_lat = data['lat']
+            if 'lng' in data: company.location_lng = data['lng']
+            image_change.save(company)
  
     return Response({
         'id':      company.id,
@@ -3343,6 +3348,7 @@ def admin_company_detail(request, company_id):
         'address': company.address,
         'lat':     company.location_lat,
         'lng':     company.location_lng,
+        **image_fields(company),
     })
 
 
@@ -3731,10 +3737,12 @@ def _serialize_placement(placement):
             'school_id': placement.student.school_id,
             'email': placement.student.email,
             'course': placement.student.course,
+            'photo_url': placement.student.photo_url,
         },
         'company': {
             'id': placement.company_id,
             'name': placement.company.name,
+            **image_fields(placement.company),
             'address': placement.company.address or {},
         },
         'position': {
@@ -3797,6 +3805,7 @@ def _serialize_placement_visibility(placement, include_unplaced=False):
         'company': {
             'id': placement.company_id,
             'name': placement.company.name,
+            **image_fields(placement.company),
             'address': placement.company.address or {},
             'address_text': _company_address_text(placement.company.address),
         },
@@ -4020,6 +4029,7 @@ def placement_suggestions(request):
                         'name': recommendation.student.name,
                         'school_id': recommendation.student.school_id,
                         'course': recommendation.student.course,
+                        'photo_url': recommendation.student.photo_url,
                     },
                     'batch': {'id': batch.id, 'name': batch.name} if batch else None,
                     'match_score': recommendation.match_score,
@@ -4032,6 +4042,7 @@ def placement_suggestions(request):
                             'id': approved.id,
                             'company_id': approved.company_id,
                             'company_name': approved.company.name,
+                            **image_fields(approved.company, 'company_'),
                             'position_id': approved.position_id,
                             'position_title': approved.position.title,
                         }
@@ -4051,6 +4062,7 @@ def placement_suggestions(request):
         output.append({
             'id': company.id,
             'name': company.name,
+            **image_fields(company),
             'address': company.address or {},
             'lat': company.location_lat,
             'lng': company.location_lng,
@@ -4065,6 +4077,7 @@ def placement_suggestions(request):
             'name': student.name,
             'student_id': student.school_id,
             'course': student.course,
+            'photo_url': student.photo_url,
             'batch': {'id': batch.id, 'name': batch.name} if batch else None,
         })
 

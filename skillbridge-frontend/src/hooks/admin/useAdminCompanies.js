@@ -22,8 +22,9 @@
 //   DELETE /api/admin/positions/:id/
 
 import { useState, useCallback, useEffect } from 'react'
-import { useApi, invalidateCache } from '../useApi'
+import { useApi, invalidateCache, applyDataChange } from '../useApi'
 import { useSSE } from '../useSSE'
+import { companyRequest } from '../../utils/companyImages'
 
 export const SKILL_CATEGORIES_FALLBACK = [
   'Web Development', 'Database', 'Design', 'Networking', 'Backend',
@@ -47,6 +48,7 @@ function normalizeCompany(c) {
   return {
     id:          c.id,
     name:        c.name,
+    image_url:   c.image_url ?? null,
     // Compute display string from the stored JSON address
     address:     addrToString(c.address) || 'No address set',
     // Keep the raw JSON so edit modal can pre-fill PSGC dropdowns
@@ -109,17 +111,18 @@ export function useAdminCompanies() {
 
   /** POST /api/admin/companies/ — optimistically prepend to list. */
   async function handleAddCompany(company) {
-    const res = await request('post', '/api/admin/companies/', {
+    const res = await request('post', '/api/admin/companies/', companyRequest({
       name:    company.name,
       address: company.addressParts || null,   // store structured JSON
       lat:     company.lat  ?? null,           // FIX: was 'latitude'
       lng:     company.lng  ?? null,           // FIX: was 'longitude'
-    })
-    if (!res.ok) return { ok: false }
+    }, company.image))
+    if (!res.ok) return res
 
     const newCompany = {
       id:          res.data?.id ?? Date.now(),
       name:        company.name,
+      image_url:   res.data?.image_url ?? null,
       address:     addrToString(company.addressParts) || company.name,
       addressParts: company.addressParts || {},
       lat:         company.lat  ?? null,
@@ -129,23 +132,25 @@ export function useAdminCompanies() {
     setCompanies(prev => [newCompany, ...prev])
     invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${company.name}" added.`)
+    applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
     return { ok: true }
   }
 
   /** PATCH /api/admin/companies/:id/ — merge changes into existing card. */
   async function handleSaveCompany(company) {
-    const res = await request('patch', `/api/admin/companies/${company.id}/`, {
+    const res = await request('patch', `/api/admin/companies/${company.id}/`, companyRequest({
       name:    company.name,
       address: company.addressParts || null,
       lat:     company.lat  ?? null,
       lng:     company.lng  ?? null,
-    })
-    if (!res.ok) return { ok: false }
+    }, company.image))
+    if (!res.ok) return res
 
     setCompanies(prev => prev.map(c =>
       c.id !== company.id ? c : {
         ...c,
         name:        company.name,
+        image_url:   res.data?.image_url ?? null,
         address:     addrToString(company.addressParts) || c.address,
         addressParts: company.addressParts || c.addressParts,
         lat:         company.lat  ?? null,
@@ -154,17 +159,20 @@ export function useAdminCompanies() {
     ))
     invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${company.name}" updated.`)
+    applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
     return { ok: true }
   }
 
-  /** Optimistically remove company then fire DELETE. */
-  function confirmDeleteCompany() {
+  /** Wait for protected deletion to succeed before removing the card. */
+  async function confirmDeleteCompany() {
     if (!confirmDeleteComp) return
     const { id, name } = confirmDeleteComp
+    const result = await request('delete', `/api/admin/companies/${id}/`)
+    if (!result.ok) return
     setCompanies(prev => prev.filter(c => c.id !== id))
-    request('delete', `/api/admin/companies/${id}/`)
     invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${name}" removed.`)
+    applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
     setConfirmDeleteComp(null)
   }
 

@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import ConfirmModal from './admin/ConfirmModal'
 import PlacementStatusCard from './placements/PlacementStatusCard'
+import CompanyImage from './CompanyImage'
 import ScoreLabel from './ScoreLabel'
 import { AlertTriangleIcon, BriefcaseIcon, ListIcon, LockIcon, RefreshIcon, ReportIcon, SkillIcon } from './Icons'
 import { manilaDateTime } from '../utils/assessmentDates'
@@ -117,7 +118,7 @@ function Recommendations({ student, state }) {
   return <div><h3 className="sb-detail-heading">Ranked placement recommendations</h3><p className="sb-detail-muted">Fit scores support a placement decision. Rank does not grant placement approval.</p>
     <ol>{state.recommendations.map((rec, i) => <li key={rec.id ?? i} className="sb-detail-recommendation">
       <span aria-label={`Rank ${i + 1}`} className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-sm font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">{i + 1}</span>
-      <div className="min-w-0"><h4 className="font-semibold text-gray-900 dark:text-white">{rec.company || 'Company not provided'}</h4><p className="text-sm">{rec.position || 'Position not provided'}</p>
+      <div className="min-w-0"><div className="flex items-center gap-2"><CompanyImage name={rec.company} imageUrl={rec.company_image_url} className="h-8 w-8 rounded-lg" /><h4 className="font-semibold text-gray-900 dark:text-white">{rec.company || 'Company not provided'}</h4></div><p className="text-sm">{rec.position || 'Position not provided'}</p>
         {isCurrentPlacement(rec, student.placement) && <span className="sb-detail-status mt-2">Current approved placement</span>}
         <dl className="sb-detail-components">{components.map(([name, key]) => <div key={key}><dt><ScoreLabel label={name} /></dt><dd><strong>{percentLabel(rec[key])}</strong></dd></div>)}</dl>
         {rec.distance_km != null && <p className="sb-detail-muted mt-3">Distance: {Number(rec.distance_km).toFixed(1)} km</p>}

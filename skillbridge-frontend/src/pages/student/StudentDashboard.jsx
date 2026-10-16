@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import CompanyImage from '../../components/CompanyImage'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
@@ -423,6 +424,7 @@ export default function StudentDashboard() {
                 {topMatches.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No eligible company positions are currently available.</p>}
                 {topMatches.map((m, idx) => (
                   <div key={m.id ?? idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
+                    <CompanyImage name={m.company} imageUrl={m.company_image_url} className="w-8 h-8 rounded-lg mr-2" />
                     <div className="min-w-0 mr-2">
                       <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{m.company}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.position}</p>

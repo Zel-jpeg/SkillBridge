@@ -2,16 +2,18 @@ import { useState } from 'react'
 import { getInitials } from '../utils/formatters'
 
 export default function Avatar({ name, photoUrl, tone, className = "w-8 h-8 rounded-xl text-xs" }) {
-  const [imgError, setImgError] = useState(false)
+  const [failedUrl, setFailedUrl] = useState(null)
 
-  if (photoUrl && !imgError) {
+  if (photoUrl && failedUrl !== photoUrl) {
     return (
       <img 
         src={photoUrl} 
         alt={name || "Avatar"} 
         className={`${className} object-cover shrink-0 shadow-sm`}
         referrerPolicy="no-referrer"
-        onError={() => setImgError(true)}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailedUrl(photoUrl)}
       />
     )
   }

@@ -3,6 +3,21 @@ import assert from 'node:assert/strict'
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 import { createCacheStore } from './cacheStore.js'
 
+test('company branding and Google identity changes reuse current cache topics', () => {
+  const catalog = { topics: ['catalog', 'results', 'students', 'placements'] }
+  const identity = { topics: ['users', 'students', 'batches', 'placements'], student_ids: [7], batch_ids: [4] }
+  for (const url of ['/api/admin/companies/', '/api/instructor/companies/', '/api/student/companies/',
+    '/api/student/results/combined/', '/api/students/me/', '/api/placements/?limit=500', '/api/placements/suggestions/?include_history=true']) {
+    assert.equal(queryAffected(url, catalog), true, url)
+  }
+  for (const url of ['/api/admin/users/', '/api/admin/students/recommendations/', '/api/instructor/companies/',
+    '/api/instructor/batches/4/students/', '/api/students/me/', '/api/placements/?limit=500', '/api/placements/suggestions/']) {
+    assert.equal(queryAffected(url, identity), true, url)
+  }
+  assert.equal(queryAffected('/api/instructor/batches/5/students/', identity), false)
+  assert.equal(queryAffected('/api/management/assessment-reports/', catalog), false)
+})
+
 test('all query variants and dynamic URLs match their dependencies', () => {
   const change = { topics: ['students', 'assessments', 'results', 'placements'], batch_ids: [4], student_ids: [7], assessment_ids: [32] }
   for (const url of [

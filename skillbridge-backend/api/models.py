@@ -306,6 +306,7 @@ class CombinedCompetencyProfile(models.Model):
 # ── Company ───────────────────────────────────────────────────────────────────
 class Company(models.Model):
     name         = models.CharField(max_length=255)
+    image_key    = models.CharField(max_length=255, blank=True, default='')
     address      = models.JSONField(blank=True, null=True)   # { province, city, barangay }
     location_lat = models.FloatField(blank=True, null=True)
     location_lng = models.FloatField(blank=True, null=True)

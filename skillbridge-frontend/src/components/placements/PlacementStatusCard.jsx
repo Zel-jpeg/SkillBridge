@@ -1,4 +1,5 @@
 import StatusBadge from '../StatusBadge'
+import CompanyImage from '../CompanyImage'
 
 function formatApprovalDate(value) {
   if (!value) return null
@@ -45,6 +46,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">OJT</span>
         <StatusBadge status={status} />
+        {approved && company?.name && <CompanyImage name={company.name} imageUrl={company.image_url} className="w-7 h-7 rounded-lg" />}
         {approved && company?.name && (
           <span className="min-w-0 truncate text-xs font-medium text-green-700 dark:text-green-300">
             {company.name}{position?.title ? ` · ${position.title}` : ''}
@@ -61,6 +63,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
   return (
     <div className={`${detail ? 'rounded-lg border p-4 wrap-anywhere' : 'rounded-2xl border p-4 sm:p-5'} ${approvedStyles}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {company?.name && <CompanyImage name={company.name} imageUrl={company.image_url} />}
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-bold ${approved ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-white'}`}>
             {approved ? (audience === 'student' ? 'Your OJT placement has been approved' : 'Approved OJT placement') : 'OJT placement status'}

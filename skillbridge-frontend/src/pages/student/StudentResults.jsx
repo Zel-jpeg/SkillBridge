@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
+import CompanyImage from '../../components/CompanyImage'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
@@ -477,9 +478,7 @@ export default function StudentResults() {
               {allCompanies.map(co => (
                 <div key={co.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 text-sm font-bold text-gray-600 dark:text-gray-300">
-                      {co.name.charAt(0).toUpperCase()}
-                    </div>
+                    <CompanyImage name={co.name} imageUrl={co.image_url} className="w-9 h-9 rounded-xl" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{co.name}</p>
                       {co.address && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{co.address}</p>}
@@ -541,7 +540,7 @@ export default function StudentResults() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{r.company}</p>
+                      <div className="flex items-center gap-2"><CompanyImage name={r.company} imageUrl={r.company_image_url} className="w-9 h-9 rounded-lg" /><p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{r.company}</p></div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{r.position}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{r.address}</p>
                     </div>

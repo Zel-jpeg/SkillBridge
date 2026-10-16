@@ -53,6 +53,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Company branding and student photos](PROFILE_IMAGES.md): Optional optimized
+  WebP company images, backend-only Storage setup, provider-photo coverage,
+  lifecycle rules and isolated verification.
+
 - [IAMS enrollment import](IAMS_ENROLLMENT_IMPORT.md): Shared instructor/admin
   review workflow, institutional ID mapping, identity constraints, email dispatch
   configuration, isolated verification and controlled live-test restrictions.
