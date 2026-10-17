@@ -59,6 +59,14 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Collection UI skill](../.agents/skills/skillbridge-collection-ui/SKILL.md) and
+  [reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md): Instructor-inspired
+  search/filter toolbars, table and card views, pagination, visual conventions
+  and acceptance guidance for future collection screens.
+
+- [Admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md): Paginated card/list
+  views, protected management drafts, lazy modal sections and synthetic UI checks.
+
 - [Database connection troubleshooting](DATABASE_CONNECTIONS.md): Local startup
   stalls, bounded PostgreSQL connection waits and Supabase access checks.
 
@@ -79,8 +87,9 @@ and fallback when explaining results.
 
 ## Assignment deliverables
 
-The six skills are two original SkillBridge review workflows and four downloaded
-skills from Vercel Labs, Anthropic and Leonxlnx, including `frontend-design`
+The skill documentation covers original SkillBridge review workflows, the local
+`skillbridge-collection-ui` design workflow and downloaded skills from Vercel Labs,
+Anthropic and Leonxlnx, including `frontend-design`
 for UI work and experimental `design-taste-frontend` for public landing-page work.
 Taste Skill's upstream scope excludes dashboards and dense product UI.
 `AGENTS.md` and the knowledge files are

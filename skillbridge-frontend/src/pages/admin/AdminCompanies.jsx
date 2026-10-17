@@ -15,13 +15,13 @@ import DataSection from '../../components/DataSection'
 //   7. Loading spinners on all submit buttons
 //   8. Real-time updates via SSE (handled in hook)
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useReducer, useRef } from 'react'
 import AddressDropdowns from '../../components/AddressDropdowns'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
-import NlpTextPreview from '../../components/NlpTextPreview'
-import CompanyImage from '../../components/CompanyImage'
+import CompanyCollectionCard, { CompanyCollectionSkeleton } from '../../components/admin/CompanyCollectionCard'
+import { companyDisclosures } from '../../utils/companyCollection'
 import CompanyImageInput from '../../components/CompanyImageInput'
 import CompanyEditDialog from '../../components/CompanyEditDialog'
 import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../components/Icons'
@@ -209,6 +209,8 @@ function CompaniesMap({ companies }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mksRef = useRef([])
+  const companiesRef = useRef(companies)
+  const markersStale = useRef(false)
 
   function buildMarkers(L, map, list) {
     mksRef.current.forEach(m => m.remove())
@@ -236,6 +238,7 @@ function CompaniesMap({ companies }) {
 
   useEffect(() => {
     let alive = true
+    let resizeObserver
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current).setView([7.3072, 125.6839], 10)
@@ -244,24 +247,40 @@ function CompaniesMap({ companies }) {
         maxZoom: 19,
       }).addTo(map)
       map.zoomControl.setPosition('bottomright')
-      buildMarkers(L, map, companies)
+      if (elRef.current.clientWidth) buildMarkers(L, map, companiesRef.current)
+      else markersStale.current = true
       mapRef.current = map
+      // Keep the same instance while collapsed. Leaflet must measure again
+      // after display:none is removed, and when the responsive width changes.
+      resizeObserver = new ResizeObserver(() => {
+        if (elRef.current?.clientWidth && elRef.current?.clientHeight) {
+          map.invalidateSize({ pan: false })
+          if (markersStale.current) {
+            buildMarkers(L, map, companiesRef.current)
+            markersStale.current = false
+          }
+        }
+      })
+      resizeObserver.observe(elRef.current)
     })
     return () => {
       alive = false
+      resizeObserver?.disconnect()
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // eslint-disable-line
+  }, [])
 
   useEffect(() => {
+    companiesRef.current = companies
     if (!mapRef.current || !window.L) return
+    if (!elRef.current?.clientWidth) { markersStale.current = true; return }
     buildMarkers(window.L, mapRef.current, companies)
   }, [companies]) // eslint-disable-line
 
   return (
-    <div ref={elRef} className="w-full rounded-2xl overflow-hidden"
-      style={{ height: 340, isolation: 'isolate' }} />
+    <div ref={elRef} className="h-64 w-full overflow-hidden rounded-xl sm:h-80"
+      style={{ isolation: 'isolate' }} />
   )
 }
 
@@ -942,13 +961,9 @@ export default function AdminCompanies() {
   } = useAdminCompanies()
 
   const [search,        setSearch]        = useState('')
-  const [showMap,       setShowMap]       = useState(false)
-  const [mapEverOpened, setMapEverOpened] = useState(false)
-
-  function toggleMap() {
-    if (!mapEverOpened) setMapEverOpened(true)
-    setShowMap(prev => !prev)
-  }
+  const [showMap, setShowMap] = useState(true)
+  const [expandedPositions, setExpandedPositions] = useReducer(companyDisclosures, new Set())
+  useEffect(() => { setExpandedPositions({ type: 'reconcile', companies }) }, [companies])
 
   const displayed = search.trim()
     ? companies.filter(co =>
@@ -957,7 +972,7 @@ export default function AdminCompanies() {
     : companies
 
   const totalSlots  = companies.reduce((sum, co) => sum + co.positions.reduce((s, p) => s + p.slots, 0), 0)
-  const pinnedCount = companies.filter(c => c.lat != null).length
+  const pinnedCount = companies.filter(c => c.lat != null && c.lng != null).length
 
   return (
     <div className="min-w-0">
@@ -1048,7 +1063,7 @@ export default function AdminCompanies() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
               </svg>
-              <input value={search} onChange={e => setSearch(e.target.value)}
+              <input aria-label="Search companies" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search companies…"
                 className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
             </div>
@@ -1059,40 +1074,30 @@ export default function AdminCompanies() {
           </div>
         </div>
 
-        <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards">
+        <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
 {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-          <button onClick={toggleMap}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+          <button type="button" onClick={() => setShowMap(value => !value)} aria-expanded={showMap} aria-controls="partner-locations-map"
+            className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-green-600 focus-visible:outline-offset-[-2px]">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center text-green-600 dark:text-green-400">
                 <MapIcon />
               </div>
               <div className="text-left">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Partner Locations</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {pinnedCount} of {companies.length} companies pinned · click a marker for details
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {pinnedCount} of {companies.length} companies pinned
                 </p>
               </div>
             </div>
-            <div className="text-gray-400 dark:text-gray-500 shrink-0">
-              <ChevronDown open={showMap} />
+            <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-green-800 dark:text-green-300">
+              <span>{showMap ? 'Collapse' : 'Expand'}</span><span aria-hidden="true"><ChevronDown open={showMap} /></span>
             </div>
           </button>
 
-          {/*
-            LAZY MOUNT — CompaniesMap only enters the DOM when the user first
-            opens the panel. Isolation: isolate prevents Leaflet z-indices from
-            bleeding above modals.
-          */}
-          {mapEverOpened && (
-            <div className={`transition-all duration-300 overflow-hidden ${showMap ? 'max-h-400px' : 'max-h-0'}`}
-              style={{ isolation: 'isolate' }}>
-              <div className="px-4 pb-4">
-                <CompaniesMap companies={companies} />
-              </div>
-            </div>
-          )}
+          <div id="partner-locations-map" hidden={!showMap} style={{ isolation: 'isolate' }}>
+            <div className="px-4 pb-4"><CompaniesMap companies={companies} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a company marker to view its address and position count.</p></div>
+          </div>
         </div>
 
         {/* ── Company cards grid ────────────────────────────────────── */}
@@ -1102,102 +1107,13 @@ export default function AdminCompanies() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {displayed.map(company => (
-            <div key={company.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-
-              {/* Company header */}
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <CompanyImage name={company.name} imageUrl={company.image_url} className="w-9 h-9 rounded-xl" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{company.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
-                      {company.lat != null && (
-                        <span className="text-green-500 shrink-0"><PinIcon /></span>
-                      )}
-                      <span className="truncate">{company.address}</span>
-                    </p>
-                  </div>
-                </div>
-                {/* Edit + Delete buttons */}
-                <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                  <button onClick={() => setEditCompanyFor(company)}
-                    className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
-                    title="Edit company">
-                    <PencilIcon size={13}/>
-                  </button>
-                  <button onClick={() => setConfirmDeleteComp(company)}
-                    className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
-                    title="Delete company">
-                    <TrashIcon size={14}/>
-                  </button>
-                </div>
-              </div>
-
-              {/* Positions list */}
-              <div className="px-5 py-3 space-y-2">
-                {company.positions.length === 0 && (
-                  <p className="text-xs text-gray-400 dark:text-gray-600 py-2 text-center">No positions yet.</p>
-                )}
-                {company.positions.map(pos => (
-                  <div key={pos.id}
-                    className="flex items-start justify-between gap-2 rounded-xl bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{pos.title}</p>
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
-                          {pos.slots} slot{pos.slots !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {Object.entries(pos.requirements).map(([cat, pct]) => (
-                          <span key={cat}
-                            className="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
-                            {cat.split(' ')[0]} ≥{pct}%
-                          </span>
-                        ))}
-                        {Object.keys(pos.requirements).length === 0 && (
-                          <span className="text-xs text-gray-300 dark:text-gray-700">No requirements set</span>
-                        )}
-                      </div>
-                      {pos.tags?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {pos.tags.slice(0, 6).map(tag => (
-                            <span key={tag} className="text-[10px] bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-full">{tag}</span>
-                          ))}
-                        </div>
-                      )}
-                      <NlpTextPreview key={pos.id} positionId={pos.id} />
-                    </div>
-                    {/* Edit + Delete buttons for position */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => setEditPositionFor({ company, position: pos })}
-                        className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
-                        title="Edit position">
-                        <PencilIcon size={12}/>
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeletePos({ company, position: pos })}
-                        className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
-                        title="Delete position">
-                        <XIcon size={13}/>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add position */}
-              <div className="px-5 pb-4">
-                <button onClick={() => setAddPositionFor(company)}
-                  className="w-full py-2 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-400 dark:text-gray-600 hover:border-green-400 hover:text-green-600 dark:hover:border-green-600 dark:hover:text-green-400 transition-colors">
-                  + Add Position
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          {displayed.map(company => <CompanyCollectionCard key={company.id} company={company}
+            expanded={expandedPositions}
+            onTogglePosition={key => setExpandedPositions({ type: 'toggle', key })}
+            onEditCompany={setEditCompanyFor} onDeleteCompany={setConfirmDeleteComp}
+            onEditPosition={setEditPositionFor} onDeletePosition={setConfirmDeletePos}
+            onAddPosition={setAddPositionFor} />)}
         </div>
 
 </DataSection>

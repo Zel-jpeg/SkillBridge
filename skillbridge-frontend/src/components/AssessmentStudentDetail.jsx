@@ -75,7 +75,7 @@ function Overview({ student, state, instructorName, compact }) {
   </div>
 }
 
-function Assessments({ student, state, canRetake, onRetake, archived }) {
+function Assessments({ student, state, canRetake, onRetake, archived, retakeAssessmentId }) {
   if (!state.results.length) return <EmptyDetail title="No assessments assigned">Assessments will appear here when they are assigned to this batch.</EmptyDetail>
   return <div><h3 className="sb-detail-heading">Individual assessment results</h3><p className="sb-detail-muted">Inclusion reflects assessment settings. Only eligible submitted, unflagged results contribute to the combined profile. Archived attempts are separate from current results.</p>
     {state.results.map(result => <article key={result.id} className="sb-detail-item">
@@ -85,7 +85,7 @@ function Assessments({ student, state, canRetake, onRetake, archived }) {
       <ScoreRows scores={result.category_scores} />
       <IntegrityDetail attempt={result} />
       {assessmentRetakeCandidate(student, result.id) && <div className="mt-3">
-        {canRetake ? <button type="button" className="min-h-11 rounded-lg border border-green-700 px-3 py-2 text-left text-xs font-semibold text-green-800 dark:border-green-500 dark:text-green-300" onClick={() => onRetake(result.id)}>{result.retake_allowed ? 'Revoke retake' : 'Approve retake'} for {result.title}</button>
+        {canRetake && (retakeAssessmentId == null || retakeAssessmentId === result.id) ? <button type="button" className="min-h-11 rounded-lg border border-green-700 px-3 py-2 text-left text-xs font-semibold text-green-800 dark:border-green-500 dark:text-green-300" onClick={() => onRetake(result.id)}>{result.retake_allowed ? 'Revoke retake' : 'Approve retake'} for {result.title}</button>
           : <p className="sb-detail-muted">{result.retake_allowed ? 'Retake approved.' : 'Retake not approved.'} {archived ? 'Archived student records are read-only.' : 'Retake management is unavailable in this view.'}</p>}
       </div>}
     </article>)}
@@ -140,7 +140,7 @@ function RetakeHistory({ state }) {
 }
 
 /** One formatting path for modal and compact inline management views. */
-export default function AssessmentStudentDetail({ student, instructorName, onToggleRetake, isArchived = false, variant = 'inline' }) {
+export default function AssessmentStudentDetail({ student, instructorName, onToggleRetake, isArchived = false, variant = 'inline', retakeAssessmentId }) {
   const [tab, setTab] = useState(0)
   const [retakeId, setRetakeId] = useState(null)
   const tabRefs = useRef([])
@@ -167,7 +167,7 @@ export default function AssessmentStudentDetail({ student, instructorName, onTog
     <div className="sb-detail-panels">
       {tabs.map(({ label }, index) => <div key={label} id={`${id}-panel-${index}`} role="tabpanel" aria-labelledby={`${id}-tab-${index}`} hidden={tab !== index} tabIndex={0} className="sb-detail-panel">
         {index === 0 && <Overview student={student} state={state} instructorName={instructorName} compact={variant === 'inline'} />}
-        {index === 1 && <Assessments student={student} state={state} archived={archived} canRetake={canRetake} onRetake={setRetakeId} />}
+        {index === 1 && <Assessments student={student} state={state} archived={archived} canRetake={canRetake} onRetake={setRetakeId} retakeAssessmentId={retakeAssessmentId} />}
         {index === 2 && <CombinedCompetency state={state} />}
         {index === 3 && <Recommendations student={student} state={state} />}
         {index === 4 && <RetakeHistory state={state} />}

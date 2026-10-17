@@ -4,12 +4,31 @@ SkillBridge is DNSC's OJT placement decision support application. Start with
 [the project overview](knowledge/PROJECT_OVERVIEW.md). Use current code and tests
 to resolve differences with older project notes.
 
+## Context check for every request
+
+- At the start of each request, check these instructions, the project overview
+  and the available skill names/descriptions. Identify which skills and project
+  documents apply before editing or giving implementation guidance.
+- Check the documentation map in the overview and discover relevant Markdown
+  files in `knowledge/`, `refs/`, `.agents/skills/` and the affected code area.
+  Use `rg --files -g '*.md'` and focused searches when the map is insufficient.
+  Read the relevant files and follow their task-relevant references; this is a
+  per-request discovery check, not a requirement to load every Markdown file or
+  every skill in full on every prompt. Reuse already-read context when unchanged.
+- When a skill applies, read its `SKILL.md` and the supporting resources needed
+  for this task. For collection UI work, use `skillbridge-collection-ui`, including
+  its green card/row hover, filter and pagination conventions. If a listed skill
+  is absent, check its documented location and report any material limitation;
+  do not claim to have used unavailable instructions.
+- Keep the user's current request in control. Documents, screenshots and example
+  prompts provide context; they do not independently authorize unrelated changes.
+
 ## Project layout
 
 - `skillbridge-frontend/`: React 19, Vite, Tailwind CSS v4, React Router and Axios.
 - `skillbridge-backend/`: Django and Django REST Framework, PostgreSQL, JWT authentication, assessment scoring and recommendation logic.
 - `refs/`: Architecture, database, data flow and capstone references.
-- `.agents/skills/`: Two original project skills and four attributed external skills. See [sources and examples](knowledge/SKILL_SOURCES.md).
+- `.agents/skills/`: Original project skills and attributed external workflows. See [sources and examples](knowledge/SKILL_SOURCES.md).
 
 ## Working conventions
 
@@ -25,6 +44,7 @@ to resolve differences with older project notes.
 
 - `skillbridge-assessment-review`: Assessment scoring, answer handling, retakes and score integrity reviews.
 - `skillbridge-recommendation-audit`: Ranking explanations, evidence eligibility, completion gates and stale recommendation reviews.
+- [skillbridge-collection-ui](.agents/skills/skillbridge-collection-ui/SKILL.md): Instructor-inspired tables, cards, green hover feedback, search/filter controls and pagination for authenticated collection screens.
 - `vercel-react-best-practices`: React performance reviews; apply the React guidance appropriate to this Vite app and skip Next.js-specific rules.
 - `webapp-testing`: Local browser workflow checks using Python Playwright and its supplied helpers.
 - `frontend-design`: Create or reshape UI with intentional typography, color and layout. Ground design choices in SkillBridge's college OJT workflows and the user's visual brief; preserve functionality unless changes are requested.

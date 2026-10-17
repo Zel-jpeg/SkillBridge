@@ -1,7 +1,8 @@
 # Skill Sources and Demonstration Guide
 
-Prepared on September 29, 2026. This project contains six skills: two original
-SkillBridge workflows and four complete downloaded skill folders. The supporting
+Prepared on September 29, 2026; collection UI skill added October 17, 2026.
+This guide records original SkillBridge workflows and attributed downloaded
+skills. Check the local folders for availability in the current checkout. The supporting
 `AGENTS.md` and knowledge files are separate from the minimum four-skill requirement.
 
 ## Authorship and provenance
@@ -10,10 +11,23 @@ SkillBridge workflows and four complete downloaded skill folders. The supporting
 | --- | --- | --- | --- |
 | skillbridge-assessment-review | Original SkillBridge project workflow, generated with Codex assistance | [SKILL.md](../.agents/skills/skillbridge-assessment-review/SKILL.md) | No separate license assigned in this setup |
 | skillbridge-recommendation-audit | Original SkillBridge project workflow, generated with Codex assistance | [SKILL.md](../.agents/skills/skillbridge-recommendation-audit/SKILL.md) | No separate license assigned in this setup |
+| skillbridge-collection-ui | Original SkillBridge project workflow, generated with Codex assistance from the user's instructor UI references and current source | [SKILL.md](../.agents/skills/skillbridge-collection-ui/SKILL.md) | No separate license assigned in this setup |
 | vercel-react-best-practices | Vercel Engineering / Vercel Labs | [SKILL.md](../.agents/skills/vercel-react-best-practices/SKILL.md) | MIT, as declared in upstream skill frontmatter |
 | webapp-testing | Anthropic | [SKILL.md](../.agents/skills/webapp-testing/SKILL.md) | Apache 2.0; retained [LICENSE.txt](../.agents/skills/webapp-testing/LICENSE.txt) |
 | frontend-design | Anthropic | [SKILL.md](../.agents/skills/frontend-design/SKILL.md) | Apache 2.0; retained [LICENSE.txt](../.agents/skills/frontend-design/LICENSE.txt) |
 | design-taste-frontend | Leonxlnx / Taste Skill community project | [SKILL.md](../.agents/skills/design-taste-frontend/SKILL.md) | MIT; retained repository-root [LICENSE](../.agents/skills/design-taste-frontend/LICENSE) |
+
+### SkillBridge Collection UI
+
+- Added on October 17, 2026 at the user's request to reuse instructor dashboard
+  and Students collection styling, including green hover feedback.
+- The detailed [collection UI reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md)
+  was moved from `knowledge/` into this skill; the overview links to its new home.
+- The short entry point selects the relevant workflow; the reference retains
+  tables/cards, toolbar, pagination, responsive and accessibility guidance.
+- User-provided screenshots informed the design. Personal student data and the
+  screenshots themselves are not stored in the skill. Examples are synthetic.
+- This is an original local skill; no downloaded skill or license was modified.
 
 ### Vercel React Best Practices
 

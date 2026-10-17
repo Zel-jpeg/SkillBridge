@@ -1,3 +1,4 @@
 .runtime/
+.runtime-win/
 artifacts/
 __pycache__/

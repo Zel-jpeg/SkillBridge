@@ -1,119 +1,96 @@
-import DataSection from '../../components/DataSection'
-import { useEffect, useMemo, useState } from 'react'
-import AssessmentSettings from '../../components/instructor/AssessmentSettings'
-import { manilaApiDate, manilaDateTime, toManilaInput } from '../../utils/assessmentDates'
-import AssessmentStudentDetail from '../../components/AssessmentStudentDetail'
-import Avatar from '../../components/Avatar'
-import ConfirmModal from '../../components/admin/ConfirmModal'
-import api from '../../api/axios'
-import { fetchWithDedup, invalidateCache, useApi } from '../../hooks/useApi'
-import { filterAssessments } from '../../utils/assessmentManagement'
+import { useEffect, useMemo, useReducer, useState } from 'react'
+import { fetchWithDedup } from '../../hooks/useApi'
+import { useAdminAssessments } from '../../hooks/admin/useAdminAssessments'
+import { ASSESSMENTS_URL, assessmentPage, assessmentViewReducer, DEFAULT_FILTERS, initialAssessmentView } from '../../utils/adminAssessmentState'
+import { manilaDateTime } from '../../utils/assessmentDates'
+import { ArchiveIcon, GridIcon, ListIcon, ReportIcon, SearchIcon, WarnIcon } from '../../components/Icons'
+import { AssessmentIntegrity, AssessmentPagination, AssessmentProgress, AssessmentRetry, AssessmentSkeleton, AssessmentStatus, CategorySummary } from '../../components/admin/AssessmentPresentation'
+import AssessmentManagementDialog from '../../components/admin/AssessmentManagementDialog'
 
-const input = 'rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
+const control = 'min-h-10 min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+const surface = 'rounded-2xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'
+const statusTabs = [['all', 'All'], ['published', 'Published'], ['draft', 'Drafts'], ['closed', 'Closed']]
+const label = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
+
+function Schedule({ assessment: a }) {
+  return <div className="space-y-1 text-xs"><p className="text-gray-700 dark:text-gray-200">{label(a.availability_status || 'Not set')}</p><p className="text-[11px] text-gray-500 dark:text-gray-400">{a.available_at ? `Opens ${manilaDateTime(a.available_at)}` : 'No scheduled opening'}</p><p className="text-[11px] text-gray-500 dark:text-gray-400">{a.due_at ? `Due ${manilaDateTime(a.due_at)}` : 'No due date'}</p></div>
+}
+
+function AssessmentResults({ records, view, onOpen }) {
+  function trigger(a) {
+    return <button className="min-h-10 rounded-lg px-1 text-left text-xs font-semibold text-green-800 hover:text-green-600 dark:text-green-300" aria-label={`View details for ${a.title}`} aria-haspopup="dialog" onClick={event => { event.currentTarget.focus(); onOpen(a.id) }}>{a.title}</button>
+  }
+  if (view === 'grid') return <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{records.map(a => <article key={a.id} className={`${surface} relative flex min-w-0 cursor-pointer flex-col gap-4 p-4 hover:border-gray-300 dark:hover:border-gray-600`}>
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-gray-900 dark:text-white"><button type="button" aria-label={`View details for ${a.title}`} aria-haspopup="dialog" className="cursor-pointer text-left after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-green-600 dark:focus-visible:after:outline-green-400" onClick={event => { event.currentTarget.focus(); onOpen(a.id) }}>{a.title}</button></h3><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{a.question_count} questions · {a.duration_minutes} min</p></div><AssessmentStatus status={a.publication_status} /></div>
+    <div className="text-xs"><p className="font-medium text-gray-700 dark:text-gray-200">{a.instructor_name}</p><p className="mt-1 text-gray-500 dark:text-gray-400">{a.batch_name || 'Unassigned batch'} · {a.is_required ? 'Required' : 'Optional'}</p></div>
+    <AssessmentProgress assessment={a} /><div className="[&_details]:relative [&_details]:z-10"><CategorySummary categories={a.categories} /></div>
+    <div className="mt-auto border-t border-gray-100 pt-3 dark:border-gray-800"><Schedule assessment={a} /></div>
+    <AssessmentIntegrity count={a.flagged_count} />
+  </article>)}</div>
+  return <div className="max-w-full overflow-x-auto rounded-xl border border-gray-100 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-800" role="region" aria-label="Assessment list, scroll horizontally for all columns" tabIndex={0}>
+    <table className="w-full min-w-[1040px] table-fixed text-left text-xs"><caption className="sr-only">Assessments and their publication, completion, and integrity status</caption><thead className="bg-gray-50 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400"><tr>{['Assessment', 'Instructor / batch', 'Status', 'Categories', 'Schedule', 'Submissions', 'Integrity'].map((name, i) => <th key={name} scope="col" className={`px-3 py-3 font-medium ${i === 0 ? 'w-[19%]' : i === 2 ? 'w-[10%]' : i === 6 ? 'w-[13%]' : ''}`}>{name}</th>)}</tr></thead>
+      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{records.map(a => <tr key={a.id} className="align-top hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
+        <td className="break-words px-3 py-4">{trigger(a)}<p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{a.question_count} questions · {a.duration_minutes} min</p><span className="mt-2 inline-block rounded-md bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">{a.is_required ? 'Required' : 'Optional'}</span></td>
+        <td className="break-words px-3 py-4"><p className="font-medium text-gray-700 dark:text-gray-200">{a.instructor_name}</p><p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{a.batch_name || 'Unassigned'}</p></td>
+        <td className="px-3 py-4"><AssessmentStatus status={a.publication_status} /></td><td className="px-3 py-4"><CategorySummary categories={a.categories} /></td><td className="px-3 py-4"><Schedule assessment={a} /></td><td className="px-3 py-4"><AssessmentProgress assessment={a} /></td><td className="px-3 py-4"><AssessmentIntegrity count={a.flagged_count} /></td>
+      </tr>)}</tbody>
+    </table>
+  </div>
+}
 
 export default function AdminAssessments() {
-  const { data, loading, error } = useApi('/api/instructor/assessments/')
+  const { data, error, errorStatus } = useAdminAssessments()
   const assessments = useMemo(() => Array.isArray(data) ? data : [], [data])
-  const [filters, setFilters] = useState({ search: '', instructor: 'all', batch: 'all', state: 'all', required: 'all', category: 'all', completion: 'all' })
-  const [selection, setSelected] = useState(null)
-  const selected = assessments.find(item => item.id === selection?.id) ?? null
-  const [draft, setDraft] = useState(null)
-  const rosterUrl = selected?.batch_id ? `/api/instructor/batches/${selected.batch_id}/students/` : null
-  const { data: rosterData, errorStatus: rosterErrorStatus } = useApi(rosterUrl)
-  const roster = rosterData?.students || []
-  const [selectedStudent, setSelectedStudent] = useState(null)
-  const [questionsVisible, setQuestionsVisible] = useState(false)
-  const { data: questionData } = useApi(selected ? `/api/instructor/assessments/${selected.id}/questions/` : null, { skip: !questionsVisible })
-  const questions = questionsVisible ? questionData?.questions : null
-  const [confirm, setConfirm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const set = (key, value) => setFilters(prev => ({ ...prev, [key]: value }))
-  const options = key => [...new Set(assessments.map(a => a[key]).filter(Boolean))].sort()
-  const categories = [...new Set(assessments.flatMap(a => a.categories || []))].sort()
-  const filtered = filterAssessments(assessments, filters)
-  useEffect(() => {
-    if (selectedStudent && (rosterData || [403, 404].includes(rosterErrorStatus))) {
-      const latest = roster.find(student => student.id === selectedStudent.id)
-      if (latest !== selectedStudent) setSelectedStudent(latest ?? null)
-    }
-  }, [rosterData, rosterErrorStatus]) // eslint-disable-line react-hooks/exhaustive-deps
-  const open = assessment => {
-    setSelected(assessment); setSelectedStudent(null); setQuestionsVisible(false); setMessage('')
-    setDraft({ title: assessment.title, duration_minutes: assessment.duration_minutes,
-      publication_status: assessment.publication_status, is_required: assessment.is_required,
-      include_in_competency: assessment.include_in_competency, display_order: String(assessment.display_order),
-      available_at: toManilaInput(assessment.available_at), due_at: toManilaInput(assessment.due_at) })
+  const [state, dispatch] = useReducer(assessmentViewReducer, initialAssessmentView)
+  const [selectedId, setSelectedId] = useState(null)
+  const [moreFilters, setMoreFilters] = useState(false)
+  const { filters, view } = state
+  const { records, total, page } = useMemo(() => assessmentPage(assessments, filters, state.page), [assessments, filters, state.page])
+  useEffect(() => { if (state.page !== page) dispatch({ type: 'page', value: page }) }, [state.page, page])
+  const set = (key, value) => dispatch({ type: 'filter', key, value })
+  const reset = () => dispatch({ type: 'reset' })
+  const retry = () => { fetchWithDedup(ASSESSMENTS_URL).catch(() => {}) }
+  const pending = data == null && !error
+  const counts = useMemo(() => ({ all: assessments.length, published: assessments.filter(a => a.publication_status === 'published').length, draft: assessments.filter(a => a.publication_status === 'draft').length, closed: assessments.filter(a => a.publication_status === 'closed').length, flagged: assessments.reduce((sum, a) => sum + (a.flagged_count || 0), 0) }), [assessments])
+  const options = useMemo(() => ({
+    instructor: [...new Set(assessments.map(a => a.instructor_name).filter(Boolean))].sort().map(name => [name, name]),
+    batch: [...new Map(assessments.filter(a => a.batch_id != null).map(a => [String(a.batch_id), a.batch_name || `Batch ${a.batch_id}`])).entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    category: [...new Set(assessments.flatMap(a => a.categories || []))].sort().map(name => [name, name]),
+    availability: [...new Set(assessments.map(a => a.availability_status).filter(Boolean))].sort().map(value => [value, label(value)]),
+  }), [assessments])
+  const activeFilters = Object.entries(filters).filter(([key, value]) => key === 'search' ? value.trim() : value !== 'all')
+  const secondaryCount = activeFilters.filter(([key]) => ['required', 'category', 'completion', 'included', 'availability'].includes(key)).length
+  const selected = assessments.find(a => a.id === selectedId)
+  const unavailable = [403, 404].includes(errorStatus)
+  function selectFilter(key, title, values) {
+    return <label className="min-w-0"><span className="sr-only">{title}</span><select aria-label={title} className={`${control} w-full`} value={filters[key]} onChange={event => set(key, event.target.value)}><option value="all">{title}</option>{values.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>
   }
-  const save = async () => {
-    setConfirm(false); setSaving(true); setMessage('')
-    try {
-      const response = await api.patch(`/api/instructor/assessments/${selected.id}/`, { ...draft,
-        display_order: Number(draft.display_order), available_at: manilaApiDate(draft.available_at), due_at: manilaApiDate(draft.due_at) })
-      setSelected(prev => ({ ...prev, ...response.data }))
-      const urls = ['/api/instructor/assessments/', '/api/admin/users/', '/api/admin/stats/']
-      urls.forEach(invalidateCache)
-      window.dispatchEvent(new CustomEvent('sse:data_changed', { detail: { urls } }))
-      if (selected.batch_id) {
-        try {
-          invalidateCache(rosterUrl)
-          const latest = await fetchWithDedup(rosterUrl)
-          setSelectedStudent(previous => (latest.data.students || []).find(student => student.id === previous?.id) || null)
-        } catch { /* Keep the last roster on refresh failure. */ }
-      }
-      setMessage('Assessment updated. Student completion and recommendations now reflect the server state.')
-    } catch (err) { setMessage(err.response?.data?.error || 'Update failed. Please retry.') }
-    finally { setSaving(false) }
-  }
-  const retake = async (studentId, assessmentId) => {
-    const student = roster.find(s => s.id === studentId)
-    const attempt = student?.assessment_results.find(a => a.id === assessmentId)
-    if (!attempt) return
-    try {
-      await api.patch(`/api/instructor/students/${studentId}/retake/`, { assessment_id: assessmentId, retake_allowed: !attempt.retake_allowed })
-      invalidateCache(rosterUrl)
-      const response = await fetchWithDedup(rosterUrl)
-      setSelectedStudent((response.data.students || []).find(s => s.id === studentId))
-      invalidateCache('/api/admin/users/')
-      invalidateCache('/api/admin/stats/')
-      setMessage('Assessment-specific retake updated.')
-    } catch (err) { setMessage(err.response?.data?.error || 'Retake update failed.') }
-  }
-  return <div className="min-w-0">
-    <section className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6">
-      <header><h1 className="text-xl font-bold text-gray-900 dark:text-white">Assessment oversight</h1><p className="text-sm text-gray-500 dark:text-gray-400">System-wide publication, completion, and integrity status.</p></header>
-<DataSection url="/api/instructor/assessments/" layout="stats">      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
-        ['Total', assessments.length], ['Published', assessments.filter(a => a.publication_status === 'published').length],
-        ['Draft', assessments.filter(a => a.publication_status === 'draft').length], ['Closed', assessments.filter(a => a.publication_status === 'closed').length],
-        ['Stopped / flagged', assessments.reduce((n, a) => n + a.flagged_count, 0)],
-      ].map(([name, value]) => <div key={name} className="rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"><strong className="text-xl text-gray-900 dark:text-white">{value}</strong><p className="text-xs text-gray-500 dark:text-gray-400">{name}</p></div>)}</div>
-      <div className="flex flex-wrap gap-2" aria-label="Assessment filters">
-        <input className={`${input} w-full min-w-[180px] sm:flex-1`} aria-label="Search assessments" placeholder="Search title, instructor, batch" value={filters.search} onChange={e => set('search', e.target.value)} />
-        {[
-          ['instructor', 'All instructors', options('instructor_name').map(v => [v, v])],
-          ['batch', 'All batches', assessments.filter(a => a.batch_id).map(a => [String(a.batch_id), a.batch_name])],
-          ['state', 'All states', [['draft', 'Draft'], ['published', 'Published'], ['closed', 'Closed']]],
-          ['required', 'Required + optional', [['required', 'Required'], ['optional', 'Optional']]],
-          ['category', 'All categories', categories.map(v => [v, v])],
-          ['completion', 'Any completion', [['complete', '100% complete'], ['incomplete', 'Below 100%']]],
-        ].map(([key, placeholder, values]) => <select key={key} aria-label={placeholder} className={input} value={filters[key]} onChange={e => set(key, e.target.value)}><option value="all">{placeholder}</option>{[...new Map(values).entries()].map(([v, name]) => <option key={v} value={v}>{name}</option>)}</select>)}
-      </div>
-</DataSection><DataSection url="/api/instructor/assessments/" layout="cards">
-      {loading ? <p className="text-sm text-gray-500">Loading assessments…</p> : error ? <p role="alert" className="text-sm text-rose-700">Could not load assessments.</p> : filtered.length === 0 ? <p className="rounded-xl bg-white p-8 text-sm text-gray-500 dark:bg-gray-900">No assessments match these filters.</p> :
-        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900"><table className="min-w-[900px] w-full text-left text-xs"><thead className="bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><tr>{['Assessment', 'Instructor / batch', 'State', 'Settings', 'Categories', 'Schedule', 'Progress', 'Integrity'].map(h => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody>{filtered.map(a => <tr key={a.id} className="border-t border-gray-100 dark:border-gray-800"><td className="px-3 py-3"><button className="max-w-48 break-words text-left font-semibold text-green-700 underline dark:text-green-400" onClick={() => open(a)}>{a.title}</button><p>{a.question_count} questions · {a.duration_minutes} min</p></td><td className="px-3 py-3">{a.instructor_name}<br />{a.batch_name || 'Unassigned'}</td><td className="px-3 py-3 capitalize">{a.publication_status}</td><td className="px-3 py-3">{a.is_required ? 'Required' : 'Optional'}<br />{a.include_in_competency ? 'Included' : 'Excluded'} · #{a.display_order}</td><td className="px-3 py-3">{a.categories.join(', ') || 'None'}</td><td className="px-3 py-3">{a.availability_status}<br />Due {manilaDateTime(a.due_at)}</td><td className="px-3 py-3">{a.submission_count}/{a.assigned_count} submitted<br />{a.completion_rate}% complete</td><td className="px-3 py-3">{a.flagged_count} stopped / flagged</td></tr>)}</tbody></table></div>}
 
-</DataSection>
+  return <div className="min-w-0"><section className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+    <header><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment oversight</h1><p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Monitor publication, completion, and assessment integrity.</p></header>
+    {pending ? <AssessmentSkeleton layout="stats" count={5} /> : data != null && !unavailable ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Global assessment totals">{[
+      ['Total assessments', counts.all, <ReportIcon size={18} />], ['Published', counts.published, <ListIcon size={18} />], ['Drafts', counts.draft, <ReportIcon size={18} />], ['Closed', counts.closed, <ArchiveIcon size={18} />], ['Stopped / flagged', counts.flagged, <WarnIcon size={18} />],
+    ].map(([name, count, icon]) => <div key={name} className={`${surface} flex items-start justify-between gap-2 p-4`}><div><strong className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{count}</strong><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{name}</p></div><span aria-hidden="true" className={`rounded-xl p-2 ${name === 'Published' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-gray-50 text-gray-400 dark:bg-gray-800'}`}>{icon}</span></div>)}</div> : null}
+    <section className={`${surface} min-w-0`} aria-label="Assessment results">
+      <div className="border-b border-gray-100 px-4 pt-4 dark:border-gray-800 sm:px-5"><div className="mb-3 flex items-center gap-2"><h2 className="text-sm font-semibold text-gray-900 dark:text-white">All assessments</h2>{data != null && !unavailable && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">{total} results</span>}</div>
+        <div className="flex gap-1 overflow-x-auto pb-3" role="group" aria-label="Publication status">{statusTabs.map(([value, text]) => <button key={value} type="button" aria-pressed={filters.state === value} onClick={() => set('state', value)} className={`flex min-h-9 shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium ${filters.state === value ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300' : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'}`}>{text}{data != null && !unavailable && <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">{counts[value]}</span>}</button>)}</div>
+      </div>
+      <div className="space-y-3 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <label className="relative w-full min-w-0 sm:min-w-56 sm:flex-1"><span className="sr-only">Search assessments</span><span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 text-gray-400"><SearchIcon size={14} /></span><input type="search" className={`${control} w-full pl-9`} placeholder="Search title, instructor, or batch…" value={filters.search} onChange={event => set('search', event.target.value)} /></label>
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:w-auto">{selectFilter('instructor', 'All instructors', options.instructor)}{selectFilter('batch', 'All batches', options.batch)}</div>
+          <button type="button" className={`${control} flex items-center gap-2 ${secondaryCount ? 'border-green-600 text-green-800 dark:text-green-300' : ''}`} aria-expanded={moreFilters} aria-controls="assessment-more-filters" onClick={() => setMoreFilters(value => !value)}>More filters{secondaryCount ? ` (${secondaryCount})` : ''}<span aria-hidden="true">{moreFilters ? '−' : '+'}</span></button>
+          <div className="ml-auto flex items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800" role="group" aria-label="Assessment view">{[['grid', <GridIcon size={14} />, 'Card view'], ['list', <ListIcon size={14} />, 'List view']].map(([value, icon, name]) => <button key={value} type="button" aria-label={name} aria-pressed={view === value} onClick={() => dispatch({ type: 'view', value })} className={`rounded-lg p-2.5 ${view === value ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>{icon}</button>)}</div>
+        </div>
+        <div id="assessment-more-filters" hidden={!moreFilters} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
+          ['required', 'Requirement', [['required', 'Required'], ['optional', 'Optional']]], ['category', 'Category', options.category], ['completion', 'Completion', [['complete', '100% complete'], ['incomplete', 'Below 100%']]], ['included', 'Competency inclusion', [['included', 'Included'], ['excluded', 'Excluded']]], ['availability', 'Availability', options.availability],
+        ].map(([key, title, values]) => <label key={key} className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">{title}<select aria-label={title} className={`${control} mt-1 w-full`} value={filters[key]} onChange={event => set(key, event.target.value)}><option value="all">All</option>{values.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>)}</div></div>
+        {activeFilters.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span className="text-gray-500 dark:text-gray-400">{activeFilters.length} active filter{activeFilters.length === 1 ? '' : 's'}</span>{activeFilters.map(([key, value]) => <button key={key} className="max-w-full break-words rounded-lg bg-green-50 px-2 py-1.5 text-left text-green-800 dark:bg-green-950 dark:text-green-300" aria-label={`Remove ${key} filter: ${value}`} onClick={() => set(key, DEFAULT_FILTERS[key])}>{key === 'batch' ? options.batch.find(([id]) => id === value)?.[1] || value : label(value)} <span aria-hidden="true">×</span></button>)}<button className="min-h-9 px-2 font-medium text-gray-600 underline dark:text-gray-300" onClick={reset}>Clear all</button></div>}
+        {error && <AssessmentRetry onRetry={retry}>{data != null && !unavailable ? 'Could not refresh. Showing the last loaded assessments.' : error}</AssessmentRetry>}
+        {pending ? <AssessmentSkeleton layout={view} /> : !unavailable && data != null && (total ? <AssessmentResults records={records} view={view} onOpen={setSelectedId} /> : <div className="py-12 text-center"><span aria-hidden="true" className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-gray-400 dark:bg-gray-800"><ListIcon size={22} /></span><h3 className="text-sm font-semibold text-gray-900 dark:text-white">{assessments.length ? 'No matching assessments' : 'No assessments yet'}</h3><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Assessments will appear here when instructors create them.'}</p>{activeFilters.length > 0 && <button className="mt-3 min-h-10 px-3 text-xs font-semibold text-green-800 dark:text-green-300" onClick={reset}>Reset filters</button>}</div>)}
+      </div>
+      {!pending && !unavailable && data != null && <AssessmentPagination total={total} page={page} onPage={value => dispatch({ type: 'page', value })} />}
     </section>
-    {selected && draft && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={event => event.target === event.currentTarget && setSelected(null)}><div role="dialog" aria-modal="true" aria-label={`Manage ${selected.title}`} className="flex max-h-[95dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-w-3xl sm:rounded-2xl dark:bg-gray-900"><header className="flex items-start justify-between gap-2 border-b border-gray-100 p-4 dark:border-gray-800"><h2 className="break-words font-bold text-gray-900 dark:text-white">{selected.title} · {selected.batch_name}</h2><button className="text-sm text-gray-500" onClick={() => setSelected(null)}>Close</button></header><div className="space-y-5 overflow-y-auto p-4">
-      {message && <p role="status" className="rounded-lg bg-gray-100 p-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">{message}</p>}
-      <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Title<input className={`${input} mt-1 w-full`} value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label><label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Duration · minutes<input type="number" min="1" className={`${input} mt-1 w-full`} value={draft.duration_minutes} onChange={e => setDraft({ ...draft, duration_minutes: e.target.value })} /></label></div>
-      <AssessmentSettings value={draft} onChange={setDraft} />
-      <p className="text-xs text-gray-500 dark:text-gray-400">Changing a required or included assessment can lock or recalculate final recommendations. Existing attempts and scores remain preserved.</p>
-      <button disabled={saving} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setConfirm(true)}>{saving ? 'Saving…' : 'Save metadata'}</button>
-      <section><div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions</h3><button className="text-xs text-green-700 underline dark:text-green-400" onClick={() => setQuestionsVisible(value => !value)}>View authorized answer key</button></div><DataSection urls={questionsVisible && selected ? [`/api/instructor/assessments/${selected.id}/questions/`] : []} layout="table">{questions?.map((q, i) => <p key={q.id} className="border-b border-gray-100 py-2 text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300">{i + 1}. {q.question_text} · {q.category?.name} · Key: {q.choices?.filter(c => c.is_correct).map(c => c.text).join(', ')}</p>)}</DataSection></section>
-<DataSection urls={rosterUrl ? [rosterUrl] : []} layout="table">      <section><h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Student attempts · {roster.length} assigned</h3>{roster.length === 0 ? <p className="text-xs text-gray-500">No students enrolled.</p> : roster.map(student => <button key={student.id} className="flex w-full flex-wrap justify-between gap-2 border-b border-gray-100 py-2 text-left text-xs text-gray-700 dark:border-gray-800 dark:text-gray-300" onClick={() => setSelectedStudent(student)}><span className="flex items-center gap-2"><Avatar name={student.name} photoUrl={student.photo_url} className="w-8 h-8 rounded-lg text-xs" />{student.name} · {student.school_id}</span><span>{student.completed_required_count}/{student.total_required_count} required · {student.assessment_results?.find(a => a.id === selected.id)?.attempt_status || 'Not started'}</span></button>)}</section>
-</DataSection>      {selectedStudent && <section className="border-t border-gray-100 pt-3 dark:border-gray-800"><div className="mb-2 flex items-center gap-2"><Avatar name={selectedStudent.name} photoUrl={selectedStudent.photo_url} /><h3 className="text-sm font-bold text-gray-900 dark:text-white">{selectedStudent.name}</h3></div><AssessmentStudentDetail student={selectedStudent} onToggleRetake={retake} /></section>}
-    </div></div></div>}
-    {confirm && <ConfirmModal tone="confirm" title="Save assessment changes?" message="Publication, required status, and competency inclusion can change student completion and recommendation locks. Existing attempts stay intact. The server will recalculate affected profiles." confirmLabel="Save" onConfirm={save} onCancel={() => setConfirm(false)} />}
-  </div>
+    <p className="text-xs text-gray-500 dark:text-gray-400">Open an assessment to review settings, student attempts, and authorized answer keys. Summary cards show system-wide totals.</p>
+  </section>{selectedId != null && <AssessmentManagementDialog key={selectedId} assessment={unavailable ? null : selected} onClose={() => setSelectedId(null)} />}</div>
 }

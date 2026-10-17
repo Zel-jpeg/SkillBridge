@@ -17,7 +17,7 @@ export function ContentSkeleton({ layout = 'cards', count, label = 'Loading cont
 
 // Observes the existing cache; does not add fetches, polling or SSE connections.
 // Page hooks remain mounted so requests and unsaved form state survive refresh.
-export default function DataSection({ url, urls = url ? [url] : [], pending = false, layout = 'cards', count, label = 'Loading content', className, children }) {
+export default function DataSection({ url, urls = url ? [url] : [], pending = false, layout = 'cards', count, label = 'Loading content', className, skeleton, children }) {
   useSyncExternalStore(queryStore.observe, queryStore.revision)
   const missing = urls.filter(key => queryStore.read(key)?.data == null)
   const failed = missing.filter(key => queryStore.error(key))
@@ -31,7 +31,7 @@ export default function DataSection({ url, urls = url ? [url] : [], pending = fa
         ? 'This content is unavailable or you no longer have access.' : 'Could not load this section. Please try again.'}</p>
       <button type="button" onClick={retry}>Retry</button>
     </div></div>
-  if (missing.length || pending) return <div className={className} aria-busy="true"><ContentSkeleton layout={layout} count={count} label={label} /></div>
+  if (missing.length || pending) return <div className={className} aria-busy="true">{skeleton ?? <ContentSkeleton layout={layout} count={count} label={label} />}</div>
   const content = <>
       {backgroundError && <div role="status" className="sb-data-error"><p>Could not refresh. Showing the last loaded data.</p><button type="button" onClick={retry}>Retry</button></div>}
       {children}
