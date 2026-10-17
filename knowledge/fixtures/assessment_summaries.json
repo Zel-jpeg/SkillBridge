@@ -1,0 +1,400 @@
+[
+  {
+    "name": "one maximum is not alphabetically first",
+    "scores": [
+      {
+        "category": "Alpha",
+        "percentage": 20
+      },
+      {
+        "category": "Web",
+        "percentage": 92
+      }
+    ],
+    "expected": {
+      "highestLabel": "Highest-scoring area: 92%",
+      "highestNames": "Web",
+      "summary": "Combined assessment results: the student scored highest in Web (92%). Other assessed scores: Alpha: 20%.",
+      "suggestions": [
+        {
+          "category": "Alpha",
+          "percentage": 20,
+          "message": "Continue guided practice and practical activities in alpha."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Web",
+          "percentage": 92
+        }
+      ]
+    }
+  },
+  {
+    "name": "all three highest categories are tied",
+    "scores": [
+      {
+        "category": "Database Management",
+        "percentage": 100
+      },
+      {
+        "category": "Networking",
+        "percentage": 100
+      },
+      {
+        "category": "Web Development",
+        "percentage": 100
+      },
+      {
+        "category": "Programming",
+        "percentage": 50
+      }
+    ],
+    "expected": {
+      "highestLabel": "Highest-scoring areas: tied at 100%",
+      "highestNames": "Database Management · Networking · Web Development",
+      "summary": "Combined assessment results: the student scored equally highest in these 3 areas: Database Management · Networking · Web Development (100% each). Other assessed scores: Programming: 50%.",
+      "suggestions": [
+        {
+          "category": "Programming",
+          "percentage": 50,
+          "message": "Continue guided practice and practical activities in programming."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Database Management",
+          "percentage": 100
+        },
+        {
+          "category": "Networking",
+          "percentage": 100
+        },
+        {
+          "category": "Web Development",
+          "percentage": 100
+        }
+      ]
+    }
+  },
+  {
+    "name": "close percentages remain distinct",
+    "scores": [
+      {
+        "category": "Alpha",
+        "percentage": 83.33
+      },
+      {
+        "category": "Zeta",
+        "percentage": "83.34"
+      }
+    ],
+    "expected": {
+      "highestLabel": "Highest-scoring area: 83.34%",
+      "highestNames": "Zeta",
+      "summary": "Combined assessment results: the student scored highest in Zeta (83.34%). Other assessed scores: Alpha: 83.33%.",
+      "suggestions": [
+        {
+          "category": "Alpha",
+          "percentage": 83.33,
+          "message": "Continue developing alpha through more complex practical projects and peer collaboration."
+        },
+        {
+          "category": "Zeta",
+          "percentage": 83.34,
+          "message": "Continue developing zeta through more complex practical projects and peer collaboration."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Zeta",
+          "percentage": 83.34
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing scores are not zero",
+    "scores": [
+      {
+        "category": "Missing",
+        "percentage": null
+      },
+      {
+        "category": "Zero",
+        "percentage": 0
+      },
+      {
+        "category": "Unassessed",
+        "percentage": 100,
+        "max_score": 0
+      }
+    ],
+    "expected": {
+      "highestLabel": "No assessed category scored above zero",
+      "highestNames": "Zero",
+      "summary": "Combined assessment results: no assessed category scored above zero. Zero: 0%. No assessed score available: Missing · Unassessed.",
+      "suggestions": [
+        {
+          "category": "Zero",
+          "percentage": 0,
+          "message": "Continue guided practice and practical activities in zero."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Zero",
+          "percentage": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "all zero has no positive strength",
+    "scores": [
+      {
+        "category": "Programming",
+        "percentage": 0
+      },
+      {
+        "category": "Networking",
+        "percentage": 0
+      }
+    ],
+    "expected": {
+      "highestLabel": "No assessed category scored above zero",
+      "highestNames": "Programming · Networking",
+      "summary": "Combined assessment results: no assessed category scored above zero. Programming: 0%; Networking: 0%.",
+      "suggestions": [
+        {
+          "category": "Programming",
+          "percentage": 0,
+          "message": "Continue guided practice and practical activities in programming."
+        },
+        {
+          "category": "Networking",
+          "percentage": 0,
+          "message": "Continue guided practice and practical activities in networking."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Programming",
+          "percentage": 0
+        },
+        {
+          "category": "Networking",
+          "percentage": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty results",
+    "scores": [],
+    "expected": {
+      "highestLabel": "No assessed category scores",
+      "highestNames": "",
+      "summary": "Combined assessment results: no assessed category scores are available.",
+      "suggestions": [],
+      "leaders": []
+    }
+  },
+  {
+    "name": "missing results",
+    "scores": null,
+    "expected": {
+      "highestLabel": "No assessed category scores",
+      "highestNames": "",
+      "summary": "Combined assessment results: no assessed category scores are available.",
+      "suggestions": [],
+      "leaders": []
+    }
+  },
+  {
+    "name": "all scores missing",
+    "scores": [
+      {
+        "category": "No score"
+      },
+      {
+        "category": "No percentage",
+        "percentage": ""
+      }
+    ],
+    "expected": {
+      "highestLabel": "No assessed category scores",
+      "highestNames": "",
+      "summary": "Combined assessment results: no assessed category scores are available.",
+      "suggestions": [],
+      "leaders": []
+    }
+  },
+  {
+    "name": "all categories strong receives continued development",
+    "scores": [
+      {
+        "category": "Programming",
+        "percentage": 80
+      },
+      {
+        "category": "Networking",
+        "percentage": 90
+      }
+    ],
+    "expected": {
+      "highestLabel": "Highest-scoring area: 90%",
+      "highestNames": "Networking",
+      "summary": "Combined assessment results: the student scored highest in Networking (90%). Other assessed scores: Programming: 80%.",
+      "suggestions": [
+        {
+          "category": "Programming",
+          "percentage": 80,
+          "message": "Continue developing programming through more complex practical projects and peer collaboration."
+        },
+        {
+          "category": "Networking",
+          "percentage": 90,
+          "message": "Continue developing networking through more complex practical projects and peer collaboration."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Networking",
+          "percentage": 90
+        }
+      ]
+    }
+  },
+  {
+    "name": "locked suppresses stale evidence",
+    "scores": [
+      {
+        "category": "Database Management",
+        "percentage": 100
+      },
+      {
+        "category": "Networking",
+        "percentage": 100
+      },
+      {
+        "category": "Web Development",
+        "percentage": 100
+      },
+      {
+        "category": "Programming",
+        "percentage": 50
+      }
+    ],
+    "options": {
+      "locked": true
+    },
+    "expected": {
+      "highestLabel": "Results locked",
+      "highestNames": "",
+      "summary": "Combined assessment results are locked until current evidence is finalized.",
+      "suggestions": [],
+      "leaders": []
+    }
+  },
+  {
+    "name": "individual assessment remains explicitly individual",
+    "scores": [
+      {
+        "category": "Database Management",
+        "percentage": 100
+      },
+      {
+        "category": "Networking",
+        "percentage": 100
+      },
+      {
+        "category": "Web Development",
+        "percentage": 100
+      },
+      {
+        "category": "Programming",
+        "percentage": 50
+      }
+    ],
+    "options": {
+      "scope": "individual"
+    },
+    "expected": {
+      "highestLabel": "Highest-scoring areas: tied at 100%",
+      "highestNames": "Database Management · Networking · Web Development",
+      "summary": "This individual assessment: the student scored equally highest in these 3 areas: Database Management · Networking · Web Development (100% each). Other assessed scores: Programming: 50%.",
+      "suggestions": [
+        {
+          "category": "Programming",
+          "percentage": 50,
+          "message": "Continue guided practice and practical activities in programming."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Database Management",
+          "percentage": 100
+        },
+        {
+          "category": "Networking",
+          "percentage": 100
+        },
+        {
+          "category": "Web Development",
+          "percentage": 100
+        }
+      ]
+    }
+  },
+  {
+    "name": "student wording retains all tied leaders",
+    "scores": [
+      {
+        "category": "Database Management",
+        "percentage": 100
+      },
+      {
+        "category": "Networking",
+        "percentage": 100
+      },
+      {
+        "category": "Web Development",
+        "percentage": 100
+      },
+      {
+        "category": "Programming",
+        "percentage": 50
+      }
+    ],
+    "options": {
+      "audience": "student"
+    },
+    "expected": {
+      "highestLabel": "Highest-scoring areas: tied at 100%",
+      "highestNames": "Database Management · Networking · Web Development",
+      "summary": "Combined assessment results: you scored equally highest in these 3 areas: Database Management · Networking · Web Development (100% each). Other assessed scores: Programming: 50%.",
+      "suggestions": [
+        {
+          "category": "Programming",
+          "percentage": 50,
+          "message": "Continue guided practice and practical activities in programming."
+        }
+      ],
+      "leaders": [
+        {
+          "category": "Database Management",
+          "percentage": 100
+        },
+        {
+          "category": "Networking",
+          "percentage": 100
+        },
+        {
+          "category": "Web Development",
+          "percentage": 100
+        }
+      ]
+    }
+  }
+]

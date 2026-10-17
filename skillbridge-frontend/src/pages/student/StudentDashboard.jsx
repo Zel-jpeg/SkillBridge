@@ -1,3 +1,5 @@
+import { HighestScoringAreas } from '../../components/CompetencyInsights'
+import { categoryPercentage } from '../../utils/assessmentSummary'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentDashboard.jsx
 //
@@ -471,14 +473,13 @@ export default function StudentDashboard() {
             </div>
             {hasTakenAssessment ? (
               <>
-                {/* Summary score badge */}
                 <div className="flex items-center gap-3 mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-xl border border-green-100 dark:border-green-900">
                   <div className="w-9 h-9 rounded-full bg-green-600 flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-white">{overallScore}</span>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-green-800 dark:text-green-200">Overall skill score</p>
-                    <p className="text-xs text-green-600 dark:text-green-400">Top skill: {skillScores[0]?.label ?? '—'}</p>
+                    <HighestScoringAreas scores={skillScores.map(score => ({ category: score.label, percentage: score.pct, max_score: score.maxScore }))} audience="student" />
                   </div>
                 </div>
                 {/* 2-column bar grid on desktop */}
@@ -487,14 +488,14 @@ export default function StudentDashboard() {
                     <div key={s.label}>
                       <div className="flex justify-between items-end mb-1">
                         <span className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-tight mr-2">{s.label}</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0">{s.pct}%</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0">{categoryPercentage(s.pct)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {s.tag && <SkillTagBadge tag={s.tag} />}
                         <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
-                            style={{ width: `${s.pct}%` }}
+                            style={{ width: `${s.pct ?? 0}%` }}
                           />
                         </div>
                       </div>

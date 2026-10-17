@@ -10,6 +10,7 @@
 
 import { useState, useMemo } from 'react'
 import { useApi } from '../useApi'
+import { scorePercentage } from '../../utils/assessmentSummary'
 
 const RESULTS_URL = '/api/student/results/combined/'
 
@@ -62,7 +63,7 @@ export function useStudentResults() {
     if (data?.recommendations_locked !== false || !data?.combined_category_scores?.length) return []
     return data.combined_category_scores.map((s, i) => ({
       label:    s.category,
-      pct:      Math.round(s.percentage),
+      pct:      scorePercentage(s.percentage),
       tag:      s.tag,
       rawScore: s.raw_score,
       maxScore: s.max_score,

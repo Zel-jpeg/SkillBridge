@@ -15,10 +15,11 @@ test('unlocked competency sections retain individual, combined, included and ran
       category_score_component: 80, nlp_score_component: 86, location_score_component: 90 }],
     placement: { status: 'approved', company: { name: 'Employer' }, position: { title: 'Data Intern' } },
   })
-  assert.match(sections.individual[0][2], /3\/4 \(75\.0%\)/)
-  assert.deepEqual(sections.combined[0], ['Database', '8/10', '80.0%'])
+  assert.match(sections.individual[0][2], /3\/4 \(75%\)/)
+  assert.deepEqual(sections.combined[0], ['Database', '8/10', '80%'])
   assert.deepEqual(sections.included, ['Database Focus'])
-  assert.equal(sections.summary, 'Database ready')
+  assert.match(sections.summary, /the student scored highest in Database \(80%\)/)
+  assert.doesNotMatch(sections.summary, /Database ready/)
   assert.deepEqual(sections.recommendations[0].slice(0, 3), ['1', 'Employer', 'Data Intern'])
   assert.match(sections.placement, /Approved: Employer/)
 })

@@ -1,3 +1,5 @@
+import CompetencyInsights from './CompetencyInsights'
+import { categoryPercentage } from '../utils/assessmentSummary'
 import { useId, useRef, useState } from 'react'
 import ConfirmModal from './admin/ConfirmModal'
 import PlacementStatusCard from './placements/PlacementStatusCard'
@@ -6,7 +8,7 @@ import ScoreLabel from './ScoreLabel'
 import { AlertTriangleIcon, BriefcaseIcon, ListIcon, LockIcon, RefreshIcon, ReportIcon, SkillIcon } from './Icons'
 import { manilaDateTime } from '../utils/assessmentDates'
 import { assessmentRetakeCandidate } from '../utils/assessmentManagement'
-import { attemptLabel, isCurrentPlacement, lockExplanation, percentLabel, studentDetailState, suggestionText } from '../utils/studentDetail'
+import { attemptLabel, isCurrentPlacement, lockExplanation, percentLabel, studentDetailState } from '../utils/studentDetail'
 import './studentDetail.css'
 
 const tabs = [
@@ -28,7 +30,7 @@ function ScoreRows({ scores = [], categoryNames }) {
     {scores.map((score, index) => <div key={score.category_id ?? index} className="sb-detail-score-row" role="row">
       <span role="cell">{score.category || categoryNames?.get(score.category_id) || (score.category_id != null ? `Category ${score.category_id}` : 'Category not provided')}</span>
       <span role="cell">{score.raw_score ?? '—'} / {score.max_score ?? '—'}</span>
-      <strong role="cell">{percentLabel(score.percentage)}</strong>
+      <strong role="cell">{categoryPercentage(score.percentage)}</strong>
     </div>)}
   </div>
 }
@@ -62,7 +64,7 @@ function Overview({ student, state, instructorName, compact }) {
       <section><h3 className="sb-detail-heading mb-4">Profile and enrollment</h3><dl className="sb-detail-facts">
         <dt>Recommendations</dt><dd>{state.locked ? 'Locked' : 'Unlocked'}</dd>
         <dt>Combined profile</dt><dd>{state.profile ? 'Finalized' : 'Awaiting completion'}</dd>
-        <dt>Finalized</dt><dd>{state.profile?.finalized_at ? manilaDateTime(state.profile.finalized_at) : 'Not finalized'}</dd>
+        <dt>Finalized</dt><dd>{state.profile?.finalized_at ? manilaDateTime(state.profile?.finalized_at) : 'Not finalized'}</dd>
         <dt>Batch</dt><dd>{student.batch?.name || 'No active batch'}</dd>
         <dt>Instructor</dt><dd>{student.instructor || instructorName || 'Instructor not provided'}</dd>
       </dl>{state.locked && <p className="sb-detail-muted mt-4 leading-relaxed">{lockExplanation(state)}</p>}</section>
@@ -83,6 +85,7 @@ function Assessments({ student, state, canRetake, onRetake, archived, retakeAsse
       <div className="mt-2 flex flex-wrap gap-2"><span className="sb-detail-status">{result.is_required ? 'Required' : 'Optional'}</span><span className="sb-detail-status">{result.include_in_competency ? 'Included in competency' : 'Excluded from competency'}</span><span className="sb-detail-status">Current attempt</span>{result.retake_allowed && <span className="sb-detail-status">Retake approved</span>}</div>
       {['submitted', 'stopped'].includes(result.attempt_status) && <p className="sb-detail-muted mt-2"><AttemptDate attempt={result} /></p>}
       <ScoreRows scores={result.category_scores} />
+      {result.attempt_status === 'submitted' && !result.is_flagged && <div className="mt-4"><CompetencyInsights scores={result.category_scores} scope="individual" /></div>}
       <IntegrityDetail attempt={result} />
       {assessmentRetakeCandidate(student, result.id) && <div className="mt-3">
         {canRetake && (retakeAssessmentId == null || retakeAssessmentId === result.id) ? <button type="button" className="min-h-11 rounded-lg border border-green-700 px-3 py-2 text-left text-xs font-semibold text-green-800 dark:border-green-500 dark:text-green-300" onClick={() => onRetake(result.id)}>{result.retake_allowed ? 'Revoke retake' : 'Approve retake'} for {result.title}</button>
@@ -94,16 +97,13 @@ function Assessments({ student, state, canRetake, onRetake, archived, retakeAsse
 
 function CombinedCompetency({ state }) {
   if (state.locked) return <EmptyDetail title="Combined competency is locked" locked>{lockExplanation(state)}</EmptyDetail>
-  if (!state.profile) return <EmptyDetail title="Final profile unavailable">A finalized combined profile has not been provided for this student.</EmptyDetail>
   const sourceIds = [...new Set(state.combined.flatMap(score => score.source_assessment_ids || []))]
   const included = state.results.filter(result => sourceIds.includes(result.id))
   return <div>
-    <h3 className="sb-detail-heading">{state.profile.orientation_label || 'Combined competency profile'}</h3>
-    <p className="mt-2 max-w-prose whitespace-pre-line leading-relaxed">{state.profile.orientation_summary || 'Orientation summary not provided.'}</p>
+    <CompetencyInsights scores={state.combined} />
     <section className="mt-6"><h4 className="sb-detail-heading">Combined category scores</h4><ScoreRows scores={state.combined} /></section>
     {included.length > 0 && <p className="sb-detail-muted mt-3">Included assessments: {included.map(result => result.title).join('; ')}</p>}
-    {state.profile.development_suggestions?.length > 0 && <section className="mt-6"><h4 className="sb-detail-heading">Development suggestions</h4><ul className="max-w-prose list-disc space-y-2 pl-5">{state.profile.development_suggestions.map((item, i) => <li key={i}>{suggestionText(item)}</li>)}</ul></section>}
-    <dl className="sb-detail-facts mt-6 border-t border-gray-200 pt-4 dark:border-gray-700"><dt>NLP model used</dt><dd>{state.profile.model_used || 'Not provided'}</dd><dt>Finalized</dt><dd>{state.profile.finalized_at ? manilaDateTime(state.profile.finalized_at) : 'Date not provided'}</dd></dl>
+    <dl className="sb-detail-facts mt-6 border-t border-gray-200 pt-4 dark:border-gray-700"><dt>NLP model used</dt><dd>{state.profile?.model_used || 'Not provided'}</dd><dt>Finalized</dt><dd>{state.profile?.finalized_at ? manilaDateTime(state.profile?.finalized_at) : 'Date not provided'}</dd></dl>
   </div>
 }
 

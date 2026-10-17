@@ -37,6 +37,34 @@ class ManagementStep4Tests(APITestCase):
                                               status=status, is_flagged=flagged,
                                               submitted_at=__import__('django').utils.timezone.now())
 
+    def test_result_and_csv_keep_stored_precision_and_ignore_old_orientation(self):
+        assessment = self.assessment('Precision assessment')
+        self.finalized(assessment)
+        other = SkillCategory.objects.create(name='Zeta Systems', created_by=self.owner)
+        for category, percentage in ((self.category, 83.33), (other, 83.34)):
+            SkillScore.objects.create(student=self.student, assessment=assessment, skill_category=category,
+                                      raw_score=5, max_score=6, percentage=percentage)
+        self.client.force_authenticate(self.student)
+        result = self.client.get(reverse('student_results'), {'assessment_id': assessment.id})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual([row['percentage'] for row in result.data['skill_scores']], [83.34, 83.33])
+        profile = CombinedCompetencyProfile.objects.get(student=self.student, batch=self.batch)
+        profile.orientation_summary = 'Old saved orientation'
+        profile.save(update_fields=['orientation_summary'])
+        ranking_text = profile.competency_profile_text
+        for role in (self.owner, self.admin):
+            self.client.force_authenticate(role)
+            response = self.client.get(reverse('management_assessment_reports'), {'type': 'student_competency', 'export': 'csv'})
+            self.assertEqual(response.status_code, 200)
+            exported = response.content.decode('utf-8-sig')
+            self.assertIn('83.33%', exported)
+            self.assertIn('83.34%', exported)
+            self.assertIn('This individual assessment: the student scored highest in Zeta Systems (83.34%)', exported)
+            self.assertNotIn('Old saved orientation', exported)
+        profile.refresh_from_db()
+        self.assertEqual(profile.orientation_summary, 'Old saved orientation')
+        self.assertEqual(profile.competency_profile_text, ranking_text)
+
     def test_management_list_has_per_assessment_metrics_and_scoped_keys(self):
         owned = self.assessment()
         foreign = self.assessment('Foreign', batch=self.other_batch)
@@ -231,7 +259,7 @@ class ManagementStep4Tests(APITestCase):
         self.assertNotIn('Secret', str(result.data))
         csv_result = self.client.get(url, {'type': 'student_competency', 'export': 'csv'})
         csv_text = csv_result.content.decode('utf-8-sig')
-        for expected in ('Database Skills', 'Database Step 4: 3/4 (75.0%)', 'Ready for database work',
+        for expected in ('Database Skills', 'Database Step 4: 3/4 (75%)', 'the student scored highest in Database Step 4 (75%)',
                          '#1 Sample Employer - Database Intern', '#2 Sample Employer - Data Analyst Intern',
                          'Approved: Sample Employer - Database Intern'):
             self.assertIn(expected, csv_text)

@@ -15,6 +15,7 @@ from django.db.models.deletion import ProtectedError
 from django.utils.dateparse import parse_date, parse_datetime
 from django.http import HttpResponse
 from zoneinfo import ZoneInfo
+from .assessment_presentation import assessment_summary, category_percentage, development_text
 from .csv_safety import SafeCSVWriter
 from .request_validation import parse_boolean, parse_choice_flags
 from .models import (
@@ -1339,10 +1340,10 @@ def management_assessment_reports(request):
     elif report_type == 'student_competency':
         writer.writerow(['Student ID', 'Student', 'Batch', 'Instructor', 'Assessment', 'Attempt status',
                          'Individual category scores', 'Combined category scores', 'Included assessments',
-                         'Combined competency summary', 'Recommendations', 'Final ranked recommendations',
+                         'Combined competency summary', 'Suggested development focus', 'Individual assessment summary', 'Recommendations', 'Final ranked recommendations',
                          'Placement', 'Completed required', 'Total required'])
         for row in rows:
-            combined = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({score['percentage']:.1f}%)"
+            combined = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({category_percentage(score['percentage'])})"
                                  for score in row['combined_category_scores'])
             included = '; '.join(assessment['title'] for assessment in row['included_assessments'])
             recommendations = '; '.join(f"#{rec['rank']} {rec['company']} - {rec['position']} ({rec['match_score']}%)"
@@ -1351,12 +1352,14 @@ def management_assessment_reports(request):
             placement_text = (f"Approved: {placement['company']['name']} - {placement['position']['title']}"
                               if placement['status'] == 'approved' else placement['status'].replace('_', ' ').title())
             for result in row['individual_results'] or [{}]:
-                individual = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({score['percentage']:.1f}%)"
+                individual = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({category_percentage(score['percentage'])})"
                                        for score in result.get('category_scores', []))
                 writer.writerow([row['school_id'], row['student'], row['batch'], row['instructor'],
                                  result.get('title', ''), result.get('attempt_status') or 'not_started',
                                  individual, combined, included,
-                                 (row['combined_competency_profile'] or {}).get('orientation_summary', ''),
+                                 assessment_summary(row['combined_category_scores'])['summary'] if not row['recommendations_locked'] else '',
+                                 development_text(row['combined_category_scores'], locked=row['recommendations_locked']),
+                                 assessment_summary(result.get('category_scores', []), scope='individual')['summary'] if result.get('attempt_status') == 'submitted' and not result.get('is_flagged') else '',
                                  'Locked' if row['recommendations_locked'] else 'Unlocked', recommendations,
                                  placement_text, row['completed_required_count'], row['total_required_count']])
     else:
@@ -1367,8 +1370,8 @@ def management_assessment_reports(request):
                                  item.get('title', ''), item.get('status', ''), item.get('required', ''),
                                  item.get('flagged', ''), row['completed_required_count'], row['total_required_count'],
                                  row['recommendations_locked'],
-                                 ', '.join(f"{score['category']}: {score['percentage']:.1f}%" for score in row.get('combined_category_scores', [])),
-                                 (row.get('combined_competency_profile') or {}).get('orientation_summary', ''),
+                                 ', '.join(f"{score['category']}: {category_percentage(score['percentage'])}" for score in row.get('combined_category_scores', [])),
+                                 assessment_summary(row.get('combined_category_scores', []))['summary'] if not row['recommendations_locked'] else '',
                                  ', '.join(f"{rec['company']} — {rec['position']} ({rec['match_score']}%)" for rec in row.get('final_recommendations', []))])
     return output
 
@@ -2691,7 +2694,7 @@ def student_results(request):
                 'category':   ss.skill_category.name,
                 'raw_score':  ss.raw_score,
                 'max_score':  ss.max_score,
-                'percentage': round(ss.percentage, 1),
+                'percentage': ss.percentage,
                 'tag':        get_qualitative_tag(ss.percentage),
             }
             for ss in skill_scores.order_by('-percentage')

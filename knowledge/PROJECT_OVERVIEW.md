@@ -59,6 +59,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Assessment result presentation](ASSESSMENT_RESULT_PRESENTATION.md): Exact
+  highest-score ties, shared student/staff summaries, category-based guidance,
+  export consistency and the preserved NLP boundary.
+
 - [Collection UI skill](../.agents/skills/skillbridge-collection-ui/SKILL.md) and
   [reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md): Instructor-inspired
   search/filter toolbars, table and card views, pagination, visual conventions

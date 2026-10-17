@@ -1,3 +1,4 @@
+import { assessmentSummary, categoryPercentage } from './assessmentSummary.js'
 import { manilaDateTime } from './assessmentDates.js'
 
 const reportNames = {
@@ -6,10 +7,11 @@ const reportNames = {
   assessment_completion: 'Assessment Completion',
 }
 
-const scoreText = score => `${score.category}: ${score.raw_score}/${score.max_score} (${Number(score.percentage).toFixed(1)}%)`
+const scoreText = score => `${score.category}: ${score.raw_score}/${score.max_score} (${categoryPercentage(score.percentage)})`
 
 export function studentCompetencySections(row) {
-  const locked = Boolean(row.recommendations_locked)
+  const locked = row.recommendations_locked !== false
+  const interpretation = assessmentSummary(row.combined_category_scores, { locked })
   const placement = row.placement || { status: 'unplaced' }
   return {
     identity: `${row.student || 'Unnamed student'} (${row.school_id || 'No student ID'})`,
@@ -17,13 +19,14 @@ export function studentCompetencySections(row) {
     progress: `${row.completed_required_count ?? 0} of ${row.total_required_count ?? 0} required assessments complete`,
     individual: (row.individual_results || []).map(result => [
       result.title, result.attempt_status || 'Not started',
-      (result.category_scores || []).map(scoreText).join('\n') || 'No category scores',
+      [(result.category_scores || []).map(scoreText).join('\n') || 'No category scores', result.attempt_status === 'submitted' && !result.is_flagged ? assessmentSummary(result.category_scores, { scope: 'individual' }).summary : ''].filter(Boolean).join('\n'),
     ]),
     combined: locked ? [] : (row.combined_category_scores || []).map(score => [
-      score.category, `${score.raw_score}/${score.max_score}`, `${Number(score.percentage).toFixed(1)}%`,
+      score.category, `${score.raw_score}/${score.max_score}`, `${categoryPercentage(score.percentage)}`,
     ]),
     included: locked ? [] : (row.included_assessments || []).map(assessment => assessment.title),
-    summary: locked ? '' : row.combined_competency_profile?.orientation_summary || '',
+    summary: locked ? '' : interpretation.summary,
+    suggestions: locked ? [] : interpretation.suggestions.map(item => [item.category, categoryPercentage(item.percentage), item.message]),
     recommendationState: locked ? 'Locked - required assessments remain incomplete' : 'Unlocked',
     recommendations: locked ? [] : (row.final_recommendations || []).map((rec, index) => [
       String(rec.rank ?? index + 1), rec.company, rec.position, `${Number(rec.match_score).toFixed(1)}%`,
@@ -96,6 +99,8 @@ export function buildAssessmentReportPdf(payload, filters, jsPDF, autoTable) {
         table(['Assessment'], s.included.length ? s.included.map(title => [title]) : [['None']])
         section('Combined competency profile summary')
         paragraph(s.summary)
+        section('Suggested development focus')
+        table(['Category', 'Percentage', 'Guidance'], s.suggestions.length ? s.suggestions : [['No assessed category evidence', '', '']])
       }
       section(`Final ranked recommendations - ${s.recommendationState}`)
       if (s.recommendationState.startsWith('Locked')) paragraph('Recommendations are locked. No current rankings are shown.')

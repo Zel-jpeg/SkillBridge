@@ -1,0 +1,101 @@
+# Assessment result interpretation
+
+Updated 17 October 2026. Presentation uses current category percentages, including
+for previously saved profiles. No regeneration or data migration is required.
+
+## Definitions and UI
+
+- Highest-scoring areas are **all** assessed categories equal to the maximum API
+  percentage, compared before formatting. Array order, names and IDs never decide
+  the winner. Input order only controls display order.
+- Display preserves API precision, trimming redundant trailing zeroes. 83.33%
+  and 83.34% remain visibly different. The individual student results endpoint
+  returns stored percentages instead of rounding to one decimal. Grading still
+  stores its existing percentages.
+- Null, missing, blank, invalid percentages and rows with a supplied maximum of
+  zero have no assessed score. They are distinct from an assessed 0%. Empty
+  results have no highest-scoring category. All-zero results explicitly say no
+  assessed category scored above zero.
+- Combined summaries describe combined results; individual summaries explicitly
+  describe one assessment. Stopped/flagged attempts retain recorded scores and
+  integrity notices but receive no positive interpretation.
+- Guidance identifies every assessed category below 80%, following the previous
+  insight threshold. This is a presentation convention, not a new grading band
+  or placement rule. If all categories score at least 80%, every category receives
+  continued-development guidance. Tags are not independently assessed skills.
+- Neutral bordered sections use 14px body text, 24px line height and 16px headings.
+  Guidance stacks on mobile and uses two columns at wider widths. Names wrap and
+  tied leaders have no display limit. Staff tab keyboard focus remains available.
+- Combined result interpretation starts collapsed in a native disclosure. Enter,
+  Space or a click expands the full summary and development focus; every tied
+  leader remains available when expanded. Individual interpretation stays open.
+  PDF/CSV exports always include the full summary.
+- The dashboard retains its original green summary card and circular overall
+  score badge, restored at the user's request after the spacing redesign.
+  Result text keeps colons instead of em-dash separators, including matching
+  CSV/PDF wording. Stored NLP text is unchanged.
+
+The documented `frontend-design` skill was unavailable in `.agents/skills/` and
+the local skill/plugin locations. Design follows the collection-UI reference
+and current SkillBridge components.
+
+The [summary helper](../skillbridge-frontend/src/utils/assessmentSummary.js) and
+[insights component](../skillbridge-frontend/src/components/CompetencyInsights.jsx)
+serve student final results, the dashboard highest-score summary, individual
+assessment results and shared instructor/admin details. The
+[PDF formatter](../skillbridge-frontend/src/utils/assessmentReportPdf.js) uses the
+same helper. The backend [CSV helper](../skillbridge-backend/api/assessment_presentation.py)
+implements the same contract, tested with [shared fixtures](fixtures/assessment_summaries.json).
+CSV competency reports include combined guidance and a separate individual
+assessment summary. Locked reports suppress combined summaries and guidance.
+
+## Data flow and ranking boundary
+
+Individual scores originate in `score_submission` and saved `SkillScore` rows.
+Combined scores come from eligible raw/maximum totals in `combined_competency.py`
+and saved `CombinedCategoryScore` rows. Scoped serializers/hooks provide those
+rows to each role. Staff details share `AssessmentStudentDetail`; management
+reports use the same evidence. Authorization, completion locks, aggregation and
+placement access are unchanged.
+
+`generate_competency_insights` in `recommendation_nlp.py` embeds its legacy
+orientation summary in `competency_profile_text`. Ranking consumes that saved
+text through `scoring.py`. Those fields, NLP inputs, text generation version and
+recommendation weights are unchanged. UI/exports derive factual summaries from
+score rows instead of displaying saved orientation or tag-based guidance fields.
+Legacy API fields remain for compatibility and NLP diagnostics.
+
+## Verification
+
+- Frontend Node regression suite: 94 passed, including 15 summary checks and
+  student/staff normalization/PDF contract checks.
+- Lint: zero errors, five existing warnings in company/profile/setup screens.
+  Build passed. The PATH npm shim is broken on this machine; use
+  `& 'C:/Program Files/nodejs/npm.cmd' run lint` and the equivalent build command.
+- Django system check passed. 37 tests passed across `api.test_assessment_presentation`,
+  `api.test_management_step4`, `api.test_multiple_assessments` and
+  `api.test_combined_competency`. The integration run overrode `DATABASES` in the
+  Python process to isolated in-memory SQLite before Django setup. No configured
+  remote database was contacted. PostgreSQL behavior was not tested.
+  The disclosure/spacing follow-up reran the two database-free presentation tests,
+  all 94 frontend checks, lint and build. Generated browser bundles under
+  `test-results/` are excluded from ESLint alongside other build artifacts.
+- [Synthetic browser script](../skillbridge-frontend/scripts/check_assessment_summaries.py):
+  run with backend venv Python against Vite on `127.0.0.1:5173`. It generates and
+  removes a temporary harness, bundles the actual components and styles into an
+  ignored preview directory, intercepts APIs with synthetic data, blocks external
+  requests and uses installed Edge through Playwright. Screenshots go under ignored
+  `skillbridge-frontend/test-results/assessment-summaries/`.
+  The bundled preview avoids the development HMR transport and does not affect
+  normal application builds. `--themes`, `--widths` and `--views` select a subset.
+  All 24 student/staff/shared-component/dashboard combinations passed at 375, 768
+  and 1280px in light/dark modes, including keyboard expand/collapse, separate
+  dashboard results, long labels, close percentages, locked evidence, keyboard
+  focus, 14px minimum summary text and no horizontal overflow or page errors.
+  Mobile staff and desktop dashboard screenshots were visually inspected as well.
+  After restoring the original dashboard card, all six dashboard width/theme
+  combinations passed again with no overflow or page errors; lint and build
+  passed with the same five pre-existing lint warnings.
+
+Live authenticated backend/browser flows and generated PDF pagination remain
+outside this synthetic verification. No live student data was used.

@@ -16,7 +16,8 @@ import CompanyImage from '../../components/CompanyImage'
 import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
-import CompetencyInsights from '../../components/CompetencyInsights'
+import CompetencyInsights, { HighestScoringAreas } from '../../components/CompetencyInsights'
+import { categoryPercentage } from '../../utils/assessmentSummary'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 
 
@@ -201,7 +202,6 @@ export default function StudentResults() {
   // Final results always come from the current batch-scoped API.
   const {
     skillScores,
-    competencyProfile,
     placement,
     recommendations: sorted,
     loading: resultsLoading,
@@ -335,15 +335,15 @@ export default function StudentResults() {
                 {skillScores.map((s, i) => (
                   <div key={s.label}>
                     <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-tight mr-2">{s.label}</span>
-                      <span className={`text-xs font-bold shrink-0 ${matchColor(s.pct)}`}>{s.pct}%</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-6 mr-2 wrap-break-word min-w-0">{s.label}</span>
+                      <span className="text-sm font-bold shrink-0 text-gray-900 dark:text-white">{categoryPercentage(s.pct)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {s.tag && <SkillTagBadge tag={s.tag} />}
                       <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]} transition-all duration-700 ease-out`}
-                          style={{ width: animated ? `${s.pct}%` : '0%' }}
+                          style={{ width: animated ? `${s.pct ?? 0}%` : '0%' }}
                         />
                       </div>
                     </div>
@@ -351,30 +351,15 @@ export default function StudentResults() {
                 ))}
               </div>
             )}
-            {skillScores.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-xl flex items-center justify-center shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Strongest Area</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
-                    {skillScores[0]?.label ?? '—'}
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+              <HighestScoringAreas scores={resultData.combined_category_scores} audience="student" />
+            </div>
           </div>
         </div>
 
-        {competencyProfile && (
-          <div className="mb-8">
-            <CompetencyInsights profile={competencyProfile} />
-          </div>
-        )}
+        <div className="mb-8">
+          <CompetencyInsights scores={resultData.combined_category_scores} audience="student" />
+        </div>
 
         {/* ── COMPANY MATCHES — full width below ── */}
         <div className="flex flex-col gap-5">
