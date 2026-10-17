@@ -5,10 +5,6 @@
 //   2. Wrong-role access (student on admin page) → redirect to correct login
 //   3. Back button after logout → replace: true means back goes to login, not the protected page
 //
-// Also fires prefetchForRole() so all API data for the user's role is
-// requested immediately — before any page component mounts.
-// By the time a page's useEffect runs, the cache is already warm.
-//
 // Usage in App.jsx:
 //   <Route path="/admin/dashboard" element={
 //     <PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>
@@ -45,6 +41,12 @@ export default function PrivateRoute({ children, role }) {
   if (role && userRole !== role) {
     const loginPage = ROLE_REDIRECTS[role] ?? '/login'
     return <Navigate to={loginPage} replace />
+  }
+
+  let user
+  try { user = JSON.parse(localStorage.getItem('sb-user')) } catch { /* Server remains authoritative. */ }
+  if (user?.role === userRole && userRole !== 'admin' && user.is_approved === false) {
+    return <Navigate to="/instructor/pending" replace state={{ type: userRole === 'student' ? 'student_waiting' : 'instructor_waiting' }} />
   }
 
   return <LiveSession key={`${userRole}:${token}`}>{children}</LiveSession>

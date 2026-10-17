@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 
@@ -58,7 +59,7 @@ export default function StudentAssessmentResult() {
 
     <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400 focus-visible:outline-2">← Skills Assessments</button>
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-7">
+      <DataSection urls={resultUrl ? [resultUrl] : []} layout="stats"><div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">Assessment Result</p>
         {(!validId || error) && <div role="alert" className="mt-4 text-sm text-rose-700 dark:text-rose-300">{!validId ? 'Invalid assessment link.' : error === 'Finalized attempt not found' ? 'There is no completed attempt to show yet.' : 'This assessment result is unavailable for your batch.'}</div>}
         {loading && <p role="status" className="mt-4 text-sm text-gray-600 dark:text-gray-300">Loading your result…</p>}
@@ -79,7 +80,7 @@ export default function StudentAssessmentResult() {
             {!data.recommendations_locked && <button onClick={() => navigate('/student/results')} className="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700">View Final Results</button>}
           </div>
         </>}
-      </div>
+      </div></DataSection>
       {data?.assessment && !loading && !error && <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6" aria-labelledby="category-scores-title">
         <h2 id="category-scores-title" className="text-lg font-bold text-gray-900 dark:text-white">Category scores</h2>
         {scores.length ? <div className="mt-4 space-y-4">{scores.map(row => <div key={row.category}>
@@ -87,7 +88,10 @@ export default function StudentAssessmentResult() {
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div className="h-full bg-green-600" style={{ width: `${Math.min(100, Math.max(0, row.percentage))}%` }} /></div>
         </div>)}</div> : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No scored answers were recorded.</p>}
       </section>}
+<DataSection urls={data?.assessment && reviewUrl ? [reviewUrl] : []} layout="table" label="Loading submitted answers">
       {data?.assessment && !loading && !error && (reviewPending ? <p role="status" className="mt-5 text-sm text-gray-600 dark:text-gray-300">Loading submitted answers…</p> : reviewError ? <p role="alert" className="mt-5 text-sm text-rose-700 dark:text-rose-300">Submitted answers could not be loaded. Your score is still available above.</p> : <AnswerReview questions={review?.questions} answers={review?.answers} />)}
+
+</DataSection>
     </section>
   </div>
 }

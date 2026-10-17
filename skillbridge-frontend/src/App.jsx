@@ -1,3 +1,9 @@
+import { lazy, Suspense, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
+import { ContentSkeleton } from './components/DataSection'
+import { loadDestination, prepareNavigation } from './api/prefetch.js'
+import { useSession } from './context/SessionContext'
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import PrivateRoute from './router/PrivateRoute'
 import AuthenticatedShell from './components/layout/AuthenticatedShell'
@@ -7,31 +13,53 @@ import LoginPage from './pages/auth/LoginPage'
 import AdminLogin from './pages/auth/AdminLogin'
 
 // Student pages
-import StudentSetup from './pages/student/StudentSetup'
-import StudentDashboard from './pages/student/StudentDashboard'
-import StudentAssessment from './pages/student/StudentAssessment'
-import StudentAssessments from './pages/student/StudentAssessments'
-import StudentAssessmentResult from './pages/student/StudentAssessmentResult'
-import StudentResults from './pages/student/StudentResults'
-import StudentProfile from './pages/student/StudentProfile'
+const StudentSetup = lazy(() => import('./pages/student/StudentSetup'))
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'))
+const StudentAssessment = lazy(() => import('./pages/student/StudentAssessment'))
+const StudentAssessments = lazy(() => import('./pages/student/StudentAssessments'))
+const StudentAssessmentResult = lazy(() => import('./pages/student/StudentAssessmentResult'))
+const StudentResults = lazy(() => import('./pages/student/StudentResults'))
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile'))
 
 // Instructor pages
-import InstructorDashboard from './pages/instructor/InstructorDashboard'
-import InstructorUpload from './pages/instructor/InstructorUpload'
-import EnrolledStudents from './pages/instructor/EnrolledStudents'
-import InstructorPending from './pages/instructor/InstructorPending'
-import InstructorAssessments from './pages/instructor/InstructorAssessments'
-import InstructorCompanies from './pages/instructor/InstructorCompanies'
-import { InstructorPlacements } from './pages/placements/PlacementsPage'
+const InstructorDashboard = lazy(() => import('./pages/instructor/InstructorDashboard'))
+const InstructorUpload = lazy(() => import('./pages/instructor/InstructorUpload'))
+const EnrolledStudents = lazy(() => import('./pages/instructor/EnrolledStudents'))
+const InstructorPending = lazy(() => import('./pages/instructor/InstructorPending'))
+const InstructorAssessments = lazy(() => import('./pages/instructor/InstructorAssessments'))
+const InstructorCompanies = lazy(() => import('./pages/instructor/InstructorCompanies'))
+const InstructorPlacements = lazy(() => import('./pages/placements/PlacementsPage').then(module => ({ default: module.InstructorPlacements })))
 
 // Admin pages
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminCompanies from './pages/admin/AdminCompanies'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminSkills from './pages/admin/AdminSkills'
-import AdminAssessments from './pages/admin/AdminAssessments'
-import AdminReports from './pages/admin/AdminReports'
-import AdminPlacements from './pages/admin/AdminPlacements'
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminCompanies = lazy(() => import('./pages/admin/AdminCompanies'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminSkills = lazy(() => import('./pages/admin/AdminSkills'))
+const AdminAssessments = lazy(() => import('./pages/admin/AdminAssessments'))
+const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
+const AdminPlacements = lazy(() => import('./pages/admin/AdminPlacements'))
+
+function PreparedPage({ children }) {
+  const { pathname } = useLocation()
+  const { expired } = useSession()
+  const role = pathname.split('/')[1]
+  useEffect(() => {
+    if (expired || pathname === '/student/setup' || pathname.endsWith('/take') || pathname === '/instructor/pending') return
+    return prepareNavigation(role, pathname)
+  }, [role, pathname, expired])
+  return children
+}
+
+function Page({ children }) {
+  const { pathname } = useLocation()
+  const { expired } = useSession()
+  useEffect(() => {
+    if (!expired) loadDestination(pathname)
+  }, [pathname, expired])
+  return <ErrorBoundary key={pathname}><Suspense fallback={<div className="p-6"><ContentSkeleton layout="stats" /><div className="mt-6"><ContentSkeleton layout="table" /></div></div>}>
+    <PreparedPage>{children}</PreparedPage>
+  </Suspense></ErrorBoundary>
+}
 
 function AssessmentTakeRoute() {
   const { assessmentId } = useParams()
@@ -49,37 +77,37 @@ function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/instructor/pending" element={<InstructorPending />} />
+      <Route path="/instructor/pending" element={<Page><InstructorPending /></Page>} />
 
-      <Route path="/student/setup" element={<PrivateRoute role="student"><StudentSetup /></PrivateRoute>} />
-      <Route path="/student/assessments/:assessmentId/take" element={<PrivateRoute role="student"><AssessmentTakeRoute /></PrivateRoute>} />
+      <Route path="/student/setup" element={<PrivateRoute role="student"><Page><StudentSetup /></Page></PrivateRoute>} />
+      <Route path="/student/assessments/:assessmentId/take" element={<PrivateRoute role="student"><Page><AssessmentTakeRoute /></Page></PrivateRoute>} />
 
       <Route element={<PrivateRoute role="student"><AuthenticatedShell role="student" /></PrivateRoute>}>
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/dashboard" element={<Page><StudentDashboard /></Page>} />
         <Route path="/student/assessment" element={<Navigate to="/student/assessments" replace />} />
-        <Route path="/student/assessments" element={<StudentAssessments />} />
-        <Route path="/student/assessments/:assessmentId/results" element={<AssessmentResultRoute />} />
-        <Route path="/student/results" element={<StudentResults />} />
-        <Route path="/student/profile" element={<StudentProfile />} />
+        <Route path="/student/assessments" element={<Page><StudentAssessments /></Page>} />
+        <Route path="/student/assessments/:assessmentId/results" element={<Page><AssessmentResultRoute /></Page>} />
+        <Route path="/student/results" element={<Page><StudentResults /></Page>} />
+        <Route path="/student/profile" element={<Page><StudentProfile /></Page>} />
       </Route>
 
       <Route element={<PrivateRoute role="instructor"><AuthenticatedShell role="instructor" /></PrivateRoute>}>
-        <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-        <Route path="/instructor/students" element={<EnrolledStudents />} />
-        <Route path="/instructor/assessments" element={<InstructorAssessments />} />
-        <Route path="/instructor/assessment/create" element={<InstructorUpload />} />
-        <Route path="/instructor/companies" element={<InstructorCompanies />} />
-        <Route path="/instructor/placements" element={<InstructorPlacements />} />
+        <Route path="/instructor/dashboard" element={<Page><InstructorDashboard /></Page>} />
+        <Route path="/instructor/students" element={<Page><EnrolledStudents /></Page>} />
+        <Route path="/instructor/assessments" element={<Page><InstructorAssessments /></Page>} />
+        <Route path="/instructor/assessment/create" element={<Page><InstructorUpload /></Page>} />
+        <Route path="/instructor/companies" element={<Page><InstructorCompanies /></Page>} />
+        <Route path="/instructor/placements" element={<Page><InstructorPlacements /></Page>} />
       </Route>
 
       <Route element={<PrivateRoute role="admin"><AuthenticatedShell role="admin" /></PrivateRoute>}>
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/skills" element={<AdminSkills />} />
-        <Route path="/admin/companies" element={<AdminCompanies />} />
-        <Route path="/admin/placements" element={<AdminPlacements />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/assessments" element={<AdminAssessments />} />
-        <Route path="/admin/reports" element={<AdminReports />} />
+        <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
+        <Route path="/admin/skills" element={<Page><AdminSkills /></Page>} />
+        <Route path="/admin/companies" element={<Page><AdminCompanies /></Page>} />
+        <Route path="/admin/placements" element={<Page><AdminPlacements /></Page>} />
+        <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />
+        <Route path="/admin/assessments" element={<Page><AdminAssessments /></Page>} />
+        <Route path="/admin/reports" element={<Page><AdminReports /></Page>} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

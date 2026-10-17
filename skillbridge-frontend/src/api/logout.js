@@ -1,11 +1,11 @@
 import { clearAllCache } from '../hooks/useApi'
-import { resetPrefetch } from './prefetch'
+import { resetPrefetch } from './prefetch.js'
 import { closeSSE } from '../hooks/useSSE'
 import { ROLE_METADATA } from '../navigation/navigation'
 
 export function resetSessionData() {
-  clearAllCache()
   resetPrefetch()
+  clearAllCache()
   closeSSE()
   try { sessionStorage.removeItem('sb_instructor_students_cache') } catch { /* Storage may be unavailable. */ }
 }

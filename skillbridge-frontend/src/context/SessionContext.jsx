@@ -13,12 +13,25 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logoutSession, resetSessionData } from '../api/logout'
+import { authDestination } from '../api/authDestination'
 
 const SessionContext = createContext(null)
 
 export function SessionProvider({ children }) {
   const [expired, setExpired] = useState(false)
   const navigate = useNavigate()
+
+  const establishSession = useCallback(({ access, refresh, user }) => {
+    resetSessionData()
+    localStorage.setItem('sb-token', access)
+    localStorage.setItem('sb-refresh', refresh)
+    localStorage.setItem('sb-role', user.role)
+    localStorage.setItem('sb-user', JSON.stringify(user))
+    // A completed new authentication supersedes expiry of the prior identity,
+    // including expiry that arrived while the Google popup was open.
+    setExpired(false)
+    return user
+  }, [])
 
   const triggerSessionExpired = useCallback(() => {
     if (!localStorage.getItem('sb-token')) return
@@ -31,13 +44,32 @@ export function SessionProvider({ children }) {
     return () => window.removeEventListener('auth:expired', triggerSessionExpired)
   }, [triggerSessionExpired])
 
+  useEffect(() => {
+    function reconcile(event) {
+      if (!['sb-token', 'sb-role', 'sb-user', null].includes(event.key)) return
+      if (event.key === 'sb-user') {
+        try {
+          if (JSON.parse(event.oldValue)?.id === JSON.parse(event.newValue)?.id) return
+        } catch { /* Invalid session metadata needs reconciliation. */ }
+      }
+      resetSessionData()
+      setExpired(false)
+      let user
+      try { user = JSON.parse(localStorage.getItem('sb-user')) } catch { /* Invalid session. */ }
+      const loginPath = window.location.pathname.startsWith('/admin/') ? '/admin/login' : '/login'
+      navigate(localStorage.getItem('sb-token') && user ? authDestination(user) : loginPath, { replace: true })
+    }
+    window.addEventListener('storage', reconcile)
+    return () => window.removeEventListener('storage', reconcile)
+  }, [navigate])
+
   function handleReLogin() {
     setExpired(false)
     logoutSession(navigate)
   }
 
   return (
-    <SessionContext.Provider value={{ triggerSessionExpired, expired }}>
+    <SessionContext.Provider value={{ triggerSessionExpired, expired, establishSession }}>
       {children}
       {expired && <SessionExpiredModal onReLogin={handleReLogin} />}
     </SessionContext.Provider>

@@ -1,3 +1,4 @@
+import { ContentSkeleton } from '../../components/DataSection'
 // src/pages/student/StudentAssessment.jsx
 //
 // Fully wired to real API (Week 4):
@@ -19,7 +20,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import FocusedStudentHeader from '../../components/layout/FocusedStudentHeader'
 import api from '../../api/axios'
-import { useApi, invalidateCache } from '../../hooks/useApi'
+import { useApi, invalidateCache, fetchWithDedup } from '../../hooks/useApi'
 
 const WARN_AT_SECS = 5 * 60
 
@@ -65,18 +66,10 @@ function formatTime(secs) {
 
 // ── Loading screen ────────────────────────────────────────────────
 function AssessmentLoading() {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-      <div className="text-center space-y-3">
-        <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading assessment…</p>
-      </div>
-    </div>
-  )
+  return <div className="mx-auto max-w-4xl p-6"><ContentSkeleton layout="profile" label="Loading assessment" /></div>
 }
 
-// ── Error / no assessment ─────────────────────────────────────────
-function AssessmentError({ message }) {
+function AssessmentError({ message, retry = false }) {
   const navigate = useNavigate()
   const isSubmitted = message === 'already_submitted'
   return (
@@ -102,6 +95,7 @@ function AssessmentError({ message }) {
               : 'Please check with your instructor or OJT coordinator.'}
           </p>
         </div>
+        {retry && <button type="button" onClick={() => fetchWithDedup('/api/assessments/').catch(() => {})} className="rounded-xl border border-green-600 px-4 py-2 text-sm font-semibold text-green-700">Retry</button>}
         <button
           onClick={() => navigate('/student/assessments')}
           className="inline-flex items-center px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-colors"
@@ -673,7 +667,7 @@ export default function StudentAssessment() {
     </div>
   )
   if (checkingActive && !started && !stoppedAttempt) return <AssessmentLoading />
-  if (activeError && !started && !stoppedAttempt) return <AssessmentError message={activeError} />
+  if (activeError && !started && !stoppedAttempt) return <AssessmentError message={activeError} retry />
   if (!activeInfo && !started && !stoppedAttempt) return <AssessmentError message="unavailable" />
   if (!started && !stoppedAttempt && activeInfo.availability_status !== 'available') return <AssessmentError message="unavailable" />
   if (!started && !stoppedAttempt && activeInfo.attempt_status === 'submitted' && !activeInfo.retake_allowed) return <AssessmentError message="already_submitted" />

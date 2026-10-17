@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/student/StudentResults.jsx
 //
 // Final combined skill profile and company matches.
@@ -215,7 +216,7 @@ export default function StudentResults() {
 
   // ── All companies tab ───────────────────────────────────────────
   const [companyTab, setCompanyTab] = useState('recommended') // 'recommended' | 'all'
-  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked })
+  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked || companyTab !== 'all' })
   const allCompanies = allCompaniesRaw ?? []
 
   // Animated skill bars
@@ -229,7 +230,7 @@ export default function StudentResults() {
   if (resultsLoading || !resultData || resultsError || recommendationsLocked) return (
     <div className="min-w-0">
 
-      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <DataSection url="/api/student/results/combined/" layout="profile"><section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400">← Skills Assessments</button>
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 sm:p-8">
           {resultsLoading || (!resultData && !resultsError) ? <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading your final skill profile…</p>
@@ -245,7 +246,7 @@ export default function StudentResults() {
               </>}
           <button onClick={() => navigate('/student/assessments')} className="mt-6 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2">View Assessments</button>
         </div>
-      </section>
+      </section></DataSection>
     </div>
   )
 
@@ -463,7 +464,7 @@ export default function StudentResults() {
           {/* All Companies tab */}
           {companyTab === 'all' && (
             <div className="flex flex-col gap-3">
-              {allCompLoading && (
+<DataSection url="/api/student/companies/" layout="cards">              {allCompLoading && (
                 <div className="flex items-center justify-center py-12 text-gray-400 dark:text-gray-600">
                   <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                   Loading companies…
@@ -510,7 +511,7 @@ export default function StudentResults() {
                   </div>
                 </div>
               ))}
-            </div>
+</DataSection>            </div>
           )}
 
           {/* Match cards — 2-column grid on large screens */}

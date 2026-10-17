@@ -1,0 +1,17 @@
+// The browser's module loader owns code deduplication. Data still lives only in
+// queryStore; a chunk failure falls back to the route's normal retry boundary.
+const pages = {
+  '/student/assessments': () => import('../pages/student/StudentAssessments'),
+  '/student/results': () => import('../pages/student/StudentResults'),
+  '/student/profile': () => import('../pages/student/StudentProfile'),
+  '/instructor/students': () => import('../pages/instructor/EnrolledStudents'),
+  '/instructor/assessments': () => import('../pages/instructor/InstructorAssessments'),
+  '/instructor/companies': () => import('../pages/instructor/InstructorCompanies'),
+  '/admin/assessments': () => import('../pages/admin/AdminAssessments'),
+  '/admin/skills': () => import('../pages/admin/AdminSkills'),
+  '/admin/companies': () => import('../pages/admin/AdminCompanies'),
+}
+
+export function preloadPage(pathname) {
+  return pages[pathname]?.().catch(() => {}) ?? Promise.resolve()
+}

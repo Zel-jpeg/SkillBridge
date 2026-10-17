@@ -20,7 +20,7 @@
 //   DELETE /api/instructor/questions/:id/                       → remove question
 //   POST   /api/instructor/assessments/:id/questions/add/       → add new questions
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import api from '../../api/axios'
 import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 import { useSSE } from '../useSSE'
@@ -155,6 +155,9 @@ export function useInstructorAssessments() {
   const [selected,         setSelected]         = useState(null)  // selected assessment obj
   const [loadingQuestions, setLoadingQuestions] = useState(false)
 
+  const [questionError, setQuestionError] = useState(null)
+  const questionLoad = useRef(0)
+
   // ── Assessment metadata edit fields ──────────────────────────────────────
   const [editTitle,    setEditTitle]    = useState('')
   const [editDuration, setEditDuration] = useState('')
@@ -188,7 +191,27 @@ export function useInstructorAssessments() {
     setTimeout(() => setToast(null), 4000)
   }, [])
 
-  // ── Open edit modal ───────────────────────────────────────────────────────
+  const loadQuestions = useCallback(async (a) => {
+    const load = ++questionLoad.current
+    setLoadingQuestions(true)
+    setQuestionError(null)
+    try {
+      const [qRes, catRes] = await Promise.all([
+        fetchWithDedup(`/api/instructor/assessments/${a.id}/questions/`),
+        fetchWithDedup('/api/categories/'),
+      ])
+      if (load !== questionLoad.current) return
+      setEditedQuestions((qRes.data?.questions ?? qRes.data ?? []).map(q => normalizeQuestion(q, false)))
+      setCategories(Array.isArray(catRes.data) ? catRes.data : [])
+    } catch {
+      if (load === questionLoad.current) setQuestionError('Could not load questions and categories. Please try again.')
+    } finally {
+      if (load === questionLoad.current) setLoadingQuestions(false)
+    }
+  }, [])
+
+  // Only an explicit open/retry loads restricted questions. Refreshes do not
+  // overwrite the metadata or question drafts already being edited.
   const openAssessment = useCallback(async (a) => {
     setSelected(a)
     setEditTitle(a.title || '')
@@ -198,26 +221,12 @@ export function useInstructorAssessments() {
       available_at: toManilaInput(a.available_at), due_at: toManilaInput(a.due_at) })
     setEditedQuestions([])
     setShowSaveConfirm(false)
-    setLoadingQuestions(true)
-
-    try {
-      const [qRes, catRes] = await Promise.all([
-        api.get(`/api/instructor/assessments/${a.id}/questions/`),
-        api.get('/api/categories/'),
-      ])
-      const qs = (qRes.data?.questions ?? qRes.data ?? []).map(q => normalizeQuestion(q, false))
-      setEditedQuestions(qs)
-      setCategories(Array.isArray(catRes.data) ? catRes.data : [])
-    } catch {
-      setEditedQuestions([])
-      setCategories([])
-    } finally {
-      setLoadingQuestions(false)
-    }
-  }, [])
+    await loadQuestions(a)
+  }, [loadQuestions])
 
   // ── Close modal ───────────────────────────────────────────────────────────
   const closeAssessment = useCallback(() => {
+    questionLoad.current += 1
     setSelected(null)
     setEditedQuestions([])
     setShowSaveConfirm(false)
@@ -397,7 +406,7 @@ export function useInstructorAssessments() {
     filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
     filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
     // ── Modal open/close ──────────────────────────────────────────────────────
-    selected, loadingQuestions,
+    selected, loadingQuestions, questionError, retryQuestions: () => selected && loadQuestions(selected),
     openAssessment, closeAssessment,
     // ── Assessment metadata edit ──────────────────────────────────────────────
     editTitle,    setEditTitle,

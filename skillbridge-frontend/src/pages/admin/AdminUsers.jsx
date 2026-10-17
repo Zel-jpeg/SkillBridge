@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminUsers.jsx  (SLIMMED — 1676 → ~280 lines)
 // All data + logic now in useAdminUsers.js
 // All modals now in components/admin/
@@ -33,7 +34,7 @@ export default function AdminUsers() {
   const [showEnrollment, setShowEnrollment] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
   const {
-    instructors, pendingInstructors,
+    instructors, pendingInstructors, initialUsersPending,
     handleEnrollmentComplete,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser, selectedUserType, setSelectedUserType,
@@ -159,7 +160,8 @@ export default function AdminUsers() {
           </button>
         </div>
 
-        {/* Tabs */}
+        <DataSection url="/api/admin/users/" pending={initialUsersPending} layout="table">
+{/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -337,6 +339,8 @@ export default function AdminUsers() {
             <Pagination total={displayed.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
           </div>
         )}
+
+</DataSection>
       </section>
     </div>
   )

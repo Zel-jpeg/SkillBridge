@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/instructor/InstructorDashboard.jsx  (SLIMMED — 937 → ~200 lines)
 // All data + logic now in useInstructorDashboard.js
 // StudentModal now in components/instructor/StudentModal.jsx
@@ -106,7 +107,7 @@ export default function InstructorDashboard() {
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Student performance</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {instructor.subject}{studentsList.length > 0 ? ` · ${studentsList[0]?.batch?.name || 'Active batch'}` : ' · No active batch'}
+              {instructor.subject}{loading ? ' · Loading batch…' : studentsList.length > 0 ? ` · ${studentsList[0]?.batch?.name || 'Active batch'}` : ' · No active batch'}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -136,14 +137,15 @@ export default function InstructorDashboard() {
             { label: 'Assessments', value: assessmentStats.total, sub: `${assessmentStats.published} published · ${assessmentStats.draft} draft · ${assessmentStats.closed} closed`, green: false, amber: false },
             { label: 'Still unplaced', value: studentsList.filter(s => s.placement?.status !== 'approved').length, sub: 'active batch students', green: false, amber: false },
           ].map(card => (
-            <div key={card.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5">
+            <DataSection key={card.label} url={card.label === 'Assessments' ? '/api/instructor/assessments/' : '/api/instructor/students/recommendations/'} layout="stats" count={1}><div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5">
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">{card.label}</p>
               <p className={`text-2xl font-bold mb-1 ${card.green ? 'text-green-600 dark:text-green-400' : card.amber ? 'text-amber-500 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{card.value}</p>
               <p className="text-xs text-gray-400 dark:text-gray-600">{card.sub}</p>
-            </div>
+            </div></DataSection>
           ))}
         </div>
 
+<DataSection url="/api/instructor/students/recommendations/" layout="table">
         {/* No active batch banner */}
         {!loading && studentsList.length === 0 && (
           <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-5 flex items-start gap-4">
@@ -385,6 +387,8 @@ export default function InstructorDashboard() {
             ))}
           </div>
         </div>
+
+</DataSection>
       </section>
     </div>
   )

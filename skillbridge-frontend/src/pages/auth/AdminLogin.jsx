@@ -9,8 +9,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
-import { prefetchForRole } from '../../api/prefetch'
+import { authDestination } from '../../api/authDestination'
 import { resetSessionData } from '../../api/logout'
+import { useSession } from '../../context/SessionContext'
 
 // ================================================================
 const SYSTEM_NAME     = "SkillBridge"
@@ -20,6 +21,7 @@ const SCHOOL_LOCATION = "Panabo City, Davao del Norte · Institute of Computing"
 
 export default function AdminLogin() {
   const navigate = useNavigate()
+  const { establishSession } = useSession()
 
   const [username,   setUsername]   = useState('')
   const [password,   setPassword]   = useState('')
@@ -29,10 +31,6 @@ export default function AdminLogin() {
   const [forgotSent, setForgotSent] = useState(false)
 
   // ── Login handler ─────────────────────────────────────────────
-  // Converted to async so we can await prefetchForRole() before
-  // navigating. The button spinner covers the entire wait, meaning
-  // by the time navigate() fires the cache is already warm and the
-  // destination page renders instantly without its own loading state.
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
@@ -41,36 +39,24 @@ export default function AdminLogin() {
     if (!password)        { setError('Password is required.'); return }
 
     setLoading(true)
+    // Retire the prior identity before the exchange, as Google sign-in does.
+    // A late old-session 401 must not expire the new sign-in attempt.
+    resetSessionData()
+    localStorage.removeItem('sb-token')
+    localStorage.removeItem('sb-refresh')
 
     try {
       const res = await api.post('/api/auth/login/', { email: username, password })
-      const { access, refresh, user } = res.data
-      resetSessionData()
+      const user = establishSession(res.data)
 
-      localStorage.setItem('sb-token',   access)
-      localStorage.setItem('sb-refresh', refresh)
-      localStorage.setItem('sb-role',    user.role)
-      localStorage.setItem('sb-user',    JSON.stringify(user))
-
-      // ── KEY CHANGE ──────────────────────────────────────────────
-      // Await ALL prefetch requests before navigating.
-      // The sign-in spinner covers this wait. Dashboard gets data
-      // instantly from cache — no loading states needed there.
-      await prefetchForRole(user.role)
-      // ────────────────────────────────────────────────────────────
-
-      if (user.role === 'admin') navigate('/admin/dashboard')
-      else if (user.role === 'instructor') {
-        if (!user.is_approved) navigate('/instructor/pending')
-        else                   navigate('/instructor/dashboard')
-      }
+      navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
     } catch (err) {
       const msg = err.response?.data?.error
 
       if (msg === 'pending') {
         navigate('/instructor/pending')
       } else {
-        setError(msg || 'Invalid username or password.')
+        setError(msg || (err.response?.status === 401 ? 'Invalid username or password.' : 'Sign-in is unavailable. Please try again.'))
       }
     } finally {
       setLoading(false)

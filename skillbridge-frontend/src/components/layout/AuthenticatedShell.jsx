@@ -6,6 +6,7 @@ import { ROLE_METADATA, ROLE_NAVIGATION, activeNavigationPath, readSidebarPrefer
 import { BriefcaseIcon, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon, XIcon } from '../Icons'
 import ProfileMenu from './ProfileMenu'
 import ModalLayer from './ModalLayer'
+import { promoteDestination } from '../../api/prefetch.js'
 
 const NAV_ICONS = { dashboard: GridIcon, assessments: ListIcon, skills: SkillIcon, users: UserIcon, create: PlusIcon, companies: CompanyIcon, placements: BriefcaseIcon, reports: ReportIcon }
 
@@ -28,8 +29,12 @@ function NavigationItem({ item, active, collapsed, onNavigate, tooltipId }) {
     const rect = event.currentTarget.getBoundingClientRect()
     setTooltip({ left: rect.right + 16, top: rect.top + rect.height / 2 })
   }
+  function prepare(event) {
+    promoteDestination(item.path)
+    if (collapsed) showTooltip(event)
+  }
   return <div className="sb-nav-item" onMouseLeave={event => { if (!event.currentTarget.contains(document.activeElement)) setTooltip(null) }}>
-        <NavLink to={item.path} end={false} onClick={onNavigate} onMouseEnter={collapsed ? showTooltip : undefined} onFocus={collapsed ? showTooltip : undefined} onBlur={event => { if (!event.currentTarget.matches(':hover')) setTooltip(null) }} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null) }} aria-current={active ? 'page' : undefined} aria-label={item.label} aria-describedby={collapsed && tooltip ? tooltipId : undefined} className={`sb-nav-link ${active ? 'is-active' : ''}`}>
+        <NavLink to={item.path} end={false} onClick={onNavigate} onMouseEnter={prepare} onFocus={prepare} onBlur={event => { if (!event.currentTarget.matches(':hover')) setTooltip(null) }} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null) }} aria-current={active ? 'page' : undefined} aria-label={item.label} aria-describedby={collapsed && tooltip ? tooltipId : undefined} className={`sb-nav-link ${active ? 'is-active' : ''}`}>
           <span aria-hidden="true" className="sb-nav-icon"><Icon size={20} /></span>
           <span className={collapsed ? 'sr-only' : 'sb-nav-label'}>{item.label}</span>
         </NavLink>

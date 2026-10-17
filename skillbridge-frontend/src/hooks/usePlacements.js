@@ -97,6 +97,8 @@ export function usePlacements() {
     placements,
     students,
     stats,
+    suggestionsReady: suggestionsApi.data != null,
+    historyReady: historyApi.data != null,
     loading: suggestionsApi.loading || historyApi.loading,
     error: suggestionsApi.error || historyApi.error,
     mutating: mutationApi.loading,

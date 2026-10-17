@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/instructor/EnrolledStudents.jsx  (SLIMMED — 1273 → ~200 lines)
 // All data + logic now in useEnrolledStudents.js
 // Modals now in components/instructor/ and components/admin/
@@ -46,7 +47,7 @@ export default function EnrolledStudents() {
   const navigate = useNavigate()
   const {
     instructor,
-    batches, activeBatchId, setActiveBatchId,
+    batches, activeBatchId, setActiveBatchId, initialBatchPending, initialRosterPending,
     viewedBatch, isArchived, students, activeBatch, completed,
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
@@ -136,7 +137,7 @@ export default function EnrolledStudents() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <DataSection pending={initialBatchPending} url="/api/instructor/batches/" layout="panel" count={1}><div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Enrolled students</h1>
@@ -202,8 +203,9 @@ export default function EnrolledStudents() {
               </>
             )}
           </div>
-        </div>
+        </div></DataSection>
 
+<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="table">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -384,6 +386,8 @@ export default function EnrolledStudents() {
           </>
         )}
 
+
+</DataSection>
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-3 px-1 pb-4">
           <p className="text-xs text-gray-400 dark:text-gray-600 mr-1">Score key:</p>

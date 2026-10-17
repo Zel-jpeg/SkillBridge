@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/instructor/InstructorCompanies.jsx
 //
 // Fully responsive company view for instructors.
@@ -703,7 +704,7 @@ export default function InstructorCompanies() {
         />
       )}
 
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
+      <DataSection url="/api/instructor/companies/" layout="cards"><section className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
 
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -765,7 +766,7 @@ export default function InstructorCompanies() {
             ))}
           </div>
         )}
-      </section>
+      </section></DataSection>
 
       <style>{`
         @keyframes sheetUp {

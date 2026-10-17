@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminDashboard.jsx  (SLIMMED — 588 → ~170 lines)
 // All data + logic now in useAdminDashboard.js
 
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <DataSection url="/api/admin/stats/" layout="stats" count={12} label="Loading system statistics"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {STATS.map(s => (
             <div key={s.label} className={`border rounded-2xl p-4 sm:p-5 flex flex-col gap-2 ${s.color}`}>
               <div className="opacity-70"><s.Icon /></div>
@@ -125,9 +126,10 @@ export default function AdminDashboard() {
               <p className="text-xs font-medium opacity-80">{s.label}</p>
             </div>
           ))}
-        </div>
+        </div></DataSection>
 
-        {/* Top matches */}
+        <DataSection url="/api/admin/students/recommendations/" layout="table" label="Loading student recommendations">
+{/* Top matches */}
         {topMatches.length > 0 && (
           <div>
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -272,6 +274,8 @@ export default function AdminDashboard() {
           ].map(l => <span key={l.label} className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.cls}`}>{l.label}</span>)}
         </div>
 
+
+</DataSection>
       </section>
     </div>
   )

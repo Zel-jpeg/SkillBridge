@@ -47,6 +47,12 @@ show possible staleness rather than automatically rerunning. The server still
 decides assessment and placement access. See [live data freshness](LIVE_DATA_FRESHNESS.md)
 for the coverage map, transport/configuration, verification and deployment limits.
 
+Sign-in stores the authenticated session and navigates without waiting for other
+pages. Current-route reads overlap page-code loading; sections render independently,
+then a bounded queue prepares likely next destinations through the same cache.
+See [navigation and loading](NAVIGATION_LOADING.md) for every route's request
+coverage, lifecycle protections, local measurements and verification limits.
+
 NLP models are optional and loaded lazily. The implementation has deterministic
 regex preprocessing when optional models are unavailable; record the actual model
 and fallback when explaining results.

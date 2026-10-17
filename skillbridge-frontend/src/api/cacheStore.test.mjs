@@ -123,3 +123,47 @@ test('late errors from the previous identity are marked obsolete', async () => {
   await assert.rejects(prior, error => error.staleIdentity === true)
   assert.equal(cache.read('/api/students/me/'), null)
 })
+
+test('hidden optional invalidation stays stale without starting another GET', async () => {
+  const pending = deferred()
+  let calls = 0, visible = true
+  const cache = createCacheStore(() => { calls++; return pending.promise }, storage(), () => 'admin:1')
+  cache.publish('/api/admin/skills/', ['last good'])
+  const first = cache.fetch('/api/admin/skills/', { canContinue: () => visible })
+  cache.invalidate('/api/admin/skills/')
+  visible = false
+  pending.resolve({ data: ['obsolete'] }); await first
+  assert.equal(calls, 1)
+  assert.equal(cache.read('/api/admin/skills/').fetchedAt, 0)
+  assert.deepEqual(cache.read('/api/admin/skills/').data, ['last good'])
+})
+
+test('invalidation does not automatically retry a permanently forbidden request', async () => {
+  const pending = deferred()
+  let calls = 0
+  const cache = createCacheStore(() => { calls++; return pending.promise }, storage(), () => 'admin:1')
+  const first = cache.fetch('/api/admin/skills/')
+  cache.invalidate('/api/admin/skills/')
+  pending.reject({ response: { status: 403 } })
+  await assert.rejects(first)
+  assert.equal(calls, 1)
+  assert.equal(cache.error('/api/admin/skills/').response.status, 403)
+})
+
+test('session cleanup aborts both a superseded transport and its replacement', async () => {
+  const first = deferred(), second = deferred(), signals = []
+  const requests = [first, second]
+  const cache = createCacheStore((_url, options) => {
+    signals.push(options.signal)
+    return requests[signals.length - 1].promise
+  }, storage(), () => 'admin:1')
+  const old = cache.fetch('/api/admin/skills/')
+  cache.publish('/api/admin/skills/', ['saved'])
+  const replacement = cache.fetch('/api/admin/skills/')
+  cache.clear()
+  assert.equal(signals.length, 2)
+  assert.ok(signals.every(signal => signal.aborted))
+  first.resolve({ data: ['obsolete'] }); second.resolve({ data: ['also obsolete'] })
+  await Promise.all([old, replacement])
+  assert.equal(cache.read('/api/admin/skills/'), null)
+})

@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 import { useMemo, useState } from 'react'
 import Avatar from '../../components/Avatar'
 import CompanyImage from '../../components/CompanyImage'
@@ -305,21 +306,21 @@ export default function PlacementsPage({ role = 'admin' }) {
       {manualRequest && <ManualAssignmentModal students={placement.students} positions={placement.positions} approvedByStudent={approvedByStudent} initialPositionId={manualRequest.positionId} busy={placement.mutating} onClose={() => setManualRequest(null)} onSubmit={placement.manualAssign} />}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
-        <PageHeader title="OJT Placement Management" subtitle={isAdmin ? 'Review ranked recommendations and turn them into approved OJT placements.' : 'Manage OJT placements for students enrolled in your batches.'} action={<><button type="button" onClick={() => setReportsOpen(value => !value)} className={`px-3 py-2 rounded-xl border text-xs font-semibold ${reportsOpen ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-900 dark:text-green-300' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>{reportsOpen ? 'Hide reports' : 'Download reports'}</button><button type="button" onClick={placement.refresh} disabled={placement.refreshing} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50"><span className={placement.refreshing ? 'animate-spin' : ''}><RefreshIcon /></span>Refresh</button>{canManage && <button type="button" onClick={() => setManualRequest({})} disabled={!placement.students.length || !placement.positions.length} className="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold disabled:opacity-50">Manual assignment</button>}</>} />
+        <PageHeader title="OJT Placement Management" subtitle={isAdmin ? 'Review ranked recommendations and turn them into approved OJT placements.' : 'Manage OJT placements for students enrolled in your batches.'} action={<><button type="button" onClick={() => setReportsOpen(value => !value)} className={`px-3 py-2 rounded-xl border text-xs font-semibold ${reportsOpen ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-900 dark:text-green-300' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>{reportsOpen ? 'Hide reports' : 'Download reports'}</button><button type="button" onClick={placement.refresh} disabled={placement.refreshing} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50"><span className={placement.refreshing ? 'animate-spin' : ''}><RefreshIcon /></span>Refresh</button>{canManage && <button type="button" onClick={() => setManualRequest({})} disabled={!placement.historyReady || !placement.students.length || !placement.positions.length} className="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold disabled:opacity-50">Manual assignment</button>}</>} />
 
-        {reportsOpen && <PlacementReportPanel companies={placement.companies} positions={placement.positions} placements={placement.placements} students={placement.students} role={role} />}
+        {reportsOpen && <DataSection urls={['/api/placements/suggestions/?include_history=true&include_placed=true', '/api/placements/?limit=500']} layout="panel"><PlacementReportPanel companies={placement.companies} positions={placement.positions} placements={placement.placements} students={placement.students} role={role} /></DataSection>}
 
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          <StatCard label="Companies" value={placement.stats.companies} tone="gray" />
-          <StatCard label="Positions" value={placement.stats.positions} tone="violet" />
-          <StatCard label="Total slots" value={placement.stats.slots} tone="blue" />
-          <StatCard label="Approved" value={placement.stats.approved} tone="green" />
-          <StatCard label="Remaining slots" value={placement.stats.remaining} tone="amber" />
-          <StatCard label="Unplaced students" value={placement.stats.unplaced} tone="gray" note={`${placement.stats.actionable} actionable suggestions`} />
+          <DataSection url="/api/placements/suggestions/?include_history=true&include_placed=true" layout="stats" count={1}><StatCard label="Companies" value={placement.stats.companies} tone="gray" /></DataSection>
+          <DataSection url="/api/placements/suggestions/?include_history=true&include_placed=true" layout="stats" count={1}><StatCard label="Positions" value={placement.stats.positions} tone="violet" /></DataSection>
+          <DataSection url="/api/placements/suggestions/?include_history=true&include_placed=true" layout="stats" count={1}><StatCard label="Total slots" value={placement.stats.slots} tone="blue" /></DataSection>
+          <DataSection url="/api/placements/suggestions/?include_history=true&include_placed=true" layout="stats" count={1}><StatCard label="Approved" value={placement.stats.approved} tone="green" /></DataSection>
+          <DataSection url="/api/placements/suggestions/?include_history=true&include_placed=true" layout="stats" count={1}><StatCard label="Remaining slots" value={placement.stats.remaining} tone="amber" /></DataSection>
+          <DataSection urls={['/api/placements/suggestions/?include_history=true&include_placed=true', '/api/placements/?limit=500']} layout="stats" count={1}><StatCard label="Unplaced students" value={placement.stats.unplaced} tone="gray" note={`${placement.stats.actionable} actionable suggestions`} /></DataSection>
         </div>
 
         <div className="flex bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 w-fit">
-          {[['suggestions', 'Companies & suggestions'], ['history', `Placement history (${placement.placements.length})`]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${tab === key ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-400'}`}>{label}</button>)}
+          {[['suggestions', 'Companies & suggestions'], ['history', `Placement history (${placement.historyReady ? placement.placements.length : '…'})`]].map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${tab === key ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-400'}`}>{label}</button>)}
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -328,7 +329,8 @@ export default function PlacementsPage({ role = 'admin' }) {
           {tab === 'suggestions' ? <><select value={availabilityFilter} onChange={event => setAvailabilityFilter(event.target.value)} className={selectClass}><option value="all">All slot availability</option><option value="available">Available slots only</option></select><select value={positionStatus} onChange={event => setPositionStatus(event.target.value)} className={selectClass}><option value="all">All placement statuses</option><option value="needs_approval">Needs approval</option><option value="full">Full positions</option><option value="has_approved">Has approved placements</option></select></> : <select value={historyStatus} onChange={event => setHistoryStatus(event.target.value)} className={`${selectClass} lg:col-span-2`}><option value="all">All history statuses</option><option value="approved">Approved</option><option value="removed">Removed</option><option value="rejected">Rejected</option><option value="suggested">Suggested</option></select>}
         </div>
 
-        {placement.loading && !placement.companies.length ? <div className="py-20 text-center text-sm text-gray-400">Loading placement data…</div> : placement.error && !placement.companies.length ? <EmptyState message={placement.error} onClear={placement.refresh} /> : tab === 'suggestions' ? (
+        <DataSection url={tab === 'suggestions' ? '/api/placements/suggestions/?include_history=true&include_placed=true' : '/api/placements/?limit=500'} layout={tab === 'suggestions' ? 'cards' : 'table'}>
+        {tab === 'suggestions' ? (
           filteredCompanies.length === 0 ? <EmptyState message="No companies or positions match these filters." onClear={clearFilters} /> : <div className="space-y-6">{filteredCompanies.map(company => (
             <section key={company.id} className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
@@ -351,6 +353,7 @@ export default function PlacementsPage({ role = 'admin' }) {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredHistory.map(item => <tr key={item.id} className="text-sm text-gray-700 dark:text-gray-300 align-top"><td className="px-4 py-4"><div className="flex items-center gap-2"><Avatar name={item.student.name} photoUrl={item.student.photo_url} className="w-8 h-8 rounded-lg text-xs" /><p className="font-semibold text-gray-900 dark:text-white">{item.student.name}</p></div><p className="text-xs text-gray-400 mt-0.5">{item.student.school_id || 'No school ID'} · {item.student.course || 'No course'} · {item.batch?.name || 'No batch'}</p></td><td className="px-4 py-4"><p className="font-medium">{item.position.title}</p><p className="text-xs text-gray-400 mt-0.5">{item.company.name}</p></td><td className="px-4 py-4 font-semibold">{item.match_score_at_assignment == null ? 'Manual / no score' : `${Math.round(item.match_score_at_assignment)}%`}</td><td className="px-4 py-4"><StatusPill status={item.status} /></td><td className="px-4 py-4 text-xs"><p>{formatDate(item.updated_at)}</p><p className="text-gray-400 mt-1">by {item.approved_by?.name || item.removed_by?.name || item.rejected_by?.name || item.assigned_by?.name || 'System'}</p></td><td className="px-4 py-4 text-xs max-w-60 text-gray-500 dark:text-gray-400">{item.remarks || '—'}</td></tr>)}</tbody></table>
           </div>
         )}
+        </DataSection>
       </section>
     </div>
   )

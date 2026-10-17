@@ -27,23 +27,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
-import { createCacheStore } from '../api/cacheStore'
+import { queryStore as cache, CACHE_TTL } from '../api/queryStore.js'
 import { startVisibleRefresh } from '../api/queryRefresh'
 import { invalidateQueries } from '../api/queryInvalidation'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 
 // ── Cache constants ───────────────────────────────────────────────────────────
-const CACHE_TTL = 30_000
-const cache = createCacheStore(
-  url => api.get(url),
-  globalThis.sessionStorage,
-  () => {
-    let userId = ''
-    try { userId = JSON.parse(localStorage.getItem('sb-user'))?.id ?? '' } catch { /* Invalid user data is a new identity. */ }
-    return `${localStorage.getItem('sb-role') ?? ''}:${userId}`
-  },
-)
 
 /** Publish a mutation response to mounted consumers without another request. */
 export function updateCachedData(url, data) {
@@ -155,6 +145,17 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       return
     }
 
+    const priorError = cache.error(url)
+    if (!entry && priorError) {
+      // Reuse a completed route/preparation failure instead of immediately
+      // issuing the same failed read again as the page mounts. Route intent,
+      // explicit retry and live reconciliation can initiate another request.
+      setError(priorError.response?.data?.error || priorError.response?.data?.detail || friendlyError(priorError.response?.status))
+      setErrorStatus(priorError.response?.status ?? null)
+      setLoading(false)
+      return
+    }
+
     if (entry || initialData) {
       // Stale data exists or initialData provided → show it + refresh quietly in background
       setData(entry?.data ?? initialData)
@@ -173,9 +174,10 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
         setError(null)
       })
       .catch(err => {
-        if (cancelled || err.staleIdentity) return
+        if (cancelled || err.staleIdentity || err.code === 'ERR_CANCELED') return
         setLoading(false)
         const status = err.response?.status
+        setErrorStatus(status ?? null)
 
         if (status === 401) {
           triggerSessionExpired()
@@ -220,6 +222,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       windowTarget: window,
       read: key => cache.read(key),
       revalidate: key => {
+        if ([403, 404].includes(cache.error(key)?.response?.status)) return
         fetchWithDedup(key).catch(err => { if (!err.staleIdentity && err.response?.status === 401) triggerSessionExpired() })
       },
       intervalMs: CACHE_TTL,

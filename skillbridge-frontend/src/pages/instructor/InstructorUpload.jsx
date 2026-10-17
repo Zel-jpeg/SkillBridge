@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/instructor/InstructorUpload.jsx
 //
 // Assessment Creator — fully wired to the backend.
@@ -257,6 +258,7 @@ export default function InstructorUpload() {
                 Assign to batch
                 <span className="text-gray-400 dark:text-gray-600 font-normal ml-1.5">(required to publish)</span>
               </label>
+<DataSection url="/api/instructor/batches/" layout="control" count={1}>
               {loadingBatches ? (
                 <div className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-400 animate-pulse">
                   Loading batches…
@@ -282,6 +284,7 @@ export default function InstructorUpload() {
                   ))}
                 </select>
               )}
+</DataSection>
               {selectedBatchId && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 flex items-center gap-1">
                   <CheckIcon /> Students will see this assessment when published and available
@@ -290,14 +293,17 @@ export default function InstructorUpload() {
               {errors.batch_id && <p className="text-xs text-red-600 mt-1">{errors.batch_id}</p>}
             </div>
           </div>
+<DataSection url="/api/instructor/assessments/" layout="panel" count={1}>
           <AssessmentSettings value={{ publication_status: publicationStatus, is_required: isRequired,
             include_in_competency: includeInCompetency, display_order: displayOrder,
             available_at: availableAt, due_at: dueAt }}
             onChange={next => { setPublicationStatus(next.publication_status); setIsRequired(next.is_required)
               setIncludeInCompetency(next.include_in_competency); setDisplayOrder(next.display_order)
-              setAvailableAt(next.available_at); setDueAt(next.due_at) }} errors={errors} />
+              setAvailableAt(next.available_at); setDueAt(next.due_at) }} errors={errors} /></DataSection>
+
         </div>
 
+<DataSection url="/api/categories/" layout="panel" count={1}>
         {/* ── SECTION 2: Skill Categories ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
           <div>
@@ -334,6 +340,7 @@ export default function InstructorUpload() {
           )}
         </div>
 
+</DataSection>
         {/* ── SECTION 3: Questions ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
 

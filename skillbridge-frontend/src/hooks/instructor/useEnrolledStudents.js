@@ -100,6 +100,7 @@ export function useEnrolledStudents() {
   // useApi handles sessionStorage persistence (survives page refresh)
   // and SSE-triggered re-fetches automatically.
   const { data: batchesRaw, loading: loadingBatches } = useApi('/api/instructor/batches/')
+  const [batchesReady, setBatchesReady] = useState(batchesRaw != null)
 
   // ── Local state ───────────────────────────────────────────────────
   // IMPORTANT: seed batches + activeBatchId directly from batchesRaw in the
@@ -125,6 +126,9 @@ export function useEnrolledStudents() {
     return active?.id ?? batchesRaw[batchesRaw.length - 1]?.id ?? null
   })
 
+  const [loadedRosters, setLoadedRosters] = useState(() => new Set(batches
+    .filter(batch => getCachedData(`/api/instructor/batches/${batch.id}/students/`) != null)
+    .map(batch => batch.id)))
   const rosterUrl = activeBatchId ? `/api/instructor/batches/${activeBatchId}/students/` : null
   const { data: rosterRaw, errorStatus: rosterErrorStatus } = useApi(rosterUrl)
 
@@ -133,8 +137,15 @@ export function useEnrolledStudents() {
     const fresh = (rosterRaw?.students || []).map(s => ({
       ...normalizeStudent(s), batch: rosterRaw.batch ?? { id: activeBatchId },
     }))
-    // Mirror the shared roster into this hook's existing optimistic batch state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadedRosters(previous => {
+      if (previous.has(activeBatchId) === Boolean(rosterRaw)) return previous
+      const next = new Set(previous)
+      if (rosterRaw) next.add(activeBatchId)
+      else next.delete(activeBatchId)
+      return next
+    })
+    // Mirror the shared roster into this hook's existing optimistic batch state.
     setBatches(prev => prev.map(b => b.id === activeBatchId ? { ...b, students: fresh } : b))
   }, [rosterRaw, activeBatchId, rosterErrorStatus])
 
@@ -193,9 +204,11 @@ export function useEnrolledStudents() {
       students:   [],
     }))
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBatchesReady(true)
+
     // Preserve existing student arrays during SSE background refreshes
     // so the UI doesn't flash empty while we re-fetch
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatches(prev => normalized.map(nb => {
       const existing = prev.find(pb => pb.id === nb.id)
       return existing ? { ...nb, students: existing.students } : nb
@@ -372,6 +385,8 @@ export function useEnrolledStudents() {
     instructor,
     // Batch
     batches, activeBatchId, setActiveBatchId, loadingBatches,
+    initialBatchPending: !batchesReady,
+    initialRosterPending: !batchesReady || Boolean(rosterRaw && activeBatchId && !loadedRosters.has(activeBatchId)),
     viewedBatch, isArchived, students, activeBatch, completed,
     // Batch actions
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,

@@ -1,3 +1,4 @@
+import DataSection from './DataSection'
 import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 
@@ -52,10 +53,10 @@ export default function NlpTextPreview({ studentId, positionId }) {
       {busy ? 'Loading text…' : open ? 'Hide generated NLP text' : studentId ? 'View Generated Competency Profile' : 'Preview Position NLP Description'}
     </button>
     {open && <div className="mt-2 space-y-3" aria-live="polite">
-      {error && <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">{error}</p>}
+<DataSection url={url} layout="panel" count={1}>      {error && <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">{error}</p>}
       {data && <><p className="text-xs text-gray-500 dark:text-gray-400">{data.note || data.message}</p>
         {data.assessment_id && <p className="text-[11px] text-gray-400">Assessment #{data.assessment_id} · {data.text_generation_version}</p>}
-        {data.texts?.map(item => <GeneratedText key={item.label} {...item} />)}</>}
+        {data.texts?.map(item => <GeneratedText key={item.label} {...item} />)}</>}</DataSection>
     </div>}
   </div>
 }

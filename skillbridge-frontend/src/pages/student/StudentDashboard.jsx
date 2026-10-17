@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/student/StudentDashboard.jsx
 //
 // BENTO GRID — wired to GET /api/students/me/ (Week 4)
@@ -217,9 +218,8 @@ function DashboardSkeleton() {
 export default function StudentDashboard() {
   const navigate = useNavigate()
 
-  // ── Real API call (instant via cached sb-user) ────────────────
-  // initialData = user object saved at login → renders with no skeleton
-  // API refreshes in background to get has_submitted + retake_allowed
+  // Each initial data section has its own skeleton; cached data remains
+  // visible while the existing live queries reconcile in the background.
   const { data: student } = useApi('/api/students/me/')
   const { data: assessmentList } = useApi('/api/assessments/')
 
@@ -353,7 +353,7 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sb-bento">
 
           {/* ── GREETING ─────────────────────────────────────── */}
-          <div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
+          <DataSection url="/api/students/me/" layout="panel" count={1} className="sb-greeting sm:col-span-2"><div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                 {greeting}, {firstName} 👋
@@ -370,10 +370,10 @@ export default function StudentDashboard() {
                 Required assessments complete
               </span>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── STATUS ───────────────────────────────────────── */}
-          <div className="sb-status">
+          <DataSection urls={['/api/assessments/', '/api/student/results/combined/']} layout="panel" count={1} className="sb-status"><div className="sb-status">
             {!hasTakenAssessment ? (
               <div className="h-full bg-green-600 rounded-2xl p-5 flex flex-col justify-between gap-4 min-h-140px">
                 <div>
@@ -414,10 +414,10 @@ export default function StudentDashboard() {
                 </button>
               </div>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── TOP MATCHES ──────────────────────────────────── */}
-          <div className={`sb-matches ${tile} p-5`}>
+          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
             <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top matches</p>
             {hasTakenAssessment ? (
               <div className="flex flex-col gap-2">
@@ -458,11 +458,11 @@ export default function StudentDashboard() {
                 <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1">Unlocks after all required assessments</p>
               </div>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── SKILL PROFILE ────────────────────────────────── */}
           {/* Spans 2 rows on desktop via grid-area "skills" */}
-          <div className={`sb-skills ${tile} p-5 sm:col-span-2`}>
+          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-skills sm:col-span-2"><div className={`sb-skills ${tile} p-5 sm:col-span-2`}>
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill profile</p>
               {hasTakenAssessment && (
@@ -516,7 +516,7 @@ export default function StudentDashboard() {
                 <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">Unlocks after all required assessments</p>
               </div>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── MAP ──────────────────────────────────────────── */}
           {/*
@@ -524,7 +524,7 @@ export default function StudentDashboard() {
             tall bento tile. On tablet/mobile it's full-width with a
             fixed height so the map renders correctly.
           */}
-          <div className={`sb-map ${tile} overflow-hidden flex flex-col sm:col-span-2`}>
+          <DataSection url="/api/student/results/combined/" layout="map" count={1} className="sb-map sm:col-span-2"><div className={`sb-map ${tile} overflow-hidden flex flex-col sm:col-span-2`}>
             {/* Tile header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -609,10 +609,10 @@ export default function StudentDashboard() {
                 </p>
               </div>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── NEAREST / QUICK ACTIONS ──────────────────────── */}
-          <div className={`sb-nearest ${tile} p-5 sm:col-span-2`}>
+          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-nearest sm:col-span-2"><div className={`sb-nearest ${tile} p-5 sm:col-span-2`}>
             {hasTakenAssessment && studentPin ? (
               /* Nearest 3 companies */
               <>
@@ -728,7 +728,7 @@ export default function StudentDashboard() {
                 </div>
               </>
             )}
-          </div>
+          </div></DataSection>
 
           {/* ── PLACEMENT STATUS ──────────────────────────────── */}
           {isUnplaced && (

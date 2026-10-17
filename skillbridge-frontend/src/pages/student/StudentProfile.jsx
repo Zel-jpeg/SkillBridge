@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/student/StudentProfile.jsx
 //
 // Students can update: phone number, staying-at preference,
@@ -351,7 +352,7 @@ export default function StudentProfile() {
 
 
 
-      <section className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
+      <DataSection url="/api/students/me/" layout="profile"><section className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
 
         {/* Back */}
         <button
@@ -721,7 +722,7 @@ export default function StudentProfile() {
           )}
         </div>
 
-      </section>
+      </section></DataSection>
     </div>
   )
 }

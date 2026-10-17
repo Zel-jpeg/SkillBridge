@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 import { useState } from 'react'
 import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
@@ -173,7 +174,7 @@ export default function AdminSkills() {
         />
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <DataSection url="/api/admin/skills/" layout="table"><section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         <TaxonomyQuality />
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -247,7 +248,7 @@ export default function AdminSkills() {
             </div>
           )}
         </div>
-      </section>
+      </section></DataSection>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminCompanies.jsx
 //
 // Refactored to use useAdminCompanies hook for all state + API logic.
@@ -923,7 +924,7 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
 // ════════════════════════════════════════════════════════════════════════════
 export default function AdminCompanies() {
   const {
-    companies,
+    companies, initialCompaniesPending,
     categories,
     showAddCompany,    setShowAddCompany,
     addPositionFor,    setAddPositionFor,
@@ -982,24 +983,24 @@ export default function AdminCompanies() {
       )}
 
       {addPositionFor && (
-        <PositionModal
+        <DataSection url="/api/categories/" layout="panel" count={1}><PositionModal
           mode="add"
           companyName={addPositionFor.name}
           categories={categories}
           onClose={() => setAddPositionFor(null)}
           onSubmit={pos => handleAddPosition(addPositionFor, pos)}
-        />
+        /></DataSection>
       )}
 
       {editPositionFor && (
-        <PositionModal
+        <DataSection url="/api/categories/" layout="panel" count={1}><PositionModal
           mode="edit"
           companyName={editPositionFor.company.name}
           initialData={editPositionFor.position}
           categories={categories}
           onClose={() => setEditPositionFor(null)}
           onSubmit={pos => handleSavePosition(editPositionFor.company.id, pos)}
-        />
+        /></DataSection>
       )}
 
       {confirmDeleteComp && (
@@ -1038,9 +1039,9 @@ export default function AdminCompanies() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Companies & Positions</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="text" count={1}><p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {companies.length} companies · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} total slots
-            </p>
+            </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -1058,7 +1059,8 @@ export default function AdminCompanies() {
           </div>
         </div>
 
-        {/* ── Partner Locations Map ─────────────────────────────────── */}
+        <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards">
+{/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
           <button onClick={toggleMap}
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
@@ -1197,6 +1199,8 @@ export default function AdminCompanies() {
             </div>
           ))}
         </div>
+
+</DataSection>
       </section>
     </div>
   )

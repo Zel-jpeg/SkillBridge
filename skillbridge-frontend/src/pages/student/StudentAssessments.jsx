@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { assessmentAction } from './assessmentUiState'
@@ -79,7 +80,7 @@ export default function StudentAssessments() {
           <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">{data?.batch?.name || 'Your batch'}</p>
           <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Skills Assessments</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Complete your required assessments to generate your final skill profile.</p>
-          {!loading && !error && <div className="mt-5">
+<DataSection url="/api/assessments/" layout="panel" count={1}>          {!loading && !error && <div className="mt-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-gray-700 dark:text-gray-200">
               <strong>{completed} of {total} required assessments completed</strong>
               <span>{remaining} remaining</span>
@@ -93,15 +94,18 @@ export default function StudentAssessments() {
                 ? <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No required assessments are currently published. Your final profile remains locked.</p>
                 : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{remaining} required assessment{remaining === 1 ? '' : 's'} to go.</p>}
             {data?.all_required_completed && <button onClick={() => navigate('/student/results')} className="mt-4 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2">View Final Results</button>}
-          </div>}
+          </div>}</DataSection>
         </header>
+<DataSection url="/api/assessments/" layout="cards">
         {loading && <p role="status" className="mt-8 text-sm text-gray-600 dark:text-gray-300">Loading your assessments…</p>}
         {error && <div role="alert" className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">{error === 'not_enrolled' ? 'You are not enrolled in an active batch yet.' : `Assessments could not be loaded. ${error}`}</div>}
         {!loading && !error && (assessments.length
           ? <section aria-label="Assigned assessments" className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {assessments.map(item => <AssessmentCard key={item.id} item={item} />)}
-            </section>
+
+      </section>
           : <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">No published assessments are assigned to your batch yet. Check back with your instructor.</div>)}
+</DataSection>
       </section>
     </div>
   )

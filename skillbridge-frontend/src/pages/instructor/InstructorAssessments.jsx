@@ -1,3 +1,4 @@
+import DataSection, { ContentSkeleton } from '../../components/DataSection'
 // src/pages/instructor/InstructorAssessments.jsx
 //
 // Assessment Library — browse, review, and fully edit all published assessments.
@@ -461,7 +462,7 @@ export default function InstructorAssessments() {
     filterBatch, setFilterBatch, filterStatus, setFilterStatus,
     filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
     filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
-    selected, loadingQuestions,
+    selected, loadingQuestions, questionError, retryQuestions,
     openAssessment, closeAssessment,
     editTitle, setEditTitle,
     editDuration, setEditDuration,
@@ -515,12 +516,12 @@ export default function InstructorAssessments() {
         </div>
 
         {/* ── Stats ────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <DataSection url="/api/instructor/assessments/" layout="stats"><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="Total assessments" value={stats.total}       accent="border-gray-100 dark:border-gray-800" />
           <StatCard label="Active"             value={stats.active}      accent="border-green-100 dark:border-green-900/40" />
           <StatCard label="Total questions"    value={stats.questions}   accent="border-blue-100 dark:border-blue-900/40" />
           <StatCard label="Submissions"        value={stats.submissions} accent="border-purple-100 dark:border-purple-900/40" />
-        </div>
+        </div></DataSection>
 
         {/* ── Filters ──────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
@@ -550,6 +551,7 @@ export default function InstructorAssessments() {
           <select aria-label="Availability" value={filterAvailability} onChange={e => setFilterAvailability(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">Any availability</option><option value="available">Available</option><option value="upcoming">Upcoming</option><option value="overdue">Overdue</option><option value="closed">Closed</option></select>
         </div>
 
+<DataSection url="/api/instructor/assessments/" layout="cards">
         {/* ── Assessment grid ───────────────────────────────────────────────── */}
         {loadingList ? (
           <div className="flex flex-col gap-3">
@@ -579,6 +581,8 @@ export default function InstructorAssessments() {
           </div>
         )}
         <AssessmentReportPanel />
+
+</DataSection>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -684,11 +688,9 @@ export default function InstructorAssessments() {
             {/* ── Scrollable question list ──────────────────────────────── */}
             <div className="flex-1 overflow-y-auto px-5 py-5 bg-gray-50 dark:bg-gray-950">
               {loadingQuestions ? (
-                <div className="flex flex-col gap-3">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
-                  ))}
-                </div>
+                <ContentSkeleton layout="table" count={5} label="Loading assessment questions" />
+              ) : questionError ? (
+                <div role="alert" className="sb-data-error"><p>{questionError}</p><button type="button" onClick={retryQuestions}>Retry</button></div>
               ) : (
                 <div className="flex flex-col gap-3">
                   {visibleQuestions.length === 0 && (
@@ -744,7 +746,7 @@ export default function InstructorAssessments() {
               </button>
               <button
                 onClick={() => setShowSaveConfirm(true)}
-                disabled={saving || loadingQuestions}
+                disabled={saving || loadingQuestions || !!questionError}
                 className="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shadow-sm"
               >
                 <SaveIcon />

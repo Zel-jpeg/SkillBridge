@@ -538,6 +538,19 @@ def me(request):
     return Response(UserSerializer(request.user).data)
 
 
+def _google_userinfo(access_token):
+    # Bound only the external identity lookup; uploads, reports and SSE keep
+    # their operation-specific behavior. Requests uses connect/read seconds.
+    try:
+        return http_requests.get(
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=(3.05, 10),
+        )
+    except http_requests.RequestException:
+        return None
+
+
 # ── POST /api/auth/google/ ────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -547,10 +560,9 @@ def google_login(request):
     if not access_token:
         return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-    google_response = http_requests.get(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        headers={'Authorization': f'Bearer {access_token}'}
-    )
+    google_response = _google_userinfo(access_token)
+    if google_response is None:
+        return Response({'error': 'Google sign-in is temporarily unavailable. Please try again.'}, status=503)
 
     if google_response.status_code != 200:
         return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -604,10 +616,9 @@ def register_role(request):
     if role not in ('student', 'instructor'):
         return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
 
-    google_response = http_requests.get(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        headers={'Authorization': f'Bearer {access_token}'}
-    )
+    google_response = _google_userinfo(access_token)
+    if google_response is None:
+        return Response({'error': 'Google sign-in is temporarily unavailable. Please try again.'}, status=503)
     if google_response.status_code != 200:
         return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 

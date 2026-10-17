@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/* Initial section placeholders reserve space; background refresh keeps content. */
+.sb-skeleton { display: grid; gap: 1rem; width: 100%; }
+.sb-skeleton-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.sb-skeleton-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1024px) { .sb-skeleton-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sb-skeleton-item { min-height: 12rem; padding: 1.25rem; border: 1px solid #e5e7eb; border-radius: 1rem; background: #fff; }
+.sb-skeleton-stats .sb-skeleton-item { min-height: 8rem; }
+.sb-skeleton-table { gap: 0; border: 1px solid #e5e7eb; border-radius: 1rem; overflow: hidden; }
+.sb-skeleton-table .sb-skeleton-item { min-height: 4rem; border: 0; border-radius: 0; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 2rem; }
+.sb-skeleton-panel .sb-skeleton-item { min-height: 10rem; }
+.sb-skeleton-map .sb-skeleton-item { min-height: 22rem; }
+.sb-skeleton-profile .sb-skeleton-item { min-height: 35rem; }
+.sb-bento > .sb-map > div, .sb-bento > .sb-status > div, .sb-bento > .sb-skills > div,
+.sb-bento > .sb-greeting > div, .sb-bento > .sb-matches > div, .sb-bento > .sb-nearest > div { height: 100%; }
+.sb-skeleton-text .sb-skeleton-item { min-height: 1rem; padding: 0; border: 0; background: transparent; }
+.sb-skeleton-control .sb-skeleton-item { min-height: 3rem; padding: .9rem; }
+.sb-skeleton-text .sb-skeleton-line, .sb-skeleton-control .sb-skeleton-line { margin: 0; }
+.sb-skeleton-text .sb-skeleton-line:not(:first-child), .sb-skeleton-control .sb-skeleton-line:not(:first-child) { display: none; }
+.sb-skeleton-line, .sb-skeleton-avatar, .sb-skeleton-field { display: block; border-radius: .5rem; background: #e5e7eb; height: .9rem; margin-bottom: 1rem; animation: sb-loading-pulse 1.6s ease-in-out infinite; }
+.sb-skeleton-line { width: 100%; }
+.sb-skeleton-short { width: 35%; }
+.sb-skeleton-medium { width: 70%; }
+.sb-skeleton-avatar { width: 4rem; height: 4rem; border-radius: 50%; }
+.sb-skeleton-field { height: 2.75rem; }
+.sb-data-error { padding: 1rem; border: 1px solid #fcd34d; border-radius: 1rem; background: #fffbeb; color: #92400e; font-size: .875rem; }
+.sb-data-error button { margin-top: .5rem; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.dark .sb-skeleton-item { background: #111827; border-color: #374151; }
+.dark .sb-skeleton-line, .dark .sb-skeleton-avatar, .dark .sb-skeleton-field { background: #374151; }
+@keyframes sb-loading-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .sb-skeleton *, .animate-pulse { animation: none !important; }
+}
+
 /* Match the original compact EnrollModal while keeping the new review workflow. */
 .enrollment-dialog { margin: auto; width: min(512px, calc(100vw - 32px)); max-width: 512px; max-height: 92dvh; padding: 0; border: 1px solid #f3f4f6; border-radius: 16px; background: #fff; color: #111827; box-shadow: 0 25px 50px -12px #0004; overflow: hidden; font-size: 14px; }
 .enrollment-dialog::backdrop { background: #0006; backdrop-filter: blur(4px); }

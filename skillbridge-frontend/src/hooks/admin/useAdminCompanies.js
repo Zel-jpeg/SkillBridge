@@ -74,9 +74,9 @@ export function useAdminCompanies() {
   useSSE(SSE_PATH)
 
   const { data: companiesData, request } = useApi('/api/admin/companies/')
-  const { data: categoriesData }         = useApi('/api/categories/')
 
-  const [companies, setCompanies] = useState([])
+  const [companiesReady, setCompaniesReady] = useState(companiesData != null)
+  const [companies, setCompanies] = useState(() => Array.isArray(companiesData) ? companiesData.map(normalizeCompany) : [])
 
   // Re-normalize whenever SSE triggers a re-fetch
   useEffect(() => {
@@ -85,20 +85,22 @@ export function useAdminCompanies() {
     // Keep optimistic rows in local state, resyncing when the external API cache changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCompanies(raw.map(normalizeCompany))
+    setCompaniesReady(true)
   }, [companiesData])
-
-  // Use real categories from API or fall back to hardcoded list
-  const categories = Array.isArray(categoriesData)
-    ? categoriesData.map(c => c.name)
-    : SKILL_CATEGORIES_FALLBACK
 
   // ── Modal visibility state ────────────────────────────────────────
   const [showAddCompany,    setShowAddCompany]    = useState(false)
   const [addPositionFor,    setAddPositionFor]    = useState(null)   // company | null
   const [editCompanyFor,    setEditCompanyFor]    = useState(null)   // company | null
   const [editPositionFor,   setEditPositionFor]   = useState(null)   // { company, position } | null
+  const { data: categoriesData } = useApi('/api/categories/', { skip: !addPositionFor && !editPositionFor })
   const [confirmDeleteComp, setConfirmDeleteComp] = useState(null)   // company | null
   const [confirmDeletePos,  setConfirmDeletePos]  = useState(null)   // { company, position } | null
+
+  // Use real categories from API or fall back to hardcoded list
+  const categories = Array.isArray(categoriesData)
+    ? categoriesData.map(c => c.name)
+    : SKILL_CATEGORIES_FALLBACK
 
   // ── Toast ─────────────────────────────────────────────────────────
   const [toast, setToast] = useState(null)
@@ -252,7 +254,7 @@ export function useAdminCompanies() {
 
   // ─────────────────────────────────────────────────────────────────
   return {
-    companies,
+    companies, initialCompaniesPending: !companiesReady,
     categories,
     // Modal visibility
     showAddCompany,    setShowAddCompany,

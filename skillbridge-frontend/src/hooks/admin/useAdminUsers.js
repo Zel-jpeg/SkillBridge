@@ -17,11 +17,75 @@ import { useSSE } from '../useSSE'
 const PAGE_SIZE = 10
 const SSE_PATH  = '/api/admin/events/'
 
+function normalizeUsers(usersData) {
+    const students = Array.isArray(usersData?.students)            ? usersData.students            : []
+    const approved = Array.isArray(usersData?.instructors)         ? usersData.instructors         : []
+    const pending  = Array.isArray(usersData?.pending_instructors) ? usersData.pending_instructors : []
+
+  return {
+    students: students.map(s => ({
+      id:               s.id,
+      name:             s.name,
+      studentId:        s.student_id    || '',
+      email:            s.email         || '',
+      course:           s.course        || '',
+      instructor:       s.instructor    || '',
+      batch:            s.batch ?? null,
+      placement:        s.placement ?? null,
+      status:           s.status        || 'pending',
+      retakeAllowed:    !!s.retake_allowed,
+      assessmentId:     s.assessment_id ?? null,
+      isFlagged:        !!s.is_flagged,
+      stoppedReason:    s.stopped_reason_display || '',
+      violationCount:   s.violation_count ?? 0,
+      match:            s.top_match_score   ?? null,
+      position:         s.top_position_name ?? null,
+      company:          s.top_company_name  ?? null,
+      archived:         false,
+      role:             'student',
+      address:          s.address           ?? {},
+      photoUrl:         s.photo_url         || null,
+      competencyProfile: s.competency_profile ?? null,
+      assessmentResults: s.assessment_results ?? [],
+      combinedCategoryScores: s.combined_category_scores ?? [],
+      combinedCompetencyProfile: s.combined_competency_profile ?? null,
+      recommendationsLocked: s.recommendations_locked ?? true,
+      completedRequiredCount: s.completed_required_count ?? 0,
+      totalRequiredCount: s.total_required_count ?? 0,
+      remainingRequiredCount: s.remaining_required_count ?? 0,
+      top_recommendations: s.recommendations_locked ? [] : (s.top_recommendations ?? []),
+    })),
+    instructors: approved.map(i => ({
+      id:           i.id,
+      name:         i.name,
+      instructorId: i.instructor_id  || '',
+      email:        i.email          || '',
+      department:   i.department     || 'Institute of Computing',
+      courses:      i.courses        || 'BSIT / BSIS',
+      archived:     false,
+      status:       'active',
+      role:         'instructor',
+      photoUrl:     i.photo_url      || null,
+    })),
+    pending: pending.map(i => ({
+      id:           i.id,
+      name:         i.name,
+      instructorId: i.instructor_id  || '',
+      email:        i.email          || '',
+      department:   i.department     || 'Institute of Computing',
+      courses:      i.courses        || 'BSIT / BSIS',
+      photoUrl:     i.photo_url      || null,
+    })),
+  }
+}
+
 export function useAdminUsers() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
   const { data: usersData, request } = useApi('/api/admin/users/')
+  const normalized = useMemo(() => normalizeUsers(usersData), [usersData])
+  const [usersReady, setUsersReady] = useState(usersData != null)
 
   async function handleEnrollmentComplete() {
     invalidateCache('/api/admin/users/')
@@ -29,9 +93,9 @@ export function useAdminUsers() {
   }
 
   // ── Raw data state ────────────────────────────────────────────────
-  const [studentsList,       setStudentsList]       = useState([])
-  const [instructors,        setInstructors]        = useState([])
-  const [pendingInstructors, setPendingInstructors] = useState([])
+  const [studentsList,       setStudentsList]       = useState(normalized.students)
+  const [instructors,        setInstructors]        = useState(normalized.instructors)
+  const [pendingInstructors, setPendingInstructors] = useState(normalized.pending)
 
   // ── Modal open state ──────────────────────────────────────────────
   const [showAddInstr,       setShowAddInstr]       = useState(false)
@@ -64,68 +128,13 @@ export function useAdminUsers() {
   // Runs whenever usersData changes — including SSE-triggered re-fetches.
   useEffect(() => {
     if (!usersData) return
-    const students = Array.isArray(usersData.students)            ? usersData.students            : []
-    const approved = Array.isArray(usersData.instructors)         ? usersData.instructors         : []
-    const pending  = Array.isArray(usersData.pending_instructors) ? usersData.pending_instructors : []
-
-    // State is intentionally synchronized from the shared API cache.
+    // Initial sections remain placeholders until optimistic state is seeded.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudentsList(students.map(s => ({
-      id:               s.id,
-      name:             s.name,
-      studentId:        s.student_id    || '',
-      email:            s.email         || '',
-      course:           s.course        || '',
-      instructor:       s.instructor    || '',
-      batch:            s.batch ?? null,
-      placement:        s.placement ?? null,
-      status:           s.status        || 'pending',
-      retakeAllowed:    !!s.retake_allowed,
-      assessmentId:     s.assessment_id ?? null,
-      isFlagged:        !!s.is_flagged,
-      stoppedReason:    s.stopped_reason_display || '',
-      violationCount:   s.violation_count ?? 0,
-      match:            s.top_match_score   ?? null,
-      position:         s.top_position_name ?? null,
-      company:          s.top_company_name  ?? null,
-      archived:         false,
-      role:             'student',
-      address:          s.address           ?? {},
-      photoUrl:         s.photo_url         || null,
-      competencyProfile: s.competency_profile ?? null,
-      assessmentResults: s.assessment_results ?? [],
-      combinedCategoryScores: s.combined_category_scores ?? [],
-      combinedCompetencyProfile: s.combined_competency_profile ?? null,
-      recommendationsLocked: s.recommendations_locked ?? true,
-      completedRequiredCount: s.completed_required_count ?? 0,
-      totalRequiredCount: s.total_required_count ?? 0,
-      remainingRequiredCount: s.remaining_required_count ?? 0,
-      top_recommendations: s.recommendations_locked ? [] : (s.top_recommendations ?? []),
-    })))
-
-    setInstructors(approved.map(i => ({
-      id:           i.id,
-      name:         i.name,
-      instructorId: i.instructor_id  || '',
-      email:        i.email          || '',
-      department:   i.department     || 'Institute of Computing',
-      courses:      i.courses        || 'BSIT / BSIS',
-      archived:     false,
-      status:       'active',
-      role:         'instructor',
-      photoUrl:     i.photo_url      || null,
-    })))
-
-    setPendingInstructors(pending.map(i => ({
-      id:           i.id,
-      name:         i.name,
-      instructorId: i.instructor_id  || '',
-      email:        i.email          || '',
-      department:   i.department     || 'Institute of Computing',
-      courses:      i.courses        || 'BSIT / BSIS',
-      photoUrl:     i.photo_url      || null,
-    })))
-  }, [usersData])
+    setStudentsList(normalized.students)
+    setInstructors(normalized.instructors)
+    setPendingInstructors(normalized.pending)
+    setUsersReady(true)
+  }, [usersData, normalized])
 
   // ── Sync selectedUser with fresh data ─────────────────────────────
   // If a background fetch brings in new data (e.g. adding the address field),
@@ -331,7 +340,7 @@ export function useAdminUsers() {
 
   return {
     handleEnrollmentComplete,
-    studentsList, instructors, pendingInstructors,
+    studentsList, instructors, pendingInstructors, initialUsersPending: !usersReady,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser,
     selectedUserType, setSelectedUserType,

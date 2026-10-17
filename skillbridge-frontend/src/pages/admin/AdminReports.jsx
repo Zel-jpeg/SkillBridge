@@ -1,3 +1,4 @@
+import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminReports.jsx
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
 
@@ -8,13 +9,6 @@ import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { getQualitativeTag } from '../../utils/formatters'
 import api from '../../api/axios'
 import AssessmentReportPanel from '../../components/AssessmentReportPanel'
-
-const Spinner = () => (
-  <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-  </svg>
-)
 
 function StatCard({ label, value, sub, color }) {
   return (
@@ -97,7 +91,7 @@ function NlpConfigurationCard() {
 
   return (
     <SectionCard title="Recommendation NLP Model" subtitle="Students automatically use the active preprocessing model; the 60/25/15 weights stay fixed.">
-      <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+      <DataSection url="/api/admin/nlp-configuration/" layout="panel" count={1}><div className="flex flex-col lg:flex-row lg:items-end gap-3">
         <div className="flex-1">
           <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Current active model: {config?.active_model_label || 'Loading…'}</label>
           <select value={selected} onChange={e => setSelected(e.target.value)}
@@ -111,7 +105,7 @@ function NlpConfigurationCard() {
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 text-white disabled:opacity-50">Save Model</button>
         <button onClick={rerun} disabled={busy}
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white disabled:opacity-50">Re-run Recommendations</button>
-      </div>
+      </div></DataSection>
       <div className="mt-3 flex flex-wrap gap-2">
         {(config?.models || []).map(model => (
           <span key={model.id} title={model.error || ''} className={`text-[11px] px-2 py-1 rounded-full ${model.available ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'}`}>
@@ -125,17 +119,8 @@ function NlpConfigurationCard() {
 }
 
 export default function AdminReports() {
-  const { data, loading } = useApi('/api/admin/reports/')
-  const { data: placementData, loading: placementLoading } = useApi('/api/admin/placement-analytics/')
-
-  if (loading || placementLoading) {
-    return (
-      <div className="min-w-0">
-
-        <div className="flex justify-center py-24"><Spinner /></div>
-      </div>
-    )
-  }
+  const { data } = useApi('/api/admin/reports/')
+  const { data: placementData } = useApi('/api/admin/placement-analytics/')
 
   const sub   = data?.submission_stats     || {}
   const rec   = data?.recommendation_stats || {}
@@ -174,6 +159,7 @@ export default function AdminReports() {
         <NlpModelComparison />
         <AssessmentReportPanel />
 
+<DataSection url="/api/admin/placement-analytics/" layout="stats" count={5}>
         {/* ── OJT placement analytics ── */}
         <div>
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">OJT Placement Analytics</h2>
@@ -264,6 +250,9 @@ export default function AdminReports() {
           )}
         </SectionCard>
 
+
+</DataSection>
+<DataSection url="/api/admin/reports/" layout="stats">
         {/* ── Row 1: Top-level stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard label="Total Students"       value={sub.total}          color="text-blue-600 dark:text-blue-400"   sub="registered in system" />
@@ -411,6 +400,8 @@ export default function AdminReports() {
           </SectionCard>
         </div>
 
+
+</DataSection>
       </section>
     </div>
   )

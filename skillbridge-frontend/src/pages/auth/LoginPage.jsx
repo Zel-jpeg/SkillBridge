@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
-import axios from 'axios'
-import { prefetchForRole } from '../../api/prefetch'
+import api from '../../api/axios'
+import { authDestination } from '../../api/authDestination'
 import { resetSessionData } from '../../api/logout'
+import { useSession } from '../../context/SessionContext'
 
 const SYSTEM_NAME        = "SkillBridge"
 const SCHOOL_NAME        = "Davao del Norte State College"
@@ -14,6 +15,7 @@ const ACCESS_NOTE        = "Access is limited to enrolled OJT students and DNSC 
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { establishSession } = useSession()
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -23,38 +25,20 @@ export default function LoginPage() {
       setError('')
       setLoading(true)
 
-      // Clear any stale tokens before logging in
+      // Stop work belonging to the previous session before exchanging auth.
+      resetSessionData()
       localStorage.removeItem('sb-token')
       localStorage.removeItem('sb-refresh')
 
       try {
-        // Use plain axios so no stale JWT gets attached to this request
-        const res = await axios.post(
-          `${import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'}/api/auth/google/`,
+        const res = await api.post(
+          '/api/auth/google/',
           { token: tokenResponse.access_token }
         )
 
-        const { access, refresh, user } = res.data
-        resetSessionData()
-        localStorage.setItem('sb-token',   access)
-        localStorage.setItem('sb-refresh', refresh)
-        localStorage.setItem('sb-role',    user.role)
-        localStorage.setItem('sb-user',    JSON.stringify(user))
+        const user = establishSession(res.data)
 
-        // ── KEY CHANGE ────────────────────────────────────────────────
-        // Await ALL prefetch requests before navigating.
-        // The sign-in button spinner covers this wait (~200–400 ms on a
-        // warm connection). By the time navigate() runs, every endpoint
-        // for this role is already in the useApi cache, so the dashboard
-        // renders immediately with no loading spinners of its own.
-        await prefetchForRole(user.role)
-        // ─────────────────────────────────────────────────────────────
-
-        if (user.role === 'student')         navigate(user.phone ? '/student/dashboard' : '/student/setup')
-        else if (user.role === 'instructor') {
-          if (!user.is_approved) navigate('/instructor/pending')
-          else                   navigate('/instructor/dashboard')
-        } else if (user.role === 'admin')    navigate('/admin/dashboard')
+        navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
 
       } catch (err) {
         const code = err.response?.data?.error
@@ -82,8 +66,7 @@ export default function LoginPage() {
         setLoading(false)
       }
     },
-    onError: (err) => {
-      console.log('Google OAuth error:', err)
+    onError: () => {
       setError('Google sign-in was cancelled or blocked. Make sure pop-ups are allowed.')
     },
   })

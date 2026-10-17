@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../../api/axios'
-import { invalidateCache } from '../../hooks/useApi'
+import { invalidateCache, useApi } from '../../hooks/useApi'
+import DataSection from '../DataSection'
 import { XIcon } from '../Icons'
 import { confirmationText, downloadStudentTemplate, editReviewRow, parseStudentFile, resultText, statusLabel } from '../../utils/studentEnrollmentImport'
 
@@ -14,7 +15,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   const dialog = useRef(null)
   const reviewDialog = useRef(null)
   const fileRef = useRef(null)
-  const [batches, setBatches] = useState([])
+  const { data: batchesData } = useApi('/api/instructor/batches/')
+  const batches = Array.isArray(batchesData) ? batchesData.filter(batch => batch.status === 'active') : []
   const [target, setTarget] = useState(String(batchId ?? ''))
   const [rows, setRows] = useState([])
   const [review, setReview] = useState(null)
@@ -32,11 +34,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   useEffect(() => {
     dialog.current.showModal()
-    const controller = new AbortController()
-    api.get('/api/instructor/batches/', { signal: controller.signal })
-      .then(({ data }) => setBatches(data.filter(b => b.status === 'active')))
-      .catch(err => { if (err.code !== 'ERR_CANCELED') setError('Could not load active batches. Close and try again.') })
-    return () => controller.abort()
   }, [])
 
   const selectedBatch = batches.find(b => String(b.id) === target)
@@ -148,12 +145,12 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
     <div className="enrollment-content">
       <label className="enrollment-field">Target batch
-        <select value={target} disabled={busy || !!result || !!batchId} onChange={e => {
+<DataSection url="/api/instructor/batches/" layout="control" count={1}>        <select value={target} disabled={busy || !!result || !!batchId} onChange={e => {
           setTarget(e.target.value); setRows([]); setFileRows(false); setNote(''); invalidateReview()
         }}>
           <option value="">Select an active batch</option>
           {batches.map(b => <option key={b.id} value={b.id}>{b.name} — {b.instructor_name || 'Instructor unassigned'}</option>)}
-        </select>
+        </select></DataSection>
       </label>
       {selectedBatch && <p className="enrollment-caption">Assigned instructor: {selectedBatch.instructor_name || 'Unassigned'}</p>}
       {error && <p role="alert" className="enrollment-error">{error}</p>}
