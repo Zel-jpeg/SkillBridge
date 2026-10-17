@@ -153,11 +153,14 @@ export default function AdminUsers() {
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">User Management</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage students, instructors, and pending requests.</p>
           </div>
-          <button onClick={() => setShowEnrollment(true)} className="px-3 py-2.5 border border-green-700 text-green-800 dark:text-green-300 rounded-xl text-sm font-medium">Import / Enroll Students</button>
-          <button onClick={() => setShowAddInstr(true)}
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0">
-            <PlusIcon /> Add Instructor
-          </button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <button type="button" onClick={() => setShowEnrollment(true)}
+              className="min-h-11 cursor-pointer rounded-xl border border-green-700 px-3 py-2.5 text-sm font-medium text-green-800 transition-colors hover:bg-green-50 active:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 motion-reduce:transition-none dark:border-green-600 dark:text-green-300 dark:hover:bg-green-950/50 dark:active:bg-green-900/50">Import / Enroll Students</button>
+            <button type="button" onClick={() => setShowAddInstr(true)}
+              className="flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 motion-reduce:transition-none">
+              <PlusIcon /> Add Instructor
+            </button>
+          </div>
         </div>
 
         <DataSection url="/api/admin/users/" pending={initialUsersPending} layout="table">
