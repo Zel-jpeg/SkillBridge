@@ -53,6 +53,9 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Database connection troubleshooting](DATABASE_CONNECTIONS.md): Local startup
+  stalls, bounded PostgreSQL connection waits and Supabase access checks.
+
 - [Company branding and student photos](PROFILE_IMAGES.md): Optional optimized
   WebP company images, backend-only Storage setup, provider-photo coverage,
   lifecycle rules and isolated verification.

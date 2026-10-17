@@ -91,6 +91,10 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
+        'OPTIONS': {
+            # libpq applies this limit separately to each resolved address.
+            'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '5')),
+        },
     }
 }
 
