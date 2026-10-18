@@ -1,10 +1,13 @@
 from django.urls import path
+from .admin_accounts import admin_account_detail
 from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
 from .sse import admin_events, instructor_events, student_events
+from .health import health
 
 urlpatterns = [
+    path('health/', health, name='health'),
     path('admin/taxonomy-quality/', taxonomy_quality, name='taxonomy_quality'),
     path('nlp/students/<int:student_id>/text/', student_nlp_text, name='student_nlp_text'),
     path('nlp/positions/<int:position_id>/text/', position_nlp_text, name='position_nlp_text'),
@@ -66,6 +69,7 @@ urlpatterns = [
     # ── Admin ─────────────────────────────────────────────────────────────────
     path('admin/stats/',                                  views.admin_stats,              name='admin_stats'),
     path('admin/users/',                                  views.admin_users,              name='admin_users'),
+    path('admin/users/<int:user_id>/',                     admin_account_detail,          name='admin_account_detail'),
     path('admin/instructors/',                            views.admin_instructors,        name='admin_instructors'),
     path('admin/instructors/<int:user_id>/approve/',      views.admin_approve_instructor, name='admin_approve_instructor'),
     path('admin/companies/',                              views.admin_companies,          name='admin_companies'),

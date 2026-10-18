@@ -1,0 +1,262 @@
+{
+  "metadata": {
+    "name": "REPLACE_WITH_STUDY_NAME",
+    "evidence_kind": "expert_independent",
+    "labeling_protocol": "REPLACE: who labeled, rubric, blinding, date, adjudication, consent/data handling"
+  },
+  "categories": [
+    {
+      "id": 1,
+      "name": "Programming",
+      "tags": [
+        "Python",
+        "Java",
+        "JavaScript",
+        "OOP",
+        "algorithms",
+        "data structures",
+        "debugging",
+        "Git",
+        "problem solving",
+        "software logic"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Database",
+      "tags": [
+        "SQL",
+        "PostgreSQL",
+        "MySQL",
+        "ERD",
+        "normalization",
+        "indexing",
+        "query optimization",
+        "database design",
+        "backup",
+        "data integrity"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Networking",
+      "tags": [
+        "TCP/IP",
+        "routing",
+        "switching",
+        "subnetting",
+        "LAN",
+        "WAN",
+        "Cisco",
+        "firewall",
+        "network troubleshooting",
+        "connectivity"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Web Development",
+      "tags": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "React",
+        "responsive design",
+        "web API",
+        "frontend",
+        "DOM",
+        "browser testing",
+        "UI development"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Cybersecurity",
+      "tags": [
+        "authentication",
+        "encryption",
+        "OWASP",
+        "firewall",
+        "access control",
+        "secure coding",
+        "vulnerability assessment",
+        "phishing",
+        "security policy"
+      ]
+    }
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "backend",
+        "server-side",
+        "REST API",
+        "Django",
+        "Flask",
+        "authentication",
+        "database integration",
+        "business logic",
+        "API endpoint"
+      ],
+      "requirements": {
+        "Programming": 92,
+        "Database": 84,
+        "Networking": 38,
+        "Web Development": 76,
+        "Cybersecurity": 52
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "frontend",
+        "React components",
+        "JavaScript events",
+        "responsive layout",
+        "CSS styling",
+        "browser compatibility",
+        "UI development"
+      ],
+      "requirements": {
+        "Programming": 78,
+        "Database": 38,
+        "Networking": 32,
+        "Web Development": 95,
+        "Cybersecurity": 44
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics",
+      "tags": [
+        "database administration",
+        "SQL optimization",
+        "schema design",
+        "backup",
+        "indexing",
+        "data validation",
+        "relational database"
+      ],
+      "requirements": {
+        "Programming": 74,
+        "Database": 96,
+        "Networking": 36,
+        "Web Development": 46,
+        "Cybersecurity": 58
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc.",
+      "tags": [
+        "quality assurance",
+        "test cases",
+        "bug reporting",
+        "regression testing",
+        "manual testing",
+        "test documentation",
+        "defect tracking"
+      ],
+      "requirements": {
+        "Programming": 72,
+        "Database": 64,
+        "Networking": 42,
+        "Web Development": 66,
+        "Cybersecurity": 76
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems",
+      "tags": [
+        "network administration",
+        "routing",
+        "switching",
+        "subnetting",
+        "Cisco configuration",
+        "network monitoring",
+        "LAN troubleshooting"
+      ],
+      "requirements": {
+        "Programming": 42,
+        "Database": 34,
+        "Networking": 96,
+        "Web Development": 28,
+        "Cybersecurity": 78
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies",
+      "tags": [
+        "technical support",
+        "helpdesk",
+        "hardware troubleshooting",
+        "software installation",
+        "device setup",
+        "ticket handling",
+        "user assistance"
+      ],
+      "requirements": {
+        "Programming": 62,
+        "Database": 58,
+        "Networking": 84,
+        "Web Development": 52,
+        "Cybersecurity": 68
+      },
+      "lat": null,
+      "lng": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "replace-dev-case",
+      "group_id": "replace-student-A",
+      "split": "dev",
+      "scores": {
+        "Programming": null,
+        "Database": null,
+        "Networking": null,
+        "Web Development": null,
+        "Cybersecurity": null
+      },
+      "expected_position_id": null,
+      "relevant_position_ids": [],
+      "address": {}
+    },
+    {
+      "id": "replace-test-case",
+      "group_id": "replace-student-B",
+      "split": "test",
+      "scores": {
+        "Programming": null,
+        "Database": null,
+        "Networking": null,
+        "Web Development": null,
+        "Cybersecurity": null
+      },
+      "expected_position_id": null,
+      "relevant_position_ids": [],
+      "address": {}
+    }
+  ]
+}

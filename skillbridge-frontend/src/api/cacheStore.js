@@ -1,6 +1,6 @@
 // Shared GET state. The store accepts the request function so its race and
 // account-isolation behavior can be tested without mounting React.
-export function createCacheStore(getRequest, storage = globalThis.sessionStorage, identity = () => '') {
+export function createCacheStore(getRequest, storage = globalThis.sessionStorage, identity = () => '', validate = () => {}) {
   const cache = new Map()
   const inflight = new Map()
   const versions = new Map()
@@ -62,6 +62,8 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
       const raw = storage.getItem(prefix + url)
       if (raw) {
         const entry = JSON.parse(raw)
+        if (!entry || !Number.isFinite(entry.fetchedAt)) throw new Error('Invalid stored query entry')
+        validate(url, entry.data)
         cache.set(url, entry)
         return entry
       }
@@ -71,6 +73,7 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
 
   function publish(url, data) {
     ensureOwner()
+    validate(url, data)
     versions.set(url, (versions.get(url) ?? 0) + 1)
     inflight.delete(url)
     const entry = { data, fetchedAt: Date.now() }

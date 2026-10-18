@@ -1,3 +1,6 @@
+import { escapeHtml } from '../../utils/escapeHtml'
+import { loadLeaflet } from '../../utils/externalServices'
+import MapStatus from '../../components/MapStatus'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentResults.jsx
 //
@@ -26,22 +29,7 @@ import PlacementStatusCard from '../../components/placements/PlacementStatusCard
 // ────────────────────────────────────────────────────────────────
 // Leaflet singleton
 // ────────────────────────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 function makeCompanyIcon(L, name, isTopMatch = false) {
   const pinFill   = isTopMatch ? '#f59e0b' : '#16a34a'
@@ -60,7 +48,7 @@ function makeCompanyIcon(L, name, isTopMatch = false) {
           pointer-events:none;transition:all .18s;
           transform:translateX(-50%);left:50%;
         ">
-          ${isTopMatch ? '⭐ ' : ''}${name}
+          ${isTopMatch ? '⭐ ' : ''}${escapeHtml(name)}
           <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
             width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
             border-top:6px solid ${labelBg}"></div>
@@ -97,16 +85,22 @@ function ResultsMap({ companies, studentPin }) {
   const framed = useRef(false)
   const openMarker = useRef(null)
 
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setReady(false); framed.current = false; setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
       const map = L.map(elRef.current).setView([7.3072, 125.6839], 11)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 300)
 
@@ -119,6 +113,13 @@ function ResultsMap({ companies, studentPin }) {
         ro.observe(elRef.current)
         mapRef.current._resizeObserver = ro
       }
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) {
+        mapRef.current?.remove()
+        mapRef.current = null
+        setMapStatus('error')
+      }
     })
     return () => {
       alive = false
@@ -126,7 +127,7 @@ function ResultsMap({ companies, studentPin }) {
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // intentional
+  }, [mapAttempt]) // intentional
   useEffect(() => {
     if (!ready || !mapRef.current || !window.L) return
     const map = mapRef.current
@@ -148,9 +149,9 @@ function ResultsMap({ companies, studentPin }) {
         .addTo(map)
         .bindPopup(`
           <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${co.company}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
-            <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${co.match}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${escapeHtml(co.company)}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
+            <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
           </div>`)
       mk._freshnessKey = `company:${co.id ?? idx}`
       if (openMarker.current === mk._freshnessKey) mk.openPopup()
@@ -184,6 +185,7 @@ function ResultsMap({ companies, studentPin }) {
   return (
     <div className="w-full relative" style={{ paddingBottom: 'clamp(280px, 45vw, 460px)', minHeight: 280 }}>
       <div ref={elRef} className="absolute inset-0 rounded-2xl overflow-hidden" />
+      <MapStatus status={mapStatus} onRetry={retryMap} />
     </div>
   )
 }
@@ -272,7 +274,7 @@ export default function StudentResults() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Combined from {resultData?.included_assessments?.map(item => item.title).join(', ') || 'your completed assessments'} · {displayCourse} · {displayId}
             </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generated {resultData?.generated_at ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(resultData.generated_at)) : 'recently'} · Model: {resultData?.model_used || resultData?.active_model || 'configured model'}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generated {resultData?.generated_at ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(resultData.generated_at)) : 'recently'} · Model used: {resultData?.model_used || 'No model result available'}</p>
           </div>
           <div className="flex items-center gap-2">
 

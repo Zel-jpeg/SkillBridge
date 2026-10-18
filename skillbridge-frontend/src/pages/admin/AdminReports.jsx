@@ -81,7 +81,7 @@ function NlpConfigurationCard() {
   async function rerun() {
     setBusy(true)
     try {
-      const { data } = await api.post('/api/admin/rerun-recommendations/')
+      const { data } = await api.post('/api/admin/rerun-recommendations/', {}, { timeout: 120000 })
       setMessage(data.message || 'Recommendations refreshed.')
       ;['/api/admin/reports/', '/api/admin/students/recommendations/', '/api/instructor/students/recommendations/'].forEach(invalidateCache)
     } catch (err) {
@@ -164,7 +164,7 @@ export default function AdminReports() {
         <div>
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">OJT Placement Analytics</h2>
           <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            Approved assignments, student demand, and remaining company capacity by area.
+            Approved assignments by company area, student residences, and remaining company capacity.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function AdminReports() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Top Student Areas" subtitle="Areas with the most active students.">
+          <SectionCard title="Top Student Areas" subtitle="Home areas with the most active students.">
             {topStudentAreas.length ? (
               <div className="space-y-1">
                 {topStudentAreas.map(row => <BarRow key={row.area} label={row.area} value={row.count} max={topStudentAreas[0]?.count || 1} right={`${row.count}`} colorClass="bg-blue-500" />)}
@@ -224,9 +224,9 @@ export default function AdminReports() {
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400">
                     <th className="pb-3 pr-4 font-semibold">Area</th>
-                    <th className="pb-3 px-3 text-center font-semibold">Students</th>
-                    <th className="pb-3 px-3 text-center font-semibold">Approved</th>
-                    <th className="pb-3 px-3 text-center font-semibold">Unplaced</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Resident Students</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Deployed Students</th>
+                    <th className="pb-3 px-3 text-center font-semibold">Unplaced Residents</th>
                     <th className="pb-3 px-3 text-center font-semibold">Companies</th>
                     <th className="pb-3 px-3 text-center font-semibold">Total Slots</th>
                     <th className="pb-3 pl-3 text-center font-semibold">Free Slots</th>

@@ -378,7 +378,7 @@ with sync_playwright() as p:
         fixture = Fixture(browser, fail=fail, empty=empty)
         page = fixture.open()
         if fail:
-            expect(page.get_by_text('Synthetic assessment failure', exact=True).first).to_be_visible()
+            expect(page.get_by_text('Server is unavailable. Check your connection.', exact=True).first).to_be_visible()
             fixture.fail = False
             page.get_by_role('button', name='Retry', exact=True).click()
             expect(page.get_by_role('article')).to_have_count(10)

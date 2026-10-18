@@ -11,7 +11,7 @@ export function resetSessionData() {
 }
 
 export function logoutSession(navigate, role = localStorage.getItem('sb-role')) {
-  for (const key of ['sb-token', 'sb-refresh', 'sb-role', 'sb-user']) localStorage.removeItem(key)
+  for (const key of ['sb-token', 'sb-refresh', 'sb-role', 'sb-user', 'sb-session-id']) localStorage.removeItem(key)
   resetSessionData()
   navigate(ROLE_METADATA[role]?.loginPath ?? '/login', { replace: true })
 }

@@ -1,7 +1,9 @@
 // src/components/AddressDropdowns.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
-// Official Philippine address API — no signup needed, free
+import { externalJson } from '../utils/externalServices'
+
+// Philippine address API — no signup needed, free
 const API = 'https://psgc.gitlab.io/api'
 
 // ================================================================
@@ -23,10 +25,16 @@ const API = 'https://psgc.gitlab.io/api'
 
 // ── Safe sessionStorage helpers (never crash if storage is blocked) ──
 function ssGet(key) {
-  try { return sessionStorage.getItem(key) } catch { return null }
+  try { return addressRows(JSON.parse(sessionStorage.getItem(key))) } catch { return null }
 }
 function ssSet(key, value) {
   try { sessionStorage.setItem(key, value) } catch { /* quota exceeded or blocked */ }
+}
+
+function addressRows(value) {
+  if (!Array.isArray(value) || value.some(row => !row || typeof row.name !== 'string' || !row.name.trim() ||
+    !['string', 'number'].includes(typeof row.code))) throw new Error('Invalid address data')
+  return value.map(row => ({ ...row, code: String(row.code) }))
 }
 
 export default function AddressDropdowns({ label = '', onChange, error }) {
@@ -49,124 +57,77 @@ export default function AddressDropdowns({ label = '', onChange, error }) {
     barangays: false,
   })
 
-  const [fetchError, setFetchError] = useState('')
-
-  // ── Load all provinces on mount — use cache when available ──────
-  useEffect(() => {
-    const cached = ssGet('psgc_provinces')
-    if (cached) {
-      // Restore the external session cache on mount.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProvinces(JSON.parse(cached))
-      setLoading(prev => ({ ...prev, provinces: false }))
-      return
+  const [fetchError, setFetchError] = useState(null)
+  const pending = useRef({})
+  const load = useCallback(async (kind, code = '') => {
+    pending.current[kind]?.abort()
+    const controller = new AbortController()
+    pending.current[kind] = controller
+    const key = kind === 'provinces' ? 'psgc_provinces' : `psgc_${kind}_${code}`
+    const url = kind === 'provinces' ? `${API}/provinces/` : kind === 'cities'
+      ? `${API}/provinces/${encodeURIComponent(code)}/cities-municipalities/`
+      : `${API}/cities-municipalities/${encodeURIComponent(code)}/barangays/`
+    setLoading(prev => ({ ...prev, [kind]: true }))
+    setFetchError(null)
+    try {
+      const cached = ssGet(key)
+      const rows = cached ?? addressRows(await externalJson(url, { signal: controller.signal }))
+      if (controller.signal.aborted) return
+      rows.sort((a, b) => a.name.localeCompare(b.name))
+      ssSet(key, JSON.stringify(rows))
+      ;({ provinces: setProvinces, cities: setCities, barangays: setBarangays })[kind](rows)
+    } catch {
+      if (!controller.signal.aborted) setFetchError({ kind, code })
+    } finally {
+      if (pending.current[kind] === controller && !controller.signal.aborted) {
+        setLoading(prev => ({ ...prev, [kind]: false }))
+      }
     }
-
-    fetch(`${API}/provinces/`)
-      .then(r => {
-        if (!r.ok) throw new Error('Network response was not ok')
-        return r.json()
-      })
-      .then(data => {
-        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name))
-        ssSet('psgc_provinces', JSON.stringify(sorted))
-        setProvinces(sorted)
-        setLoading(prev => ({ ...prev, provinces: false }))
-      })
-      .catch(() => {
-        setFetchError('Could not load address data. Check your internet connection.')
-        setLoading(prev => ({ ...prev, provinces: false }))
-      })
   }, [])
 
-  // ── Province change → load cities (cached per province code) ────
+  useEffect(() => {
+    // Synchronize external address data; cleanup cancels obsolete transports.
+    load('provinces')
+    const requests = pending.current
+    return () => Object.values(requests).forEach(controller => controller.abort())
+  }, [load])
+
+  function cancel(kind) {
+    pending.current[kind]?.abort()
+    setLoading(prev => ({ ...prev, [kind]: false }))
+  }
   function handleProvinceChange(e) {
     const code = e.target.value
     const name = provinces.find(p => p.code === code)?.name || ''
-
-    const next = { provinceCode: code, province: name, cityCode: '', city: '', barangay: '' }
-    setSelected(next)
-    setCities([])
-    setBarangays([])
+    cancel('cities'); cancel('barangays')
+    setFetchError(null)
+    setSelected({ provinceCode: code, province: name, cityCode: '', city: '', barangay: '' })
+    setCities([]); setBarangays([])
     onChange({ province: name, city: '', barangay: '' })
-
-    if (!code) return
-
-    // Check cache first
-    const cacheKey = `psgc_cities_${code}`
-    const cached = ssGet(cacheKey)
-    if (cached) {
-      setCities(JSON.parse(cached))
-      return  // no loading spinner needed — instant
-    }
-
-    setLoading(prev => ({ ...prev, cities: true }))
-    fetch(`${API}/provinces/${code}/cities-municipalities/`)
-      .then(r => {
-        if (!r.ok) throw new Error('Network response was not ok')
-        return r.json()
-      })
-      .then(data => {
-        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name))
-        ssSet(cacheKey, JSON.stringify(sorted))
-        setCities(sorted)
-        setLoading(prev => ({ ...prev, cities: false }))
-      })
-      .catch(() => setLoading(prev => ({ ...prev, cities: false })))
+    if (code) load('cities', code)
   }
-
-  // ── City change → load barangays (cached per city code) ─────────
   function handleCityChange(e) {
     const code = e.target.value
     const name = cities.find(c => c.code === code)?.name || ''
-
+    cancel('barangays')
+    setFetchError(null)
     setSelected(prev => ({ ...prev, cityCode: code, city: name, barangay: '' }))
     setBarangays([])
     onChange({ province: selected.province, city: name, barangay: '' })
-
-    if (!code) return
-
-    // Check cache first
-    const cacheKey = `psgc_barangays_${code}`
-    const cached = ssGet(cacheKey)
-    if (cached) {
-      setBarangays(JSON.parse(cached))
-      return  // instant
-    }
-
-    setLoading(prev => ({ ...prev, barangays: true }))
-    fetch(`${API}/cities-municipalities/${code}/barangays/`)
-      .then(r => {
-        if (!r.ok) throw new Error('Network response was not ok')
-        return r.json()
-      })
-      .then(data => {
-        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name))
-        ssSet(cacheKey, JSON.stringify(sorted))
-        setBarangays(sorted)
-        setLoading(prev => ({ ...prev, barangays: false }))
-      })
-      .catch(() => setLoading(prev => ({ ...prev, barangays: false })))
+    if (code) load('barangays', code)
   }
-
-  // ── Barangay change ──────────────────────────────────────────────
   function handleBarangayChange(e) {
     const name = e.target.value
     setSelected(prev => ({ ...prev, barangay: name }))
     onChange({ province: selected.province, city: selected.city, barangay: name })
   }
 
-  // ── Full API failure ─────────────────────────────────────────────
-  if (fetchError) {
-    return (
-      <p className="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl border border-red-200">
-        {fetchError}
-      </p>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-3">
+      {fetchError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p>Could not load {fetchError.kind}. Check your connection and retry. Your other fields are retained.</p>
+        <button type="button" onClick={() => load(fetchError.kind, fetchError.code)} className="mt-2 rounded border border-red-400 px-3 py-1.5 focus-visible:outline-2">Retry address data</button>
+      </div>}
 
       {/* PROVINCE */}
       <div>

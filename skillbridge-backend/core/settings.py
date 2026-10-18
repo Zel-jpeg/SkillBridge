@@ -15,6 +15,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 load_dotenv()
+
+# Preserve Django's existing handler behavior, adding credential redaction to
+# local request/access diagnostics (including EventSource query tokens).
+from copy import deepcopy
+from django.utils.log import DEFAULT_LOGGING
+LOGGING = deepcopy(DEFAULT_LOGGING)
+LOGGING['filters']['redact_credentials'] = {'()': 'api.logging_filters.RedactCredentials'}
+for handler in LOGGING['handlers'].values():
+    handler.setdefault('filters', []).append('redact_credentials')
+LOGGING['loggers']['django.server'].setdefault('filters', []).append('redact_credentials')
+LOGGING['loggers']['django.request'] = {'filters': ['redact_credentials'], 'handlers': [], 'propagate': True}
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -112,8 +123,13 @@ CORS_ALLOWED_ORIGINS = [
 
 # DRF — use JWT for all endpoints by default
 REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': (
+        'api.parsers.ObjectJSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'api.authentication.AccountJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -127,6 +143,9 @@ REST_FRAMEWORK = {
         'user':  '200/minute',
         'login': '10/minute',
     },
+    # Direct localhost requests do not trust arbitrary forwarded IP headers.
+    # Configure only a verified proxy hop count during hosted acceptance.
+    'NUM_PROXIES': int(os.getenv('TRUSTED_PROXY_COUNT', '0')),
 }
 
 # JWT settings
@@ -134,6 +153,7 @@ from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME':  timedelta(hours=8),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'CHECK_REVOKE_TOKEN': True,
 }
 
 AUTHENTICATION_BACKENDS = [

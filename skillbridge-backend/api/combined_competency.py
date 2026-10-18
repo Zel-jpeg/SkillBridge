@@ -111,7 +111,8 @@ def recalculate_combined(student, batch):
     )
     profile.is_finalized = True
     profile.finalized_at = timezone.now()
-    profile.model_used = recommendations[0]['model_used'] if recommendations else requested_model
+    # A configured model is not evidence it produced a recommendation result.
+    profile.model_used = recommendations[0]['model_used'] if recommendations else ''
     profile.save(update_fields=['is_finalized', 'finalized_at', 'model_used', 'generated_at'])
     combined_changed(student, batch)
     return profile, progress, recommendations

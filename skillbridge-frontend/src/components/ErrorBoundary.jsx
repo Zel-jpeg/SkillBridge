@@ -21,9 +21,8 @@ export default class ErrorBoundary extends Component {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error, info) {
-    // In production, send to an error monitoring service (e.g., Sentry)
-    console.error('[ErrorBoundary] Rendering crash:', error, info)
+  componentDidCatch() {
+    console.error('[ErrorBoundary] Rendering failed')
   }
 
   render() {
@@ -46,7 +45,7 @@ export default class ErrorBoundary extends Component {
           <div>
             <h1 className="text-base font-bold text-gray-900 dark:text-white">Something went wrong</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-              An unexpected error occurred. Your data is safe — please reload the page to continue.
+              An unexpected error occurred. Reload the page to continue. If you were saving, check the current records before trying again.
             </p>
             {import.meta.env.DEV && this.state.error && (
               <p className="mt-3 text-xs font-mono text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900 rounded-xl px-4 py-3 text-left wrap-break-word">

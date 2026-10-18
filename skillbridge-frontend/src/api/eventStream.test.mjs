@@ -86,9 +86,12 @@ test('identity switch closes the old connection and ignores its late messages', 
 })
 
 test('revocation and unauthorized preflight are terminal; transient errors back off', async () => {
-  const f = fixture()
+  let preflights = 0
+  const f = fixture({ preflight: async () => { if (preflights++) throw { response: { status: 401 } } } })
   f.manager.start(); await Promise.resolve()
   f.message({ type: 'auth_expired' })
+  assert.equal(f.expired, 0)
+  await f.tick(1000)
   assert.equal(f.expired, 1)
   assert.equal(f.tasks.size, 0)
   const denied = fixture({ preflight: async () => { throw { response: { status: 401 } } } })

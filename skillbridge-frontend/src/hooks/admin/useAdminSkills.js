@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import api from '../../api/axios'
 import { fetchWithDedup, updateCachedData, useApi } from '../useApi'
+import { requestErrorMessage } from '../../api/requestErrors'
 
 const SKILLS_URL = '/api/admin/skills/'
 
@@ -14,6 +15,7 @@ export function useAdminSkills() {
   const [selectedSkill, setSelectedSkill] = useState(null)
   
   const [saving, setSaving] = useState(false)
+  const pending = useRef(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [toast, setToast] = useState('')
 
@@ -29,6 +31,8 @@ export function useAdminSkills() {
   }
 
   const handleSave = async (skillData) => {
+    if (pending.current) return { ok: false, error: 'A save is already in progress.' }
+    pending.current = true
     setSaving(true)
     try {
       if (skillData.id) {
@@ -47,8 +51,9 @@ export function useAdminSkills() {
       fetchWithDedup(SKILLS_URL).catch(() => {})
       return { ok: true }
     } catch (err) {
-      return { ok: false, error: err.response?.data?.error || 'Failed to save skill.' }
+      return { ok: false, error: requestErrorMessage(err, { mutation: true }) }
     } finally {
+      pending.current = false
       setSaving(false)
     }
   }
@@ -61,9 +66,8 @@ export function useAdminSkills() {
       fetchWithDedup(SKILLS_URL).catch(() => {})
       setDeleteConfirm(null)
       showToast('Skill deleted successfully.')
-    } catch {
-      alert('Failed to delete skill. It might be in use by an assessment or position.')
-      setDeleteConfirm(null)
+    } catch (error) {
+      return { ok: false, message: requestErrorMessage(error, { mutation: true }) }
     }
   }
 

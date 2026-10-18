@@ -474,7 +474,7 @@ export default function InstructorAssessments() {
     showSaveConfirm, setShowSaveConfirm,
     confirmRemoveQuestion, setConfirmRemoveQuestion,
     confirmRemoveQuestionAction,
-    saving, saveAllChanges,
+    saving, saveAllChanges, saveError,
     toast,
   } = useInstructorAssessments()
 
@@ -733,6 +733,7 @@ export default function InstructorAssessments() {
               )}
             </div>
 
+            {saveError && <p role="alert" className="px-5 py-2 text-sm text-rose-700 dark:text-rose-300">{saveError}</p>}
             {/* ── Footer ───────────────────────────────────────────────── */}
             <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 shrink-0">
               <p className="hidden sm:block text-xs text-gray-400 dark:text-gray-500 flex-1">

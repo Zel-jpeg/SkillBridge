@@ -153,6 +153,7 @@ class AssessmentRandomizationTests(APITestCase):
         submit = self.client.post(
             reverse('assessment_submit', args=[self.assessment.id]),
             {
+                'attempt_started_at': started.data['attempt_started_at'],
                 'answers': [
                     {
                         'question_id': self.mcq.id,
@@ -225,6 +226,7 @@ class AssessmentRandomizationTests(APITestCase):
         stop_url = reverse('assessment_stop', args=[self.assessment.id])
         payload = {
             'response_id': started.data['response_id'],
+            'attempt_started_at': started.data['attempt_started_at'],
             'reason': 'restricted_shortcut',
             'detail': 'Ctrl+C',
             'answers': [{
@@ -268,6 +270,7 @@ class AssessmentRandomizationTests(APITestCase):
             reverse('assessment_stop', args=[self.assessment.id]),
             {
                 'response_id': started.data['response_id'],
+                'attempt_started_at': started.data['attempt_started_at'],
                 'reason': 'tab_hidden',
                 'answers': [],
             },
@@ -296,7 +299,7 @@ class AssessmentRandomizationTests(APITestCase):
         started = self._start_as(self.student)
         self.client.post(
             reverse('assessment_stop', args=[self.assessment.id]),
-            {'response_id': started.data['response_id'], 'reason': 'window_lost_focus', 'answers': []},
+            {'response_id': started.data['response_id'], 'attempt_started_at': started.data['attempt_started_at'], 'reason': 'window_lost_focus', 'answers': []},
             format='json',
         )
         retake_url = reverse('instructor_student_retake', args=[self.student.id])
@@ -319,12 +322,12 @@ class AssessmentRandomizationTests(APITestCase):
         started = self._start_as(self.student)
         submitted = self.client.post(
             reverse('assessment_submit', args=[self.assessment.id]),
-            {'response_id': started.data['response_id'], 'answers': []},
+            {'response_id': started.data['response_id'], 'attempt_started_at': started.data['attempt_started_at'], 'answers': []},
             format='json',
         )
         late_stop = self.client.post(
             reverse('assessment_stop', args=[self.assessment.id]),
-            {'response_id': started.data['response_id'], 'reason': 'page_closed', 'answers': []},
+            {'response_id': started.data['response_id'], 'attempt_started_at': started.data['attempt_started_at'], 'reason': 'page_closed', 'answers': []},
             format='json',
         )
         self.assertEqual(submitted.status_code, 200)

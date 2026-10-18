@@ -23,7 +23,7 @@ def deliver_email(*, user_id, email, name, subject, body, html_body=None):
                 json={'sender': {'name': 'SkillBridge', 'email': parseaddr(settings.BREVO_SENDER_EMAIL)[1]},
                       'to': [{'email': email, 'name': name}], 'subject': subject,
                       'textContent': body, **({'htmlContent': html_body} if html_body else {})},
-                timeout=(5, 15),
+                timeout=(5, 15), allow_redirects=False,
             )
             if 200 <= response.status_code < 300:
                 logger.info('Email provider accepted user_id=%s', user_id)

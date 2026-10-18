@@ -18,6 +18,7 @@ export default function LoginPage() {
   const { establishSession } = useSession()
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const googleLogin = useGoogleLogin({
     flow: 'implicit',
@@ -45,6 +46,12 @@ export default function LoginPage() {
 
         if (code === 'not_dnsc') {
           setError('Only @dnsc.edu.ph Google accounts are allowed. Please switch accounts and try again.')
+        } else if (code === 'admin_password_required') {
+          navigate('/admin/login', { replace: true })
+        } else if (code === 'email_unverified') {
+          setError('Verify your DNSC Google email before signing in.')
+        } else if (code === 'account_disabled') {
+          setError('This account is inactive. Contact your system administrator.')
         } else if (code === 'pending') {
           navigate('/instructor/pending', { state: { type: 'instructor_waiting' } })
         } else if (code === 'role_selection_required') {
@@ -56,9 +63,9 @@ export default function LoginPage() {
         } else if (err.response?.status === 401) {
           setError('Google token was invalid or expired. Please try signing in again.')
         } else if (err.response?.status === 500) {
-          setError('Server error. Make sure the backend is running.')
+          setError('Sign-in is temporarily unavailable. Please try again.')
         } else if (!err.response) {
-          setError('Cannot reach the server. Make sure the backend is running on port 8000.')
+          setError('Cannot reach the server. Check your connection and try again.')
         } else {
           setError(`Login failed. (${code ?? err.message})`)
         }
@@ -139,6 +146,14 @@ export default function LoginPage() {
         </button>
 
         <p className="text-center text-xs text-gray-400 mt-5">{ACCESS_NOTE}</p>
+
+        <button type="button" onClick={() => setShowHelp(value => !value)} aria-expanded={showHelp}
+          className="mt-4 w-full text-center text-xs text-green-700 hover:underline focus-visible:outline-2 focus-visible:outline-green-600">
+          Need help signing in?
+        </button>
+        {showHelp && <p role="status" className="mt-3 rounded-xl bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-800">
+          For a forgotten DNSC Google password, contact your college IT support through its existing support channel. SkillBridge administrators cannot reset your Google password. If your SkillBridge account is pending or not enrolled, contact your instructor or OJT coordinator for access review.
+        </p>}
 
         <p className="text-center mt-4">
           <button

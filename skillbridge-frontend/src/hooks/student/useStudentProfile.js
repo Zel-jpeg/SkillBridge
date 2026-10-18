@@ -4,7 +4,7 @@
 //   - Loads student data from GET /api/students/me/ (instant via cached sb-user)
 //   - Validates editable fields (phone, address, travelWilling, stayingAt)
 //   - PATCHes /api/students/me/profile/ on save
-//   - Syncs pinnedLoc ↔ localStorage('sb_pin_location') after each save
+//   - Saves pinnedLoc only in the authenticated profile
 //   - Seeds pinnedLoc from address.pinLat / address.pinLng (set during onboarding)
 //
 // Usage:
@@ -22,8 +22,10 @@
 //   } = useStudentProfile()
 
 import { useState, useEffect, useRef } from 'react'
-import { useApi, invalidateCache, _setCache } from '../useApi'
+import { useApi, invalidateCache, updateCachedData } from '../useApi'
 import api from '../../api/axios'
+import { validPin } from '../../utils/recommendationResults'
+import { requestErrorMessage } from '../../api/requestErrors'
 
 function getCachedUser() {
   try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
@@ -45,24 +47,14 @@ export function useStudentProfile() {
   const [homeAddr,           setHomeAddr]           = useState({ province: '', city: '', barangay: '' })
   const [boardingAddr,       setBoardingAddr]       = useState({ province: '', city: '', barangay: '' })
 
-  // ── Pin state — seeds from API address, falls back to localStorage ───────
-  const [pinnedLoc, setPinnedLoc] = useState(() => {
-    // First try the user's saved address from API (in cached user)
-    try {
-      const user = getCachedUser()
-      const pl = user?.address?.pinLat
-      const pg = user?.address?.pinLng
-      if (pl != null && pg != null) return { lat: pl, lng: pg }
-    } catch { /* A missing cached user falls through to the saved pin. */ }
-    // Fallback to localStorage (set by StudentSetup or previous profile save)
-    try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
-  })
+  const [pinnedLoc, setPinnedLoc] = useState(() => validPin(getCachedUser()?.address?.pinLat, getCachedUser()?.address?.pinLng))
 
   // Seed editable fields once API data is available
   useEffect(() => {
     if (!apiStudent || formSeeded.current) return
     formSeeded.current = true
     setPhone(apiStudent.phone ?? '')
+    setPinnedLoc(validPin(apiStudent.address?.pinLat, apiStudent.address?.pinLng))
     setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
     setStayingAt(apiStudent.address?.stayingAt ?? 'home')
     setHomeAddr({
@@ -134,21 +126,13 @@ export function useStudentProfile() {
       // 1. Write fresh data into both localStorage and the useApi cache so
       //    navigating back to this page (or Dashboard) shows updated data instantly.
       localStorage.setItem('sb-user', JSON.stringify(res.data))
-      _setCache('/api/students/me/', res.data)
-
-      if (pinnedLoc) {
-        localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
-      } else {
-        localStorage.removeItem('sb_pin_location')
-      }
+      updateCachedData('/api/students/me/', res.data)
       // Also invalidate results so any proximity-based recommendations re-calculate
       invalidateCache('/api/student/results/')
 
       setSaved(true)
     } catch (err) {
-      const msg = err.response?.data?.error
-        || err.response?.data?.detail
-        || 'Failed to save. Please try again.'
+      const msg = requestErrorMessage(err, { mutation: true })
       setSaveError(msg)
     } finally {
       setSaving(false)

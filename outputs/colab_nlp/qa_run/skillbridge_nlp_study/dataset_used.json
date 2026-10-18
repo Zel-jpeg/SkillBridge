@@ -1,0 +1,1074 @@
+{
+  "metadata": {
+    "name": "SkillBridge current-helper development demonstration",
+    "evidence_kind": "synthetic_development",
+    "labeling_protocol": "Original synthetic archetype labels; not independently judged.",
+    "source_dataset_sha256": "f11af215818563d72ef8d9bef367c922a11a8d33a16bc3cd193b5ed022cba88e",
+    "note": "All 60 cases are familiar development data. No final validation is claimed. Coordinates were not present in this source: all location scores are neutral .5."
+  },
+  "categories": [
+    {
+      "id": 1,
+      "name": "Programming",
+      "tags": [
+        "Python",
+        "Java",
+        "JavaScript",
+        "OOP",
+        "algorithms",
+        "data structures",
+        "debugging",
+        "Git",
+        "problem solving",
+        "software logic"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Database",
+      "tags": [
+        "SQL",
+        "PostgreSQL",
+        "MySQL",
+        "ERD",
+        "normalization",
+        "indexing",
+        "query optimization",
+        "database design",
+        "backup",
+        "data integrity"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Networking",
+      "tags": [
+        "TCP/IP",
+        "routing",
+        "switching",
+        "subnetting",
+        "LAN",
+        "WAN",
+        "Cisco",
+        "firewall",
+        "network troubleshooting",
+        "connectivity"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Web Development",
+      "tags": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "React",
+        "responsive design",
+        "web API",
+        "frontend",
+        "DOM",
+        "browser testing",
+        "UI development"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Cybersecurity",
+      "tags": [
+        "authentication",
+        "encryption",
+        "OWASP",
+        "firewall",
+        "access control",
+        "secure coding",
+        "vulnerability assessment",
+        "phishing",
+        "security policy"
+      ]
+    }
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "backend",
+        "server-side",
+        "REST API",
+        "Django",
+        "Flask",
+        "authentication",
+        "database integration",
+        "business logic",
+        "API endpoint"
+      ],
+      "requirements": {
+        "Programming": 92,
+        "Database": 84,
+        "Networking": 38,
+        "Web Development": 76,
+        "Cybersecurity": 52
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "frontend",
+        "React components",
+        "JavaScript events",
+        "responsive layout",
+        "CSS styling",
+        "browser compatibility",
+        "UI development"
+      ],
+      "requirements": {
+        "Programming": 78,
+        "Database": 38,
+        "Networking": 32,
+        "Web Development": 95,
+        "Cybersecurity": 44
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics",
+      "tags": [
+        "database administration",
+        "SQL optimization",
+        "schema design",
+        "backup",
+        "indexing",
+        "data validation",
+        "relational database"
+      ],
+      "requirements": {
+        "Programming": 74,
+        "Database": 96,
+        "Networking": 36,
+        "Web Development": 46,
+        "Cybersecurity": 58
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc.",
+      "tags": [
+        "quality assurance",
+        "test cases",
+        "bug reporting",
+        "regression testing",
+        "manual testing",
+        "test documentation",
+        "defect tracking"
+      ],
+      "requirements": {
+        "Programming": 72,
+        "Database": 64,
+        "Networking": 42,
+        "Web Development": 66,
+        "Cybersecurity": 76
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems",
+      "tags": [
+        "network administration",
+        "routing",
+        "switching",
+        "subnetting",
+        "Cisco configuration",
+        "network monitoring",
+        "LAN troubleshooting"
+      ],
+      "requirements": {
+        "Programming": 42,
+        "Database": 34,
+        "Networking": 96,
+        "Web Development": 28,
+        "Cybersecurity": 78
+      },
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies",
+      "tags": [
+        "technical support",
+        "helpdesk",
+        "hardware troubleshooting",
+        "software installation",
+        "device setup",
+        "ticket handling",
+        "user assistance"
+      ],
+      "requirements": {
+        "Programming": 62,
+        "Database": 58,
+        "Networking": 84,
+        "Web Development": 52,
+        "Cybersecurity": 68
+      },
+      "lat": null,
+      "lng": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "prepared-001",
+      "group_id": "prepared-001",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 45.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 55.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-002",
+      "group_id": "prepared-002",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 95.0,
+        "Networking": 20.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 35.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-003",
+      "group_id": "prepared-003",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 75.0,
+        "Networking": 65.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-004",
+      "group_id": "prepared-004",
+      "split": "dev",
+      "scores": {
+        "Programming": 100.0,
+        "Database": 100.0,
+        "Networking": 40.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-005",
+      "group_id": "prepared-005",
+      "split": "dev",
+      "scores": {
+        "Programming": 100.0,
+        "Database": 85.0,
+        "Networking": 30.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-006",
+      "group_id": "prepared-006",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 90.0,
+        "Networking": 40.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-007",
+      "group_id": "prepared-007",
+      "split": "dev",
+      "scores": {
+        "Programming": 100.0,
+        "Database": 95.0,
+        "Networking": 25.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-008",
+      "group_id": "prepared-008",
+      "split": "dev",
+      "scores": {
+        "Programming": 100.0,
+        "Database": 95.0,
+        "Networking": 15.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 55.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-009",
+      "group_id": "prepared-009",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 55.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-010",
+      "group_id": "prepared-010",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 60.0,
+        "Web Development": 80.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 1,
+      "address": {}
+    },
+    {
+      "id": "prepared-053",
+      "group_id": "prepared-053",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 40.0,
+        "Networking": 35.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 30.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-054",
+      "group_id": "prepared-054",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 45.0,
+        "Networking": 45.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 55.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-055",
+      "group_id": "prepared-055",
+      "split": "dev",
+      "scores": {
+        "Programming": 85.0,
+        "Database": 50.0,
+        "Networking": 30.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-056",
+      "group_id": "prepared-056",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 85.0,
+        "Networking": 45.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-057",
+      "group_id": "prepared-057",
+      "split": "dev",
+      "scores": {
+        "Programming": 65.0,
+        "Database": 45.0,
+        "Networking": 30.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-058",
+      "group_id": "prepared-058",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 45.0,
+        "Networking": 35.0,
+        "Web Development": 85.0,
+        "Cybersecurity": 40.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-059",
+      "group_id": "prepared-059",
+      "split": "dev",
+      "scores": {
+        "Programming": 85.0,
+        "Database": 15.0,
+        "Networking": 60.0,
+        "Web Development": 100.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-060",
+      "group_id": "prepared-060",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 35.0,
+        "Networking": 50.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 50.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-061",
+      "group_id": "prepared-061",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 30.0,
+        "Networking": 20.0,
+        "Web Development": 100.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-062",
+      "group_id": "prepared-062",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 25.0,
+        "Networking": 25.0,
+        "Web Development": 95.0,
+        "Cybersecurity": 40.0
+      },
+      "expected_position_id": 2,
+      "address": {}
+    },
+    {
+      "id": "prepared-103",
+      "group_id": "prepared-103",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 100.0,
+        "Networking": 25.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 65.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-104",
+      "group_id": "prepared-104",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 85.0,
+        "Networking": 55.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 50.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-105",
+      "group_id": "prepared-105",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 90.0,
+        "Networking": 20.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 45.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-106",
+      "group_id": "prepared-106",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 90.0,
+        "Networking": 45.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 40.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-107",
+      "group_id": "prepared-107",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 80.0,
+        "Networking": 45.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 40.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-108",
+      "group_id": "prepared-108",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 90.0,
+        "Networking": 35.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 50.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-109",
+      "group_id": "prepared-109",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 100.0,
+        "Networking": 50.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-110",
+      "group_id": "prepared-110",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 95.0,
+        "Networking": 30.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-111",
+      "group_id": "prepared-111",
+      "split": "dev",
+      "scores": {
+        "Programming": 85.0,
+        "Database": 100.0,
+        "Networking": 30.0,
+        "Web Development": 35.0,
+        "Cybersecurity": 65.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-112",
+      "group_id": "prepared-112",
+      "split": "dev",
+      "scores": {
+        "Programming": 95.0,
+        "Database": 100.0,
+        "Networking": 45.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 50.0
+      },
+      "expected_position_id": 3,
+      "address": {}
+    },
+    {
+      "id": "prepared-153",
+      "group_id": "prepared-153",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 45.0,
+        "Networking": 50.0,
+        "Web Development": 90.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-154",
+      "group_id": "prepared-154",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 55.0,
+        "Networking": 60.0,
+        "Web Development": 70.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-155",
+      "group_id": "prepared-155",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 80.0,
+        "Networking": 40.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-156",
+      "group_id": "prepared-156",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 55.0,
+        "Networking": 65.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-157",
+      "group_id": "prepared-157",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 70.0,
+        "Networking": 35.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-158",
+      "group_id": "prepared-158",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 65.0,
+        "Networking": 55.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 90.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-159",
+      "group_id": "prepared-159",
+      "split": "dev",
+      "scores": {
+        "Programming": 90.0,
+        "Database": 55.0,
+        "Networking": 50.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-160",
+      "group_id": "prepared-160",
+      "split": "dev",
+      "scores": {
+        "Programming": 85.0,
+        "Database": 65.0,
+        "Networking": 50.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-161",
+      "group_id": "prepared-161",
+      "split": "dev",
+      "scores": {
+        "Programming": 80.0,
+        "Database": 75.0,
+        "Networking": 50.0,
+        "Web Development": 75.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-162",
+      "group_id": "prepared-162",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 60.0,
+        "Networking": 35.0,
+        "Web Development": 65.0,
+        "Cybersecurity": 95.0
+      },
+      "expected_position_id": 4,
+      "address": {}
+    },
+    {
+      "id": "prepared-201",
+      "group_id": "prepared-201",
+      "split": "dev",
+      "scores": {
+        "Programming": 55.0,
+        "Database": 35.0,
+        "Networking": 95.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 75.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-202",
+      "group_id": "prepared-202",
+      "split": "dev",
+      "scores": {
+        "Programming": 35.0,
+        "Database": 45.0,
+        "Networking": 95.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 85.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-203",
+      "group_id": "prepared-203",
+      "split": "dev",
+      "scores": {
+        "Programming": 30.0,
+        "Database": 40.0,
+        "Networking": 100.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-204",
+      "group_id": "prepared-204",
+      "split": "dev",
+      "scores": {
+        "Programming": 40.0,
+        "Database": 50.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-205",
+      "group_id": "prepared-205",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 20.0,
+        "Networking": 80.0,
+        "Web Development": 20.0,
+        "Cybersecurity": 65.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-206",
+      "group_id": "prepared-206",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 30.0,
+        "Networking": 95.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 90.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-207",
+      "group_id": "prepared-207",
+      "split": "dev",
+      "scores": {
+        "Programming": 55.0,
+        "Database": 35.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-208",
+      "group_id": "prepared-208",
+      "split": "dev",
+      "scores": {
+        "Programming": 35.0,
+        "Database": 40.0,
+        "Networking": 95.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 90.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-209",
+      "group_id": "prepared-209",
+      "split": "dev",
+      "scores": {
+        "Programming": 40.0,
+        "Database": 25.0,
+        "Networking": 95.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-210",
+      "group_id": "prepared-210",
+      "split": "dev",
+      "scores": {
+        "Programming": 40.0,
+        "Database": 60.0,
+        "Networking": 95.0,
+        "Web Development": 25.0,
+        "Cybersecurity": 85.0
+      },
+      "expected_position_id": 5,
+      "address": {}
+    },
+    {
+      "id": "prepared-251",
+      "group_id": "prepared-251",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 60.0,
+        "Networking": 60.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-252",
+      "group_id": "prepared-252",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 70.0,
+        "Networking": 85.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 65.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-253",
+      "group_id": "prepared-253",
+      "split": "dev",
+      "scores": {
+        "Programming": 75.0,
+        "Database": 75.0,
+        "Networking": 95.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 50.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-254",
+      "group_id": "prepared-254",
+      "split": "dev",
+      "scores": {
+        "Programming": 55.0,
+        "Database": 70.0,
+        "Networking": 85.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-255",
+      "group_id": "prepared-255",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 65.0,
+        "Networking": 90.0,
+        "Web Development": 40.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-256",
+      "group_id": "prepared-256",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 50.0,
+        "Networking": 85.0,
+        "Web Development": 50.0,
+        "Cybersecurity": 60.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-257",
+      "group_id": "prepared-257",
+      "split": "dev",
+      "scores": {
+        "Programming": 45.0,
+        "Database": 55.0,
+        "Networking": 80.0,
+        "Web Development": 45.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-258",
+      "group_id": "prepared-258",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 60.0,
+        "Networking": 85.0,
+        "Web Development": 30.0,
+        "Cybersecurity": 80.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-259",
+      "group_id": "prepared-259",
+      "split": "dev",
+      "scores": {
+        "Programming": 60.0,
+        "Database": 65.0,
+        "Networking": 70.0,
+        "Web Development": 55.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    },
+    {
+      "id": "prepared-260",
+      "group_id": "prepared-260",
+      "split": "dev",
+      "scores": {
+        "Programming": 70.0,
+        "Database": 75.0,
+        "Networking": 95.0,
+        "Web Development": 60.0,
+        "Cybersecurity": 70.0
+      },
+      "expected_position_id": 6,
+      "address": {}
+    }
+  ]
+}

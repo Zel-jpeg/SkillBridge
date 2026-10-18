@@ -27,3 +27,4 @@ test-results/
 # Environment variables
 .env
 .env.*
+!.env.example

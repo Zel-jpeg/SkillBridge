@@ -14,15 +14,7 @@ import { scorePercentage } from '../../utils/assessmentSummary'
 
 const RESULTS_URL = '/api/student/results/combined/'
 
-// ── Haversine distance (km) ───────────────────────────────────────────────────
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R    = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a    = Math.sin(dLat / 2) ** 2
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
+import { validPin, haversineKm, enrichRecommendation, sortRecommendations } from '../../utils/recommendationResults'
 
 // ── Color helpers (shared between Results and Dashboard) ──────────────────────
 export function matchColor(pct) {
@@ -39,21 +31,14 @@ export const BAR_COLORS = [
   'bg-green-500', 'bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500',
 ]
 
-// ── Read student pin from localStorage ───────────────────────────────────────
-function readPin() {
-  try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
-}
-
 // ── Main hook ─────────────────────────────────────────────────────────────────
 export function useStudentResults() {
   const { data, loading, error } = useApi(RESULTS_URL)
 
   const { data: student } = useApi('/api/students/me/')
-  const studentPin = useMemo(() => {
-    if (!student) return readPin()
-    const lat = student.address?.pinLat, lng = student.address?.pinLng
-    return lat != null && lng != null ? { lat, lng } : null
-  }, [student])
+  // Only the authenticated profile supplies a pin; a previous account's local
+  // fallback must not appear during loading or after a failed profile read.
+  const studentPin = useMemo(() => validPin(student?.address?.pinLat, student?.address?.pinLng), [student])
   const hasPin     = studentPin != null
 
   const [sortMode, setSortMode] = useState('match')
@@ -76,33 +61,11 @@ export function useStudentResults() {
   // ── Recommendations — enriched with distance + scores ───────────────────
   const enrichedRecs = useMemo(() => {
     if (data?.recommendations_locked !== false || !data?.recommendations?.length) return []
-    return data.recommendations.map(r => {
-      const match = Math.round(r.match_score)
-      const localDistance = hasPin && r.lat != null && r.lng != null
-        ? haversineKm(studentPin.lat, studentPin.lng, r.lat, r.lng)
-        : null
-      const distKm = r.distance_km ?? localDistance
-      return {
-        ...r,
-        match,
-        distKm,
-        proximityPct: r.location_score_component ?? null,
-        combined: match,
-      }
-    })
-  }, [data, hasPin, studentPin])
+    return data.recommendations.map(row => enrichRecommendation(row, studentPin))
+  }, [data, studentPin])
 
-  const recommendations = useMemo(() => {
-    return [...enrichedRecs].sort((a, b) => {
-      if (sortMode === 'distance') return (a.distKm ?? Infinity) - (b.distKm ?? Infinity)
-      if (sortMode === 'combined') return b.combined - a.combined
-      return b.match - a.match
-    })
-  }, [enrichedRecs, sortMode])
-
-  const topMatches = useMemo(() => {
-    return [...enrichedRecs].sort((a, b) => b.match - a.match).slice(0, 3)
-  }, [enrichedRecs])
+  const recommendations = useMemo(() => sortRecommendations(enrichedRecs, sortMode), [enrichedRecs, sortMode])
+  const topMatches = useMemo(() => sortRecommendations(enrichedRecs).slice(0, 3), [enrichedRecs])
 
   return {
     skillScores, overallScore,

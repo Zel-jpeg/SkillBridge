@@ -28,7 +28,7 @@ export default function AdminLogin() {
   const [showPass,   setShowPass]   = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState('')
-  const [forgotSent, setForgotSent] = useState(false)
+  const [recoveryHelp, setRecoveryHelp] = useState(false)
 
   // ── Login handler ─────────────────────────────────────────────
   async function handleLogin(e) {
@@ -55,6 +55,8 @@ export default function AdminLogin() {
 
       if (msg === 'pending') {
         navigate('/instructor/pending')
+      } else if (msg === 'google_required') {
+        setError('Students and instructors sign in with their DNSC Google account from the main sign-in page.')
       } else {
         setError(msg || (err.response?.status === 401 ? 'Invalid username or password.' : 'Sign-in is unavailable. Please try again.'))
       }
@@ -63,14 +65,9 @@ export default function AdminLogin() {
     }
   }
 
-  // ── Forgot password ──────────────────────────────────────────
+  // ── Administrator-assisted recovery ───────────────────────────
   function handleForgotPassword() {
-    if (!username.trim()) {
-      setError('Enter your username above first, then click Forgot password.')
-      return
-    }
-    // TODO Week 3: POST /api/auth/admin/reset-password/  { username }
-    setForgotSent(true)
+    setRecoveryHelp(true)
     setError('')
   }
 
@@ -107,14 +104,10 @@ export default function AdminLogin() {
           </p>
         </div>
 
-        {/* Forgot-password confirmation banner */}
-        {forgotSent && (
-          <div className="mb-5 flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0 text-green-600">
-              <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+        {recoveryHelp && (
+          <div role="status" className="mb-5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
             <p className="text-xs text-green-700 leading-relaxed">
-              If that username exists, a password-reset link has been sent to the associated email. Check your inbox.
+              Contact your designated SkillBridge administrator or authorized server operator through your college’s existing support channel. After verifying your identity, they can reset your individual admin password. This page does not send a reset email.
             </p>
           </div>
         )}

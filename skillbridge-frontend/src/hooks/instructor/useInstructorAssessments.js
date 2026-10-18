@@ -15,13 +15,14 @@
 //   GET    /api/instructor/assessments/                         → list
 //   GET    /api/instructor/assessments/:id/questions/           → question detail
 //   GET    /api/categories/                                     → skill categories
-//   PATCH  /api/instructor/assessments/:id/                     → update metadata
+//   PATCH  /api/instructor/assessments/:id/                     → atomic metadata/question save
 //   PATCH  /api/instructor/questions/:id/                       → update question
 //   DELETE /api/instructor/questions/:id/                       → remove question
 //   POST   /api/instructor/assessments/:id/questions/add/       → add new questions
 
 import { useState, useMemo, useCallback, useRef } from 'react'
 import api from '../../api/axios'
+import { requestErrorMessage } from '../../api/requestErrors'
 import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 import { useSSE } from '../useSSE'
 import { manilaApiDate, toManilaInput } from '../../utils/assessmentDates'
@@ -184,6 +185,8 @@ export function useInstructorAssessments() {
   const [showSaveConfirm, setShowSaveConfirm] = useState(false)
   const [confirmRemoveQuestion, setConfirmRemoveQuestion] = useState(null)
   const [saving,          setSaving]          = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const savePending = useRef(false)
   const [toast,           setToast]           = useState(null)
 
   const showToast = useCallback((msg) => {
@@ -226,6 +229,7 @@ export function useInstructorAssessments() {
 
   // ── Close modal ───────────────────────────────────────────────────────────
   const closeAssessment = useCallback(() => {
+    if (savePending.current) return
     questionLoad.current += 1
     setSelected(null)
     setEditedQuestions([])
@@ -323,13 +327,15 @@ export function useInstructorAssessments() {
 
   // ── Save all changes ──────────────────────────────────────────────────────
   const saveAllChanges = useCallback(async () => {
-    if (!selected) return
+    if (!selected || savePending.current) return
     if (!editTitle.trim() || !Number.isInteger(Number(editDuration)) || Number(editDuration) < 1 ||
         !/^\d+$/.test(String(editSettings.display_order)) ||
         (editSettings.available_at && editSettings.due_at && editSettings.due_at <= editSettings.available_at)) {
-      showToast('Check title, duration, display order, and dates before saving.')
+      setSaveError('Check title, duration, display order, and dates before saving.')
       return
     }
+    savePending.current = true
+    setSaveError('')
     setSaving(true)
     setShowSaveConfirm(false)
 
@@ -339,23 +345,13 @@ export function useInstructorAssessments() {
       const toPatch  = editedQuestions.filter(q => !q._deleted && !q._isNew && q._dirty)
       const toAdd    = editedQuestions.filter(q => !q._deleted && q._isNew)
 
-      // 3 ── Delete removed questions
-      for (const q of toDelete) await api.delete(`/api/instructor/questions/${q.id}/`)
-
-      // 4 ── Patch edited questions
-      for (const q of toPatch) await api.patch(`/api/instructor/questions/${q.id}/`, questionPayload(q))
-
-      // 5 ── Add new questions (clear_submissions: false — the instructor is just
-      //      refining the assessment, not replacing it wholesale)
-      if (toAdd.length > 0) {
-        await api.post(
-          `/api/instructor/assessments/${selected.id}/questions/add/`,
-          { questions: toAdd.map(questionPayload), clear_submissions: false }
-        )
-      }
-
       const saved = await api.patch(`/api/instructor/assessments/${selected.id}/`, {
         title: editTitle.trim(), duration_minutes: Number(editDuration),
+        question_changes: {
+          delete_ids: toDelete.map(question => question.id),
+          update: toPatch.map(question => ({ id: question.id, ...questionPayload(question) })),
+          add: toAdd.map(questionPayload),
+        },
         publication_status: editSettings.publication_status,
         is_required: editSettings.is_required,
         include_in_competency: editSettings.include_in_competency,
@@ -374,9 +370,10 @@ export function useInstructorAssessments() {
         await fetchWithDedup('/api/instructor/assessments/')
       } catch { /* non-critical — next mount will fetch fresh */ }
 
-      // 8 ── Reload questions into clean state
-      const qRes = await api.get(`/api/instructor/assessments/${selected.id}/questions/`)
-      const freshQs = (qRes.data?.questions ?? qRes.data ?? []).map(q => normalizeQuestion(q, false))
+      // The confirmed transaction supplies canonical IDs and choices. A failed
+      // follow-up GET cannot make a completed save look unconfirmed or replay it.
+      if (!Array.isArray(saved.data.questions)) throw new Error('Save response omitted questions')
+      const freshQs = saved.data.questions.map(q => normalizeQuestion(q, false))
       setEditedQuestions(freshQs)
 
       // 9 ── Update the selected assessment preview
@@ -389,8 +386,9 @@ export function useInstructorAssessments() {
       }))
       showToast('Assessment saved successfully.')
     } catch (err) {
-      showToast(err.response?.data?.error || 'Save failed. Please try again.')
+      setSaveError(requestErrorMessage(err, { mutation: true }))
     } finally {
+      savePending.current = false
       setSaving(false)
     }
   }, [selected, editTitle, editDuration, editSettings, editedQuestions, showToast])
@@ -426,7 +424,7 @@ export function useInstructorAssessments() {
     showSaveConfirm, setShowSaveConfirm,
     confirmRemoveQuestion, setConfirmRemoveQuestion,
     confirmRemoveQuestionAction,
-    saving, saveAllChanges,
+    saving, saveAllChanges, saveError,
     toast,
   }
 }

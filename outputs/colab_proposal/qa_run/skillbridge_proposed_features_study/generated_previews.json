@@ -1,0 +1,134 @@
+[
+  {
+    "position": "Backend Developer Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "api_development",
+        "task": "Develop and test API endpoints"
+      },
+      {
+        "skill_id": "python_logic",
+        "task": "Implement Python program logic"
+      },
+      {
+        "skill_id": "sql_queries",
+        "task": "Read and update data using SQL queries"
+      },
+      {
+        "skill_id": "authentication",
+        "task": "Implement user authentication"
+      }
+    ],
+    "automatic_description": "Backend Developer Intern. Selected duties: Develop and test API endpoints; Implement Python program logic; Read and update data using SQL queries; Implement user authentication. Required task skills: API endpoint development; Python program logic; SQL queries; user authentication."
+  },
+  {
+    "position": "Frontend Developer Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "html_css",
+        "task": "Build HTML and CSS interfaces"
+      },
+      {
+        "skill_id": "javascript_ui",
+        "task": "Implement interactive JavaScript interfaces"
+      },
+      {
+        "skill_id": "responsive_design",
+        "task": "Adapt responsive web layouts"
+      },
+      {
+        "skill_id": "browser_testing",
+        "task": "Check interfaces using browser testing"
+      }
+    ],
+    "automatic_description": "Frontend Developer Intern. Selected duties: Build HTML and CSS interfaces; Implement interactive JavaScript interfaces; Adapt responsive web layouts; Check interfaces using browser testing. Required task skills: HTML and CSS interfaces; JavaScript interfaces; responsive web design; browser testing."
+  },
+  {
+    "position": "Database Administrator Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "sql_queries",
+        "task": "Write and inspect SQL queries"
+      },
+      {
+        "skill_id": "schema_design",
+        "task": "Maintain relational schema design"
+      },
+      {
+        "skill_id": "database_backup",
+        "task": "Perform database backup procedures"
+      },
+      {
+        "skill_id": "data_validation",
+        "task": "Check stored records through data validation"
+      }
+    ],
+    "automatic_description": "Database Administrator Intern. Selected duties: Write and inspect SQL queries; Maintain relational schema design; Perform database backup procedures; Check stored records through data validation. Required task skills: SQL queries; relational schema design; database backup; data validation."
+  },
+  {
+    "position": "QA Tester Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "test_case_design",
+        "task": "Prepare test cases for software behavior"
+      },
+      {
+        "skill_id": "browser_testing",
+        "task": "Perform browser testing"
+      },
+      {
+        "skill_id": "data_validation",
+        "task": "Check application data validation"
+      },
+      {
+        "skill_id": "security_testing",
+        "task": "Perform basic security testing"
+      }
+    ],
+    "automatic_description": "QA Tester Intern. Selected duties: Prepare test cases for software behavior; Perform browser testing; Check application data validation; Perform basic security testing. Required task skills: test case design; browser testing; data validation; security testing."
+  },
+  {
+    "position": "Network Administrator Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "routing",
+        "task": "Configure network routing"
+      },
+      {
+        "skill_id": "subnetting",
+        "task": "Plan IP subnetting"
+      },
+      {
+        "skill_id": "device_configuration",
+        "task": "Perform network device configuration"
+      },
+      {
+        "skill_id": "access_control",
+        "task": "Maintain network access control"
+      }
+    ],
+    "automatic_description": "Network Administrator Intern. Selected duties: Configure network routing; Plan IP subnetting; Perform network device configuration; Maintain network access control. Required task skills: network routing; IP subnetting; network device configuration; access control."
+  },
+  {
+    "position": "IT Support Intern",
+    "suggested_duties": [
+      {
+        "skill_id": "connectivity_troubleshooting",
+        "task": "Investigate network connectivity problems"
+      },
+      {
+        "skill_id": "device_configuration",
+        "task": "Set up network devices"
+      },
+      {
+        "skill_id": "software_debugging",
+        "task": "Investigate software problems"
+      },
+      {
+        "skill_id": "access_control",
+        "task": "Assist with permitted access control tasks"
+      }
+    ],
+    "automatic_description": "IT Support Intern. Selected duties: Investigate network connectivity problems; Set up network devices; Investigate software problems; Assist with permitted access control tasks. Required task skills: network connectivity troubleshooting; network device configuration; software debugging; access control."
+  }
+]

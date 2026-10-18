@@ -13,6 +13,8 @@ import os
 import re
 from functools import lru_cache
 from pathlib import Path
+from collections import OrderedDict
+from threading import RLock
 
 
 MODEL_OPTIONS = {
@@ -36,7 +38,7 @@ from .skill_taxonomy import (
 )
 from collections import Counter
 
-TEXT_GENERATION_VERSION = 'neutral-evidence-v2'
+TEXT_GENERATION_VERSION = 'neutral-evidence-v3'
 
 ORIENTATION_GROUPS = [
     ('Backend and data-oriented', {'programming', 'backend', 'database', 'sql', 'python', 'java', 'django', 'api'}),
@@ -158,7 +160,8 @@ def _evidence_parts(entries):
     for category, score, tags in selected:
         name = canonical_category(category.name)
         band = competency_label(score)
-        fragments.append(f'{band} {name} competency ({score:g} percent); category vocabulary: {", ".join(tags) or "no specific tags"}')
+        fragments.append(f'{band} {name} competency ({score:g} percent); category vocabulary: {", ".join(tags) or "no specific tags"}'
+                         if score > 0 else f'{name}: no positive category evidence ({score:g} percent)')
         if score <= 0:
             continue
         weight = score_weight(score)
@@ -171,10 +174,13 @@ def _evidence_parts(entries):
 
 
 def build_student_profile(skill_scores):
+    skill_scores = list(skill_scores)
     fragments, evidence = _evidence_parts([(s.skill_category, float(s.percentage)) for s in skill_scores])
     if not fragments:
         return 'No assessed competency evidence is available.'
-    return f"The student demonstrates {'; '.join(fragments)}. Skill evidence: {' '.join(evidence)}."
+    introduction = 'The student demonstrates' if any(float(s.percentage) > 0 for s in skill_scores) else 'Assessment results:'
+    return (f"{introduction} {'; '.join(fragments)}. Skill evidence: {' '.join(evidence)}. "
+            'Category vocabulary is contextual; these terms were not separately assessed.')
 
 
 def _category_terms(skill_score):
@@ -189,7 +195,7 @@ def generate_competency_insights(skill_scores):
     The orientation never includes a company or exact position title, preventing
     the narrative from leaking the recommendation target into NLP similarity.
     """
-    ranked = sorted(skill_scores, key=lambda score: score.percentage, reverse=True)
+    ranked = sorted(skill_scores, key=lambda score: (-score.percentage, score.skill_category.name.casefold()))
     if not ranked:
         return {
             'orientation_label': '',
@@ -214,7 +220,8 @@ def generate_competency_insights(skill_scores):
         names = [score.skill_category.name for score in ranked[:2]]
         orientation_label = f"{' and '.join(names)}-oriented competency profile"
 
-    leaders = ranked[:2]
+    # Retain the two leading levels including every exact tie at the boundary.
+    leaders = [score for score in ranked if score.percentage >= ranked[min(1, len(ranked) - 1)].percentage]
     leader_text = ' and '.join(
         f'{score.skill_category.name} ({round(score.percentage, 1)}%)'
         for score in leaders
@@ -223,6 +230,9 @@ def generate_competency_insights(skill_scores):
         f'Assessment evidence indicates a {orientation_label.lower()} competency pattern, '
         f'led by {leader_text}.'
     )
+    if ranked[0].percentage <= 0:
+        orientation_label = ''
+        orientation_summary = 'No assessed category scored above zero. Further guided practice and assessment are needed.'
 
     development_suggestions = []
     for skill_score in sorted(ranked, key=lambda score: score.percentage)[:2]:
@@ -310,6 +320,55 @@ def _load_model(model_id):
     raise ValueError(f'Unsupported NLP model: {model_id}')
 
 
+# Cache only successful document lemmas, never corpus TF-IDF or match scores.
+# Exact text/model-instance keys make catalog/profile/model changes miss naturally.
+_PREPROCESS_CACHE_LIMIT = 512
+_PREPROCESS_TEXT_LIMIT = 16384
+_preprocess_cache = OrderedDict()
+_preprocess_cache_lock = RLock()
+
+
+def clear_preprocessing_cache():
+    with _preprocess_cache_lock:
+        _preprocess_cache.clear()
+
+
+def _spacy_texts(texts, model_id, model):
+    texts = list(texts)
+    resolved, missing, missing_seen = {}, [], set()
+    for text in texts:
+        if text in resolved or text in missing_seen:
+            continue
+        key = (model_id, id(model), text)
+        with _preprocess_cache_lock:
+            entry = _preprocess_cache.get(key)
+            if entry is not None and entry[0] is model:
+                _preprocess_cache.move_to_end(key)
+                resolved[text] = entry[1]
+                continue
+        missing.append(text)
+        missing_seen.add(text)
+    if missing:
+        # Do not cache partial output when a pipeline fails; normal fallback and
+        # strict diagnostics must still observe the actual resource/error state.
+        processed = [' '.join(
+            token.lemma_.casefold().strip() for token in doc
+            if not token.is_stop and not token.is_punct and not token.is_space and token.lemma_.strip()
+        ) for doc in model.pipe(missing, batch_size=64)]
+        if len(processed) != len(missing):
+            raise ValueError('Preprocessor returned an invalid document count.')
+        resolved.update(zip(missing, processed))
+        with _preprocess_cache_lock:
+            for text, value in zip(missing, processed):
+                if len(text) <= _PREPROCESS_TEXT_LIMIT and len(value) <= _PREPROCESS_TEXT_LIMIT:
+                    key = (model_id, id(model), text)
+                    _preprocess_cache[key] = (model, value)
+                    _preprocess_cache.move_to_end(key)
+            while len(_preprocess_cache) > _PREPROCESS_CACHE_LIMIT:
+                _preprocess_cache.popitem(last=False)
+    return [resolved[text] for text in texts]
+
+
 def preprocess_texts(texts, model_id, *, allow_fallback=True):
     """Return processed text, actual model id, and an optional fallback reason.
 
@@ -319,14 +378,7 @@ def preprocess_texts(texts, model_id, *, allow_fallback=True):
     try:
         model = _load_model(model_id)
         if model_id.startswith('spacy_'):
-            output = []
-            for doc in model.pipe(texts, batch_size=64):
-                output.append(' '.join(
-                    token.lemma_.casefold().strip()
-                    for token in doc
-                    if not token.is_stop and not token.is_punct and not token.is_space and token.lemma_.strip()
-                ))
-            return output, model_id, None
+            return _spacy_texts(texts, model_id, model), model_id, None
 
         output = []
         for text in texts:
@@ -369,6 +421,30 @@ def model_status(model_id):
     return {'available': False, 'error': 'Unsupported NLP model.'}
 
 
+def valid_coordinates(lat, lng):
+    """A complete finite latitude/longitude pair; invalid legacy data is missing."""
+    if any(isinstance(value, bool) or value is None or not isinstance(value, (str, int, float)) or
+           (isinstance(value, str) and not value.strip()) for value in (lat, lng)):
+        return None
+    try:
+        lat, lng = float(lat), float(lng)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(lat) or not math.isfinite(lng) or abs(lat) > 90 or abs(lng) > 180:
+        return None
+    return lat, lng
+
+
+def company_address_text(address):
+    """Display legacy text or structured address without changing stored data."""
+    if isinstance(address, str):
+        return address.strip() or None
+    if not isinstance(address, dict):
+        return None
+    return ', '.join(value.strip() for key in ('barangay', 'city', 'province')
+                     if isinstance(value := address.get(key), str) and value.strip()) or None
+
+
 def extract_coordinates(address):
     """Read the coordinate shapes currently used by SkillBridge profiles."""
     if not isinstance(address, dict):
@@ -382,11 +458,9 @@ def extract_coordinates(address):
     if isinstance(pin, dict):
         candidates.append((pin.get('lat'), pin.get('lng')))
     for lat, lng in candidates:
-        try:
-            if lat is not None and lng is not None:
-                return float(lat), float(lng)
-        except (TypeError, ValueError):
-            continue
+        coordinates = valid_coordinates(lat, lng)
+        if coordinates is not None:
+            return coordinates
     return None
 
 
@@ -401,18 +475,19 @@ def haversine_distance_km(lat1, lng1, lat2, lng2):
         math.sin(delta_lat / 2) ** 2
         + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2
     )
-    return radius_km * 2 * math.asin(math.sqrt(a))
+    return radius_km * 2 * math.asin(math.sqrt(min(1.0, max(0.0, a))))
 
 
 def location_similarity(student_address, company_lat, company_lng, max_distance_km=80.0):
     """Return (0..1 score, distance); missing coordinates use neutral 0.5."""
     student_coordinates = extract_coordinates(student_address)
-    if student_coordinates is None or company_lat is None or company_lng is None:
+    company_coordinates = valid_coordinates(company_lat, company_lng)
+    if student_coordinates is None or company_coordinates is None:
         return 0.5, None
     try:
         student_lat, student_lng = student_coordinates
         distance = haversine_distance_km(
-            float(student_lat), float(student_lng), float(company_lat), float(company_lng)
+            student_lat, student_lng, *company_coordinates
         )
     except (TypeError, ValueError):
         return 0.5, None

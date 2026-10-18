@@ -126,6 +126,8 @@ def company_data(request):
     for field, limit in (('lat', 90), ('lng', 180)):
         if field in data and data[field] is not None:
             try:
+                if isinstance(data[field], bool):
+                    raise ValueError()
                 value = float(data[field])
                 if not math.isfinite(value) or abs(value) > limit:
                     raise ValueError()

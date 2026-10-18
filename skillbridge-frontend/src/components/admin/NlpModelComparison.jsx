@@ -21,7 +21,7 @@ export default function NlpModelComparison() {
     setResult(null)
     const revision = freshness.begin()
     try {
-      const { data } = await api.post('/api/admin/nlp-model-comparison/', { mode })
+      const { data } = await api.post('/api/admin/nlp-model-comparison/', { mode }, { timeout: 120000 })
       setResult(data)
       freshness.complete(revision)
     } catch (err) {

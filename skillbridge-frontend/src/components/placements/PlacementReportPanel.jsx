@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import {
   downloadPlacementPdf,
@@ -26,6 +26,7 @@ function uniqueOptions(items, valueFor) {
 
 export default function PlacementReportPanel({ companies, positions, placements, students, role }) {
   const { showToast } = useToast()
+  const downloadPending = useRef(false)
   const [reportType, setReportType] = useState('company_placements')
   const [status, setStatus] = useState('all')
   const [companyId, setCompanyId] = useState('')
@@ -85,20 +86,23 @@ export default function PlacementReportPanel({ companies, positions, placements,
   }
 
   async function download(format) {
+    if (downloadPending.current) return
     if (dateFrom && dateTo && dateFrom > dateTo) {
       showToast('The start date cannot be after the end date.', 'error')
       return
     }
+    downloadPending.current = true
     setDownloading(format)
     try {
       const payload = await fetchPlacementReport(filters())
       if (format === 'pdf') await downloadPlacementPdf(payload, filterLabels())
-      else await downloadPlacementXlsx(payload)
+      else await downloadPlacementXlsx(payload, filterLabels())
       showToast(`${format.toUpperCase()} placement report downloaded.`, 'success')
     } catch (error) {
       const message = error.response?.data?.error || 'Could not generate the placement report.'
       showToast(message, 'error')
     } finally {
+      downloadPending.current = false
       setDownloading('')
     }
   }
@@ -116,10 +120,10 @@ export default function PlacementReportPanel({ companies, positions, placements,
         <div>
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Download placement reports</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {role === 'instructor' ? 'Reports include only students enrolled in your batches.' : 'Reports include placement records across the system.'}
+            {role === 'instructor' ? 'Reports include placement records from your batches, including retained history.' : 'Reports include placement records across the system.'}
           </p>
         </div>
-        <p className="text-[11px] text-gray-400">PDF for official records · XLSX for raw data</p>
+        <p className="text-[11px] text-gray-400">PDF for official records · XLSX for raw data · Dates use Philippine time</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -129,7 +133,7 @@ export default function PlacementReportPanel({ companies, positions, placements,
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Position</span><select value={positionId} onChange={event => setPositionId(event.target.value)} className={selectClass}><option value="">All positions</option>{visiblePositions.map(position => <option key={position.id} value={position.id}>{position.title} — {position.company_name}</option>)}</select></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Batch</span><select value={batchId} onChange={event => setBatchId(event.target.value)} className={selectClass}><option value="">All batches</option>{batchOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Course</span><select value={course} onChange={event => setCourse(event.target.value)} className={selectClass}><option value="">All courses</option>{courseOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-        <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Area / city / province</span><select value={area} onChange={event => setArea(event.target.value)} className={selectClass}><option value="">All areas</option>{areaOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Company area / city / province</span><select value={area} onChange={event => setArea(event.target.value)} className={selectClass}><option value="">All company areas</option>{areaOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Date field</span><select value={dateField} onChange={event => setDateField(event.target.value)} className={selectClass}><option value="created_at">Created date</option><option value="approved_at">Approved date</option></select></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Date from</span><input type="date" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className={inputClass} /></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Date to</span><input type="date" value={dateTo} onChange={event => setDateTo(event.target.value)} className={inputClass} /></label>

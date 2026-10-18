@@ -39,7 +39,7 @@ class GoogleAccessTests(TestCase):
         client = APIClient()
         instructor = User.objects.create_user('staff.synthetic@dnsc.edu.ph', role='instructor', is_approved=True)
         batch = Batch.objects.create(name='Synthetic cohort', instructor=instructor)
-        cases = [('admin', True, False, 200, None),
+        cases = [('admin', True, False, 403, 'admin_password_required'),
                  ('instructor', True, False, 200, None),
                  ('instructor', False, False, 403, 'pending'),
                  ('student', False, True, 403, 'student_pending'),
@@ -51,7 +51,7 @@ class GoogleAccessTests(TestCase):
                 if enrolled:
                     BatchEnrollment.objects.create(student=user, batch=batch)
                 get.return_value = Mock(status_code=200)
-                get.return_value.json.return_value = {'email': user.email, 'name': 'Synthetic user'}
+                get.return_value.json.return_value = {'email': user.email, 'name': 'Synthetic user', 'email_verified': True}
                 response = client.post('/api/auth/google/', {'token': 'synthetic'}, format='json')
                 self.assertEqual(response.status_code, code)
                 if error:

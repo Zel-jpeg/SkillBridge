@@ -9,7 +9,7 @@
 //   onClose             — called when modal should close
 //   onAdd(instrObj)     — called with the new instructor data object
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { XIcon } from '../Icons'
 import { nameFromEmail } from '../../utils/formatters'
 
@@ -35,20 +35,29 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
   }
 
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const pending = useRef(false)
 
   async function handleSubmit() {
+    if (pending.current) return
     if (!validate()) return
+    pending.current = true
+    setSubmitError('')
     setSubmitting(true)
     try {
-      await onAdd({
+      const result = await onAdd({
         name:         name.trim(),
         email:        email.trim(),
         instructorId: instructorId.trim(),
         department,
         courses,
       })
-      onClose()
+      if (result?.ok === false) setSubmitError(result.message || 'Instructor was not saved.')
+      else onClose()
+    } catch {
+      setSubmitError('The save could not be confirmed. Refresh the current records before trying again.')
     } finally {
+      pending.current = false
       setSubmitting(false)
     }
   }
@@ -62,18 +71,19 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0"
-      onClick={e => e.target === e.currentTarget && onClose()}
+      onClick={e => !pending.current && e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">Add Instructor</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <button disabled={submitting} onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <XIcon />
           </button>
         </div>
 
+        {submitError && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{submitError}</p>}
         {/* DNSC Email */}
         <div>
           <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">DNSC Email</label>
@@ -153,7 +163,7 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <button disabled={submitting} onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             Cancel
           </button>
           <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed">

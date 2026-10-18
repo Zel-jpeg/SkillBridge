@@ -49,5 +49,6 @@ export default function PrivateRoute({ children, role }) {
     return <Navigate to="/instructor/pending" replace state={{ type: userRole === 'student' ? 'student_waiting' : 'instructor_waiting' }} />
   }
 
-  return <LiveSession key={`${userRole}:${token}`}>{children}</LiveSession>
+  // Renewal keeps the subtree mounted so drafts and active timers survive.
+  return <LiveSession key={`${userRole}:${user?.id ?? ''}:${localStorage.getItem('sb-session-id') ?? ''}`}>{children}</LiveSession>
 }

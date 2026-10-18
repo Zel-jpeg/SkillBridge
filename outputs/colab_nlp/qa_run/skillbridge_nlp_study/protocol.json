@@ -1,0 +1,9 @@
+{
+  "primary_metric": "top1_correct",
+  "min_top1": null,
+  "min_macro_f1": null,
+  "min_primary_gain": null,
+  "agreed_by": "",
+  "agreed_before_test_date": "",
+  "cohort_rationale": "Describe sample size, recruitment, candidate coverage, and limits here."
+}

@@ -32,6 +32,7 @@ import { startVisibleRefresh } from '../api/queryRefresh'
 import { invalidateQueries } from '../api/queryInvalidation'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
+import { friendlyStatus, requestErrorMessage } from '../api/requestErrors'
 
 // ── Cache constants ───────────────────────────────────────────────────────────
 
@@ -87,17 +88,7 @@ export function fetchWithDedup(url) {
 
 // ── Friendly error messages ───────────────────────────────────────────────────
 function friendlyError(status) {
-  switch (status) {
-    case 400: return 'Invalid request. Please check your input.'
-    case 403: return 'You do not have permission to do that.'
-    case 404: return 'The requested data was not found.'
-    case 429: return 'Too many requests. Please wait a moment and try again.'
-    case 500: return 'Server error. Please try again in a moment.'
-    case 502:
-    case 503:
-    case 504: return 'Server is unavailable. Check your connection.'
-    default:  return 'Something went wrong. Please try again.'
-  }
+  return friendlyStatus(status)
 }
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
@@ -184,7 +175,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
           return
         }
 
-        const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
+        const msg = requestErrorMessage(err)
         if (!cache.read(url) && !initialData) setError(msg)
         // 409 = intentional "conflict" state (e.g. already submitted assessment)
         // The consuming component handles this with its own UI — skip the generic toast.
@@ -247,7 +238,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
         return { ok: false, status }
       }
 
-      const msg = err.response?.data?.error || err.response?.data?.detail || friendlyError(status)
+      const msg = requestErrorMessage(err, { mutation: !['get', 'head', 'options'].includes(method.toLowerCase()) })
       setError(msg)
       if (!silentError) showToast(msg, 'error')
       return { ok: false, status, message: msg, raw: err.response?.data }

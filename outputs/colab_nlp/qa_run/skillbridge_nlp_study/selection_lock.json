@@ -1,0 +1,52 @@
+{
+  "method": "spacy_sm",
+  "weights": [
+    0.6,
+    0.25,
+    0.15
+  ],
+  "tfidf_scope": "per_student_plus_candidates",
+  "protocol": {
+    "primary_metric": "top1_correct",
+    "min_top1": null,
+    "min_macro_f1": null,
+    "min_primary_gain": null,
+    "agreed_by": "",
+    "agreed_before_test_date": "",
+    "cohort_rationale": "Describe sample size, recruitment, candidate coverage, and limits here."
+  },
+  "dataset_hash": "0477cd818b710eb96493ab1f36332c889c6459f10535c29e326c1c33be11e280",
+  "engine_hash": "3c72dd3fdfc406b803abcbfa1741539a7360bcdb71ac195b1a6625ad4358846b",
+  "helper_hash": "af1f0261bff0b4a836af8633dd5aa4aa75984844674c08fe641df738c93baf4b",
+  "taxonomy_hash": "dfd211e2251950a07079bd3c05942abf0e847af1bb71a1f760c63bbdd22277e1",
+  "environment": {
+    "python": "3.13.7",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+    "logical_cpu_count": 12,
+    "packages": {
+      "numpy": "2.4.4",
+      "scikit-learn": "1.8.0",
+      "spacy": "3.8.16",
+      "stanza": "1.14.0",
+      "en-core-web-sm": "3.8.0",
+      "en-core-web-md": "3.8.0"
+    },
+    "seed": 20261018,
+    "weights": [
+      0.6,
+      0.25,
+      0.15
+    ],
+    "text_generation_version": "neutral-evidence-v2",
+    "note": "Record RAM/CPU model from the Colab environment cell too. CPU pipelines; no GPU comparison."
+  },
+  "dev_metrics": {
+    "top1_accuracy": 0.8,
+    "macro_precision": 0.8309095860566448,
+    "macro_recall": 0.7999999999999999,
+    "macro_f1": 0.7976039636127356,
+    "hit_rate3": 1.0,
+    "mrr": 0.9
+  }
+}

@@ -152,9 +152,12 @@ class ChangeEventTests(TestCase):
         token.set_exp(lifetime=-timedelta(seconds=1))
         self.assertEqual(admin_events(RequestFactory().get('/', {'token': str(token)})).status_code, 401)
 
+    @patch('api.sse.close_old_connections')
     @patch('api.sse.connections.close_all')
     @patch('api.sse.time.sleep')
-    def test_stream_resync_then_scoped_changes_and_revocation(self, _sleep, _close):
+    def test_stream_resync_then_scoped_changes_and_revocation(self, _sleep, _close, _close_old):
+        # TestCase owns an outer transaction. Actual connection release belongs
+        # in the PostgreSQL TransactionTestCase below, outside that transaction.
         request = self.sse_request(self.teacher)
         stream = _event_stream(request, 'instructor', self.teacher.id)
         self.assertIn('"resync": true', next(stream))
@@ -173,9 +176,30 @@ class ChangeEventTests(TestCase):
 
 @skipUnless(connection.vendor == 'postgresql', 'Requires a dedicated test PostgreSQL database; SQLite is not cross-worker evidence')
 class PostgreSQLTransportTests(TransactionTestCase):
+    @patch('api.sse.time.sleep')
+    def test_stream_releases_real_connections_and_rechecks_revocation(self, _sleep):
+        user = User.objects.create_user('stream@synthetic.invalid', name='Stream', role='instructor', is_approved=True)
+        request = RequestFactory().get('/api/instructor/events/', {'token': str(AccessToken.for_user(user))})
+        stream = _event_stream(request, 'instructor', user.id)
+        try:
+            self.assertIn('connected', next(stream))
+            self.assertIsNone(connection.connection)
+            publish_changes({user.id: {'topics': ['students']}})
+            self.assertIn('students', next(stream))
+            self.assertIsNone(connection.connection)
+            user.is_approved = False
+            user.save(update_fields=['is_approved'])
+            publish_changes({user.id: {'topics': ['users']}})
+            self.assertIn('auth_expired', next(stream))
+            with self.assertRaises(StopIteration):
+                next(stream)
+            self.assertFalse(User.objects.get(pk=user.id).is_approved)
+        finally:
+            stream.close()
+
     def test_an_independent_process_observes_committed_events(self):
         user = User.objects.create_user('worker@synthetic.invalid', name='Worker', role='admin')
-        publish_changes({user.id: {'topics': ['catalog']}})
+        other = User.objects.create_user('other-worker@synthetic.invalid', name='Other', role='admin')
         # Pass the *test* connection configuration over stdin, never logs/argv.
         code = '''import json, sys, django
 from django.conf import settings
@@ -185,11 +209,23 @@ django.setup()
 from api.sse import pending_events
 print(json.dumps(pending_events(config['user_id'], 0)))
 '''
-        result = subprocess.run([sys.executable, '-c', code], input=json.dumps({
-            'database': connection.settings_dict, 'user_id': user.id,
-        }, default=str), capture_output=True, text=True, timeout=30, env={**os.environ, 'PYTHON_DOTENV_DISABLED': '1'})
-        self.assertEqual(result.returncode, 0, 'Independent PostgreSQL reader failed')
-        self.assertEqual(json.loads(result.stdout)[0]['payload']['topics'], ['catalog'])
+        def read_events(recipient_id):
+            result = subprocess.run([sys.executable, '-c', code], input=json.dumps({
+                'database': connection.settings_dict, 'user_id': recipient_id,
+            }, default=str), capture_output=True, text=True, timeout=30, env={**os.environ, 'PYTHON_DOTENV_DISABLED': '1'})
+            self.assertEqual(result.returncode, 0, 'Independent PostgreSQL reader failed')
+            return json.loads(result.stdout)
+        with transaction.atomic():
+            publish_changes({user.id: {'topics': ['catalog']}, other.id: {'topics': ['users']}})
+            self.assertEqual(read_events(user.id), [])
+        try:
+            with transaction.atomic():
+                publish_changes({user.id: {'topics': ['students']}})
+                raise RuntimeError('synthetic rollback')
+        except RuntimeError:
+            pass
+        self.assertEqual([row['payload']['topics'] for row in read_events(user.id)], [['catalog']])
+        self.assertEqual([row['payload']['topics'] for row in read_events(other.id)], [['users']])
 
 
 class ActualCommitTests(TransactionTestCase):

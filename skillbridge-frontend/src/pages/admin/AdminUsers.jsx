@@ -49,7 +49,7 @@ export default function AdminUsers() {
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
     approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
-    handleToggleRetake, handleUpdateUser, handleRemoveUser,
+    handleToggleRetake, handleUpdateUser, handleRemoveUser, handleRestoreUser,
     confirmDeleteStudent, confirmRemoveStudent, setConfirmRemoveStudent,
     confirmRejectPending, setConfirmRejectPending,
     toast,
@@ -106,6 +106,7 @@ export default function AdminUsers() {
           onClose={() => setSelectedUser(null)}
           onUpdate={handleUpdateUser}
           onRemove={handleRemoveUser}
+          onRestore={handleRestoreUser}
           onToggleRetake={handleToggleRetake}
         />
       )}

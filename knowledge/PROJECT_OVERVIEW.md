@@ -59,6 +59,86 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Release and recovery handoff](RELEASE_AND_RECOVERY_HANDOFF.md): Owner-run
+  Vercel/Railway release, safe readiness probe, isolated restore and pending live checks.
+
+- [Accepted question format](QUESTION_IMPORT_FORMAT.md): User-designated current
+  Excel/CSV/text contract, verified validation and later official-file follow-up.
+- [Production browser policy](PRODUCTION_BROWSER_POLICY.md): Narrow CSP changes
+  verified on the local production build; live hosting remains separate.
+
+- [Local performance verification](PERFORMANCE_VERIFICATION.md): Accepted synthetic
+  workload, measured bottlenecks, preserved ranking and local timing limits.
+
+- [Browser matrix verification](BROWSER_MATRIX_VERIFICATION.md): Accepted local
+  Chrome/Edge and tablet/phone emulation, fullscreen and failure recovery.
+
+- [Local workflow verification](LOCAL_WORKFLOW_ACCEPTANCE.md): Linked real
+  three-role API/browser lifecycle and current-format scope limits.
+
+- [Local security verification](LOCAL_SECURITY_REVIEW.md): Direct API access
+  boundaries, current-account JWT checks, safe snapshots/logs and hosted limits.
+
+- [Local setup and operations](LOCAL_SETUP_AND_OPERATIONS.md): Tested clean
+  runtime, safe example configuration, dependency/model installation and operator guidance.
+
+- [PostgreSQL concurrency verification](POSTGRES_CONCURRENCY_VERIFICATION.md):
+  Finalization/capacity/image/authoring locks and independent committed events.
+
+- [Report reconciliation](REPORT_RECONCILIATION.md): Scoped history, known capacity
+  totals, Philippine report dates and saved PDF/XLSX/CSV verification.
+
+- [External-service recovery](EXTERNAL_SERVICE_RECOVERY.md): Bounded browser/provider
+  calls, truthful map/geocode/photo fallbacks and isolated failure evidence.
+
+- [Validation and recovery audit](VALIDATION_AND_RECOVERY.md): Current mutation
+  boundaries, verified failure handling and explicitly unfinished E01 checks.
+
+- [Agency capacity and areas](CAPACITY_AND_AREAS.md): Panel-confirmed slot demand,
+  approved deployment counts and separate student-residence metrics.
+
+- [NLP phased implementation](NLP_PHASED_IMPLEMENTATION.md): Phase-by-phase
+  agent handoff, preview-only first changes, verification gates and a copyable
+  Phase 1 prompt; later ranking activation remains a separate task.
+
+- [Question assistance](QUESTION_ASSISTANCE.md): Advisory suggestions, staff
+  permissions, manual fallback and evidence-grounded generated text.
+
+- [NLP design decision](NLP_DESIGN_DECISION.md): Proposed evidence-based input
+  contracts, matching/model boundaries, notebook comparison review and copyable
+  paper revisions; separates completed simulations from future integration.
+
+- [Recommendation contract](RECOMMENDATION_CONTRACT.md): Preserved weights,
+  coordinate validation, stable ranking, eligibility boundaries and isolated tests.
+
+- [Offline NLP feature experiment](NLP_PROPOSAL_EXPERIMENT.md): Colab comparison
+  of automatic task descriptions and question-level evidence, with simulation
+  limitations and same-evidence structured controls; no application changes.
+
+- [NLP runtime verification](NLP_RUNTIME_VERIFICATION.md): Actual local selected
+  model load, explicit fallback/comparison behavior and truthful empty-result
+  model reporting.
+
+- [NLP improvement plan](NLP_IMPROVEMENT_PLAN.md): Consolidated proposed automatic
+  position descriptions, question-level evidence, evaluation protocol and paper
+  revisions; distinguishes implemented behavior from future work.
+
+- [Colab NLP evaluation](NLP_COLAB_EVALUATION.md): Standalone notebook using
+  current text helpers, structured-only and preprocessing comparisons, error
+  diagnostics, independent-test protocol and transfer-to-system limits.
+
+- [Authentication and recovery](AUTHENTICATION_AND_RECOVERY.md): Agreed role
+  sign-in methods, verified identity and active-account gates, pending onboarding
+  and truthful queued notifications.
+
+- [Catalog validation and recovery](CATALOG_VALIDATION.md): Atomic company and
+  position edits, capacity and requirement bounds, protected history and retained
+  drafts after failure.
+
+- [Assessment submission integrity](ASSESSMENT_SUBMISSION_INTEGRITY.md): Full
+  question denominators, atomic answer validation, empty submissions and the
+  historical-data boundary.
+
 - [Assessment result presentation](ASSESSMENT_RESULT_PRESENTATION.md): Exact
   highest-score ties, shared student/staff summaries, category-based guidance,
   export consistency and the preserved NLP boundary.

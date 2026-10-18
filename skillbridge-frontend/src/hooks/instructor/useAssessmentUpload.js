@@ -115,6 +115,8 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
             rowErrors.push('At least choice_a and choice_b are required for MCQ')
           if (!['A', 'B', 'C', 'D'].includes(correct.toUpperCase()))
             rowErrors.push(`Correct must be A, B, C, or D for MCQ (got "${correct}")`)
+          else if (![choiceA, choiceB, choiceC, choiceD][['A', 'B', 'C', 'D'].indexOf(correct.toUpperCase())])
+            rowErrors.push('Correct answer must point to a non-empty choice')
         } else if (type === 'truefalse') {
           if (!['TRUE', 'FALSE'].includes(correct.toUpperCase()))
             rowErrors.push(`Correct must be True or False (got "${correct}")`)

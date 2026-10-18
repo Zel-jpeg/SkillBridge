@@ -1,0 +1,19 @@
+{
+  "variant": "duties_and_evidence__spacy_sm",
+  "dataset_hash": "eb0125fa448ac23f84abce1deb5df0ca000167db2614e6cee792882383f2a021",
+  "source_hashes": {
+    "proposal_experiment.py": "ad55d2278eba4d528b3a8ef5e7af1fd07cf8ef8de8715684ea3a3b18c3468e0d",
+    "evaluation_engine.py": "3c72dd3fdfc406b803abcbfa1741539a7360bcdb71ac195b1a6625ad4358846b",
+    "sb_snapshot/recommendation_nlp.py": "af1f0261bff0b4a836af8633dd5aa4aa75984844674c08fe641df738c93baf4b",
+    "sb_snapshot/skill_taxonomy.py": "dfd211e2251950a07079bd3c05942abf0e847af1bb71a1f760c63bbdd22277e1"
+  },
+  "packages": {
+    "numpy": "2.4.4",
+    "scikit-learn": "1.8.0",
+    "spacy": "3.8.16",
+    "stanza": "1.14.0",
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-md": "3.8.0"
+  },
+  "note": "Frozen on development only; no automatic acceptance threshold."
+}

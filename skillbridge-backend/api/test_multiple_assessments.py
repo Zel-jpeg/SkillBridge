@@ -41,7 +41,7 @@ class MultipleAssessmentFoundationTests(APITestCase):
         answers = [{'question_id': q.id, 'selected_choice_id': q.choices.get(is_correct=False).id}
                    for q in assessment.questions.all()]
         result = self.client.post(reverse('assessment_submit', args=[assessment.id]),
-                                  {'response_id': started.data['response_id'], 'answers': answers}, format='json')
+                                  {'response_id': started.data['response_id'], 'attempt_started_at': started.data['attempt_started_at'], 'answers': answers}, format='json')
         self.assertEqual(result.status_code, 200)
         return result
 
@@ -272,6 +272,7 @@ class MultipleAssessmentFoundationTests(APITestCase):
         started = self.client.post(reverse('assessment_start', args=[assessment.id]))
         stopped = self.client.post(reverse('assessment_stop', args=[assessment.id]), {
             'response_id': started.data['response_id'],
+            'attempt_started_at': started.data['attempt_started_at'],
             'reason': 'tab_hidden',
             'answers': [{'question_id': question.id,
                          'selected_choice_id': question.choices.get(is_correct=False).id}],

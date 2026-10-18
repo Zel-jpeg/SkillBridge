@@ -1,26 +1,26 @@
+import { loadLeaflet, geocodeAddress } from '../../utils/externalServices'
+import MapStatus from '../../components/MapStatus'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentProfile.jsx
 //
 // Students can update: phone number, staying-at preference,
 // home address, boarding address, travel preference, location pin (map),
-// and notification preferences.
+// Notification emails are unavailable; no preference is collected.
 //
 // Read-only (set by system / Google OAuth):
 //   name, student ID, course, profile photo (pulled from DNSC Google account)
 //
-// Pin location is saved to localStorage ('sb_pin_location') and is read
-// by StudentResults for proximity scoring.
-//
-// TODO Week 3: replace localStorage reads/writes with API calls
-//   GET  /api/students/me/profile/
-//   PATCH /api/students/me/profile/
+// Pins come from the authenticated profile; historical unowned browser pins
+// are ignored to preserve account isolation.
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
 import Avatar from '../../components/Avatar'
 import { useApi, invalidateCache, updateCachedData } from '../../hooks/useApi'
 import api from '../../api/axios'
+import { validPin } from '../../utils/recommendationResults'
+import { requestErrorMessage } from '../../api/requestErrors'
 
 function getCachedUser() {
   try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null }
@@ -41,37 +41,10 @@ const TRAVEL_OPTIONS = [
 // ────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN (singleton)
 // ────────────────────────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 // ── Nominatim geocoder (free, no key) ────────────────────────────
-async function geocodeAddress({ barangay, city, province }) {
-  const q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
-  const zoom = barangay ? 17 : city ? 15 : 12
-  try {
-    const res   = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'SkillBridge-Student/1.0' } }
-    )
-    const [hit] = await res.json()
-    if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
-  return { lat: 7.3072, lng: 125.6839, zoom }   // fallback: Panabo City
-}
+
 
 // ── Blue pin icon for student location ──────────────────────────
 function makeStudentIcon(L) {
@@ -97,19 +70,29 @@ function PinMap({ center, pinned, onPin }) {
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
+  const latest = useRef({ center, pinned, onPin })
+  useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
+
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
+      const { center, pinned } = latest.current
       const map = L.map(elRef.current).setView(
         center ? [center.lat, center.lng] : [7.3072, 125.6839],
         center?.zoom ?? 14
       )
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 150)
 
@@ -122,16 +105,23 @@ function PinMap({ center, pinned, onPin }) {
           }).addTo(map)
           mkRef.current.on('dragend', ev => {
             const p = ev.target.getLatLng()
-            onPin({ lat: p.lat, lng: p.lng })
+            latest.current.onPin({ lat: p.lat, lng: p.lng })
           })
         }
-        onPin({ lat, lng })
+        latest.current.onPin({ lat, lng })
       }
 
       // Pre-place existing pin if one is saved
       if (pinned) placeMk(pinned.lat, pinned.lng)
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) {
+        mapRef.current?.remove()
+        mapRef.current = null
+        setMapStatus('error')
+      }
     })
     return () => {
       alive = false
@@ -139,7 +129,7 @@ function PinMap({ center, pinned, onPin }) {
       mapRef.current = null
       mkRef.current  = null
     }
-  }, []) // intentional — only mount/unmount
+  }, [mapAttempt]) // intentional — only mount/unmount
 
   // Re-center when geocoding resolves (address toggle or initial load)
   useEffect(() => {
@@ -151,7 +141,8 @@ function PinMap({ center, pinned, onPin }) {
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: 264, isolation: 'isolate', zIndex: 0 }}>
       <div ref={elRef} className="absolute inset-0" />
-      {!pinned && (
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+      {!pinned && mapStatus === 'ready' && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
           bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
           Tap anywhere to drop a pin
@@ -195,7 +186,6 @@ export default function StudentProfile() {
   const [editCourse,         setEditCourse]         = useState('')
   const [phone,              setPhone]              = useState('')
   const [travelWilling,      setTravelWilling]      = useState('panabo')
-  const [emailNotifications, setEmailNotifications] = useState(true)
 
   // Address state — editable; seeded from API address JSONField when available
   const [stayingAt,    setStayingAt]    = useState('home')
@@ -210,6 +200,7 @@ export default function StudentProfile() {
     setEditStudentId(apiStudent.school_id ?? '')
     setEditCourse(apiStudent.course ?? '')
     setPhone(apiStudent.phone ?? '')
+    setPinnedLoc(validPin(apiStudent.address?.pinLat, apiStudent.address?.pinLng))
     setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
     setStayingAt(apiStudent.address?.stayingAt ?? 'home')
     setHomeAddr({
@@ -225,17 +216,10 @@ export default function StudentProfile() {
   }, [apiStudent])
 
   // Pin map state
-  const [pinnedLoc,   setPinnedLoc]   = useState(() => {
-    // Seed from API address (set during onboarding) or localStorage fallback
-    try {
-      const user = JSON.parse(localStorage.getItem('sb-user'))
-      const pl = user?.address?.pinLat
-      const pg = user?.address?.pinLng
-      if (pl != null && pg != null) return { lat: pl, lng: pg }
-    } catch { /* Fall back to the locally saved map pin. */ }
-    try { return JSON.parse(localStorage.getItem('sb_pin_location')) } catch { return null }
-  })
+  const [pinnedLoc, setPinnedLoc] = useState(() => validPin(getCachedUser()?.address?.pinLat, getCachedUser()?.address?.pinLng))
   const [mapCenter,   setMapCenter]   = useState(null)
+  const geocodeRequest = useRef(null)
+  useEffect(() => () => geocodeRequest.current?.abort(), [])
   const [geocoding,   setGeocoding]   = useState(false)
   const [pinAddrType, setPinAddrType] = useState('primary')
 
@@ -243,6 +227,7 @@ export default function StudentProfile() {
   const [saved,    setSaved]    = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [saveError, setSaveError] = useState('')
+  const savingRef = useRef(false)
 
   const hasBoardingAddr = stayingAt === 'boarding' && boardingAddr.city
 
@@ -257,28 +242,30 @@ export default function StudentProfile() {
   })()
 
   // Geocode the selected address so the map centers correctly
-  function geocodeForType(type) {
+  const geocodeForType = useCallback((type) => {
     const useBoarding = hasBoardingAddr && type === 'primary'
     const addr = useBoarding
       ? { barangay: boardingAddr.barangay, city: boardingAddr.city,   province: boardingAddr.province }
       : { barangay: homeAddr.barangay,     city: homeAddr.city,        province: homeAddr.province    }
-    if (!addr.city && !addr.province) return
+    geocodeRequest.current?.abort()
+    const controller = new AbortController()
+    geocodeRequest.current = controller
     setGeocoding(true)
-    geocodeAddress(addr).then(coords => { setMapCenter(coords); setGeocoding(false) })
-  }
+    geocodeAddress(addr, { signal: controller.signal }).then(coords => {
+      if (controller.signal.aborted) return
+      setMapCenter(coords); setGeocoding(false)
+    })
+  }, [hasBoardingAddr, homeAddr.province, homeAddr.city, homeAddr.barangay,
+    boardingAddr.province, boardingAddr.city, boardingAddr.barangay])
 
-  // Geocode on mount to center map on student's address
-  useEffect(() => {
-    geocodeForType('primary')
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Re-geocode when boarding/home toggle changes
+  // Recenter only the view when the selected address changes; preserve the pin.
   useEffect(() => {
     geocodeForType(pinAddrType)
-  }, [pinAddrType]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pinAddrType, geocodeForType])
 
   // ── Save ─────────────────────────────────────────────────────
   async function handleSave() {
+    if (savingRef.current) return
     const e = {}
     if (!editName.trim())       e.editName      = 'Full name is required'
     if (!editStudentId.trim())  e.editStudentId = 'Student ID is required'
@@ -295,6 +282,7 @@ export default function StudentProfile() {
     setErrors(e)
     if (Object.keys(e).length > 0) return
 
+    savingRef.current = true
     setSaving(true)
     setSaved(false)
     setSaveError('')
@@ -319,21 +307,18 @@ export default function StudentProfile() {
 
       // Update caches so the rest of the app sees fresh data instantly
       localStorage.setItem('sb-user', JSON.stringify(res.data))
-      if (pinnedLoc) {
-        localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
-      } else {
-        localStorage.removeItem('sb_pin_location')
-      }
       updateCachedData('/api/students/me/', res.data)
       invalidateCache('/api/student/results/')
 
       setSaved(true)
     } catch (err) {
-      const msg = err.response?.data?.error
-        || err.response?.data?.detail
-        || 'Failed to save. Please try again.'
+      const msg = requestErrorMessage(err, { mutation: true })
+      const field = { name: 'editName', studentId: 'editStudentId', course: 'editCourse',
+        phone: 'phone', stayingAt: 'stayingAt', travelWilling: 'travelWilling' }[err.response?.data?.field]
+      if (field) setErrors(previous => ({ ...previous, [field]: msg }))
       setSaveError(msg)
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
@@ -587,12 +572,12 @@ export default function StudentProfile() {
             )}
 
             {/* Geocode status */}
-            <div className="flex items-center gap-2 mb-2.5 h-5">
+            <div className="flex items-center gap-2 mb-2.5 min-h-5">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
               <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                {geocoding ? `Locating ${pinAddrLabel}…` : `Centered on ${pinAddrLabel}`}
+                {geocoding ? `Locating ${pinAddrLabel}…` : mapCenter?.approximate ? 'Address lookup unavailable; showing default Panabo view. Your pin is unchanged.' : `Centered on ${pinAddrLabel}`}
               </span>
               {geocoding && <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />}
             </div>
@@ -654,33 +639,12 @@ export default function StudentProfile() {
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Notification preferences</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Control what emails you receive from SkillBridge.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Result notifications</p>
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <div className="mt-0.5 relative flex items-center justify-center">
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={emailNotifications}
-                onChange={e => { setEmailNotifications(e.target.checked); setSaved(false) }}
-              />
-              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors
-                ${emailNotifications
-                  ? 'bg-green-600 border-green-600'
-                  : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 group-hover:border-green-400'}`}>
-                {emailNotifications && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                )}
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Email me when results are ready</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Receive an email when your OJT match profile is completed.</p>
-            </div>
-          </label>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Result notification emails are not available. View your latest results on the Results page.
+          </p>
         </div>
 
         {/* ── Save ── */}

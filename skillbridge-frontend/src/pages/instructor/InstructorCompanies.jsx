@@ -1,3 +1,7 @@
+import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
+import { validPin } from '../../utils/recommendationResults'
+import MapStatus from '../../components/MapStatus'
+import { escapeHtml } from '../../utils/escapeHtml'
 import DataSection from '../../components/DataSection'
 // src/pages/instructor/InstructorCompanies.jsx
 //
@@ -17,38 +21,11 @@ import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../
 import api                        from '../../api/axios'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = Object.assign(document.createElement('link'), {
-      rel: 'stylesheet',
-      href: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
-    })
-    document.head.appendChild(link)
-    const script = Object.assign(document.createElement('script'), {
-      src:    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
-      onload: () => resolve(window.L),
-    })
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 // ── Nominatim geocoder (free, no key) ────────────────────────────────────────
-async function geocodeAddress({ barangay, city, province }) {
-  const q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
-  const zoom = barangay ? 17 : city ? 15 : 12
-  try {
-    const res  = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'SkillBridge/1.0' } }
-    )
-    const [hit] = await res.json()
-    if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
-  return { lat: 7.1907, lng: 125.4553, zoom } // fallback: Davao City
+function geocodeAddress(address, options) {
+  return lookupAddress(address, { ...options, fallbackView: { lat: 7.1907, lng: 125.4553 }, cityFallback: true })
 }
 
 // ── Map icons ─────────────────────────────────────────────────────────────────
@@ -63,7 +40,7 @@ function makeViewIcon(L, name) {
         font-size:10px;font-weight:700;font-family:system-ui,sans-serif;padding:3px 8px;
         border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.4);pointer-events:none;
         transform:translateX(-50%);left:50%">
-        ${name}
+        ${escapeHtml(name)}
         <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;
           border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #1d4ed8"></div>
       </div>
@@ -96,27 +73,36 @@ function ViewMap({ company }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
 
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
-    if (!company?.lat || !company?.lng) return
+    if (!validPin(company?.lat, company?.lng)) return
     let alive = true
     let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current, { zoomControl: false })
         .setView([company.lat, company.lng], 15)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       L.marker([company.lat, company.lng], { icon: makeViewIcon(L, company.name) }).addTo(map)
       resizeTimer = setTimeout(() => map.invalidateSize(), 150)
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
     })
     return () => { alive = false; clearTimeout(resizeTimer); mapRef.current?.remove(); mapRef.current = null }
-  }, [company?.id]) // eslint-disable-line
+  }, [company?.id, company?.lat, company?.lng, company?.name, mapAttempt])
 
-  if (!company?.lat || !company?.lng) {
+  if (!validPin(company?.lat, company?.lng)) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700" style={{ height: 180 }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
@@ -127,8 +113,9 @@ function ViewMap({ company }) {
     )
   }
   return (
-    <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800" style={{ height: 200, isolation: 'isolate' }}>
+    <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800" style={{ height: 200, isolation: 'isolate' }}>
       <div ref={elRef} className="w-full h-full" />
+      <MapStatus status={mapStatus} onRetry={retryMap} />
     </div>
   )
 }
@@ -139,17 +126,26 @@ function PinMap({ center, pinned, onPin, height = 220 }) {
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
+  const latest = useRef({ center, pinned, onPin })
+  useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
+      const { center, pinned } = latest.current
       const map = L.map(elRef.current, { zoomControl: false })
         .setView(center ? [center.lat, center.lng] : [7.1907, 125.4553], center?.zoom ?? 13)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       resizeTimer = setTimeout(() => map.invalidateSize(), 150)
 
@@ -160,18 +156,21 @@ function PinMap({ center, pinned, onPin, height = 220 }) {
           mkRef.current = L.marker([lat, lng], { icon: makePinIcon(L), draggable: true }).addTo(map)
           mkRef.current.on('dragend', ev => {
             const p = ev.target.getLatLng()
-            onPin({ lat: p.lat, lng: p.lng })
+            latest.current.onPin({ lat: p.lat, lng: p.lng })
           })
         }
-        onPin({ lat, lng })
+        latest.current.onPin({ lat, lng })
       }
 
       if (pinned) placeMk(pinned.lat, pinned.lng)
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
     })
     return () => { alive = false; clearTimeout(resizeTimer); mapRef.current?.remove(); mapRef.current = null; mkRef.current = null }
-  }, []) // eslint-disable-line
+  }, [mapAttempt])
 
   // Re-center when address changes
   useEffect(() => {
@@ -190,7 +189,8 @@ function PinMap({ center, pinned, onPin, height = 220 }) {
   return (
     <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
-      {!pinned && (
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+      {!pinned && mapStatus === 'ready' && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
           Tap anywhere to drop a pin
         </div>
@@ -210,14 +210,14 @@ function CompaniesMap({ companies }) {
   function buildMarkers(L, map, list) {
     mksRef.current.forEach(m => m.remove())
     mksRef.current = []
-    const geo = list.filter(c => c.lat != null && c.lng != null)
+    const geo = list.filter(c => validPin(c.lat, c.lng))
     const markers = geo.map(co =>
       L.marker([co.lat, co.lng], { icon: makeViewIcon(L, co.name) })
         .addTo(map)
         .bindPopup(`
           <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.name}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0">${co.address ? [co.address.barangay, co.address.city, co.address.province].filter(Boolean).join(', ') : 'No address set'}</p>
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.name)}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0">${escapeHtml(co.address ? [co.address.barangay, co.address.city, co.address.province].filter(Boolean).join(', ') : 'No address set')}</p>
             <p style="font-size:11px;font-weight:600;color:#3b82f6;margin:5px 0 0">
               ${co.positions.length} position${co.positions.length !== 1 ? 's' : ''}
             </p>
@@ -231,34 +231,48 @@ function CompaniesMap({ companies }) {
     }
   }
 
+  const companiesRef = useRef(companies)
+  useEffect(() => { companiesRef.current = companies }, [companies])
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current).setView([7.3072, 125.6839], 10)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
-      buildMarkers(L, map, companies)
+      buildMarkers(L, map, companiesRef.current)
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
     })
     return () => {
       alive = false
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // eslint-disable-line
+  }, [mapAttempt])
 
   useEffect(() => {
     if (!mapRef.current || !window.L) return
     buildMarkers(window.L, mapRef.current, companies)
-  }, [companies]) // eslint-disable-line
+  }, [companies])
 
   return (
-    <div ref={elRef} className="w-full rounded-2xl overflow-hidden"
+    <div className="relative" style={{ isolation: 'isolate' }}>
+      <div ref={elRef} className="w-full rounded-2xl overflow-hidden"
       style={{ height: 340, isolation: 'isolate' }} />
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+    </div>
   )
 }
 
@@ -294,10 +308,10 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
 
   // Map / pin
   const [pinned,    setPinned]    = useState(
-    company.lat && company.lng ? { lat: company.lat, lng: company.lng } : null
+    validPin(company.lat, company.lng)
   )
   const [mapCenter, setMapCenter] = useState(
-    company.lat && company.lng ? { lat: company.lat, lng: company.lng, zoom: 15 } : null
+    validPin(company.lat, company.lng) ? { ...validPin(company.lat, company.lng), zoom: 15 } : null
   )
   const [geocoding, setGeocoding] = useState(false)
 
@@ -331,12 +345,20 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
   }
 
   // Auto-geocode when address selection changes
+  const geocodePending = useRef(null)
+  useEffect(() => () => geocodePending.current?.abort(), [])
+
   async function handleAddressChange(addr) {
+    geocodePending.current?.abort()
+    const controller = new AbortController()
+    geocodePending.current = controller
+    setGeocoding(false)
     setNewAddr(addr)
     setAddrErr('')
     if (addr.city) {
       setGeocoding(true)
-      const coords = await geocodeAddress(addr)
+      const coords = await geocodeAddress(addr, { signal: controller.signal })
+      if (controller.signal.aborted) return
       setMapCenter(coords)
       setGeocoding(false)
     }
@@ -435,6 +457,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
         {changingAddr ? <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
           : <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">{currentAddr || 'No address set'}</div>}
         {geocoding && <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">Finding location on map…</p>}
+        {!geocoding && mapCenter?.approximate && <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">Address lookup unavailable. Showing the default Davao view; your pin is unchanged.</p>}
       </div>
       <div>
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Map location</p>
@@ -492,7 +515,7 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors">
               <EditIcon /> Edit
             </button>
-            <button onClick={onClose}
+            <button onClick={onClose} aria-label="Close company details"
               className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <XIcon />
             </button>

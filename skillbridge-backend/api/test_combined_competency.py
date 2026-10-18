@@ -76,6 +76,7 @@ class CombinedCompetencyTests(APITestCase):
         } for question in assessment.questions.all()]
         result = self.client.post(reverse('assessment_submit', args=[assessment.id]), {
             'response_id': started.data['response_id'], 'answers': answers,
+            'attempt_started_at': started.data['attempt_started_at'],
         }, format='json')
         self.assertEqual(result.status_code, 200)
         return result
@@ -205,6 +206,7 @@ class CombinedCompetencyTests(APITestCase):
         question = assessment.questions.get()
         stopped = self.client.post(reverse('assessment_stop', args=[assessment.id]), {
             'response_id': started.data['response_id'], 'reason': 'tab_hidden',
+            'attempt_started_at': started.data['attempt_started_at'],
             'answers': [{'question_id': question.id,
                          'selected_choice_id': question.choices.get(is_correct=True).id}],
         }, format='json')
@@ -291,6 +293,7 @@ class CombinedCompetencyTests(APITestCase):
         self.assertEqual(self.combined().data['combined_category_scores'][0]['raw_score'], 1)
         question = optional.questions.get()
         retaken = self.client.post(reverse('assessment_submit', args=[optional.id]), {
+            'attempt_started_at': StudentResponse.objects.get(student=self.student, assessment=optional).started_at.isoformat(),
             'answers': [{'question_id': question.id,
                          'selected_choice_id': question.choices.get(is_correct=False).id}],
         }, format='json')

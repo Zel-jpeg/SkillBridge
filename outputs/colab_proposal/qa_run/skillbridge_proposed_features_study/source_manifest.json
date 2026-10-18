@@ -1,0 +1,9 @@
+{
+  "proposal_experiment.py": "ad55d2278eba4d528b3a8ef5e7af1fd07cf8ef8de8715684ea3a3b18c3468e0d",
+  "evaluation_engine.py": "3c72dd3fdfc406b803abcbfa1741539a7360bcdb71ac195b1a6625ad4358846b",
+  "sb_snapshot/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sb_snapshot/recommendation_nlp.py": "af1f0261bff0b4a836af8633dd5aa4aa75984844674c08fe641df738c93baf4b",
+  "sb_snapshot/skill_taxonomy.py": "dfd211e2251950a07079bd3c05942abf0e847af1bb71a1f760c63bbdd22277e1",
+  "simulated_proposal_dataset.json": "796d91f8ac464b2040ec939f047b7eba73de2f42a72408cdea8100da72ab14a2",
+  "independent_proposal_template.json": "2e62d7952b77a17827cb4c8709dc6045276f9bc6ec0a1934a059436628977690"
+}

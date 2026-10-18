@@ -1,0 +1,281 @@
+{
+  "dataset_hash": "eb0125fa448ac23f84abce1deb5df0ca000167db2614e6cee792882383f2a021",
+  "case_count": 60,
+  "cases_labels_paired": true,
+  "kind": "review of existing simulation results; no new model execution",
+  "checks": {
+    "current_text__tfidf_regex": {
+      "correct": 49,
+      "top1": 0.8166666666666667,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": -0.08333333333333333,
+        "ci95": [
+          -0.18333333333333332,
+          0.0
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.11666666666666667,
+        "ci95": [
+          -0.03333333333333333,
+          0.26666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "duties_only__tfidf_regex": {
+      "correct": 55,
+      "top1": 0.9166666666666666,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": 0.016666666666666666,
+        "ci95": [
+          -0.05,
+          0.08333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.1,
+        "ci95": [
+          0.0,
+          0.2
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.21666666666666667,
+        "ci95": [
+          0.1,
+          0.3333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "evidence_only__tfidf_regex": {
+      "correct": 55,
+      "top1": 0.9166666666666666,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": 0.016666666666666666,
+        "ci95": [
+          0.0,
+          0.05
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.1,
+        "ci95": [
+          0.0,
+          0.2
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.21666666666666667,
+        "ci95": [
+          0.08333333333333333,
+          0.35
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "duties_and_evidence__tfidf_regex": {
+      "correct": 53,
+      "top1": 0.8833333333333333,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": -0.016666666666666666,
+        "ci95": [
+          -0.08333333333333333,
+          0.03333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.06666666666666667,
+        "ci95": [
+          -0.016666666666666666,
+          0.16666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.18333333333333332,
+        "ci95": [
+          0.03333333333333333,
+          0.3333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "current_text__spacy_sm": {
+      "correct": 48,
+      "top1": 0.8,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": -0.1,
+        "ci95": [
+          -0.2,
+          -0.016666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.1,
+        "ci95": [
+          -0.06666666666666667,
+          0.26666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "duties_only__spacy_sm": {
+      "correct": 52,
+      "top1": 0.8666666666666667,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": -0.03333333333333333,
+        "ci95": [
+          -0.11666666666666667,
+          0.05
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.06666666666666667,
+        "ci95": [
+          -0.016666666666666666,
+          0.16666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.16666666666666666,
+        "ci95": [
+          0.03333333333333333,
+          0.3
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "evidence_only__spacy_sm": {
+      "correct": 55,
+      "top1": 0.9166666666666666,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": 0.016666666666666666,
+        "ci95": [
+          0.0,
+          0.05
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.11666666666666667,
+        "ci95": [
+          0.03333333333333333,
+          0.21666666666666667
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.21666666666666667,
+        "ci95": [
+          0.08333333333333333,
+          0.35
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    },
+    "duties_and_evidence__spacy_sm": {
+      "correct": 53,
+      "top1": 0.8833333333333333,
+      "gain_over_no_nlp": {
+        "metric": "top1_correct",
+        "delta": -0.016666666666666666,
+        "ci95": [
+          -0.08333333333333333,
+          0.03333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_current_same_model": {
+        "metric": "top1_correct",
+        "delta": 0.08333333333333333,
+        "ci95": [
+          0.0,
+          0.16666666666666666
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      },
+      "gain_over_same_evidence_structured": {
+        "metric": "top1_correct",
+        "delta": 0.18333333333333332,
+        "ci95": [
+          0.03333333333333333,
+          0.3333333333333333
+        ],
+        "group_count": 60,
+        "note": "Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee."
+      }
+    }
+  },
+  "limitation": "Bootstrap intervals on familiar simulated cases do not validate real-world effectiveness."
+}

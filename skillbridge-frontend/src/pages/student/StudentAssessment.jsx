@@ -21,6 +21,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import FocusedStudentHeader from '../../components/layout/FocusedStudentHeader'
 import api from '../../api/axios'
 import { useApi, invalidateCache, fetchWithDedup } from '../../hooks/useApi'
+import { remainingAttemptSeconds } from '../../utils/assessmentClock'
+import { attemptStorageKey } from '../../utils/attemptStorage'
 
 const WARN_AT_SECS = 5 * 60
 
@@ -175,17 +177,18 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
   )
 }
 
-function AssessmentStopped({ reason, assessmentId, saving = false, saveError = false, onRetry }) {
+function AssessmentStopped({ reason, assessmentId, saving = false, saveError = false, reviewRequired = false, error, onRetry }) {
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-rose-100 dark:border-rose-900 rounded-3xl p-7 sm:p-9 shadow-sm">
         <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center text-2xl font-bold mb-5">!</div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Assessment integrity rule triggered</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">{reviewRequired ? 'Submission requires instructor review' : 'Assessment integrity rule triggered'}</p>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-1">Your assessment was stopped</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 leading-relaxed">{reason || 'An assessment integrity rule was triggered.'}</p>
         <div className="mt-5 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 space-y-2">
           <p>{saving ? 'Saving your completed answers…' : saveError ? 'The attempt is stopped locally, but the server could not be reached yet.' : 'Your completed answers were recorded.'}</p>
+          {saveError && error && <p role="alert">{error}</p>}
           <p>You must contact your instructor, OJT coordinator, or administrator to request a retake.</p>
         </div>
         {saveError && (
@@ -271,6 +274,7 @@ export default function StudentAssessment() {
 
   // Read cached user for the focused agreement header (instant render)
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
+  const attemptKey = (kind, id) => attemptStorageKey(kind, cachedUser?.id ?? 'missing-user', id)
   const navStudent = {
     name:      cachedUser?.name     || 'Student',
     initials:  (cachedUser?.name || 'ST').split(' ').map(n => n[0]).slice(0, 2).join(''),
@@ -298,13 +302,12 @@ export default function StudentAssessment() {
   const [initialSecs,  setInitialSecs]  = useState(3600) // fallback 60 min
 
   // ── Step 3: Local state ────────────────────────────────────────
-  const storageKey = assessmentId ? `sb_answers_${assessmentId}` : null
-  const timerKey   = assessmentId ? `sb_timer_${assessmentId}`   : null
+  const storageKey = assessmentId ? attemptKey('answers', assessmentId) : null
 
   const [answers, setAnswers] = useState(() => {
     // Pre-load locally saved answers for this assessment if they exist
     try {
-      const key  = activeInfo?.id ? `sb_answers_${activeInfo.id}` : null
+      const key  = activeInfo?.id ? attemptKey('answers', activeInfo.id) : null
       return key ? JSON.parse(localStorage.getItem(key) ?? 'null') ?? {} : {}
     } catch { return {} }
   })
@@ -320,6 +323,9 @@ export default function StudentAssessment() {
   const answersRef = useRef(answers)
   const assessmentIdRef = useRef(null)
   const responseIdRef = useRef(null)
+  const attemptIdentityRef = useRef(null)
+  const deadlineRef = useRef(0)
+  const autoSubmitAttemptedRef = useRef(false)
   const integrityArmedRef = useRef(false)
   const finalizingRef = useRef(false)
   const fullscreenRequiredRef = useRef(false)
@@ -338,9 +344,9 @@ export default function StudentAssessment() {
 
   function clearAttemptStorage(id) {
     if (!id) return
-    localStorage.removeItem(`sb_answers_${id}`)
-    localStorage.removeItem(`sb_timer_${id}`)
-    localStorage.removeItem(`sb_integrity_active_${id}`)
+    localStorage.removeItem(attemptKey('answers', id))
+    localStorage.removeItem(attemptKey('timer', id))
+    localStorage.removeItem(attemptKey('integrity_active', id))
   }
 
   function updateCachedAttemptStatus(status) {
@@ -370,9 +376,10 @@ export default function StudentAssessment() {
       assessmentIdRef.current = id
       setResponseId(res.data.response_id)
       responseIdRef.current = res.data.response_id
+      attemptIdentityRef.current = res.data.attempt_started_at
       setQuestions(res.data.questions || [])
 
-      const answerKey = `sb_answers_${id}`
+      const answerKey = attemptKey('answers', id)
       let restoredAnswers = {}
       try { restoredAnswers = JSON.parse(localStorage.getItem(answerKey) || '{}') || {} } catch { /* ignore malformed autosave */ }
       setAnswers(restoredAnswers)
@@ -380,16 +387,15 @@ export default function StudentAssessment() {
 
       const secs = res.data.time_limit_sec ?? activeInfo.duration_minutes * 60
       setInitialSecs(secs)
-      const saved = parseInt(localStorage.getItem(`sb_timer_${id}`), 10)
-      const elapsed = res.data.started_at ? Math.floor((Date.now() - new Date(res.data.started_at).getTime()) / 1000) : 0
-      const serverRemaining = Math.max(0, secs - Math.max(0, elapsed))
-      const timer = isNaN(saved) ? serverRemaining : Math.min(serverRemaining, Math.max(0, saved))
-      localStorage.setItem(`sb_timer_${id}`, timer)
-      localStorage.setItem(`sb_integrity_active_${id}`, JSON.stringify({
+      const timer = Math.max(0, res.data.remaining_seconds ?? 0)
+      deadlineRef.current = performance.now() + timer * 1000
+      autoSubmitAttemptedRef.current = false
+      localStorage.setItem(attemptKey('integrity_active', id), JSON.stringify({
         response_id: res.data.response_id,
         started_at: res.data.started_at,
+        attempt_started_at: res.data.attempt_started_at,
       }))
-      setTimeLeft(timer)
+      setTimeLeft(Math.ceil(timer))
       setStarted(true)
       requestAnimationFrame(() => { integrityArmedRef.current = true })
     } catch (err) {
@@ -422,6 +428,7 @@ export default function StudentAssessment() {
     const reasonText = `${STOP_REASON_TEXT[reason] || 'An assessment integrity rule was triggered.'}${detail ? ` (${detail})` : ''}`
     const payload = {
       response_id: responseIdRef.current,
+      attempt_started_at: attemptIdentityRef.current,
       answers: answersArrayFrom(),
       reason,
       detail,
@@ -462,6 +469,7 @@ export default function StudentAssessment() {
         reason,
         detail,
         reasonDisplay: res.data.stopped_reason_display || reasonText,
+        reviewRequired: res.data.review_required,
         saving: false,
         saveError: false,
       })
@@ -486,17 +494,18 @@ export default function StudentAssessment() {
       clearAttemptStorage(activeInfo.id)
       return
     }
-    const markerKey = `sb_integrity_active_${activeInfo.id}`
+    const markerKey = attemptKey('integrity_active', activeInfo.id)
     let marker = null
     try { marker = JSON.parse(localStorage.getItem(markerKey)) } catch { /* ignore malformed marker */ }
     if (!marker) return
 
     let savedAnswers = {}
-    try { savedAnswers = JSON.parse(localStorage.getItem(`sb_answers_${activeInfo.id}`) || '{}') || {} } catch { /* ignore malformed autosave */ }
+    try { savedAnswers = JSON.parse(localStorage.getItem(attemptKey('answers', activeInfo.id)) || '{}') || {} } catch { /* ignore malformed autosave */ }
     setAssessmentId(activeInfo.id)
     assessmentIdRef.current = activeInfo.id
     setResponseId(marker.response_id)
     responseIdRef.current = marker.response_id
+    attemptIdentityRef.current = marker.attempt_started_at || marker.started_at
     setAnswers(savedAnswers)
     answersRef.current = savedAnswers
     integrityArmedRef.current = true
@@ -563,22 +572,20 @@ export default function StudentAssessment() {
   // ── Countdown timer ────────────────────────────────────────────
   useEffect(() => {
     if (!started || submitting) return
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        const next = prev - 1
-        if (timerKey) localStorage.setItem(timerKey, next)
-        if (next === WARN_AT_SECS && !warningShown.current) {
-          warningShown.current = true
-          setShowWarning(true)
-        }
-        if (next <= 0) {
-          clearInterval(interval)
-          handleSubmit()
-          return 0
-        }
-        return next
-      })
-    }, 1000)
+    const tick = () => {
+      const next = remainingAttemptSeconds(deadlineRef.current, performance.now())
+      setTimeLeft(next)
+      if (next > 0 && next <= WARN_AT_SECS && !warningShown.current) {
+        warningShown.current = true
+        setShowWarning(true)
+      }
+      if (next <= 0 && !autoSubmitAttemptedRef.current) {
+        autoSubmitAttemptedRef.current = true
+        handleSubmit()
+      }
+    }
+    const interval = setInterval(tick, 1000)
+    tick()
     return () => clearInterval(interval)
   }, [started, submitting]) // eslint-disable-line
 
@@ -610,9 +617,10 @@ export default function StudentAssessment() {
     const answersArray = answersArrayFrom()
 
     try {
-      await api.post(`/api/assessments/${assessmentId}/submit/`, {
+      const result = await api.post(`/api/assessments/${assessmentId}/submit/`, {
         answers:     answersArray,
         response_id: responseId,
+        attempt_started_at: attemptIdentityRef.current,
       })
 
       // Cleanup local storage
@@ -633,14 +641,20 @@ export default function StudentAssessment() {
 
       await leaveFullscreen()
 
-      setTimeout(() =>
-        navigate(`/student/assessments/${assessmentId}/results`, { replace: true })
-      , 800)
+      if (result.data.review_required) {
+        setStarted(false)
+        setSubmitting(false)
+        updateCachedAttemptStatus('stopped')
+        setStoppedAttempt({ reasonDisplay: result.data.message, reviewRequired: true, saving: false, saveError: false })
+        return
+      }
+
+      navigate(`/student/assessments/${assessmentId}/results`, { replace: true })
     } catch (err) {
       finalizingRef.current = false
       integrityArmedRef.current = true
       setSubmitting(false)
-      const msg = err.response?.data?.error || 'Submission failed. Please try again.'
+      const msg = err.response?.data?.error || err.response?.data?.answers || 'Submission could not be confirmed. Your answers are kept on this device. Check the assessment list before retrying.'
       alert(msg)
     }
   }
@@ -672,7 +686,7 @@ export default function StudentAssessment() {
   if (!started && !stoppedAttempt && activeInfo.availability_status !== 'available') return <AssessmentError message="unavailable" />
   if (!started && !stoppedAttempt && activeInfo.attempt_status === 'submitted' && !activeInfo.retake_allowed) return <AssessmentError message="already_submitted" />
   if (!started && !stoppedAttempt && activeInfo?.attempt_status === 'stopped' && !activeInfo?.retake_allowed) {
-    return <AssessmentStopped reason={activeInfo.stopped_reason_display} assessmentId={activeInfo.id} />
+    return <AssessmentStopped reason={activeInfo.stopped_reason_display} assessmentId={activeInfo.id} reviewRequired={activeInfo.stopped_reason === 'attempt_expired'} />
   }
   if (stoppedAttempt) return (
     <AssessmentStopped
@@ -680,6 +694,8 @@ export default function StudentAssessment() {
       assessmentId={assessmentId}
       saving={stoppedAttempt.saving}
       saveError={stoppedAttempt.saveError}
+      reviewRequired={stoppedAttempt.reviewRequired}
+      error={stoppedAttempt.error}
       onRetry={() => submitIntegrityStop(stoppedAttempt.reason, stoppedAttempt.detail, { retry: true })}
     />
   )

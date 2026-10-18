@@ -12,6 +12,7 @@ from django.http import HttpResponse, HttpResponseNotAllowed, StreamingHttpRespo
 
 from .models import BatchEnrollment, ChangeEvent, User
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework.exceptions import AuthenticationFailed
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 1
@@ -23,9 +24,9 @@ def _get_user_from_token(request, allowed_roles):
     if not token:
         token = request.headers.get('Authorization', '').removeprefix('Bearer ').strip()
     try:
-        from rest_framework_simplejwt.tokens import AccessToken
-        payload = AccessToken(token)
-        user = User.objects.get(pk=payload['user_id'], is_active=True)
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+        authentication = JWTAuthentication()
+        user = authentication.get_user(authentication.get_validated_token(token))
         if user.role not in allowed_roles:
             return None
         if user.role in ('student', 'instructor') and not user.is_approved:
@@ -33,7 +34,7 @@ def _get_user_from_token(request, allowed_roles):
         if user.role == 'student' and not BatchEnrollment.objects.filter(student=user).exists():
             return None
         return user
-    except (TokenError, User.DoesNotExist, KeyError, ValueError, TypeError):
+    except (TokenError, AuthenticationFailed, User.DoesNotExist, KeyError, ValueError, TypeError):
         return None
 
 

@@ -1,3 +1,7 @@
+import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
+import { validPin } from '../../utils/recommendationResults'
+import MapStatus from '../../components/MapStatus'
+import { escapeHtml } from '../../utils/escapeHtml'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminCompanies.jsx
 //
@@ -29,54 +33,11 @@ import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../
 // ────────────────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN, singleton promise prevents duplicate injection
 // ────────────────────────────────────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = Object.assign(document.createElement('link'), {
-      rel:  'stylesheet',
-      href: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
-    })
-    document.head.appendChild(link)
-    const script = Object.assign(document.createElement('script'), {
-      src:    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
-      onload: () => resolve(window.L),
-    })
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 // ── Nominatim geocoder (free, no key) ────────────────────────────────────────
-async function geocodeAddress({ barangay, city, province }) {
-  let q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
-  let zoom = barangay ? 17 : city ? 15 : 12
-  try {
-    let res   = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
-    )
-    let hits = await res.json()
-    if (hits && hits.length > 0) {
-      return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
-    }
-
-    // Fallback: If barangay search failed, try searching just the city
-    if (barangay && city) {
-      q = [city, province, 'Philippines'].filter(Boolean).join(', ')
-      zoom = 15
-      res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-        { headers: { 'User-Agent': 'SkillBridge-Admin/1.0' } }
-      )
-      hits = await res.json()
-      if (hits && hits.length > 0) {
-        return { lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon), zoom }
-      }
-    }
-  } catch { /* Use the existing map fallback if geocoding is unavailable. */ }
-  return { lat: 7.1907, lng: 125.4553, zoom: 12 }  // fallback: Davao City
+function geocodeAddress(address, options) {
+  return lookupAddress(address, { ...options, fallbackView: { lat: 7.1907, lng: 125.4553 }, cityFallback: true })
 }
 
 // ── Map icons ─────────────────────────────────────────────────────────────────
@@ -92,7 +53,7 @@ function makeCompanyIcon(L, name) {
           font-size:10px;font-weight:700;font-family:system-ui,sans-serif;padding:3px 8px;
           border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);pointer-events:none;
           transform:translateX(-50%);left:50%;">
-          ${name}
+          ${escapeHtml(name)}
           <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
             width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
             border-top:6px solid #111827"></div>
@@ -129,20 +90,29 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
+  const latest = useRef({ center, pinned, onPin })
+  useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
+      const { center, pinned } = latest.current
       const map = L.map(elRef.current).setView(
         center ? [center.lat, center.lng] : [7.1907, 125.4553],
         center?.zoom ?? 13
       )
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       resizeTimer = setTimeout(() => map.invalidateSize(), 150)
 
@@ -155,15 +125,18 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
           }).addTo(map)
           mkRef.current.on('dragend', ev => {
             const p = ev.target.getLatLng()
-            onPin({ lat: p.lat, lng: p.lng })
+            latest.current.onPin({ lat: p.lat, lng: p.lng })
           })
         }
-        onPin({ lat, lng })
+        latest.current.onPin({ lat, lng })
       }
 
       if (pinned) placeMk(pinned.lat, pinned.lng)
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
     })
     return () => {
       alive = false
@@ -172,7 +145,7 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
       mapRef.current = null
       mkRef.current  = null
     }
-  }, []) // eslint-disable-line
+  }, [mapAttempt])
 
   // Re-center whenever address selection changes
   useEffect(() => {
@@ -192,7 +165,8 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
     <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
       style={{ height, isolation: 'isolate' }}>
       <div ref={elRef} className="absolute inset-0" />
-      {!pinned && (
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+      {!pinned && mapStatus === 'ready' && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
           bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
           Tap anywhere to drop a pin
@@ -215,14 +189,14 @@ function CompaniesMap({ companies }) {
   function buildMarkers(L, map, list) {
     mksRef.current.forEach(m => m.remove())
     mksRef.current = []
-    const geo = list.filter(c => c.lat != null && c.lng != null)
+    const geo = list.filter(c => validPin(c.lat, c.lng))
     const markers = geo.map(co =>
       L.marker([co.lat, co.lng], { icon: makeCompanyIcon(L, co.name) })
         .addTo(map)
         .bindPopup(`
           <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.name}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0">${co.address}</p>
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.name)}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0">${escapeHtml(co.address)}</p>
             <p style="font-size:11px;font-weight:600;color:#16a34a;margin:5px 0 0">
               ${co.positions.length} position${co.positions.length !== 1 ? 's' : ''}
             </p>
@@ -236,16 +210,22 @@ function CompaniesMap({ companies }) {
     }
   }
 
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     let resizeObserver
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
       const map = L.map(elRef.current).setView([7.3072, 125.6839], 10)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       if (elRef.current.clientWidth) buildMarkers(L, map, companiesRef.current)
       else markersStale.current = true
@@ -262,6 +242,9 @@ function CompaniesMap({ companies }) {
         }
       })
       resizeObserver.observe(elRef.current)
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
     })
     return () => {
       alive = false
@@ -269,18 +252,21 @@ function CompaniesMap({ companies }) {
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, [])
+  }, [mapAttempt])
 
   useEffect(() => {
     companiesRef.current = companies
     if (!mapRef.current || !window.L) return
     if (!elRef.current?.clientWidth) { markersStale.current = true; return }
     buildMarkers(window.L, mapRef.current, companies)
-  }, [companies]) // eslint-disable-line
+  }, [companies])
 
   return (
-    <div ref={elRef} className="h-64 w-full overflow-hidden rounded-xl sm:h-80"
+    <div className="relative" style={{ isolation: 'isolate' }}>
+      <div ref={elRef} className="h-64 w-full overflow-hidden rounded-xl sm:h-80"
       style={{ isolation: 'isolate' }} />
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+    </div>
   )
 }
 
@@ -452,7 +438,14 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
   const [saving,        setSaving]        = useState(false)
 
   // Geocode whenever PSGC selection changes (add mode or changeAddr edit mode)
+  const geocodePending = useRef(null)
+  useEffect(() => () => geocodePending.current?.abort(), [])
+
   async function handleAddressChange(addr) {
+    geocodePending.current?.abort()
+    const controller = new AbortController()
+    geocodePending.current = controller
+    setGeocoding(false)
     setAddrParts(addr)
     setAddrErr('')
     if (addr.city) {
@@ -464,7 +457,8 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         barangay: addr.barangay,
         city:     addr.city,
         province: addr.province,
-      })
+      }, { signal: controller.signal })
+      if (controller.signal.aborted) return
       setMapCenter(coords)
       setGeocoding(false)
       setGeocodingLabel('')
@@ -563,6 +557,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         {changeAddr ? <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
           : <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">{initialData.address || 'No address set'}</div>}
         {geocoding && <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">{geocodingLabel}</p>}
+        {!geocoding && mapCenter?.approximate && <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">Address lookup unavailable. Showing the default Davao view; your pin is unchanged.</p>}
       </div>
       <div>
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Map location</p>
@@ -723,6 +718,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
                 <span className="text-gray-400 dark:text-gray-600 font-normal ml-1">— tap to place pin, drag to adjust</span>
               </p>
               <PinMap center={mapCenter} pinned={pinned} onPin={setPinned} />
+              {!geocoding && mapCenter?.approximate && <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">Address lookup unavailable. Showing the default Davao view; your pin is unchanged.</p>}
               <div className="mt-2 min-h-20px">
                 {pinned ? (
                   <p className="text-xs text-green-600 dark:text-green-400 text-center flex items-center justify-center gap-1">
@@ -766,6 +762,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
 // ════════════════════════════════════════════════════════════════════════════
 function PositionModal({ mode = 'add', companyName, initialData = null, categories, onClose, onSubmit }) {
   const isEdit = mode === 'edit'
+  const savePending = useRef(false)
 
   const [title,  setTitle]  = useState(initialData?.title || '')
   const [slots,  setSlots]  = useState(initialData?.slots ?? 1)
@@ -792,26 +789,35 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
       categories.forEach(c => { if (!(c in next)) next[c] = 0 })
       return next
     })
-  }, [categories]) // eslint-disable-line
+  }, [categories])
 
   async function handleSubmit() {
+    if (savePending.current) return
     if (!title.trim()) { setError('Position title is required.'); return }
-    if (Number(slots) < 1) { setError('Slots must be at least 1.'); return }
+    if (!String(slots).trim() || !Number.isInteger(Number(slots)) || Number(slots) < 0 || Number(slots) > 2147483647) { setError('Slots must be a whole number from 0 to 2147483647.'); return }
 
     const filteredReqs = Object.fromEntries(
       Object.entries(reqs).filter(([, v]) => v > 0)
     )
 
+    savePending.current = true
     setSaving(true)
-    const result = await onSubmit({
-      ...(initialData || {}),
-      title:        title.trim(),
-      slots:        Number(slots),
-      requirements: filteredReqs,
-      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-    })
-    setSaving(false)
-    if (result?.ok) onClose()
+    try {
+      const result = await onSubmit({
+        ...(initialData || {}),
+        title:        title.trim(),
+        slots:        Number(slots),
+        requirements: filteredReqs,
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      })
+      if (result?.ok) onClose()
+      else setError(result?.message || 'Position was not saved. Your changes are kept here.')
+    } catch {
+      setError('Save could not be confirmed. Your changes are kept here; check the list before retrying.')
+    } finally {
+      savePending.current = false
+      setSaving(false)
+    }
   }
 
   async function handleSuggestTags() {
@@ -868,7 +874,7 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
               Available Slots <span className="text-rose-500">*</span>
             </label>
-            <input type="number" min={1} value={slots}
+            <input type="number" min={0} max={2147483647} step={1} value={slots}
               onChange={e => { setSlots(e.target.value); setError('') }}
               className="w-28 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
           </div>

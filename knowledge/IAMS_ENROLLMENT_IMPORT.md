@@ -1,5 +1,11 @@
 # IAMS-compatible student enrollment
 
+The user confirmed on 18 October 2026 that the existing enrollment format is
+correct and came from official IAMS. Preserve this format and its importer.
+The development checklist's earlier assumption that its provenance was unknown
+was incorrect. Verification uses synthetic student records in that confirmed
+layout; it does not require exposing real student records.
+
 ## Scope and identity
 
 Instructors import into their own active batches. Administrators can choose any

@@ -1,3 +1,6 @@
+import { escapeHtml } from '../../utils/escapeHtml'
+import { loadLeaflet } from '../../utils/externalServices'
+import MapStatus from '../../components/MapStatus'
 import { HighestScoringAreas } from '../../components/CompetencyInsights'
 import { categoryPercentage } from '../../utils/assessmentSummary'
 import DataSection from '../../components/DataSection'
@@ -35,22 +38,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 // ── Leaflet singleton ─────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 function makeCompanyIcon(L, name, isTopMatch = false) {
   const pinFill = isTopMatch ? '#f59e0b' : '#16a34a'
@@ -69,7 +57,7 @@ function makeCompanyIcon(L, name, isTopMatch = false) {
           pointer-events:none;transition:all .18s;
           transform:translateX(-50%);left:50%;
         ">
-          ${isTopMatch ? '⭐ ' : ''}${name}
+          ${isTopMatch ? '⭐ ' : ''}${escapeHtml(name)}
           <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
             width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
             border-top:6px solid ${labelBg}"></div>
@@ -107,6 +95,10 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
   const openMarker = useRef(null)
   const initialView = useRef(initialCenter)
 
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setReady(false); framed.current = false; setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
@@ -119,22 +111,31 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
       const zoom = initialView.current ? 13 : 11
 
       const map = L.map(elRef.current).setView(center, zoom)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 150)
 
       mapRef.current = map
       setReady(true)
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) {
+        mapRef.current?.remove()
+        mapRef.current = null
+        setMapStatus('error')
+      }
     })
     return () => {
       alive = false
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // intentional
+  }, [mapAttempt]) // intentional
   useEffect(() => {
     if (!ready || !mapRef.current || !window.L) return
     const map = mapRef.current
@@ -156,10 +157,10 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
         .addTo(map)
         .bindPopup(`
           <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${co.company ?? co.name ?? 'Company'}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${co.position}</p>
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.company ?? co.name ?? 'Company')}</p>
+            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
             <div style="display:flex;gap:8px;font-size:11px;margin:0">
-              <span style="color:#16a34a;font-weight:600">${co.match}% match</span>
+              <span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% match</span>
               ${distTxt ? '· ' + distTxt : ''}
             </div>
           </div>`)
@@ -191,7 +192,10 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
 
 
   // Fill 100% of parent — parent must have an explicit height or use flex-1
-  return <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" style={{ isolation: 'isolate' }} />
+  return <div className="relative w-full h-full" style={{ isolation: 'isolate' }}>
+    <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" />
+    <MapStatus status={mapStatus} onRetry={retryMap} />
+  </div>
 }
 
 // ════════════════════════════════════════════════════════════════

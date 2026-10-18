@@ -1,3 +1,5 @@
+import { loadLeaflet, geocodeAddress } from '../../utils/externalServices'
+import MapStatus from '../../components/MapStatus'
 // src/pages/student/StudentSetup.jsx
 //
 // 4-step onboarding:
@@ -6,7 +8,7 @@
 //   Step 3: Pin exact location on map (home or boarding house)
 //   Step 4: Review & confirm
 //
-// Pinned lat/lng is saved to localStorage ('sb_pin_location')
+// Pinned lat/lng is saved in the authenticated student's profile
 // and used by StudentResults + StudentDashboard for proximity scoring.
 //
 // TODO Week 3: POST formData + { pinLat, pinLng } to Django API
@@ -15,6 +17,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
 import api from '../../api/axios'
+import { requestErrorMessage } from '../../api/requestErrors'
 
 // ================================================================
 const COURSES = ['BSIT', 'BSIS']
@@ -30,37 +33,10 @@ const TRAVEL_OPTIONS = [
 // ────────────────────────────────────────────────────────────────
 // Leaflet — loaded once from CDN (singleton)
 // ────────────────────────────────────────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 // ── Nominatim geocoder (free, no key) ────────────────────────────
-async function geocodeAddress({ barangay, city, province }) {
-  const q    = [barangay, city, province, 'Philippines'].filter(Boolean).join(', ')
-  const zoom = barangay ? 17 : city ? 15 : 12
-  try {
-    const res   = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'SkillBridge-Student/1.0' } }
-    )
-    const [hit] = await res.json()
-    if (hit) return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), zoom }
-  } catch { /* Use the Panabo fallback when geocoding is unavailable. */ }
-  return { lat: 7.3072, lng: 125.6839, zoom }   // fallback: Panabo City
-}
+
 
 // ── Blue pin icon for student location ──────────────────────────
 function makeStudentIcon(L) {
@@ -86,19 +62,29 @@ function PinMap({ center, pinned, onPin }) {
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
+  const latest = useRef({ center, pinned, onPin })
+  useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
+
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
+      const { center, pinned } = latest.current
       const map = L.map(elRef.current).setView(
         center ? [center.lat, center.lng] : [7.3072, 125.6839],
         center?.zoom ?? 14
       )
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       setTimeout(() => map.invalidateSize(), 150)
 
@@ -111,15 +97,22 @@ function PinMap({ center, pinned, onPin }) {
           }).addTo(map)
           mkRef.current.on('dragend', ev => {
             const p = ev.target.getLatLng()
-            onPin({ lat: p.lat, lng: p.lng })
+            latest.current.onPin({ lat: p.lat, lng: p.lng })
           })
         }
-        onPin({ lat, lng })
+        latest.current.onPin({ lat, lng })
       }
 
       if (pinned) placeMk(pinned.lat, pinned.lng)
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) {
+        mapRef.current?.remove()
+        mapRef.current = null
+        setMapStatus('error')
+      }
     })
     return () => {
       alive = false
@@ -127,7 +120,7 @@ function PinMap({ center, pinned, onPin }) {
       mapRef.current = null
       mkRef.current  = null
     }
-  }, []) // intentional — only mount/unmount
+  }, [mapAttempt]) // intentional — only mount/unmount
 
   // Re-center when geocoding resolves
   useEffect(() => {
@@ -139,7 +132,8 @@ function PinMap({ center, pinned, onPin }) {
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200" style={{ height: 264 }}>
       <div ref={elRef} className="absolute inset-0" />
-      {!pinned && (
+      <MapStatus status={mapStatus} onRetry={retryMap} />
+      {!pinned && mapStatus === 'ready' && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none
           bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
           Tap anywhere to drop a pin
@@ -170,6 +164,8 @@ export default function StudentSetup() {
 
   // Step 3 state
   const [mapCenter, setMapCenter] = useState(null)
+  const geocodeRequest = useRef(null)
+  useEffect(() => () => geocodeRequest.current?.abort(), [])
   const [geocoding, setGeocoding] = useState(false)
   const [pinnedLoc, setPinnedLoc] = useState(null)   // { lat, lng }
   // Which address to center on in step 3 (only relevant when stayingAt === 'boarding')
@@ -178,6 +174,7 @@ export default function StudentSetup() {
   const [errors, setErrors] = useState({})
   const [submitError,  setSubmitError]  = useState('')   // ← add
   const [submitLoading, setSubmitLoading] = useState(false) // ← add
+  const submittingRef = useRef(false)
 
   function updateForm(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -200,9 +197,14 @@ export default function StudentSetup() {
     const addr = useBoarding
       ? { barangay: formData.boardingBarangay, city: formData.boardingCity, province: formData.boardingProvince }
       : { barangay: formData.homeBarangay,     city: formData.homeCity,     province: formData.homeProvince }
-    if (!addr.city && !addr.province) return
+    geocodeRequest.current?.abort()
+    const controller = new AbortController()
+    geocodeRequest.current = controller
     setGeocoding(true)
-    geocodeAddress(addr).then(coords => { setMapCenter(coords); setGeocoding(false) })
+    geocodeAddress(addr, { signal: controller.signal }).then(coords => {
+      if (controller.signal.aborted) return
+      setMapCenter(coords); setGeocoding(false)
+    })
   }
 
   // Auto-geocode when entering Step 3
@@ -251,7 +253,6 @@ export default function StudentSetup() {
         return
       }
       setFormData(prev => ({ ...prev, pinLat: pinnedLoc.lat, pinLng: pinnedLoc.lng }))
-      localStorage.setItem('sb_pin_location', JSON.stringify(pinnedLoc))
       setErrors({})
     }
     setStep(s => s + 1)
@@ -260,36 +261,35 @@ export default function StudentSetup() {
   function handleBack() { setErrors({}); setStep(s => s - 1) }
 
   async function handleSubmit() {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitError('')
     setSubmitLoading(true)
   
-    if (formData.pinLat) {
-      localStorage.setItem('sb_pin_location', JSON.stringify({ lat: formData.pinLat, lng: formData.pinLng }))
-    }
   
-    console.log('Token being sent:', localStorage.getItem('sb-token'))
-    console.log('Form data being sent:', formData)
   
     try {
       const res = await api.patch('/api/students/me/profile/', formData)
       localStorage.setItem('sb-user', JSON.stringify(res.data))
       navigate('/student/dashboard')
     } catch (err) {
-      console.log('Setup save error:', err.response?.data)
       const status = err.response?.status
   
-      if (status === 401) {
+      if (err.userMessage) {
+        setSubmitError(requestErrorMessage(err, { mutation: true }))
+      } else if (status === 401) {
         setSubmitError('Your session expired. Please go back to login and sign in again.')
       } else if (status === 403) {
         setSubmitError('Access denied. Only students can complete this setup.')
       } else if (status === 500) {
         setSubmitError('Server error. Please try again in a moment.')
       } else if (!err.response) {
-        setSubmitError('Cannot reach the server. Make sure the backend is running.')
+        setSubmitError(requestErrorMessage(err, { mutation: true }))
       } else {
-        setSubmitError('Failed to save your profile. Please try again.')
+        setSubmitError(requestErrorMessage(err, { mutation: true }))
       }
     } finally {
+      submittingRef.current = false
       setSubmitLoading(false)
     }
   }
@@ -466,7 +466,7 @@ export default function StudentSetup() {
             <div className="flex items-center gap-2 mb-3 h-5">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               <span className="text-xs text-blue-600 font-medium">
-                {geocoding ? `Locating ${pinAddressLabel}…` : `Centered on ${pinAddressLabel}`}
+                {geocoding ? `Locating ${pinAddressLabel}…` : mapCenter?.approximate ? 'Address lookup unavailable; showing default Panabo view. Your pin is unchanged.' : `Centered on ${pinAddressLabel}`}
               </span>
               {geocoding && <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />}
             </div>

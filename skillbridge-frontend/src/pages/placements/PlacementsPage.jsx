@@ -1,5 +1,5 @@
 import DataSection from '../../components/DataSection'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import Avatar from '../../components/Avatar'
 import CompanyImage from '../../components/CompanyImage'
 import ScoreLabel from '../../components/ScoreLabel'
@@ -74,6 +74,8 @@ function ModalShell({ children, onClose, width = 'max-w-lg' }) {
 
 function ActionModal({ action, busy, onClose, onSubmit }) {
   const [remarks, setRemarks] = useState('')
+  const [error, setError] = useState('')
+  const pending = useRef(false)
   if (!action) return null
   const labels = {
     approve: ['Approve placement?', 'The backend will validate the student and reserve one available slot.', 'Approve student', 'bg-green-600 hover:bg-green-700'],
@@ -83,8 +85,14 @@ function ActionModal({ action, busy, onClose, onSubmit }) {
   const [title, description, button, buttonClass] = labels[action.type]
   async function submit(event) {
     event.preventDefault()
-    const result = await onSubmit(action, remarks.trim())
-    if (result?.ok) onClose()
+    if (pending.current) return
+    pending.current = true; setError('')
+    try {
+      const result = await onSubmit(action, remarks.trim())
+      if (result?.ok) onClose()
+      else setError(result?.message || 'The action was not saved. Check the current placement before retrying.')
+    } catch { setError('The action could not be confirmed. Refresh the placement before trying again.') }
+    finally { pending.current = false }
   }
   return (
     <ModalShell onClose={onClose}>
@@ -98,6 +106,7 @@ function ActionModal({ action, busy, onClose, onSubmit }) {
         </div>
         <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mt-4 mb-1.5">Reason or remarks (optional)</label>
         <textarea value={remarks} onChange={event => setRemarks(event.target.value)} rows={3} autoFocus placeholder="Add context for placement history…" className={inputClass} />
+        {error && <p role="alert" className="mt-3 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
         <div className="flex gap-2 mt-5">
           <button type="button" onClick={onClose} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50">Cancel</button>
           <button type="submit" disabled={busy} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${buttonClass}`}>{busy ? 'Saving…' : button}</button>

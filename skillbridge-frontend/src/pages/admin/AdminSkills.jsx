@@ -167,7 +167,7 @@ export default function AdminSkills() {
       {deleteConfirm && (
         <ConfirmModal
           title="Delete Skill Category?"
-          message={`Are you sure you want to delete "${deleteConfirm.name}"? This action cannot be undone and will affect any assessments or positions using this skill.`}
+          message={`Delete unused category "${deleteConfirm.name}"? Categories used by questions, requirements or score history are protected.`}
           confirmLabel="Delete"
           onConfirm={handleDelete}
           onCancel={() => setDeleteConfirm(null)}

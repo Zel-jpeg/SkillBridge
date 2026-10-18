@@ -1,3 +1,4 @@
+from django.db.models.functions import TruncDate
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
 from rest_framework.decorators import api_view, permission_classes
@@ -9,15 +10,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Count, Sum, Max, Q, F
 from django.db.models.deletion import ProtectedError
 from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.html import escape
 from django.http import HttpResponse
 from zoneinfo import ZoneInfo
 from .assessment_presentation import assessment_summary, category_percentage, development_text
 from .csv_safety import SafeCSVWriter
-from .request_validation import parse_boolean, parse_choice_flags
+from .request_validation import parse_boolean, parse_choice_flags, parse_question_fields
 from .models import (
     User, Batch, BatchEnrollment, SkillCategory,
     Assessment, Question, AnswerChoice,
@@ -29,8 +31,11 @@ from .models import (
 )
 from .change_events import category_created, notify_changes
 from .serializers import UserSerializer
+from .admin_accounts import instructor_payload
+from .catalog_validation import company_fields, position_data, invalid, tags_value
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
+from .attempt_timing import check_attempt_identity, timing, mark_expired_for_review, EXPIRY_REVIEW_REASON, EXPIRY_REVIEW_MESSAGE
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
 from .combined_competency import (
     combined_is_unlocked, ensure_combined, recalculate_combined,
@@ -38,6 +43,7 @@ from .combined_competency import (
 )
 from .recommendation_nlp import (
     MODEL_OPTIONS, model_status, normalize_tags, suggest_position_tags, suggest_skill_tags,
+    company_address_text, valid_coordinates,
 )
 
 
@@ -84,6 +90,16 @@ def _parse_assessment_datetime(value):
     if parsed is None:
         raise ValueError('Invalid datetime')
     return timezone.make_aware(parsed, PROJECT_TIMEZONE) if timezone.is_naive(parsed) else parsed
+
+
+def _question_category_name(value):
+    # Taxonomy is shared across staff; created_by is attribution, not ownership.
+    if not isinstance(value, str) or len(value.strip()) > 100:
+        invalid('category', 'Category must be text with at most 100 characters.')
+    name = value.strip()
+    if name and SkillCategory.objects.filter(name__iexact=name).count() > 1:
+        invalid('category', 'This category name is ambiguous. Ask an administrator to resolve duplicate categories.')
+    return name
 
 
 def _question_error(question):
@@ -140,6 +156,7 @@ def serialize_recommendation(recommendation):
     """Stable recommendation payload shared by student/admin/instructor APIs."""
     position = recommendation.position
     company = position.company
+    coordinates = valid_coordinates(company.location_lat, company.location_lng)
     return {
         'id': recommendation.id,
         'position_id': position.id,
@@ -147,19 +164,15 @@ def serialize_recommendation(recommendation):
         'company': company.name,
         **image_fields(company, 'company_'),
         'slots': position.slots_available,
-        'match_score': round(recommendation.match_score, 1),
+        'match_score': recommendation.match_score,
         'category_score_component': round(recommendation.category_score_component, 1),
         'nlp_score_component': round(recommendation.nlp_score_component, 1),
         'location_score_component': round(recommendation.location_score_component, 1),
         'model_used': recommendation.model_used,
         'distance_km': round(recommendation.distance_km, 1) if recommendation.distance_km is not None else None,
-        'lat': company.location_lat,
-        'lng': company.location_lng,
-        'address': ', '.join(filter(None, [
-            (company.address or {}).get('barangay', ''),
-            (company.address or {}).get('city', ''),
-            (company.address or {}).get('province', ''),
-        ])) or None,
+        'lat': coordinates[0] if coordinates else None,
+        'lng': coordinates[1] if coordinates else None,
+        'address': company_address_text(company.address),
         'tags': list(dict.fromkeys(
             [req.skill_category.name for req in position.requirements.select_related('skill_category').all()]
             + list(position.tags or [])
@@ -387,8 +400,14 @@ def latest_competency_profiles(student_ids, assessment=None, batch=None):
 class LoginRateThrottle(AnonRateThrottle):
     scope = 'login'
 
+    def get_cache_key(self, request, view):
+        # Password guessing stays bounded even with a valid existing JWT.
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
 
 def get_instructor_email_html(name, frontend_url, instructor_id=None, department=None):
+    name, frontend_url = escape(name), escape(frontend_url)
+    instructor_id, department = escape(instructor_id or ''), escape(department or '')
     details_html = ""
     if instructor_id and department:
         details_html = f"""
@@ -428,6 +447,7 @@ def get_instructor_email_html(name, frontend_url, instructor_id=None, department
 
 
 def get_student_enrollment_email_html(student_name, instructor_name, batch_name, frontend_url):
+    student_name, instructor_name, batch_name, frontend_url = map(escape, (student_name, instructor_name, batch_name, frontend_url))
     """HTML email sent to a student when an instructor enrolls them in a batch."""
     return f"""
     <div style="font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
@@ -486,8 +506,15 @@ def login(request):
             status=status.HTTP_429_TOO_MANY_REQUESTS
         )
 
-    email    = request.data.get('email', '').strip().lower()
+    if not isinstance(request.data, dict):
+        return Response({'error': 'Sign-in details must be an object.'}, status=400)
+    email = request.data.get('email', '')
     password = request.data.get('password', '')
+    if not isinstance(email, str) or not isinstance(password, str):
+        return Response({'error': 'Email and password must be text.'}, status=400)
+    if len(email) > 254 or len(password) > 4096:
+        return Response({'error': 'Sign-in input exceeds the supported length.'}, status=400)
+    email = email.strip().lower()
 
     if not email or not password:
         return Response(
@@ -503,12 +530,8 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    # Block instructors who haven't been approved yet
-    if user.role == 'instructor' and not user.is_approved:
-        return Response(
-            {'error': 'pending'},
-            status=status.HTTP_403_FORBIDDEN
-        )
+    if user.role != 'admin':
+        return Response({'error': 'google_required', 'message': 'Students and instructors sign in with their DNSC Google account.'}, status=403)
 
     refresh = RefreshToken.for_user(user)
     return Response({
@@ -522,13 +545,28 @@ def login(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def refresh(request):
-    token = request.data.get('refresh')
-    if not token:
+    token = request.data.get('refresh') if isinstance(request.data, dict) else None
+    if not isinstance(token, str) or not token or len(token) > 8192:
         return Response({'error': 'Refresh token required.'}, status=400)
+    from .authentication import AccountJWTAuthentication
+    from rest_framework_simplejwt.exceptions import TokenError
+    from rest_framework.exceptions import AuthenticationFailed
     try:
         r = RefreshToken(token)
-        return Response({'access': str(r.access_token)})
-    except Exception:
+        user = AccountJWTAuthentication().get_user(r)
+        if user.role not in ('admin', 'instructor', 'student'):
+            raise ValueError('Unsupported role')
+        if user.role in ('student', 'instructor') and not user.is_approved:
+            raise ValueError('Approval revoked')
+        if user.role == 'student' and not BatchEnrollment.objects.filter(student=user).exists():
+            raise ValueError('Enrollment revoked')
+        access = r.access_token
+        # Renewal does not extend the original seven-day session boundary.
+        access['exp'] = min(access['exp'], r['exp'])
+        return Response({'access': str(access)})
+    except DatabaseError:
+        return Response({'error': 'Session renewal is temporarily unavailable. Please try again.'}, status=503)
+    except (TokenError, AuthenticationFailed, ValueError, KeyError, TypeError):
         return Response({'error': 'Invalid or expired token.'}, status=401)
 
 
@@ -546,10 +584,36 @@ def _google_userinfo(access_token):
         return http_requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
             headers={'Authorization': f'Bearer {access_token}'},
-            timeout=(3.05, 10),
+            timeout=(3.05, 10), allow_redirects=False,
         )
     except http_requests.RequestException:
         return None
+
+
+def _verified_google_identity(data):
+    """Validate local payload and provider identity without trusting client claims."""
+    if not isinstance(data, dict) or not isinstance(data.get('token'), str) or not data['token'].strip() or len(data['token']) > 8192:
+        return None, Response({'error': 'A Google access token is required.'}, status=400)
+    provider = _google_userinfo(data['token'])
+    if provider is None or provider.status_code not in (200, 400, 401, 403):
+        return None, Response({'error': 'Google sign-in is temporarily unavailable. Please try again.'}, status=503)
+    if provider.status_code != 200:
+        return None, Response({'error': 'Invalid token'}, status=401)
+    try:
+        identity = provider.json()
+    except (ValueError, TypeError):
+        identity = None
+    if not isinstance(identity, dict) or not isinstance(identity.get('email'), str):
+        return None, Response({'error': 'Google sign-in returned an invalid identity. Please try again.'}, status=503)
+    email = identity['email'].strip().lower()
+    if not email.endswith('@dnsc.edu.ph') or len(email) > 254 or email.count('@') != 1 or not email.split('@')[0] or any(char.isspace() for char in email):
+        return None, Response({'error': 'not_dnsc'}, status=403)
+    if identity.get('email_verified') is not True:
+        return None, Response({'error': 'email_unverified', 'message': 'Verify your DNSC Google email before signing in.'}, status=403)
+    name, photo = identity.get('name') or email.split('@')[0], identity.get('picture') or ''
+    if not isinstance(name, str) or len(name) > 255 or not isinstance(photo, str):
+        return None, Response({'error': 'Google sign-in returned an invalid identity. Please try again.'}, status=503)
+    return {'email': email, 'name': name, 'picture': photo}, None
 
 
 # ── POST /api/auth/google/ ────────────────────────────────────────
@@ -557,24 +621,10 @@ def _google_userinfo(access_token):
 @permission_classes([AllowAny])
 @notify_changes('identity')
 def google_login(request):
-    access_token = request.data.get('token')
-    if not access_token:
-        return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-    google_response = _google_userinfo(access_token)
-    if google_response is None:
-        return Response({'error': 'Google sign-in is temporarily unavailable. Please try again.'}, status=503)
-
-    if google_response.status_code != 200:
-        return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
-
-    idinfo    = google_response.json()
-    email     = idinfo.get('email', '')
-    name      = idinfo.get('name', '')
-    photo_url = idinfo.get('picture', '')
-
-    if not email.endswith('@dnsc.edu.ph'):
-        return Response({'error': 'not_dnsc'}, status=status.HTTP_403_FORBIDDEN)
+    identity, error = _verified_google_identity(request.data)
+    if error is not None:
+        return error
+    email, name, photo_url = identity['email'], identity['name'], identity['picture']
 
     try:
         user = User.objects.get(email=email)
@@ -583,6 +633,11 @@ def google_login(request):
             {'error': 'role_selection_required', 'email': email, 'name': name},
             status=status.HTTP_403_FORBIDDEN
         )
+
+    if not user.is_active:
+        return Response({'error': 'account_disabled', 'message': 'This account is inactive. Contact your system administrator.'}, status=403)
+    if user.role == 'admin':
+        return Response({'error': 'admin_password_required', 'message': 'Administrators sign in with their individual password.'}, status=403)
 
     if user.role == 'instructor' and not user.is_approved:
         return Response({'error': 'pending'}, status=status.HTTP_403_FORBIDDEN)
@@ -609,30 +664,18 @@ def google_login(request):
 @permission_classes([AllowAny])
 @notify_changes('identity')
 def register_role(request):
-    access_token = request.data.get('token')
-    role = request.data.get('role', '').strip().lower()
-
-    if not access_token:
-        return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
-    if role not in ('student', 'instructor'):
-        return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
-
-    google_response = _google_userinfo(access_token)
-    if google_response is None:
-        return Response({'error': 'Google sign-in is temporarily unavailable. Please try again.'}, status=503)
-    if google_response.status_code != 200:
-        return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
-
-    idinfo = google_response.json()
-    email = idinfo.get('email', '')
-    name = idinfo.get('name', '')
-    photo_url = idinfo.get('picture', '')
-
-    if not email.endswith('@dnsc.edu.ph'):
-        return Response({'error': 'not_dnsc'}, status=status.HTTP_403_FORBIDDEN)
+    if not isinstance(request.data, dict) or request.data.get('role') not in ('student', 'instructor'):
+        return Response({'error': 'Invalid role'}, status=400)
+    role = request.data['role']
+    identity, error = _verified_google_identity(request.data)
+    if error is not None:
+        return error
+    email, name, photo_url = identity['email'], identity['name'], identity['picture']
 
     existing = User.objects.filter(email=email).first()
     if existing:
+        if not existing.is_active:
+            return Response({'error': 'account_disabled'}, status=403)
         existing.name = name or existing.name
         existing.photo_url = photo_url or ''
         existing.save(update_fields=['name', 'photo_url'])
@@ -677,32 +720,22 @@ def student_profile(request):
     if user.role != 'student':
         return Response({'error': 'Not a student'}, status=status.HTTP_403_FORBIDDEN)
 
-    address = {
-        'stayingAt':     request.data.get('stayingAt', ''),
-        'travelWilling': request.data.get('travelWilling', ''),
-        'home': {
-            'province': request.data.get('homeProvince', ''),
-            'city':     request.data.get('homeCity', ''),
-            'barangay': request.data.get('homeBarangay', ''),
-        },
-        'boarding': {
-            'province': request.data.get('boardingProvince', ''),
-            'city':     request.data.get('boardingCity', ''),
-            'barangay': request.data.get('boardingBarangay', ''),
-        },
-        'pinLat': request.data.get('pinLat'),
-        'pinLng': request.data.get('pinLng'),
-    }
-
-    user.name      = request.data.get('name',      user.name) or user.name
-    user.school_id = request.data.get('studentId', user.school_id)
-    user.course    = request.data.get('course',    user.course)
-    user.phone     = request.data.get('phone',     user.phone)
-    user.address   = address
-    user.save(update_fields=['name', 'school_id', 'course', 'phone', 'address'])
-    enrollment = current_enrollment(user)
-    if enrollment and combined_is_unlocked(user, enrollment.batch):
-        recalculate_combined(user, enrollment.batch)
+    from .profile_validation import profile_data
+    try:
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user.pk)
+            changes = profile_data(request.data, user)
+            for field, value in changes.items():
+                setattr(user, field, value)
+            if changes:
+                user.save(update_fields=list(changes))
+                enrollment = current_enrollment(user)
+                if enrollment and combined_is_unlocked(user, enrollment.batch):
+                    recalculate_combined(user, enrollment.batch)
+    except IntegrityError:
+        # A concurrent request may claim a school ID after pre-validation.
+        return Response({'error': 'Profile identity conflicts with an existing record. Check your student ID.',
+                         'field': 'studentId'}, status=409)
 
     return Response(UserSerializer(user).data)
 
@@ -820,7 +853,14 @@ def suggest_category_view(request):
     Returns: { "suggested_category": "Database" } or null
     """
     from .scoring import suggest_category
-    question_text = request.data.get('question_text', '').strip()
+    if request.user.role not in ('instructor', 'admin'):
+        return Response({'error': 'Forbidden'}, status=403)
+    if not isinstance(request.data, dict):
+        return Response({'error': 'Expected an object.', 'field': 'question_text'}, status=400)
+    question_text = request.data.get('question_text', '')
+    if not isinstance(question_text, str):
+        return Response({'error': 'Question text must be text.', 'field': 'question_text'}, status=400)
+    question_text = question_text.strip()
     if not question_text:
         return Response({'suggested_category': None})
 
@@ -836,20 +876,20 @@ def suggest_tags_view(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
+    if not isinstance(request.data, dict):
+        return Response({'error': 'Expected an object.', 'field': 'type'}, status=400)
     tag_type = request.data.get('type')
+    for field in ('name', 'description', 'title'):
+        if field in request.data and not isinstance(request.data[field], str):
+            return Response({'error': f'{field} must be text.', 'field': field}, status=400)
     if tag_type == 'skill':
         return Response({'suggested_tags': suggest_skill_tags(
             request.data.get('name', ''), request.data.get('description', '')
         )})
     if tag_type == 'position':
-        requirements = []
-        for category_name, percentage in (request.data.get('requirements') or {}).items():
-            category = SkillCategory.objects.filter(name__iexact=category_name).first()
-            requirements.append({
-                'name': category_name,
-                'percentage': percentage,
-                'tags': category.tags if category else [],
-            })
+        from .catalog_validation import requirements_value
+        requirements = [{'name': category.name, 'percentage': percentage, 'tags': category.tags}
+                        for category, percentage in requirements_value(request.data.get('requirements', {}))]
         return Response({'suggested_tags': suggest_position_tags(
             request.data.get('title', ''), requirements
         )})
@@ -918,11 +958,11 @@ def instructor_batches(request):
         } for b in batches])
 
     # POST — create batch
-    name = request.data.get('name', '').strip()
-    if not name:
-        return Response({'error': 'name is required'}, status=400)
+    name = request.data.get('name', '')
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > 100:
+        return Response({'error': 'Batch name must be text with 1 to 100 characters.', 'field': 'name'}, status=400)
 
-    batch = Batch.objects.create(name=name, instructor=request.user)
+    batch = Batch.objects.create(name=name.strip(), instructor=request.user)
     return Response({'id': batch.id, 'name': batch.name, 'status': batch.status}, status=201)
 
 
@@ -981,6 +1021,7 @@ def instructor_batch_enroll(request, batch_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
+@transaction.atomic
 def instructor_batch_archive(request, batch_id):
     """Mark a batch as archived (read-only). Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1001,6 +1042,7 @@ def instructor_batch_archive(request, batch_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
+@transaction.atomic
 def instructor_batch_unarchive(request, batch_id):
     """Mark a batch as active. Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1064,16 +1106,27 @@ def instructor_student_retake(request, student_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('student')
+@transaction.atomic
 def instructor_student_remove(request, student_id):
-    """Unenroll a student from all of this instructor's batches."""
+    """Unenroll from a selected owned batch; legacy callers omit batch_id."""
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
+    batch_id, error = _positive_int(request.query_params.get('batch_id'), 'batch_id')
+    if error:
+        return Response({'error': error, 'field': 'batch_id'}, status=400)
     batches = Batch.objects.filter(instructor=request.user)
+    if batch_id is not None:
+        batches = Batch.objects.filter(pk=batch_id)
+        if request.user.role != 'admin':
+            batches = batches.filter(instructor=request.user)
+    removed_batches = list(BatchEnrollment.objects.filter(batch__in=batches, student_id=student_id).values_list('batch_id', flat=True))
     deleted, _ = BatchEnrollment.objects.filter(
         batch__in=batches, student_id=student_id
     ).delete()
     if deleted == 0:
         return Response({'error': 'Student not found in your batches'}, status=404)
+    Recommendation.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_current=False)
+    CombinedCompetencyProfile.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_finalized=False, finalized_at=None)
     return Response({'deleted': True, 'student_id': student_id})
 
 
@@ -1125,7 +1178,7 @@ def instructor_batch_students(request, batch_id):
         Recommendation.objects
         .filter(student_id__in=student_ids, batch=batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('student_id', '-match_score')
+        .order_by('student_id', '-match_score', 'position_id', 'id')
     )
     recs_by_student = defaultdict(list)
     for r in all_recs:
@@ -1291,7 +1344,7 @@ def management_assessment_reports(request):
     elif report_type == 'student_competency':
         rows = []
         rec_map = {}
-        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by('student_id', '-match_score', 'id'):
+        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by('student_id', '-match_score', 'position_id', 'id'):
             rec_map.setdefault((rec.student_id, rec.batch_id), []).append(rec)
         placements = _visible_placements_by_student([e.student_id for e in enrollments])
         student_rows_by_key = {(row['student_id'], row['batch_id']): row for row in student_rows}
@@ -1384,6 +1437,7 @@ def management_assessment_reports(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('assessment')
+@transaction.atomic
 def instructor_assessments(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1452,10 +1506,10 @@ def instructor_assessments(request):
         for index, question in enumerate(questions_data):
             if not isinstance(question, dict):
                 raise ValueError(f'questions.{index} must be a question object.')
-            normalized_questions.append({**question, 'choices': parse_choice_flags(
-                question.get('choices', []), f'questions.{index}.choices',
-            )})
+            normalized_questions.append(parse_question_fields(question))
         questions_data = normalized_questions
+        for question in questions_data:
+            question['category'] = _question_category_name(question.get('category', ''))
     except ValueError as exc:
         return Response({'error': str(exc)}, status=400)
 
@@ -1577,13 +1631,14 @@ def instructor_assessments(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 @notify_changes('assessment')
+@transaction.atomic
 def instructor_assessment_detail(request, assessment_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
         queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
-        assessment = queryset.get(id=assessment_id)
+        assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
@@ -1593,6 +1648,8 @@ def instructor_assessment_detail(request, assessment_id):
 
     # Only allow changing non-question fields after students may have submitted
     if 'title' in request.data:
+        if not isinstance(request.data['title'], str) or len(request.data['title'].strip()) > 255:
+            return Response({'error': 'Title must be text with at most 255 characters.', 'field': 'title'}, status=400)
         assessment.title = request.data['title'].strip()
     if 'duration_minutes' in request.data:
         try:
@@ -1638,10 +1695,14 @@ def instructor_assessment_detail(request, assessment_id):
         return Response({'error': 'due_at must follow available_at'}, status=400)
     if not assessment.title:
         return Response({'error': 'Title is required.', 'field': 'title'}, status=400)
+    question_plan = None
+    if 'question_changes' in request.data:
+        from .assessment_authoring import prepare_changes
+        question_plan = prepare_changes(assessment, request.data['question_changes'], _question_category_name, _question_error)
     if assessment.publication_status == Assessment.PUBLICATION_PUBLISHED:
         if assessment.batch_id is None:
             return Response({'error': 'Choose a batch before publishing.', 'field': 'batch_id'}, status=400)
-        error = _stored_question_error(assessment)
+        error = _stored_question_error(assessment) if question_plan is None else None
         if error:
             return Response({'error': error, 'field': 'questions'}, status=400)
     if (assessment.publication_status == Assessment.PUBLICATION_DRAFT and
@@ -1649,6 +1710,9 @@ def instructor_assessment_detail(request, assessment_id):
             StudentResponse.objects.filter(assessment=assessment).exists()):
         return Response({'error': 'An assessment with attempts cannot return to draft.'}, status=409)
 
+    if question_plan is not None:
+        from .assessment_authoring import apply_changes
+        apply_changes(assessment, question_plan, request.user)
     assessment.save()
     new_scoring_state = (
         assessment.publication_status, assessment.is_required, assessment.include_in_competency,
@@ -1656,6 +1720,7 @@ def instructor_assessment_detail(request, assessment_id):
     if assessment.batch_id and old_scoring_state != new_scoring_state:
         recalculate_enrolled_students(assessment.batch)
 
+    from .assessment_authoring import authoring_questions
     return Response({
         'id':               assessment.id,
         'title':            assessment.title,
@@ -1667,6 +1732,7 @@ def instructor_assessment_detail(request, assessment_id):
         'display_order': assessment.display_order,
         'available_at': assessment.available_at,
         'due_at': assessment.due_at,
+        **({'questions': authoring_questions(assessment)} if question_plan is not None else {}),
     })
 
 
@@ -1715,6 +1781,7 @@ def instructor_assessment_questions(request, assessment_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('question')
+@transaction.atomic
 def instructor_assessment_add_questions(request, assessment_id):
     """
     Append new questions (from a parsed file upload) to an existing assessment.
@@ -1754,7 +1821,7 @@ def instructor_assessment_add_questions(request, assessment_id):
  
     try:
         queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
-        assessment = queryset.get(id=assessment_id)
+        assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
  
@@ -1762,14 +1829,18 @@ def instructor_assessment_add_questions(request, assessment_id):
     try:
         if not isinstance(questions_data, list):
             raise ValueError('questions must be a list.')
-        questions_data = [{**question, 'choices': parse_choice_flags(
-            question.get('choices', []), f'questions.{index}.choices',
-        )} for index, question in enumerate(questions_data)]
+        questions_data = [parse_question_fields(question) for question in questions_data]
     except (ValueError, AttributeError, TypeError) as exc:
         return Response({'error': str(exc) if isinstance(exc, ValueError) else 'Each question must be an object.'}, status=400)
  
     if not questions_data:
         return Response({'error': 'at least one question is required'}, status=400)
+    for question in questions_data:
+        question['category'] = _question_category_name(question.get('category', ''))
+        if assessment.publication_status == Assessment.PUBLICATION_PUBLISHED:
+            error = _question_error(question)
+            if error:
+                return Response({'error': error, 'field': 'questions'}, status=400)
     if StudentResponse.objects.filter(assessment=assessment).exists():
         return Response({'error': 'Questions cannot be added after an attempt exists; existing submissions are preserved.'}, status=409)
  
@@ -1841,6 +1912,7 @@ def instructor_assessment_add_questions(request, assessment_id):
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('question')
+@transaction.atomic
 def instructor_question_detail(request, question_id):
     """
     PATCH  → update question text, type, choices, category.
@@ -1879,6 +1951,8 @@ def instructor_question_detail(request, question_id):
     except Question.DoesNotExist:
         return Response({'error': 'Question not found'}, status=404)
 
+    Assessment.objects.select_for_update().get(pk=question.assessment_id)
+    question.refresh_from_db()
     if StudentResponse.objects.filter(assessment=question.assessment).exists():
         return Response({'error': 'Question changes are locked after an attempt exists.'}, status=409)
  
@@ -1888,11 +1962,29 @@ def instructor_question_detail(request, question_id):
         return Response({'ok': True})
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
-    data = request.data
+    try:
+        data = parse_question_fields(request.data, partial=True)
+    except ValueError as exc:
+        return Response({'error': str(exc), 'field': 'question'}, status=400)
+    if 'category' in data:
+        _question_category_name(data['category'])
     try:
         parsed_choices = parse_choice_flags(data['choices']) if 'choices' in data else None
     except ValueError as exc:
         return Response({'error': str(exc), 'field': 'choices'}, status=400)
+
+    if question.assessment.publication_status == Assessment.PUBLICATION_PUBLISHED:
+        existing_choices = [{'text': choice.choice_text, 'is_correct': choice.is_correct} for choice in question.choices.all()]
+        candidate = {
+            'question_text': question.question_text, 'question_type': question.question_type,
+            'category': question.skill_category.name if question.skill_category else '',
+            'choices': existing_choices,
+            'correct_answer': next((choice['text'] for choice in existing_choices if choice['is_correct']), ''),
+            **data,
+        }
+        error = _question_error(candidate)
+        if error:
+            return Response({'error': error, 'field': 'question'}, status=400)
  
     if 'question_text' in data:
         question.question_text = (data['question_text'] or '').strip()
@@ -2023,6 +2115,7 @@ def assessment_list(request):
             'available_at': assessment.available_at,
             'due_at': assessment.due_at,
             'attempt_status': response.status if response else None,
+            'stopped_reason': response.stopped_reason if response else '',
             'stopped_reason_display': response.stopped_reason_display if response else '',
             'started_at': response.started_at if response else None,
             'submitted_at': response.submitted_at if response else None,
@@ -2106,6 +2199,14 @@ def assessment_start(request, assessment_id):
     # near-simultaneous /start/ requests from returning different arrangements.
     was_retake = False
     with transaction.atomic():
+        # Authoring and first delivery serialize on the same parent row, before
+        # an attempt exists. Authoring cannot race a delivered grading key.
+        locked = Assessment.objects.select_for_update().filter(pk=assessment_id).first()
+        if locked is None:
+            return Response({'error': 'Assessment not found'}, status=404)
+        assessment, access_error = _student_assessment(request, assessment_id)
+        if access_error is not None:
+            return access_error
         now = timezone.now()
         response_obj, created = (
             StudentResponse.objects.select_for_update().get_or_create(
@@ -2204,6 +2305,7 @@ def assessment_start(request, assessment_id):
         'time_limit_sec': assessment.duration_minutes * 60,
         'questions':      q_list,
         'status':         response_obj.status,
+        **timing(response_obj),
     })
 
 
@@ -2239,31 +2341,30 @@ def assessment_submit(request, assessment_id):
         except StudentResponse.DoesNotExist:
             return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
 
-        response_id = request.data.get('response_id')
-        if response_id and str(response_obj.id) != str(response_id):
-            return Response({'error': 'Attempt does not match response_id.'}, status=400)
+        check_attempt_identity(response_obj, request.data)
         if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
             return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
 
-        # Timer validation remains non-blocking, matching the existing behavior.
-        if response_obj.started_at:
-            elapsed = (timezone.now() - response_obj.started_at).total_seconds()
-            allowed = assessment.duration_minutes * 60 + 30
-            if elapsed > allowed:
-                pass
-
+        now = timezone.now()
+        review_required = timing(response_obj, now)['review_required']
         score_results = score_submission(response_obj, answers_data, categories)
-        response_obj.submitted_at = timezone.now()
-        response_obj.status = StudentResponse.STATUS_SUBMITTED
-        response_obj.is_flagged = False
-        response_obj.save(update_fields=['submitted_at', 'status', 'is_flagged'])
+        if review_required:
+            mark_expired_for_review(response_obj, now)
+        else:
+            response_obj.submitted_at = now
+            response_obj.status = StudentResponse.STATUS_SUBMITTED
+            response_obj.is_flagged = False
+            response_obj.save(update_fields=['submitted_at', 'status', 'is_flagged'])
 
-    update_assessment_profile(user, assessment)
+    if not review_required:
+        update_assessment_profile(user, assessment)
     profile, progress, recommendations = recalculate_combined(user, assessment.batch)
     unlocked = combined_is_unlocked(user, assessment.batch, profile=profile, progress=progress)
 
     return Response({
-        'message':         'Assessment submitted successfully.',
+        'message':         EXPIRY_REVIEW_MESSAGE if review_required else 'Assessment submitted successfully.',
+        'review_required': review_required,
+        **serialize_attempt_integrity(response_obj),
         'scores':          score_results,
         'recommendations': recommendations[:5] if unlocked else [],
         'recommendations_locked': not unlocked,
@@ -2290,15 +2391,8 @@ def assessment_stop(request, assessment_id):
     answers_data = request.data.get('answers', [])
     if not isinstance(answers_data, list):
         return Response({'error': 'answers must be a list'}, status=400)
-    # Integrity stops record only genuinely completed responses, not inputs a
-    # student touched and then cleared before the rule was triggered.
-    answers_data = [
-        answer for answer in answers_data
-        if isinstance(answer, dict) and (
-            answer.get('selected_choice_id') or
-            str(answer.get('text_answer', '')).strip()
-        )
-    ]
+    # The grader validates every entry before persisting completed answers.
+    # Do not filter malformed/duplicate/foreign inputs out of the payload here.
 
     detail = str(request.data.get('detail', '')).strip()[:120]
     base_display = INTEGRITY_REASON_DISPLAYS[reason]
@@ -2314,22 +2408,22 @@ def assessment_stop(request, assessment_id):
         except StudentResponse.DoesNotExist:
             return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
 
-        response_id = request.data.get('response_id')
-        if response_id and str(response_obj.id) != str(response_id):
-            return Response({'error': 'Attempt does not match response_id.'}, status=400)
+        check_attempt_identity(response_obj, request.data)
 
         # Stop retries are intentionally idempotent: never rescore or append events.
         if response_obj.status == StudentResponse.STATUS_STOPPED:
             return Response({
                 'message': 'Assessment was already stopped.',
                 'already_stopped': True,
+                'review_required': response_obj.stopped_reason == EXPIRY_REVIEW_REASON,
                 **serialize_attempt_integrity(response_obj),
             })
         if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
             return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
 
-        score_submission(response_obj, answers_data, categories)
         stopped_at = timezone.now()
+        review_required = timing(response_obj, stopped_at)['review_required']
+        score_submission(response_obj, answers_data, categories)
         response_obj.status = StudentResponse.STATUS_STOPPED
         response_obj.submitted_at = stopped_at
         response_obj.stopped_at = stopped_at
@@ -2350,11 +2444,14 @@ def assessment_stop(request, assessment_id):
             'stopped_reason_display', 'violation_count', 'violation_events',
             'is_flagged', 'retake_allowed',
         ])
+        if review_required:
+            mark_expired_for_review(response_obj, stopped_at)
 
     profile, progress, recommendations = recalculate_combined(user, assessment.batch)
     unlocked = combined_is_unlocked(user, assessment.batch, profile=profile, progress=progress)
     return Response({
-        'message': 'Assessment stopped and completed answers recorded.',
+        'message': EXPIRY_REVIEW_MESSAGE if review_required else 'Assessment stopped and completed answers recorded.',
+        'review_required': review_required,
         'scores_saved': True,
         'recommendations': recommendations[:5] if unlocked else [],
         'recommendations_locked': not unlocked,
@@ -2405,7 +2502,7 @@ def instructor_student_recommendations(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, batch=active_batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('student_id', '-match_score')
+        .order_by('student_id', '-match_score', 'position_id', 'id')
     )
     recs_by_student = defaultdict(list)
     for r in all_recs:
@@ -2510,7 +2607,7 @@ def instructor_companies(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('student', 'position')
-        .order_by('position_id', '-match_score')
+        .order_by('position_id', '-match_score', 'student_id', 'id')
     )
     recs_by_position = defaultdict(list)
     for r in all_recs:
@@ -2585,7 +2682,7 @@ def instructor_company_edit(request, co_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    data = company_data(request)
+    data = company_fields(company_data(request), partial=True)
     with CompanyImageChange(request, data) as image_change:
         with transaction.atomic():
             try:
@@ -2594,32 +2691,34 @@ def instructor_company_edit(request, co_id):
                 return Response({'error': 'Not found'}, status=404)
 
             # Validate all positions before uploading or persisting any changes.
-            positions = []
+            positions, seen = [], set()
             for pos_data in data.get('positions', []):
+                position_id = pos_data.get('id')
+                if type(position_id) is not int or position_id <= 0 or position_id in seen:
+                    invalid('positions', 'Every position needs a unique positive integer id.')
+                seen.add(position_id)
+                if 'requirements' in pos_data:
+                    invalid('requirements', 'Use the admin position endpoint to change skill requirements.')
+                values = position_data(pos_data, partial=True)
                 try:
-                    pos = company.positions.select_for_update().get(id=pos_data['id'])
-                    requested_slots = int(pos_data.get('slots', pos.slots_available))
-                    if requested_slots < 0:
-                        raise ValueError()
-                except (KeyError, TypeError, ValueError, Position.DoesNotExist):
-                    return Response({'error': 'Invalid position or slots value.'}, status=400)
+                    pos = company.positions.select_for_update().get(id=position_id)
+                except Position.DoesNotExist:
+                    invalid('positions', 'Position does not belong to this company.')
+                requested_slots = values.get('slots_available', pos.slots_available)
                 approved_count = pos.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
                 if requested_slots < approved_count:
-                    return Response({
-                        'error': 'slots cannot be lower than the approved placement count.',
-                        'position_id': pos.id, 'approved_count': approved_count,
-                    }, status=409)
-                positions.append((pos, pos_data, requested_slots))
+                    return Response({'error': 'slots cannot be lower than the approved placement count.',
+                                     'position_id': pos.id, 'approved_count': approved_count}, status=409)
+                positions.append((pos, values))
 
             if 'name' in data: company.name = data['name']
             if 'address' in data: company.address = data['address']
             if 'lat' in data: company.location_lat = data['lat']
             if 'lng' in data: company.location_lng = data['lng']
             image_change.save(company)
-            for pos, pos_data, slots in positions:
-                if 'title' in pos_data: pos.title = pos_data['title']
-                pos.slots_available = slots
-                if 'tags' in pos_data: pos.tags = normalize_tags(pos_data.get('tags'))
+            for pos, values in positions:
+                for field, value in values.items():
+                    setattr(pos, field, value)
                 pos.save()
 
     return Response({'ok': True, 'id': company.id, 'name': company.name, **image_fields(company)})
@@ -2670,7 +2769,7 @@ def student_results(request):
         Recommendation.objects
         .filter(student=user, batch=assessment.batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('-match_score')
+        .order_by('-match_score', 'position_id', 'id')
     )
     competency_profile = (
         StudentCompetencyProfile.objects
@@ -2725,7 +2824,7 @@ def student_combined_results(request):
     titles = dict(Assessment.objects.filter(id__in=included_ids).values_list('id', 'title'))
     recommendations = Recommendation.objects.filter(
         student=user, batch=batch, is_current=True,
-    ).select_related('position', 'position__company').order_by('-match_score') if unlocked else []
+    ).select_related('position', 'position__company').order_by('-match_score', 'position_id', 'id') if unlocked else []
     combined_scores = serialize_combined_scores(user, batch) if unlocked else []
     overall_raw = sum(score['raw_score'] for score in combined_scores)
     overall_max = sum(score['max_score'] for score in combined_scores)
@@ -2912,7 +3011,7 @@ def admin_student_recommendations(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company', 'student')
-        .order_by('student_id', '-match_score')
+        .order_by('student_id', '-match_score', 'position_id', 'id')
     )
 
     # Group top-3 per student
@@ -3067,7 +3166,7 @@ def admin_users(request):
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company')
         .prefetch_related('position__requirements__skill_category')
-        .order_by('student_id', '-match_score')
+        .order_by('student_id', '-match_score', 'position_id', 'id')
     )
     top_rec_by_student = {}
     recs_by_student = {}
@@ -3136,22 +3235,16 @@ def admin_users(request):
             'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
         })
 
-    def serialize_instructor(user):
-        return {
-            'id':           user.id,
-            'name':         user.name,
-            'email':        user.email,
-            'instructor_id': user.school_id or '',
-            'department':   'Institute of Computing',
-            'courses':      user.course or 'BSIT / BSIS',
-            'is_approved':  user.is_approved,
-            'photo_url':    user.photo_url,
-        }
-
     return Response({
         'students':            students_out,
-        'instructors':         [serialize_instructor(i) for i in instructors],
-        'pending_instructors': [serialize_instructor(i) for i in pending_instructors],
+        'instructors':         [instructor_payload(i) for i in instructors],
+        'pending_instructors': [instructor_payload(i) for i in pending_instructors],
+        'archived_instructors': [instructor_payload(i) for i in User.objects.filter(role='instructor', is_active=False).order_by('name', 'id')],
+        'archived_students': [{
+            'id': s.id, 'name': s.name, 'email': s.email, 'student_id': s.school_id,
+            'course': s.course, 'photo_url': s.photo_url, 'address': s.address,
+            'is_active': False, 'status': 'archived', 'recommendations_locked': True,
+        } for s in User.objects.filter(role='student', is_active=False).order_by('name', 'id')],
     })
 
 
@@ -3162,13 +3255,19 @@ def admin_instructors(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
-    email = request.data.get('email', '').strip().lower()
-    name = request.data.get('name', '').strip()
-    instructor_id = request.data.get('instructor_id', '').strip()
-    department = request.data.get('department', 'Institute of Computing').strip()
-    courses = request.data.get('courses', 'BSIT / BSIS').strip()
+    if not isinstance(request.data, dict):
+        return Response({'error': 'Instructor details must be an object.'}, status=400)
+    defaults = {'department': 'Institute of Computing', 'courses': 'BSIT / BSIS'}
+    fields = {}
+    for field, limit in [('email', 254), ('name', 255), ('instructor_id', 20), ('department', 255), ('courses', 100)]:
+        value = request.data.get(field, defaults.get(field, ''))
+        if not isinstance(value, str) or len(value.strip()) > limit:
+            return Response({'error': f'{field} must be text with at most {limit} characters.', 'field': field}, status=400)
+        fields[field] = value.strip()
+    email, name, instructor_id = fields['email'].lower(), fields['name'], fields['instructor_id']
+    department, courses = fields['department'], fields['courses']
 
-    if not email.endswith('@dnsc.edu.ph'):
+    if not email.endswith('@dnsc.edu.ph') or email.count('@') != 1 or not email.split('@')[0] or any(char.isspace() for char in email):
         return Response({'error': 'Instructor email must use @dnsc.edu.ph'}, status=400)
     if not name:
         return Response({'error': 'name is required'}, status=400)
@@ -3177,7 +3276,7 @@ def admin_instructors(request):
 
     if User.objects.filter(email=email).exists():
         return Response({'error': 'Email already exists'}, status=409)
-    if User.objects.filter(role='instructor', school_id=instructor_id).exists():
+    if User.objects.filter(school_id=instructor_id).exists():
         return Response({'error': 'Instructor ID already exists'}, status=409)
 
     user = User.objects.create(
@@ -3186,6 +3285,7 @@ def admin_instructors(request):
         role='instructor',
         school_id=instructor_id,
         course=courses,
+        department=department,
         is_approved=True,
         is_active=True,
     )
@@ -3194,7 +3294,7 @@ def admin_instructors(request):
 
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
     html_body = get_instructor_email_html(name, frontend_url, instructor_id, department)
-    email_sent = send_instructor_email(
+    email_queued = send_instructor_email(
         user,
         subject='SkillBridge Instructor Access Approved',
         body=(
@@ -3216,28 +3316,36 @@ def admin_instructors(request):
         'department': department,
         'courses': user.course,
         'is_approved': user.is_approved,
-        'email_sent': email_sent,
+        'email_queued': email_queued,
+        'email_sent': False,
     }, status=201)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('users')
+@transaction.atomic
 def admin_approve_instructor(request, user_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
     try:
-        user = User.objects.get(id=user_id, role='instructor')
+        user = User.objects.select_for_update().get(id=user_id, role='instructor')
     except User.DoesNotExist:
         return Response({'error': 'Instructor not found'}, status=404)
+
+    if not user.is_active:
+        return Response({'error': 'Restore this archived account before approving it.'}, status=409)
+    if user.is_approved:
+        return Response({'id': user.id, 'is_approved': True, 'already_approved': True,
+                         'email_queued': False, 'email_sent': False})
 
     user.is_approved = True
     user.save(update_fields=['is_approved'])
 
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
     html_body = get_instructor_email_html(user.name, frontend_url)
-    email_sent = send_instructor_email(
+    email_queued = send_instructor_email(
         user,
         subject='SkillBridge Instructor Access Approved',
         body=(
@@ -3249,7 +3357,7 @@ def admin_approve_instructor(request, user_id):
         html_body=html_body
     )
 
-    return Response({'ok': True, 'email_sent': email_sent})
+    return Response({'ok': True, 'email_queued': email_queued, 'email_sent': False})
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -3297,7 +3405,7 @@ def admin_companies(request):
         return Response(data)
 
     # POST — add company
-    data = company_data(request)
+    data = company_fields(company_data(request), partial=True)
     name    = data.get('name', '').strip()
     address = data.get('address')
     lat     = data.get('lat')
@@ -3343,7 +3451,7 @@ def admin_company_detail(request, company_id):
         return Response(status=204)
  
     # ── PATCH ─────────────────────────────────────────────────────────────────
-    data = company_data(request)
+    data = company_fields(company_data(request), partial=True)
     with CompanyImageChange(request, data) as image_change:
         with transaction.atomic():
             try:
@@ -3373,50 +3481,20 @@ def admin_company_detail(request, company_id):
 def admin_company_positions(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
-
-    try:
-        company = Company.objects.get(id=company_id)
-    except Company.DoesNotExist:
-        return Response({'error': 'Company not found'}, status=404)
-
-    title    = request.data.get('title', '').strip()
-    slots    = int(request.data.get('slots', 1))
-    reqs     = request.data.get('requirements', {})  # { "Database": 70, "Programming": 60 }
-    tags     = normalize_tags(request.data.get('tags'))
-
-    if not title:
-        return Response({'error': 'title is required'}, status=400)
-
-    position = Position.objects.create(
-        company=company,
-        title=title,
-        slots_available=slots,
-        tags=tags,
-    )
-
-    # Create requirement rows
-    for cat_name, pct in reqs.items():
-        if pct <= 0:
-            continue
+    values = position_data(request.data)
+    requirements = values.pop('requirements')
+    with transaction.atomic():
         try:
-            cat = SkillCategory.objects.get(name__iexact=cat_name)
-            PositionRequirement.objects.create(
-                position=position,
-                skill_category=cat,
-                required_percentage=float(pct),
-            )
-        except SkillCategory.DoesNotExist:
-            pass  # Skip unknown categories
+            company = Company.objects.select_for_update().get(id=company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+        position = Position.objects.create(company=company, **values)
+        for category, percentage in requirements:
+            PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
 
-    # Re-score all existing students against the new position
     _rerun_recommendations_for_all_students()
-
-    return Response({
-        'id':    position.id,
-        'title': position.title,
-        'slots': position.slots_available,
-        'tags':  position.tags or [],
-    }, status=201)
+    return Response({'id': position.id, 'title': position.title, 'slots': position.slots_available,
+                     'tags': position.tags or []}, status=201)
 
 
 def _rerun_recommendations_for_all_students():
@@ -3467,8 +3545,8 @@ def admin_rerun_recommendations(request):
             'active_model': RecommendationConfiguration.get_active().active_model,
             'message': f'Recommendations re-run for {count} student(s).',
         })
-    except Exception as e:
-        return Response({'error': str(e)}, status=500)
+    except Exception:
+        return Response({'error': 'Recommendation refresh could not be completed. Please try again.'}, status=500)
 
 
 # ── PATCH + DELETE  /api/admin/positions/{id}/ ───────────────────────────────
@@ -3479,82 +3557,48 @@ def admin_rerun_recommendations(request):
 def admin_position_detail(request, position_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
+    values = position_data(request.data, partial=True) if request.method == 'PATCH' else {}
+    requirements = values.pop('requirements', None)
     try:
-        position = Position.objects.get(id=position_id)
+        with transaction.atomic():
+            position = Position.objects.select_for_update().get(id=position_id)
+            if request.method == 'DELETE':
+                position.delete()
+                return Response(status=204)
+            if 'slots_available' in values:
+                approved_count = position.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
+                if values['slots_available'] < approved_count:
+                    return Response({'error': 'slots cannot be lower than the approved placement count.',
+                                     'approved_count': approved_count}, status=409)
+            for field, value in values.items():
+                setattr(position, field, value)
+            position.save()
+            if requirements is not None:
+                position.requirements.all().delete()
+                for category, percentage in requirements:
+                    PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
     except Position.DoesNotExist:
         return Response({'error': 'Position not found'}, status=404)
- 
-    if request.method == 'DELETE':
-        try:
-            position.delete()
-        except ProtectedError:
-            return Response({
-                'error': 'Position cannot be deleted while placement history references it.',
-            }, status=409)
-        return Response(status=204)
- 
-    # ── PATCH ─────────────────────────────────────────────────────────────────
-    if 'title' in request.data:
-        title = (request.data['title'] or '').strip()
-        if title:
-            position.title = title
- 
-    if 'slots' in request.data:
-        try:
-            requested_slots = max(1, int(request.data['slots']))
-        except (TypeError, ValueError):
-            return Response({'error': 'slots must be an integer.'}, status=400)
-        approved_count = position.ojt_placements.filter(
-            status=OJTPlacement.STATUS_APPROVED,
-        ).count()
-        if requested_slots < approved_count:
-            return Response({
-                'error': 'slots cannot be lower than the approved placement count.',
-                'approved_count': approved_count,
-            }, status=409)
-        position.slots_available = requested_slots
+    except ProtectedError:
+        return Response({'error': 'Position cannot be deleted while placement history references it.'}, status=409)
+    return Response({'id': position.id, 'title': position.title, 'slots': position.slots_available,
+                     'tags': position.tags or [], 'requirements': {
+                         r.skill_category.name: r.required_percentage
+                         for r in position.requirements.select_related('skill_category').all()
+                     }})
 
-    if 'tags' in request.data:
-        position.tags = normalize_tags(request.data.get('tags'))
- 
-    position.save()
- 
-    # Replace skill requirements atomically when the caller sends 'requirements'
-    if 'requirements' in request.data:
-        reqs = request.data.get('requirements') or {}
-        # Wipe existing, then re-create from the new dict
-        position.requirements.all().delete()
-        for cat_name, pct in reqs.items():
-            try:
-                pct_float = float(pct)
-            except (TypeError, ValueError):
-                continue
-            if pct_float <= 0:
-                continue
-            try:
-                cat = SkillCategory.objects.get(name__iexact=cat_name)
-                PositionRequirement.objects.create(
-                    position=position,
-                    skill_category=cat,
-                    required_percentage=pct_float,
-                )
-            except SkillCategory.DoesNotExist:
-                pass  # skip unknown categories silently
- 
-    # Return the refreshed position so the frontend can reconcile local state
-    updated_reqs = {
-        r.skill_category.name: r.required_percentage
-        for r in position.requirements.select_related('skill_category').all()
-    }
-    return Response({
-        'id':           position.id,
-        'title':        position.title,
-        'slots':        position.slots_available,
-        'tags':         position.tags or [],
-        'requirements': updated_reqs,
-    })
 
 # ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
+def _skill_data(data):
+    name = _question_category_name(data.get('name', ''))
+    if not name:
+        invalid('name', 'Name is required.')
+    description = data.get('description', '')
+    if not isinstance(description, str):
+        invalid('description', 'Description must be text.')
+    return name, description.strip(), tags_value(data.get('tags'))
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('taxonomy')
@@ -3569,11 +3613,7 @@ def admin_skills(request):
         } for c in cats])
         
     elif request.method == 'POST':
-        name = request.data.get('name', '').strip()
-        description = request.data.get('description', '').strip()
-        tags = normalize_tags(request.data.get('tags'))
-        if not name:
-            return Response({'error': 'Name is required'}, status=400)
+        name, description, tags = _skill_data(request.data)
             
         cat, created = SkillCategory.objects.get_or_create(
             name__iexact=name,
@@ -3600,11 +3640,7 @@ def admin_skill_detail(request, skill_id):
         return Response({'error': 'Skill not found'}, status=404)
         
     if request.method == 'PUT':
-        name = request.data.get('name', '').strip()
-        description = request.data.get('description', '').strip()
-        tags = normalize_tags(request.data.get('tags'))
-        if not name:
-            return Response({'error': 'Name is required'}, status=400)
+        name, description, tags = _skill_data(request.data)
             
         if SkillCategory.objects.filter(name__iexact=name).exclude(id=skill_id).exists():
             return Response({'error': 'Another skill with this name already exists'}, status=400)
@@ -3618,6 +3654,11 @@ def admin_skill_detail(request, skill_id):
         })
         
     elif request.method == 'DELETE':
+        if (Question.objects.filter(skill_category=cat).exists() or
+                PositionRequirement.objects.filter(skill_category=cat).exists() or
+                SkillScore.objects.filter(skill_category=cat).exists() or
+                CombinedCategoryScore.objects.filter(skill_category=cat).exists()):
+            return Response({'error': 'This category is used by questions, requirements or score history and cannot be deleted.'}, status=409)
         cat.delete()
         return Response(status=204)
 
@@ -3733,9 +3774,11 @@ def admin_reports(request):
 # OJT PLACEMENTS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _placement_batch(student_id):
+def _placement_batch(student_id, instructor=None):
     """Use the student's newest active enrollment, then newest enrollment."""
     enrollments = BatchEnrollment.objects.filter(student_id=student_id).select_related('batch')
+    if instructor is not None:
+        enrollments = enrollments.filter(batch__instructor=instructor)
     enrollment = enrollments.filter(batch__status='active').order_by('-enrolled_at', '-id').first()
     if enrollment is None:
         enrollment = enrollments.order_by('-enrolled_at', '-id').first()
@@ -4133,12 +4176,17 @@ def placement_approve(request):
                 student=student, status=OJTPlacement.STATUS_APPROVED,
             )).first()
             if current:
+                if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
+                    return Response({'error': 'Student already has an approved placement.'}, status=409)
                 if current.position_id == position.id:
                     return Response({'placement': _serialize_placement(current), 'idempotent': True})
                 return Response({
                     'error': 'Student already has an approved placement.',
                     'placement': _serialize_placement(current),
                 }, status=409)
+
+            if not student.is_active:
+                return Response({'error': 'Restore the student account before assigning a placement.'}, status=409)
 
             if not recommendation.batch_id or not recommendation.is_current or not combined_is_unlocked(
                 recommendation.student, recommendation.batch,
@@ -4160,15 +4208,20 @@ def placement_approve(request):
                 recommendation=recommendation,
                 status=OJTPlacement.STATUS_SUGGESTED,
             ).order_by('-id').first()
+            if placement and request.user.role == 'instructor' and (
+                placement.batch_id is None or placement.batch.instructor_id != request.user.id
+            ):
+                return Response({'error': 'Placement is outside your batches.'}, status=403)
             created = placement is None
             if placement is None:
                 placement = OJTPlacement(
                     student=student,
                     company=position.company,
                     position=position,
-                    batch=_placement_batch(student.id),
+                    batch=recommendation.batch,
                 )
             placement.copy_recommendation_snapshot(recommendation)
+            placement.batch = recommendation.batch
             placement.status = OJTPlacement.STATUS_APPROVED
             placement.assigned_by = placement.assigned_by or request.user
             placement.approved_by = request.user
@@ -4214,6 +4267,8 @@ def _change_placement_status(request, new_status):
             recommendation = None
             if placement_id:
                 initial = OJTPlacement.objects.get(id=placement_id)
+                if request.user.role == 'instructor' and (initial.batch_id is None or initial.batch.instructor_id != request.user.id):
+                    return Response({'error': 'Placement is outside your batches.'}, status=403)
                 if not _can_manage_placement_student(request.user, initial.student_id):
                     return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
                 User.objects.select_for_update().get(id=initial.student_id)
@@ -4242,6 +4297,11 @@ def _change_placement_status(request, new_status):
                     ),
                 ).order_by('-updated_at', '-id').first()
 
+                if placement and request.user.role == 'instructor' and (
+                    placement.batch_id is None or placement.batch.instructor_id != request.user.id
+                ):
+                    return Response({'error': 'Placement is outside your batches.'}, status=403)
+
                 if placement and placement.status in (
                     OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED,
                 ):
@@ -4260,7 +4320,7 @@ def _change_placement_status(request, new_status):
                         student=recommendation.student,
                         company=recommendation.position.company,
                         position=recommendation.position,
-                        batch=_placement_batch(recommendation.student_id),
+                        batch=recommendation.batch,
                     )
                     placement.copy_recommendation_snapshot(recommendation)
 
@@ -4337,10 +4397,15 @@ def placement_manual_assign(request):
                 student=student, status=OJTPlacement.STATUS_APPROVED,
             )).first()
             if current:
+                if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
+                    return Response({'error': 'Student already has an approved placement.'}, status=409)
                 return Response({
                     'error': 'Student already has an approved placement.',
                     'placement': _serialize_placement(current),
                 }, status=409)
+
+            if not student.is_active:
+                return Response({'error': 'Restore the student account before assigning a placement.'}, status=409)
 
             approved_count = OJTPlacement.objects.filter(
                 position=position, status=OJTPlacement.STATUS_APPROVED,
@@ -4361,9 +4426,11 @@ def placement_manual_assign(request):
                     return Response({
                         'error': 'Student is not enrolled in the selected batch.',
                     }, status=400)
+                if request.user.role == 'instructor' and enrollment.batch.instructor_id != request.user.id:
+                    return Response({'error': 'Selected batch is outside your batches.'}, status=403)
                 batch = enrollment.batch
             else:
-                batch = _placement_batch(student.id)
+                batch = _placement_batch(student.id, request.user if request.user.role == 'instructor' else None)
 
             recommendation = (Recommendation.objects.filter(
                 student=student, batch=batch, position=position, is_current=True,
@@ -4402,7 +4469,7 @@ def placement_history(request):
     placements = _placement_select_related(OJTPlacement.objects.all())
     if request.user.role == 'instructor':
         placements = placements.filter(
-            student__enrollments__batch__instructor=request.user,
+            batch__instructor=request.user,
         ).distinct()
 
     status_filter = request.query_params.get('status')
@@ -4554,7 +4621,7 @@ def _placement_report_queryset(user):
     placements = _placement_select_related(OJTPlacement.objects.all())
     if user.role == 'instructor':
         placements = placements.filter(
-            student__enrollments__batch__instructor=user,
+            batch__instructor=user,
         ).distinct()
     return placements
 
@@ -4684,14 +4751,12 @@ def placement_reports(request):
         and parsed_dates['date_from'] > parsed_dates['date_to']
     ):
         return Response({'error': 'date_from cannot be after date_to.'}, status=400)
+    if parsed_dates:
+        placements = placements.annotate(_report_date=TruncDate(date_field, tzinfo=PROJECT_TIMEZONE))
     if parsed_dates.get('date_from'):
-        placements = placements.filter(**{
-            f'{date_field}__date__gte': parsed_dates['date_from'],
-        })
+        placements = placements.filter(_report_date__gte=parsed_dates['date_from'])
     if parsed_dates.get('date_to'):
-        placements = placements.filter(**{
-            f'{date_field}__date__lte': parsed_dates['date_to'],
-        })
+        placements = placements.filter(_report_date__lte=parsed_dates['date_to'])
 
     if report_type == 'company_placements':
         placements = placements.order_by(
@@ -4754,6 +4819,8 @@ def placement_reports(request):
 
     return Response({
         'report_type': report_type,
+        'timezone': str(PROJECT_TIMEZONE),
+        'capacity_scope': 'Positions appearing in this report; occupancy includes all current approvals.',
         'generated_at': timezone.now(),
         'generated_by': {
             'id': request.user.id,

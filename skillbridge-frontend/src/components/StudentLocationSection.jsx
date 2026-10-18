@@ -1,3 +1,7 @@
+import { escapeHtml } from '../utils/escapeHtml'
+import { loadLeaflet } from '../utils/externalServices'
+import { validPin } from '../utils/recommendationResults'
+import MapStatus from '../components/MapStatus'
 // src/components/StudentLocationSection.jsx
 //
 // Shared component — renders a student's setup preferences + a Leaflet map.
@@ -16,25 +20,10 @@
 //
 // Map is loaded lazily from CDN (same singleton pattern as StudentSetup).
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // ── Leaflet singleton loader (CDN, no build dep) ─────────────────────────────
-let _leafletPromise = null
-function loadLeaflet() {
-  if (_leafletPromise) return _leafletPromise
-  _leafletPromise = new Promise(resolve => {
-    if (window.L) { resolve(window.L); return }
-    const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
-    document.head.appendChild(link)
-    const script = document.createElement('script')
-    script.src   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-    script.onload = () => resolve(window.L)
-    document.head.appendChild(script)
-  })
-  return _leafletPromise
-}
+
 
 // ── SVG icon factories ───────────────────────────────────────────────────────
 function makeStudentIcon(L) {
@@ -71,26 +60,32 @@ function PreviewMap({ pinLat, pinLng, companies }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
 
+  const [mapStatus, setMapStatus] = useState('loading')
+  const [mapAttempt, setMapAttempt] = useState(0)
+  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
+
   useEffect(() => {
     let alive = true
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
       // Default center: Panabo City
-      const center = (pinLat && pinLng) ? [pinLat, pinLng] : [7.3072, 125.6839]
+      const center = validPin(pinLat, pinLng) ? [pinLat, pinLng] : [7.3072, 125.6839]
       const map = L.map(elRef.current, { zoomControl: false }).setView(center, 13)
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      mapRef.current = map
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map)
+      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       L.control.zoom({ position: 'bottomright' }).addTo(map)
 
       // Collect all coords for fitBounds
       const allCoords = []
 
       // Student pin
-      if (pinLat && pinLng) {
+      if (validPin(pinLat, pinLng)) {
         allCoords.push([pinLat, pinLng])
         L.marker([pinLat, pinLng], { icon: makeStudentIcon(L) })
           .addTo(map)
@@ -99,11 +94,11 @@ function PreviewMap({ pinLat, pinLng, companies }) {
 
       // Company pins
       companies.forEach((c, i) => {
-        if (!c.lat || !c.lng) return
+        if (!validPin(c.lat, c.lng)) return
         allCoords.push([c.lat, c.lng])
         L.marker([c.lat, c.lng], { icon: makeCompanyIcon(L, i) })
           .addTo(map)
-          .bindPopup(`<b>#${i + 1} ${c.company}</b><br/>${c.position}<br/><b>${c.match_score}% match</b>`)
+          .bindPopup(`<b>#${i + 1} ${escapeHtml(c.company)}</b><br/>${escapeHtml(c.position)}<br/><b>${escapeHtml(c.match_score)}% match</b>`)
       })
 
       if (allCoords.length > 1) {
@@ -112,18 +107,26 @@ function PreviewMap({ pinLat, pinLng, companies }) {
 
       setTimeout(() => map.invalidateSize(), 100)
       mapRef.current = map
+      setMapStatus('ready')
+    }).catch(() => {
+      if (alive) {
+        mapRef.current?.remove()
+        mapRef.current = null
+        setMapStatus('error')
+      }
     })
     return () => {
       alive = false
       mapRef.current?.remove()
       mapRef.current = null
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapAttempt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
       style={{ height: 200 }}>
       <div ref={elRef} className="absolute inset-0" />
+      <MapStatus status={mapStatus} onRetry={retryMap} />
       {/* Legend */}
       <div className="absolute bottom-2 left-2 z-1000 flex flex-col gap-1 pointer-events-none">
         {[
@@ -170,7 +173,7 @@ export default function StudentLocationSection({ address, top_recommendations })
   const travelLabel  = TRAVEL_LABELS[addr.travelWilling] || null
   const homeAddr     = formatAddress(addr.home)
   const boardingAddr = addr.stayingAt === 'boarding' ? formatAddress(addr.boarding) : null
-  const hasPin       = addr.pinLat && addr.pinLng
+  const hasPin       = validPin(addr.pinLat, addr.pinLng)
   const companyPins  = recs.filter(r => r.lat && r.lng)
 
   // Nothing to show at all — student hasn't completed setup

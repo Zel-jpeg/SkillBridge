@@ -1,16 +1,14 @@
-# React + Vite
+# SkillBridge frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19, Vite 8, Tailwind CSS 4, React Router and the shared Axios client.
 
-Currently, two official plugins are available:
+Follow [local setup and operations](../knowledge/LOCAL_SETUP_AND_OPERATIONS.md)
+for prerequisites, safe configuration, install/run/check commands, the Windows
+npm-launcher workaround and browser-fixture requirements.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use `npm ci` with the committed lockfile, `npm run lint`, `npm run build` and
+`node --test "src/**/*.test.mjs"`. Shared summary tests also read the repository's
+`knowledge/fixtures/`; keep the normal repository layout.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Copy `.env.example` only in a fresh checkout. VITE_* values are public browser
+configuration; backend service keys and database credentials do not belong here.

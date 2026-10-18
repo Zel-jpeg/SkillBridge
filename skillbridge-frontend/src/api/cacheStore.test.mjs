@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCacheStore } from './cacheStore.js'
+import { validateApiResponse } from './responseContract.js'
 
 function storage() {
   const values = {}
@@ -16,6 +17,20 @@ function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no })
   return { promise, resolve, reject }
 }
+
+test('malformed persistent API data is ignored and replaced by a valid fresh read', async () => {
+  const session = storage()
+  session.setItem('sb_api_owner', 'student:1')
+  session.setItem('sb_api_/api/student/results/combined/', JSON.stringify({ fetchedAt: Date.now(), data: { recommendations: {} } }))
+  const valid = { recommendations_locked: true, recommendations: [], combined_category_scores: [] }
+  let calls = 0
+  const cache = createCacheStore(async () => { calls++; return { data: valid } }, session, () => 'student:1',
+    (url, data) => validateApiResponse({ data, status: 200, config: { url } }))
+  assert.equal(cache.read('/api/student/results/combined/'), null)
+  await cache.fetch('/api/student/results/combined/')
+  assert.equal(calls, 1)
+  assert.deepEqual(cache.read('/api/student/results/combined/').data, valid)
+})
 
 test('repeat reads reuse memory and persisted data synchronously', async () => {
   const session = storage()

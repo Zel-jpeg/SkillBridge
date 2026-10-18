@@ -9,8 +9,9 @@
 //   When the server detects DB changes it sends invalidate URLs →
 //   useApi re-fetches /api/admin/users/ silently → useEffect re-normalizes.
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useApi, invalidateCache, fetchWithDedup, getCachedData, updateCachedData } from '../useApi'
+import { reconcileAccountCollection } from '../../utils/accountCollection'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useSSE } from '../useSSE'
 
@@ -18,8 +19,8 @@ const PAGE_SIZE = 10
 const SSE_PATH  = '/api/admin/events/'
 
 function normalizeUsers(usersData) {
-    const students = Array.isArray(usersData?.students)            ? usersData.students            : []
-    const approved = Array.isArray(usersData?.instructors)         ? usersData.instructors         : []
+    const students = [...(Array.isArray(usersData?.students) ? usersData.students : []), ...(usersData?.archived_students ?? [])]
+    const approved = [...(Array.isArray(usersData?.instructors) ? usersData.instructors : []), ...(usersData?.archived_instructors ?? [])]
     const pending  = Array.isArray(usersData?.pending_instructors) ? usersData.pending_instructors : []
 
   return {
@@ -41,7 +42,7 @@ function normalizeUsers(usersData) {
       match:            s.top_match_score   ?? null,
       position:         s.top_position_name ?? null,
       company:          s.top_company_name  ?? null,
-      archived:         false,
+      archived:         s.is_active === false,
       role:             'student',
       address:          s.address           ?? {},
       photoUrl:         s.photo_url         || null,
@@ -62,7 +63,7 @@ function normalizeUsers(usersData) {
       email:        i.email          || '',
       department:   i.department     || 'Institute of Computing',
       courses:      i.courses        || 'BSIT / BSIS',
-      archived:     false,
+      archived:     i.is_active === false,
       status:       'active',
       role:         'instructor',
       photoUrl:     i.photo_url      || null,
@@ -84,6 +85,19 @@ export function useAdminUsers() {
   useSSE(SSE_PATH)
 
   const { data: usersData, request } = useApi('/api/admin/users/')
+  const accountPending = useRef(new Set())
+  async function accountRequest(method, endpoint, payload) {
+    const key = method + endpoint
+    if (accountPending.current.has(key)) return { ok: false, message: 'This action is already in progress.' }
+    accountPending.current.add(key)
+    try { return await request(method, endpoint, payload) }
+    finally { accountPending.current.delete(key) }
+  }
+  function publishAccount(account, role) {
+    const next = reconcileAccountCollection(getCachedData('/api/admin/users/'), account, role)
+    if (next) updateCachedData('/api/admin/users/', next)
+    invalidateCache('/api/admin/users/')
+  }
   const normalized = useMemo(() => normalizeUsers(usersData), [usersData])
   const [usersReady, setUsersReady] = useState(usersData != null)
 
@@ -129,7 +143,6 @@ export function useAdminUsers() {
   useEffect(() => {
     if (!usersData) return
     // Initial sections remain placeholders until optimistic state is seeded.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudentsList(normalized.students)
     setInstructors(normalized.instructors)
     setPendingInstructors(normalized.pending)
@@ -143,8 +156,7 @@ export function useAdminUsers() {
     if (!selectedUser) return
     if (selectedUserType === 'instructor') {
       const fresh = instructors.find(i => i.id === selectedUser.id)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedUser(fresh ?? null)
+        setSelectedUser(fresh ?? null)
     } else {
       const fresh = studentsList.find(s => s.id === selectedUser.id)
       setSelectedUser(fresh ?? null)
@@ -154,35 +166,35 @@ export function useAdminUsers() {
   useEffect(() => {
     if (!selectedPending) return
     // Pending detail is read-only; another admin may have approved the account.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedPending(pendingInstructors.find(item => item.id === selectedPending.id) ?? null)
   }, [pendingInstructors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ───────────────────────────────────────────────────────
 
   async function handleAddInstructor(instr) {
-    const res = await request('post', '/api/admin/instructors/', {
+    const res = await accountRequest('post', '/api/admin/instructors/', {
       name:          instr.name,
       email:         instr.email,
       instructor_id: instr.instructorId,
       department:    instr.department,
       courses:       instr.courses,
     })
-    if (!res.ok) return
-    const newInstructor = { ...instr, id: res.data?.id ?? Date.now(), archived: false, status: 'active', role: 'instructor' }
+    if (!res.ok) return res
+    const newInstructor = { ...instr, id: res.data.id, archived: false, status: 'active', role: 'instructor' }
     if (res.data?.is_approved) {
       setInstructors(prev => [...prev, newInstructor])
-      showToast(res.data?.email_sent
-        ? `"${instr.name}" added. Welcome email sent to ${instr.email}.`
-        : `"${instr.name}" added, but email was not sent — check SMTP settings.`)
+      showToast(res.data?.email_queued
+        ? `"${instr.name}" added. Welcome email queued; delivery is not confirmed.`
+        : `"${instr.name}" added. Email could not be queued; the instructor can use DNSC Google sign-in.`)
     } else {
       setPendingInstructors(prev => [...prev, newInstructor])
-      showToast(res.data?.email_sent
-        ? `"${instr.name}" added as pending. Notification email sent.`
-        : `"${instr.name}" added as pending. Email not sent (check SMTP settings).`)
+      showToast(res.data?.email_queued
+        ? `"${instr.name}" added as pending. Notification email queued; delivery is not confirmed.`
+        : `"${instr.name}" added as pending. Email could not be queued.`)
     }
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setShowAddInstr(false)
+    return res
   }
 
   function handleDeleteInstructor(instr) {
@@ -190,20 +202,24 @@ export function useAdminUsers() {
     setSelectedUser(null)
   }
 
-  function confirmDeleteInstructor() {
-    setInstructors(prev => prev.map(i => i.id === confirmRemoveInstr.id ? { ...i, archived: true } : i))
+  async function confirmDeleteInstructor() {
+    if (!confirmRemoveInstr) return { ok: false, message: 'Select an instructor first.' }
+    const res = await accountRequest('delete', `/api/admin/users/${confirmRemoveInstr.id}/`)
+    if (!res.ok) return res
+    publishAccount(res.data, 'instructor')
     showToast('Instructor archived.')
     setConfirmRemoveInstr(null)
+    return res
   }
 
   async function approvePendingInstructor(instr) {
-    const res = await request('post', `/api/admin/instructors/${instr.id}/approve/`)
+    const res = await accountRequest('post', `/api/admin/instructors/${instr.id}/approve/`)
     if (!res.ok) return
     setPendingInstructors(p => p.filter(x => x.id !== instr.id))
     setInstructors(p => [...p, { ...instr, archived: false, status: 'active', role: 'instructor' }])
-    showToast(res.data?.email_sent
-      ? `${instr.name} approved and notified.`
-      : `${instr.name} approved, but email was not sent (check SMTP settings).`)
+    showToast(res.data?.already_approved ? 'Instructor is already approved. No additional email was queued.' : res.data?.email_queued
+      ? `${instr.name} approved. Notification email queued; delivery is not confirmed.`
+      : `${instr.name} approved. Email could not be queued; DNSC Google sign-in is available.`)
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setSelectedPending(null)
   }
@@ -213,13 +229,16 @@ export function useAdminUsers() {
     setSelectedPending(null)
   }
 
-  function confirmRejectInstructor() {
-    if (!confirmRejectPending) return
-    setPendingInstructors(p => p.filter(x => x.id !== confirmRejectPending.id))
+  async function confirmRejectInstructor() {
+    if (!confirmRejectPending) return { ok: false, message: 'Select an instructor first.' }
+    const res = await accountRequest('delete', `/api/admin/users/${confirmRejectPending.id}/`)
+    if (!res.ok) return res
+    publishAccount(res.data, 'instructor')
     showToast(`${confirmRejectPending.name} rejected.`)
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
     setSelectedPending(null)
     setConfirmRejectPending(null)
+    return res
   }
 
   async function handleToggleRetake(studentId, assessmentId) {
@@ -237,7 +256,13 @@ export function useAdminUsers() {
     invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
   }
 
-  function handleUpdateUser(updatedUser, oldType, newType) {
+  async function handleUpdateUser(updatedUser, oldType, newType) {
+    const res = await accountRequest('patch', `/api/admin/users/${updatedUser.id}/`, {
+      name: updatedUser.name, email: updatedUser.email, instructor_id: updatedUser.instructorId,
+      department: updatedUser.department, courses: updatedUser.courses,
+    })
+    if (!res.ok) return res
+    publishAccount(res.data, oldType)
     if (oldType === newType) {
       if (oldType === 'instructor') setInstructors(prev => prev.map(i => i.id === updatedUser.id ? updatedUser : i))
       else                          setStudentsList(prev => prev.map(s => s.id === updatedUser.id ? updatedUser : s))
@@ -252,6 +277,7 @@ export function useAdminUsers() {
     }
     showToast(`User ${updatedUser.name} updated.`)
     setSelectedUser(null)
+    return res
   }
 
   function handleRemoveUser(user) {
@@ -262,12 +288,23 @@ export function useAdminUsers() {
     }
   }
 
-  function confirmDeleteStudent() {
-    if (!confirmRemoveStudent) return
-    setStudentsList(prev => prev.map(s => s.id === confirmRemoveStudent.id ? { ...s, archived: true } : s))
-    invalidateCache('/api/admin/users/')   // force fresh fetch on next navigation
+  async function confirmDeleteStudent() {
+    if (!confirmRemoveStudent) return { ok: false, message: 'Select a student first.' }
+    const res = await accountRequest('delete', `/api/admin/users/${confirmRemoveStudent.id}/`)
+    if (!res.ok) return res
+    publishAccount(res.data, 'student')
     showToast(`Student ${confirmRemoveStudent.name} archived.`)
     setConfirmRemoveStudent(null)
+    return res
+  }
+
+  async function handleRestoreUser(user) {
+    const res = await accountRequest('patch', `/api/admin/users/${user.id}/`, { is_active: true })
+    if (!res.ok) return res
+    publishAccount(res.data, user.role)
+    showToast('Account restored.')
+    setSelectedUser(null)
+    return res
   }
 
   // ── Sort toggle ───────────────────────────────────────────────────
@@ -364,6 +401,7 @@ export function useAdminUsers() {
     confirmRejectInstructor,
     handleToggleRetake,
     handleUpdateUser,
+    handleRestoreUser,
     handleRemoveUser,
     confirmDeleteStudent,
     confirmRemoveStudent, setConfirmRemoveStudent,

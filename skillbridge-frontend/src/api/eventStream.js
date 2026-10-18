@@ -68,7 +68,8 @@ export function createEventStream({ identity, preflight, source, changed, unauth
         let data
         try { data = JSON.parse(event.data) } catch { return }
         heartbeat()
-        if (data.type === 'auth_expired') { expire(); return }
+        // Preflight can renew an expired access token or confirm revocation.
+        if (data.type === 'auth_expired') { reconnect(); return }
         if (data.type === 'reconnect') { reconnect(); return }
         if (data.type === 'connected') {
           delay = 1000

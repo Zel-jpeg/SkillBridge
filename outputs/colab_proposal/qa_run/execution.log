@@ -1,0 +1,86 @@
+EXECUTING CELL 1
+Windows-11-10.0.26300-SP0 3.13.7 (tags/v3.13.7:bcee1c3, Aug 14 2025, 14:15:11) [MSC v.1944 64 bit (AMD64)]
+EXECUTING CELL 3
+Snapshot verified: C:\Users\acer\Downloads\capstone\SkillBridge\outputs\colab_proposal\qa_run\skillbridge_proposed_features_study
+{
+  "python": "3.13.7",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpu_count": 12,
+  "packages": {
+    "numpy": "2.4.4",
+    "scikit-learn": "1.8.0",
+    "spacy": "3.8.16",
+    "stanza": "1.14.0",
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-md": "3.8.0"
+  },
+  "seed": 20261018,
+  "weights": [
+    0.6,
+    0.25,
+    0.15
+  ],
+  "text_generation_version": "neutral-evidence-v2",
+  "note": "Record RAM/CPU model from the Colab environment cell too. CPU pipelines; no GPU comparison."
+}
+EXECUTING CELL 5
+Evidence kind: simulated_proposal_development
+Evidence limitations: Item outcomes randomly allocated within fixed category totals. No observed responses or independently verified task requirements are supplied. This simulation cannot validate benefit from real question-level evidence.
+Cases: 60 Positions: 6 Questions: 100
+EXECUTING CELL 7
+                        position                                                                                                                                                                                                                                                                                            automatic_description
+0       Backend Developer Intern                        Backend Developer Intern. Selected duties: Develop and test API endpoints; Implement Python program logic; Read and update data using SQL queries; Implement user authentication. Required task skills: API endpoint development; Python program logic; SQL queries; user authentication.
+1      Frontend Developer Intern      Frontend Developer Intern. Selected duties: Build HTML and CSS interfaces; Implement interactive JavaScript interfaces; Adapt responsive web layouts; Check interfaces using browser testing. Required task skills: HTML and CSS interfaces; JavaScript interfaces; responsive web design; browser testing.
+2  Database Administrator Intern               Database Administrator Intern. Selected duties: Write and inspect SQL queries; Maintain relational schema design; Perform database backup procedures; Check stored records through data validation. Required task skills: SQL queries; relational schema design; database backup; data validation.
+3               QA Tester Intern                                             QA Tester Intern. Selected duties: Prepare test cases for software behavior; Perform browser testing; Check application data validation; Perform basic security testing. Required task skills: test case design; browser testing; data validation; security testing.
+4   Network Administrator Intern                                         Network Administrator Intern. Selected duties: Configure network routing; Plan IP subnetting; Perform network device configuration; Maintain network access control. Required task skills: network routing; IP subnetting; network device configuration; access control.
+5              IT Support Intern  IT Support Intern. Selected duties: Investigate network connectivity problems; Set up network devices; Investigate software problems; Assist with permitted access control tasks. Required task skills: network connectivity troubleshooting; network device configuration; software debugging; access control.
+Example student evidence: Assessed item evidence: access control: 2 correct of 5 assessed items; API endpoint development: 5 correct of 5 assessed items; user authentication: 2 correct of 5 assessed items; browser testing: 4 correct of 5 assessed items; network connectivity troubleshooting: 2 correct of 5 assessed items; data validation: 5 correct of 5 assessed items; database backup: 3 correct of 5 assessed items; network device configuration: 3 correct of 5 assessed items; HTML and CSS interfaces: 4 correct of 5 assessed items; JavaScript interfaces: 3 correct of 5 assessed items; Python program logic: 5 correct of 5 assessed items; responsive web design: 5 correct of 5 assessed items; network routing: 1 correct of 5 assessed items; relational schema design: 5 correct of 5 assessed items; secure coding: 4 correct of 5 assessed items; security testing: 3 correct of 5 assessed items; software debugging: 5 correct of 5 assessed items; SQL queries: 5 correct of 5 assessed items; IP subnetting: 3 correct of 5 assessed items; test case design: 4 correct of 5 assessed items. These item outcomes do not independently establish technology mastery.
+EXECUTING CELL 9
+PASS: all four variants are invariant to expected-label permutation.
+EXECUTING CELL 11
+dev: current_text / tfidf_regex
+dev: current_text / spacy_sm
+dev: duties_only / tfidf_regex
+dev: duties_only / spacy_sm
+dev: evidence_only / tfidf_regex
+dev: evidence_only / spacy_sm
+dev: duties_and_evidence / tfidf_regex
+dev: duties_and_evidence / spacy_sm
+                            variant  top1_accuracy  macro_precision  macro_recall  macro_f1  hit_rate3       mrr  partial_batch_seconds  text_only_top1
+0                   structured_only       0.900000         0.911364      0.900000  0.901930   1.000000  0.947222               0.000263             NaN
+1         structured_skill_coverage       0.700000         0.703137      0.700000  0.679275   0.983333  0.836667               0.005610             NaN
+2         current_text__tfidf_regex       0.816667         0.834313      0.816667  0.813818   1.000000  0.908333               0.429801        0.683333
+3            current_text__spacy_sm       0.800000         0.830910      0.800000  0.797604   1.000000  0.900000               2.997583        0.650000
+4          duties_only__tfidf_regex       0.916667         0.923737      0.916667  0.916288   1.000000  0.958333               0.241281        0.450000
+5             duties_only__spacy_sm       0.866667         0.885378      0.866667  0.862970   1.000000  0.933333               2.043118        0.450000
+6        evidence_only__tfidf_regex       0.916667         0.930556      0.916667  0.918483   0.983333  0.954167               0.403020        0.233333
+7           evidence_only__spacy_sm       0.916667         0.930556      0.916667  0.918483   0.983333  0.954167               1.404747        0.200000
+8  duties_and_evidence__tfidf_regex       0.883333         0.911111      0.883333  0.882895   1.000000  0.941667               0.166813        0.166667
+9     duties_and_evidence__spacy_sm       0.883333         0.911111      0.883333  0.882895   1.000000  0.941667               0.905953        0.166667
+Simulation results are design diagnostics only. New evidence may help a non-NLP baseline too. Improvement over category-only does not isolate NLP.
+EXECUTING CELL 13
+structured_only {'metric': 'top1_correct', 'delta': -0.016666666666666666, 'ci95': [-0.08333333333333333, 0.03333333333333333], 'group_count': 60, 'note': 'Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee.'}
+structured_skill_coverage {'metric': 'top1_correct', 'delta': 0.18333333333333332, 'ci95': [0.03333333333333333, 0.3333333333333333], 'group_count': 60, 'note': 'Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee.'}
+current_text__spacy_sm {'metric': 'top1_correct', 'delta': 0.08333333333333333, 'ci95': [0.0, 0.16666666666666666], 'group_count': 60, 'note': 'Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee.'}
+        case_id  expected  current_prediction  proposed_prediction  proposed_expected_rank  effect
+0  prepared-106         3                   3                    1                       2    hurt
+1  prepared-155         4                   3                    4                       1  helped
+2  prepared-157         4                   1                    4                       1  helped
+3  prepared-159         4                   1                    4                       1  helped
+4  prepared-161         4                   1                    4                       1  helped
+5  prepared-205         5                   6                    5                       1  helped
+6  prepared-257         6                   5                    6                       1  helped
+   position_id                          title  precision  recall        f1  support
+0            1       Backend Developer Intern   0.666667     1.0  0.800000       10
+1            2      Frontend Developer Intern   0.900000     0.9  0.900000       10
+2            3  Database Administrator Intern   1.000000     0.6  0.750000       10
+3            4               QA Tester Intern   0.900000     0.9  0.900000       10
+4            5   Network Administrator Intern   1.000000     1.0  1.000000       10
+5            6              IT Support Intern   1.000000     0.9  0.947368       10
+proposal_cell_13:24: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+EXECUTING CELL 15
+Supply independently labeled dev/test cohorts with observed item outcomes and reviewed duties.
+EXECUTING CELL 17
+Study archive: C:\Users\acer\Downloads\capstone\SkillBridge\outputs\colab_proposal\qa_run\SkillBridge_Proposed_Feature_Results.zip

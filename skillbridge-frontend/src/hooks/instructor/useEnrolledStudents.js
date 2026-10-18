@@ -25,8 +25,9 @@
 //   PATCH /api/instructor/students/:id/retake/          → toggle retake
 //   DELETE /api/instructor/students/:id/                → remove student
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
+import { requestErrorMessage } from '../../api/requestErrors'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useApi, invalidateCache, fetchWithDedup, getCachedData, updateCachedData } from '../useApi'
 import { useSSE } from '../useSSE'
@@ -137,7 +138,6 @@ export function useEnrolledStudents() {
     const fresh = (rosterRaw?.students || []).map(s => ({
       ...normalizeStudent(s), batch: rosterRaw.batch ?? { id: activeBatchId },
     }))
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadedRosters(previous => {
       if (previous.has(activeBatchId) === Boolean(rosterRaw)) return previous
       const next = new Set(previous)
@@ -161,6 +161,9 @@ export function useEnrolledStudents() {
   const [showArchiveConf, setShowArchiveConf] = useState(false)
   const [showNewBatch,    setShowNewBatch]    = useState(false)
   const [newBatchName,    setNewBatchName]    = useState('')
+  const [batchBusy, setBatchBusy] = useState(false)
+  const [batchError, setBatchError] = useState('')
+  const batchPending = useRef(false)
   const [toast,           setToast]           = useState(null)
 
   const showToast = useCallback((msg) => {
@@ -173,7 +176,7 @@ export function useEnrolledStudents() {
     const onKey = (e) => {
       // Native dialogs handle only the topmost modal, including retake confirmations.
       if (document.querySelector('dialog[open]')) return
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !batchPending.current) {
         setShowNewBatch(false)
         setShowArchiveConf(false)
       }
@@ -204,7 +207,6 @@ export function useEnrolledStudents() {
       students:   [],
     }))
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatchesReady(true)
 
     // Preserve existing student arrays during SSE background refreshes
@@ -233,7 +235,6 @@ export function useEnrolledStudents() {
   useEffect(() => {
     if (!selectedStudent) return
     const fresh = students.find(s => s.id === selectedStudent.id)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedStudent(fresh ?? null)
   }, [students]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -247,44 +248,51 @@ export function useEnrolledStudents() {
 
   // ── Actions ───────────────────────────────────────────────────────
 
+  async function writeBatch(endpoint, payload) {
+    if (batchPending.current) return null
+    batchPending.current = true; setBatchBusy(true); setBatchError('')
+    try {
+      const { data } = await api.post(endpoint, payload)
+      const current = getCachedData('/api/instructor/batches/') ?? []
+      const existing = current.find(row => row.id === data.id)
+      updateCachedData('/api/instructor/batches/', existing
+        ? current.map(row => row.id === data.id ? { ...row, ...data } : row)
+        : [...current, { ...data, student_count: 0 }])
+      invalidateCache('/api/instructor/batches/')
+      invalidateCache('/api/instructor/assessments/')
+      return data
+    } catch (error) {
+      setBatchError(requestErrorMessage(error, { mutation: true }))
+      return null
+    } finally { batchPending.current = false; setBatchBusy(false) }
+  }
+
   async function handleArchiveBatch() {
-    try { await api.post(`/api/instructor/batches/${activeBatchId}/archive/`) } catch { /* optimistic state remains recoverable by refresh */ }
-    setBatches(prev => prev.map(b =>
-      b.id === activeBatchId
-        ? { ...b, status: 'archived', archivedAt: new Date().toISOString().slice(0, 10) }
-        : b
-    ))
-    // Invalidate cache so next navigation sees the updated status
-    invalidateCache('/api/instructor/batches/')
-    invalidateCache('/api/instructor/assessments/')
+    const data = await writeBatch(`/api/instructor/batches/${activeBatchId}/archive/`)
+    if (!data) return
+    setBatches(prev => prev.map(batch => batch.id === data.id
+      ? { ...batch, status: data.status, archivedAt: data.archived_at } : batch))
     setShowArchiveConf(false)
     setShowNewBatch(true)
   }
 
   async function handleUnarchiveBatch() {
-    try { await api.post(`/api/instructor/batches/${activeBatchId}/unarchive/`) } catch { /* optimistic state remains recoverable by refresh */ }
-    setBatches(prev => prev.map(b =>
-      b.id === activeBatchId
-        ? { ...b, status: 'active', archivedAt: null }
-        : b
-    ))
-    invalidateCache('/api/instructor/batches/')
-    invalidateCache('/api/instructor/assessments/')
-    showToast(`Batch unarchived.`)
+    const data = await writeBatch(`/api/instructor/batches/${activeBatchId}/unarchive/`)
+    if (!data) return
+    setBatches(prev => prev.map(batch => batch.id === data.id
+      ? { ...batch, status: data.status, archivedAt: data.archived_at } : batch))
+    showToast('Batch unarchived.')
   }
 
   async function handleCreateBatch() {
-    const name  = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
-    let newId = Date.now()
-    try { const res = await api.post('/api/instructor/batches/', { name }); newId = res.data.id } catch { /* keep the local draft id */ }
-    const nb = { id: newId, name, status: 'active', archivedAt: null, students: [] }
-    setBatches(prev => [...prev, nb])
-    setActiveBatchId(nb.id)
-    // Invalidate so cache reflects the new batch on next visit
-    invalidateCache('/api/instructor/batches/')
-    setShowNewBatch(false)
-    setNewBatchName('')
-    showToast(`New batch "${name}" created.`)
+    const name = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
+    const data = await writeBatch('/api/instructor/batches/', { name })
+    if (!data) return
+    const batch = { id: data.id, name: data.name, status: data.status, archivedAt: null, students: [] }
+    setBatches(prev => [...prev.filter(row => row.id !== batch.id), batch])
+    setActiveBatchId(batch.id)
+    setShowNewBatch(false); setNewBatchName('')
+    showToast(`New batch "${data.name}" created.`)
   }
 
   async function handleToggleRetake(studentId, assessmentId) {
@@ -330,21 +338,19 @@ export function useEnrolledStudents() {
     setPage(1)
   }
 
-  function handleRemove(s) {
-    // Optimistic removal
-    setStudents(p => p.filter(x => x.id !== s.id))
-    setConfirmRemove(null)
-    // Persist to backend
-    api.delete(`/api/instructor/students/${s.id}/`)
-      .then(() => {
-        invalidateCache('/api/instructor/batches/')
-        showToast(`${s.name} has been removed from the batch.`)
-      })
-      .catch(() => {
-        // Roll back if API call fails
-        setStudents(p => [...p, s])
-        showToast('❌ Failed to remove student. Please try again.')
-      })
+  async function handleRemove(student) {
+    try {
+      await api.delete(`/api/instructor/students/${student.id}/`, { params: { batch_id: activeBatchId } })
+      const current = rosterUrl && getCachedData(rosterUrl)
+      if (current) updateCachedData(rosterUrl, { ...current, students: current.students.filter(row => row.id !== student.id) })
+      setStudents(rows => rows.filter(row => row.id !== student.id))
+      setConfirmRemove(null)
+      invalidateCache('/api/instructor/batches/')
+      showToast(`${student.name} has been unenrolled from this batch. Assessment history is preserved.`)
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, message: requestErrorMessage(error, { mutation: true }) }
+    }
   }
 
   // ── Derived stats ─────────────────────────────────────────────────
@@ -391,7 +397,7 @@ export function useEnrolledStudents() {
     // Batch actions
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
-    newBatchName, setNewBatchName, handleCreateBatch,
+    newBatchName, setNewBatchName, handleCreateBatch, batchBusy, batchError,
     // Student actions
     handleEnroll, handleRemove, handleToggleRetake,
     // Modal state

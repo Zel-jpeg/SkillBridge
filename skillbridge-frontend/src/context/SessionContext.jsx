@@ -10,19 +10,23 @@
 //   - Resets prefetch state
 //   - Closes the SSE connection (useSSE) so it doesn't reconnect after logout
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logoutSession, resetSessionData } from '../api/logout'
 import { authDestination } from '../api/authDestination'
+import { readBrowserSession } from '../api/sessionRenewal'
 
 const SessionContext = createContext(null)
 
 export function SessionProvider({ children }) {
   const [expired, setExpired] = useState(false)
   const navigate = useNavigate()
+  const sessionId = useRef(readBrowserSession().id)
 
   const establishSession = useCallback(({ access, refresh, user }) => {
     resetSessionData()
+    sessionId.current = crypto.randomUUID()
+    localStorage.setItem('sb-session-id', sessionId.current)
     localStorage.setItem('sb-token', access)
     localStorage.setItem('sb-refresh', refresh)
     localStorage.setItem('sb-role', user.role)
@@ -46,13 +50,16 @@ export function SessionProvider({ children }) {
 
   useEffect(() => {
     function reconcile(event) {
-      if (!['sb-token', 'sb-role', 'sb-user', null].includes(event.key)) return
+      if (!['sb-token', 'sb-role', 'sb-user', 'sb-session-id', null].includes(event.key)) return
+      if (event.key === 'sb-token' && event.oldValue && event.newValue && sessionId.current &&
+          sessionId.current === localStorage.getItem('sb-session-id')) return
       if (event.key === 'sb-user') {
         try {
           if (JSON.parse(event.oldValue)?.id === JSON.parse(event.newValue)?.id) return
         } catch { /* Invalid session metadata needs reconciliation. */ }
       }
       resetSessionData()
+      sessionId.current = localStorage.getItem('sb-session-id')
       setExpired(false)
       let user
       try { user = JSON.parse(localStorage.getItem('sb-user')) } catch { /* Invalid session. */ }

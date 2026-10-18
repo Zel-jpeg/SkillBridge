@@ -94,13 +94,17 @@ with sync_playwright() as p:
         answer = student.get_by_role('button', name=re.compile('Synthetic correct'))
         expect(answer).to_be_visible()
         answer.click()
-        before = student.evaluate("({answers: localStorage.getItem('sb_answers_" + str(ids['assessment']) + "'), marker: localStorage.getItem('sb_integrity_active_" + str(ids['assessment']) + "'), timer: Number(localStorage.getItem('sb_timer_" + str(ids['assessment']) + "')), changes: window.__changes.length})")
+        suffix = f"{AUTH['student']['user']['id']}_{ids['assessment']}"
+        snapshot = "({answers: localStorage.getItem('sb_answers_" + suffix + "'), marker: localStorage.getItem('sb_integrity_active_" + suffix + "'), timer: document.querySelector('.font-mono').textContent.trim(), changes: window.__changes.length})"
+        before = student.evaluate(snapshot)
+        assert before['answers'] and before['marker']
         mutate(instructor_context, 'instructor', 'PATCH', f"/api/instructor/assessments/{ids['assessment']}/", {'title': 'Synthetic assessment revised'})
         student.wait_for_function('count => window.__changes.length > count', arg=before['changes'])
         expect(answer).to_have_class(re.compile('border-green-500'))
-        after = student.evaluate("({answers: localStorage.getItem('sb_answers_" + str(ids['assessment']) + "'), marker: localStorage.getItem('sb_integrity_active_" + str(ids['assessment']) + "'), timer: Number(localStorage.getItem('sb_timer_" + str(ids['assessment']) + "'))})")
+        after = student.evaluate(snapshot)
         assert after['answers'] == before['answers'] and after['marker'] == before['marker']
-        assert 0 <= before['timer'] - after['timer'] <= 10
+        seconds = lambda value: sum(int(part) * multiplier for part, multiplier in zip(value.split(':'), [60, 1]))
+        assert 0 <= seconds(before['timer']) - seconds(after['timer']) <= 10
         expect(student.get_by_text('Integrity monitoring active')).to_be_visible()
         record('Active assessment answers, layout, timer and integrity state survive invalidation')
 

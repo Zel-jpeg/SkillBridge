@@ -1,0 +1,142 @@
+EXECUTING CELL 1
+Python: 3.13.7 (tags/v3.13.7:bcee1c3, Aug 14 2025, 14:15:11) [MSC v.1944 64 bit (AMD64)]
+Runtime: Windows-11-10.0.26300-SP0 CPU: Intel64 Family 6 Model 154 Stepping 4, GenuineIntel
+EXECUTING CELL 3
+Snapshot verified. Workspace: C:\Users\acer\Downloads\capstone\SkillBridge\outputs\colab_nlp\qa_run\skillbridge_nlp_study
+{
+  "python": "3.13.7",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpu_count": 12,
+  "packages": {
+    "numpy": "2.4.4",
+    "scikit-learn": "1.8.0",
+    "spacy": "3.8.16",
+    "stanza": "1.14.0",
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-md": "3.8.0"
+  },
+  "seed": 20261018,
+  "weights": [
+    0.6,
+    0.25,
+    0.15
+  ],
+  "text_generation_version": "neutral-evidence-v2",
+  "note": "Record RAM/CPU model from the Colab environment cell too. CPU pipelines; no GPU comparison."
+}
+EXECUTING CELL 5
+Dataset: {'name': 'SkillBridge current-helper development demonstration', 'evidence_kind': 'synthetic_development', 'labeling_protocol': 'Original synthetic archetype labels; not independently judged.', 'source_dataset_sha256': 'f11af215818563d72ef8d9bef367c922a11a8d33a16bc3cd193b5ed022cba88e', 'note': 'All 60 cases are familiar development data. No final validation is claimed. Coordinates were not present in this source: all location scores are neutral .5.'}
+Cases by split: {'dev': 60, 'test': 0}
+Checks: {'duplicate_score_vectors_across_splits': 0, 'missing_student_coordinates': 60, 'missing_position_coordinates': 6}
+EXECUTING CELL 7
+PASS: changing labels does not change text/category/location inputs.
+Example neutral profile: Assessment evidence indicates a backend and data-oriented competency pattern, led by Programming (95.0%) and Database (90.0%). The student demonstrates excellent programming competency (95 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; excellent database management competency (90 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; strong web development competency (80 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; basic cybersecurity competency (55 percent); category vocabulary: authentication, encryption; basic networking competency (45 percent); category vocabulary: TCP/IP, routing. Skill evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management SQL database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design database management database design web development strong competency web development strong competency web development strong competency web development strong competency web development strong competency web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing.
+Example position description: Backend Developer Intern at ABC Software Solutions. Required skill percentages: Programming: 92 percent; Database: 84 percent; Networking: 38 percent; Web Development: 76 percent; Cybersecurity: 52 percent. Competency requirements: excellent programming competency (92 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; strong database management competency (84 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; proficient web development competency (76 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design; basic cybersecurity competency (52 percent); category vocabulary: authentication, encryption; basic networking competency (38 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint. Requirement evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management strong competency database management strong competency database management strong competency database management strong competency database management strong competency database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design web development proficient competency web development proficient competency web development proficient competency web development proficient competency web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing backend backend server-side server-side REST API REST API Django Django Flask Flask authentication authentication database integration database integration business logic business logic API endpoint API endpoint.
+EXECUTING CELL 9
+dev: structured_only
+dev: tfidf_regex
+dev: spacy_sm
+dev: spacy_md
+            method  top1_accuracy  macro_precision  macro_recall  macro_f1  hit_rate3       mrr  median_partial_batch_seconds  nlp_only_top1
+0  structured_only       0.900000         0.911364      0.900000  0.901930        1.0  0.947222                      0.000295            NaN
+1      tfidf_regex       0.816667         0.834313      0.816667  0.813818        1.0  0.908333                      0.476309       0.683333
+2         spacy_sm       0.800000         0.830910      0.800000  0.797604        1.0  0.900000                      2.935792       0.650000
+3         spacy_md       0.800000         0.830910      0.800000  0.797604        1.0  0.900000                      2.589809       0.650000
+Macro metrics classify the first predicted position; Hit Rate@3 is not Precision@3.
+NDCG@3 / Precision@3 / Recall@3 appear only with complete multi-position judgments.
+EXECUTING CELL 11
+Hybrid versus no NLP: {'metric': 'top1_correct', 'delta': -0.1, 'ci95': [-0.2, -0.016666666666666666], 'group_count': 60, 'note': 'Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee.'}
+Trained preprocessor versus regex + TF-IDF: {'metric': 'top1_correct', 'delta': -0.016666666666666666, 'ci95': [-0.08333333333333333, 0.03333333333333333], 'group_count': 60, 'note': 'Paired group bootstrap; synthetic/related templates still limit generalization. A CI is not a real-world guarantee.'}
+         case_id  expected  baseline_prediction  hybrid_prediction  expected_rank  change  margin_percent
+2   prepared-003         1                    4                  1              1  helped            2.19
+22  prepared-105         3                    3                  1              2    hurt            1.17
+32  prepared-155         4                    4                  3              2    hurt            2.26
+34  prepared-157         4                    4                  1              2    hurt            1.30
+36  prepared-159         4                    4                  1              2    hurt            0.25
+38  prepared-161         4                    4                  1              2    hurt            1.20
+44  prepared-205         5                    5                  6              2    hurt            0.38
+56  prepared-257         6                    6                  5              2    hurt            0.40
+   position_id                          title  precision  recall        f1  support
+0            1       Backend Developer Intern   0.588235     1.0  0.740741       10
+1            2      Frontend Developer Intern   0.900000     0.9  0.900000       10
+2            3  Database Administrator Intern   0.875000     0.7  0.777778       10
+3            4               QA Tester Intern   0.833333     0.5  0.625000       10
+4            5   Network Administrator Intern   0.900000     0.9  0.900000       10
+5            6              IT Support Intern   0.888889     0.8  0.842105       10
+Confusion matrix position order: [1, 2, 3, 4, 5, 6]
+    1  2  3  4  5  6
+1  10  0  0  0  0  0
+2   1  9  0  0  0  0
+3   3  0  7  0  0  0
+4   3  1  1  5  0  0
+5   0  0  0  0  9  1
+6   0  0  0  1  1  8
+         case_id  expected  predicted  expected_rank  margin_percent
+0   prepared-001         1          1              1            5.53
+1   prepared-002         1          1              1            5.76
+2   prepared-003         1          1              1            2.19
+3   prepared-004         1          1              1            3.80
+4   prepared-005         1          1              1            9.28
+5   prepared-006         1          1              1            5.40
+6   prepared-007         1          1              1            6.10
+7   prepared-008         1          1              1            5.91
+8   prepared-009         1          1              1            5.91
+9   prepared-010         1          1              1            5.52
+10  prepared-053         2          2              1            6.06
+11  prepared-054         2          2              1            1.92
+12  prepared-055         2          2              1            5.20
+13  prepared-056         2          1              2            6.70
+14  prepared-057         2          2              1           12.55
+15  prepared-058         2          2              1            9.11
+16  prepared-059         2          2              1            8.89
+17  prepared-060         2          2              1           13.04
+18  prepared-061         2          2              1           14.70
+19  prepared-062         2          2              1            8.81
+20  prepared-103         3          3              1            1.18
+21  prepared-104         3          3              1            3.57
+22  prepared-105         3          1              2            1.17
+23  prepared-106         3          3              1            5.55
+24  prepared-107         3          1              2            0.22
+25  prepared-108         3          3              1            8.19
+26  prepared-109         3          3              1            2.70
+27  prepared-110         3          3              1            6.90
+28  prepared-111         3          3              1            1.89
+29  prepared-112         3          1              2            3.54
+30  prepared-153         4          2              2            5.42
+31  prepared-154         4          4              1            0.41
+32  prepared-155         4          3              2            2.26
+33  prepared-156         4          4              1            1.08
+34  prepared-157         4          1              2            1.30
+35  prepared-158         4          4              1            7.20
+36  prepared-159         4          1              2            0.25
+37  prepared-160         4          4              1            1.04
+38  prepared-161         4          1              2            1.20
+39  prepared-162         4          4              1            8.01
+40  prepared-201         5          5              1            7.76
+41  prepared-202         5          5              1            5.27
+42  prepared-203         5          5              1            5.23
+43  prepared-204         5          5              1            3.54
+44  prepared-205         5          6              2            0.38
+45  prepared-206         5          5              1            3.88
+46  prepared-207         5          5              1            5.68
+47  prepared-208         5          5              1            3.77
+48  prepared-209         5          5              1            5.35
+49  prepared-210         5          5              1            4.00
+50  prepared-251         6          4              2            0.47
+51  prepared-252         6          6              1            5.04
+52  prepared-253         6          6              1            2.06
+53  prepared-254         6          6              1            1.84
+54  prepared-255         6          6              1            0.01
+55  prepared-256         6          6              1            4.20
+56  prepared-257         6          5              2            0.40
+57  prepared-258         6          6              1            1.74
+58  prepared-259         6          6              1            1.04
+59  prepared-260         6          6              1            0.36
+Matplotlib is building the font cache; this may take a moment.
+notebook_cell_11:24: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+EXECUTING CELL 13
+Bundled cases are development only. Supply an independent test cohort.
+No final accuracy or acceptance claim is produced for the demonstration.
+EXECUTING CELL 15
+Export ready: C:\Users\acer\Downloads\capstone\SkillBridge\outputs\colab_nlp\qa_run\SkillBridge_NLP_Study_Results.zip

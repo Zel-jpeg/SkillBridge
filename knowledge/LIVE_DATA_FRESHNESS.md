@@ -117,6 +117,12 @@ References: [PostgreSQL LISTEN](https://www.postgresql.org/docs/current/sql-list
 
 ## Recovery, identity and caching
 
+Session renewal now uses shared coordinated refresh and SSE preflight recovery;
+see [authentication and recovery](AUTHENTICATION_AND_RECOVERY.md). Token renewal
+keeps the same authenticated session mounted, while logout/new sign-in changes
+its session ID. This supersedes the earlier assumption that access expiry always
+immediately requires signing in again. Revoked refresh/permissions remain terminal.
+
 - Every protected entry point starts the shared managed stream, including setup,
   assessment-taking and direct navigation to reports/placements.
 - A connection is keyed to role/user/token. Duplicate ensures share one stream

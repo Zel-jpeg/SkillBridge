@@ -14,8 +14,9 @@
 import { useState, useRef, useEffect } from 'react'
 import api from '../../api/axios'
 import { useApi } from '../useApi'
+import { authoringDraftKey, readAuthoringDraft } from '../../utils/authoringDraft'
+import { requestErrorMessage } from '../../api/requestErrors'
 
-const DRAFT_KEY     = 'sb_assessment_draft'
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
 
 // ── Question type definitions ─────────────────────────────────────
@@ -26,14 +27,13 @@ export const QUESTION_TYPES = [
 ]
 
 // ── Draft persistence helpers ─────────────────────────────────────
-function saveDraft(data) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() })) } catch { /* Storage may be disabled. */ }
+function saveDraft(data, key) {
+  if (!key || key !== authoringDraftKey()) return
+  try { localStorage.setItem(key, JSON.stringify({ ...data, savedAt: Date.now() })) } catch { /* Storage may be disabled. */ }
 }
-function loadDraft() {
-  try { const raw = localStorage.getItem(DRAFT_KEY); return raw ? JSON.parse(raw) : null } catch { return null }
-}
-function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY) } catch { /* Storage may be disabled. */ }
+function clearDraft(key) {
+  if (!key) return
+  try { localStorage.removeItem(key) } catch { /* Storage may be disabled. */ }
 }
 export function formatDraftAge(ts) {
   const mins = Math.floor((Date.now() - ts) / 60000)
@@ -69,7 +69,7 @@ export function makeCategory(id, name = '') {
 }
 
 // ── TF-IDF suggestion helper ──────────────────────────────────────
-// Called via a per-question debounced timer (600ms).
+// Called via a per-question debounced timer (300ms).
 // Returns the suggested category name or null.
 async function fetchCategorySuggestion(questionText) {
   try {
@@ -143,6 +143,8 @@ export function parseTextFileContent(content) {
       if (!choiceA || !choiceB) rowErrors.push('At least choices A and B are required for MCQ')
       if (!['A', 'B', 'C', 'D'].includes(correct.toUpperCase())) {
         rowErrors.push(`CORRECT must be A, B, C, or D for MCQ (got "${correct}")`)
+      } else if (!map[correct.toUpperCase()]?.trim()) {
+        rowErrors.push('Correct answer must point to a non-empty choice')
       }
     } else if (type === 'truefalse') {
       if (!['TRUE', 'FALSE'].includes(correct.toUpperCase())) {
@@ -202,6 +204,8 @@ CATEGORY: Computer Hardware
 // MAIN HOOK
 // ════════════════════════════════════════════════════════════════
 export function useInstructorUpload() {
+  const [draftKey] = useState(() => authoringDraftKey())
+  const publishingRef = useRef(false)
   // ── Batches ───────────────────────────────────────────────────
   const { data: batchesData, loading: loadingBatches } = useApi('/api/instructor/batches/')
   const batches = Array.isArray(batchesData) ? batchesData : []
@@ -257,6 +261,15 @@ export function useInstructorUpload() {
   // TF-IDF suggestions: { [qid]: 'SuggestedCategoryName' }
   const [suggestions,      setSuggestions]      = useState({})
   const suggestionTimers   = useRef({})
+  const suggestionRevisions = useRef({})
+  useEffect(() => {
+    const timers = suggestionTimers.current
+    const revisions = suggestionRevisions.current
+    return () => {
+      Object.values(timers).forEach(clearTimeout)
+      Object.keys(revisions).forEach(id => { revisions[id] += 1 })
+    }
+  }, [])
 
   // Excel upload
   const xlsxRef = useRef(null)
@@ -285,7 +298,7 @@ export function useInstructorUpload() {
 
   // Draft
   const [draftBanner, setDraftBanner] = useState(() => {
-    const d = loadDraft()
+    const d = readAuthoringDraft(draftKey)
     return d && (d.title || d.categories?.length || d.questions?.some(q => q.text)) ? d : null
   })
   const [lastSaved, setLastSaved] = useState(null)
@@ -297,12 +310,12 @@ export function useInstructorUpload() {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       saveDraft({ title, duration, categories, questions, selectedBatchId,
-        publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt })
+        publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt }, draftKey)
       setLastSaved(Date.now())
     }, 1000)
     return () => clearTimeout(saveTimer.current)
   }, [title, duration, categories, questions, selectedBatchId, publicationStatus,
-    isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published])
+    isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published, draftKey])
 
   // ── Draft actions ─────────────────────────────────────────────
   function handleRestoreDraft() {
@@ -332,7 +345,7 @@ export function useInstructorUpload() {
   }
 
   function handleDiscardDraft() {
-    clearDraft()
+    clearDraft(draftKey)
     setDraftBanner(null)
   }
 
@@ -362,13 +375,15 @@ export function useInstructorUpload() {
 
   // ── TF-IDF suggestion ─────────────────────────────────────────
   function requestCategorySuggestion(qid, text) {
-    clearTimeout(suggestionTimers.current[qid])
+    dismissSuggestion(qid)
+    const revision = suggestionRevisions.current[qid]
     if (text.trim().length < 8) {
       setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
       return
     }
     suggestionTimers.current[qid] = setTimeout(async () => {
       const suggested = await fetchCategorySuggestion(text)
+      if (suggestionRevisions.current[qid] !== revision) return
       if (suggested) {
         setSuggestions(prev => ({ ...prev, [qid]: suggested }))
       } else {
@@ -378,6 +393,8 @@ export function useInstructorUpload() {
   }
 
   function dismissSuggestion(qid) {
+    clearTimeout(suggestionTimers.current[qid])
+    suggestionRevisions.current[qid] = (suggestionRevisions.current[qid] ?? 0) + 1
     setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
   }
 
@@ -438,6 +455,7 @@ export function useInstructorUpload() {
     if (field === 'text') {
       requestCategorySuggestion(id, value)
     }
+    if (field === 'categoryId') dismissSuggestion(id)
   }
 
   function updateIdentAnswer(id, value) {
@@ -497,6 +515,8 @@ export function useInstructorUpload() {
           if (!choiceA || !choiceB) rowErrors.push('At least choice_a and choice_b are required for MCQ')
           if (!['A','B','C','D'].includes(correct.toUpperCase())) {
             rowErrors.push(`Correct must be A, B, C, or D for MCQ (got "${correct}")`)
+          } else if (![choiceA, choiceB, choiceC, choiceD][['A','B','C','D'].indexOf(correct.toUpperCase())]) {
+            rowErrors.push('Correct answer must point to a non-empty choice')
           }
         } else if (type === 'truefalse') {
           if (!['TRUE','FALSE'].includes(correct.toUpperCase())) {
@@ -622,7 +642,7 @@ export function useInstructorUpload() {
 
       if (q.type === 'mcq') {
         if (q.choices.filter(c => c.trim()).length < 2) e[`q_${q.id}_choices`] = 'Enter at least 2 answer choices'
-        if (q.correct === null) e[`q_${q.id}_correct`] = 'Mark the correct answer'
+        if (q.correct === null || !q.choices[q.correct]?.trim()) e[`q_${q.id}_correct`] = 'Mark a non-empty correct answer'
       } else if (q.type === 'truefalse') {
         if (q.correct === null) e[`q_${q.id}_correct`] = 'Select the correct answer (True or False)'
       } else if (q.type === 'identification') {
@@ -644,7 +664,9 @@ export function useInstructorUpload() {
 
   // ── Publish — wired to POST /api/instructor/assessments/ ────────
   async function handlePublish() {
+    if (publishingRef.current) return
     if (!validate()) return
+    publishingRef.current = true
     setPublishing(true)
     setPublishError('')
 
@@ -697,13 +719,14 @@ export function useInstructorUpload() {
 
     try {
       const res = await api.post('/api/instructor/assessments/', payload)
-      clearDraft()
+      clearDraft(draftKey)
       setPublished(true)
       setPublishedId(res.data.id)
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.detail || 'Failed to publish. Please try again.'
+      const msg = requestErrorMessage(err, { mutation: true })
       setPublishError(msg)
     } finally {
+      publishingRef.current = false
       setPublishing(false)
     }
   }

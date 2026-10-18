@@ -3,11 +3,11 @@
 import csv
 
 
-FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r', '\n')
 
 
 def safe_csv_cell(value):
-    if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+    if isinstance(value, str) and (value.startswith(FORMULA_PREFIXES) or value.lstrip(' \t\r\n').startswith(('=', '+', '-', '@'))):
         return "'" + value
     return value
 

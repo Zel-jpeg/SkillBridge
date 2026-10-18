@@ -2,3 +2,13 @@ node_modules/
 .env
 dist/
 build/
+
+# Local verification runtimes, disposable databases, dumps and scratch artifacts.
+/work/
+/tmp/
+__pycache__/
+*.py[cod]
+
+# Private environment variants; keep safe setup templates publishable.
+.env.*
+!.env.example

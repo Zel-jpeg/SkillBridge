@@ -34,6 +34,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     role         = models.CharField(max_length=20, choices=ROLE_CHOICES)
     school_id = models.CharField(max_length=20, blank=True, default='')
     course       = models.CharField(max_length=100, blank=True)
+    department   = models.CharField(max_length=255, blank=True, default='Institute of Computing')
     phone        = models.CharField(max_length=20, blank=True)
     address      = models.JSONField(blank=True, null=True)
     photo_url    = models.TextField(blank=True)

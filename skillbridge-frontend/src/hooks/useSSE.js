@@ -21,12 +21,13 @@ const manager = createEventStream({
 })
 let listening = false
 function storageChanged(event) {
-  if (['sb-token', 'sb-role', 'sb-user', null].includes(event.key)) manager.start()
+  if (event.type === 'auth:renewed' || ['sb-token', 'sb-role', 'sb-user', null].includes(event.key)) manager.start()
 }
 export function startSSE() {
   if (!listening) {
     document.addEventListener('visibilitychange', manager.visibilityChanged)
     window.addEventListener('storage', storageChanged)
+    window.addEventListener('auth:renewed', storageChanged)
     listening = true
   }
   manager.start()
@@ -35,6 +36,7 @@ export function closeSSE() {
   manager.stop()
   document.removeEventListener('visibilitychange', manager.visibilityChanged)
   window.removeEventListener('storage', storageChanged)
+  window.removeEventListener('auth:renewed', storageChanged)
   listening = false
 }
 // Existing page hooks may still ensure the connection; PrivateRoute owns cleanup.

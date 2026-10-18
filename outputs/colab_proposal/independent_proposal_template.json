@@ -1,0 +1,1787 @@
+{
+  "metadata": {
+    "name": "REPLACE_WITH_STUDY_NAME",
+    "evidence_kind": "expert_independent",
+    "labeling_protocol": "REPLACE with assessor rubric, blinding, date and adjudication process",
+    "evidence_note": "Replace example question descriptions with actual reviewed item annotations; supply observed graded outcomes."
+  },
+  "categories": [
+    {
+      "id": 1,
+      "name": "Programming",
+      "tags": [
+        "Python",
+        "Java",
+        "JavaScript",
+        "OOP",
+        "algorithms",
+        "data structures",
+        "debugging",
+        "Git",
+        "problem solving",
+        "software logic"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Database",
+      "tags": [
+        "SQL",
+        "PostgreSQL",
+        "MySQL",
+        "ERD",
+        "normalization",
+        "indexing",
+        "query optimization",
+        "database design",
+        "backup",
+        "data integrity"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Networking",
+      "tags": [
+        "TCP/IP",
+        "routing",
+        "switching",
+        "subnetting",
+        "LAN",
+        "WAN",
+        "Cisco",
+        "firewall",
+        "network troubleshooting",
+        "connectivity"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Web Development",
+      "tags": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "React",
+        "responsive design",
+        "web API",
+        "frontend",
+        "DOM",
+        "browser testing",
+        "UI development"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Cybersecurity",
+      "tags": [
+        "authentication",
+        "encryption",
+        "OWASP",
+        "firewall",
+        "access control",
+        "secure coding",
+        "vulnerability assessment",
+        "phishing",
+        "security policy"
+      ]
+    }
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "title": "Backend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "backend",
+        "server-side",
+        "REST API",
+        "Django",
+        "Flask",
+        "authentication",
+        "database integration",
+        "business logic",
+        "API endpoint"
+      ],
+      "requirements": {
+        "Programming": 92,
+        "Database": 84,
+        "Networking": 38,
+        "Web Development": 76,
+        "Cybersecurity": 52
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "api_development",
+          "task": "Develop and test API endpoints"
+        },
+        {
+          "skill_id": "python_logic",
+          "task": "Implement Python program logic"
+        },
+        {
+          "skill_id": "sql_queries",
+          "task": "Read and update data using SQL queries"
+        },
+        {
+          "skill_id": "authentication",
+          "task": "Implement user authentication"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Frontend Developer Intern",
+      "company": "ABC Software Solutions",
+      "tags": [
+        "frontend",
+        "React components",
+        "JavaScript events",
+        "responsive layout",
+        "CSS styling",
+        "browser compatibility",
+        "UI development"
+      ],
+      "requirements": {
+        "Programming": 78,
+        "Database": 38,
+        "Networking": 32,
+        "Web Development": 95,
+        "Cybersecurity": 44
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "html_css",
+          "task": "Build HTML and CSS interfaces"
+        },
+        {
+          "skill_id": "javascript_ui",
+          "task": "Implement interactive JavaScript interfaces"
+        },
+        {
+          "skill_id": "responsive_design",
+          "task": "Adapt responsive web layouts"
+        },
+        {
+          "skill_id": "browser_testing",
+          "task": "Check interfaces using browser testing"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Database Administrator Intern",
+      "company": "DataCore Analytics",
+      "tags": [
+        "database administration",
+        "SQL optimization",
+        "schema design",
+        "backup",
+        "indexing",
+        "data validation",
+        "relational database"
+      ],
+      "requirements": {
+        "Programming": 74,
+        "Database": 96,
+        "Networking": 36,
+        "Web Development": 46,
+        "Cybersecurity": 58
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "sql_queries",
+          "task": "Write and inspect SQL queries"
+        },
+        {
+          "skill_id": "schema_design",
+          "task": "Maintain relational schema design"
+        },
+        {
+          "skill_id": "database_backup",
+          "task": "Perform database backup procedures"
+        },
+        {
+          "skill_id": "data_validation",
+          "task": "Check stored records through data validation"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "QA Tester Intern",
+      "company": "Tech Innovations Inc.",
+      "tags": [
+        "quality assurance",
+        "test cases",
+        "bug reporting",
+        "regression testing",
+        "manual testing",
+        "test documentation",
+        "defect tracking"
+      ],
+      "requirements": {
+        "Programming": 72,
+        "Database": 64,
+        "Networking": 42,
+        "Web Development": 66,
+        "Cybersecurity": 76
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "test_case_design",
+          "task": "Prepare test cases for software behavior"
+        },
+        {
+          "skill_id": "browser_testing",
+          "task": "Perform browser testing"
+        },
+        {
+          "skill_id": "data_validation",
+          "task": "Check application data validation"
+        },
+        {
+          "skill_id": "security_testing",
+          "task": "Perform basic security testing"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Network Administrator Intern",
+      "company": "NetSecure Systems",
+      "tags": [
+        "network administration",
+        "routing",
+        "switching",
+        "subnetting",
+        "Cisco configuration",
+        "network monitoring",
+        "LAN troubleshooting"
+      ],
+      "requirements": {
+        "Programming": 42,
+        "Database": 34,
+        "Networking": 96,
+        "Web Development": 28,
+        "Cybersecurity": 78
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "routing",
+          "task": "Configure network routing"
+        },
+        {
+          "skill_id": "subnetting",
+          "task": "Plan IP subnetting"
+        },
+        {
+          "skill_id": "device_configuration",
+          "task": "Perform network device configuration"
+        },
+        {
+          "skill_id": "access_control",
+          "task": "Maintain network access control"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "IT Support Intern",
+      "company": "XYZ Technologies",
+      "tags": [
+        "technical support",
+        "helpdesk",
+        "hardware troubleshooting",
+        "software installation",
+        "device setup",
+        "ticket handling",
+        "user assistance"
+      ],
+      "requirements": {
+        "Programming": 62,
+        "Database": 58,
+        "Networking": 84,
+        "Web Development": 52,
+        "Cybersecurity": 68
+      },
+      "lat": null,
+      "lng": null,
+      "confirmed_task_ids": null,
+      "suggested_task_options": [
+        {
+          "skill_id": "connectivity_troubleshooting",
+          "task": "Investigate network connectivity problems"
+        },
+        {
+          "skill_id": "device_configuration",
+          "task": "Set up network devices"
+        },
+        {
+          "skill_id": "software_debugging",
+          "task": "Investigate software problems"
+        },
+        {
+          "skill_id": "access_control",
+          "task": "Assist with permitted access control tasks"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "replace-dev-case",
+      "group_id": "replace-student-A",
+      "split": "dev",
+      "scores": {
+        "Programming": null,
+        "Database": null,
+        "Networking": null,
+        "Web Development": null,
+        "Cybersecurity": null
+      },
+      "expected_position_id": null,
+      "relevant_position_ids": [],
+      "address": {},
+      "responses": [
+        {
+          "question_id": "python_logic-1",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-2",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-3",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-4",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-5",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-1",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-2",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-3",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-4",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-5",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-1",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-2",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-3",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-4",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-5",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-1",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-2",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-3",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-4",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-5",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-1",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-2",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-3",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-4",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-5",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-1",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-2",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-3",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-4",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-5",
+          "correct": null
+        },
+        {
+          "question_id": "routing-1",
+          "correct": null
+        },
+        {
+          "question_id": "routing-2",
+          "correct": null
+        },
+        {
+          "question_id": "routing-3",
+          "correct": null
+        },
+        {
+          "question_id": "routing-4",
+          "correct": null
+        },
+        {
+          "question_id": "routing-5",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-1",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-2",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-3",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-4",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-5",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-1",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-2",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-3",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-4",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-5",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-1",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-2",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-3",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-4",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-5",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-1",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-2",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-3",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-4",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-5",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-1",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-2",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-3",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-4",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-5",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-1",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-2",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-3",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-4",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-5",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-1",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-2",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-3",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-4",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-5",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-1",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-2",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-3",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-4",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-5",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-1",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-2",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-3",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-4",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-5",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-1",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-2",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-3",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-4",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-5",
+          "correct": null
+        }
+      ],
+      "evidence_status": "eligible_submitted",
+      "evidence_source": "REPLACE_WITH_OBSERVED_SOURCE"
+    },
+    {
+      "id": "replace-test-case",
+      "group_id": "replace-student-B",
+      "split": "test",
+      "scores": {
+        "Programming": null,
+        "Database": null,
+        "Networking": null,
+        "Web Development": null,
+        "Cybersecurity": null
+      },
+      "expected_position_id": null,
+      "relevant_position_ids": [],
+      "address": {},
+      "responses": [
+        {
+          "question_id": "python_logic-1",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-2",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-3",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-4",
+          "correct": null
+        },
+        {
+          "question_id": "python_logic-5",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-1",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-2",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-3",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-4",
+          "correct": null
+        },
+        {
+          "question_id": "api_development-5",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-1",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-2",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-3",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-4",
+          "correct": null
+        },
+        {
+          "question_id": "software_debugging-5",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "test_case_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-1",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-2",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-3",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-4",
+          "correct": null
+        },
+        {
+          "question_id": "sql_queries-5",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "schema_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-1",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-2",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-3",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-4",
+          "correct": null
+        },
+        {
+          "question_id": "database_backup-5",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-1",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-2",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-3",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-4",
+          "correct": null
+        },
+        {
+          "question_id": "data_validation-5",
+          "correct": null
+        },
+        {
+          "question_id": "routing-1",
+          "correct": null
+        },
+        {
+          "question_id": "routing-2",
+          "correct": null
+        },
+        {
+          "question_id": "routing-3",
+          "correct": null
+        },
+        {
+          "question_id": "routing-4",
+          "correct": null
+        },
+        {
+          "question_id": "routing-5",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-1",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-2",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-3",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-4",
+          "correct": null
+        },
+        {
+          "question_id": "subnetting-5",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-1",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-2",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-3",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-4",
+          "correct": null
+        },
+        {
+          "question_id": "connectivity_troubleshooting-5",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-1",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-2",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-3",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-4",
+          "correct": null
+        },
+        {
+          "question_id": "device_configuration-5",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-1",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-2",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-3",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-4",
+          "correct": null
+        },
+        {
+          "question_id": "html_css-5",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-1",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-2",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-3",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-4",
+          "correct": null
+        },
+        {
+          "question_id": "javascript_ui-5",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-1",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-2",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-3",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-4",
+          "correct": null
+        },
+        {
+          "question_id": "responsive_design-5",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-1",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-2",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-3",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-4",
+          "correct": null
+        },
+        {
+          "question_id": "browser_testing-5",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-1",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-2",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-3",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-4",
+          "correct": null
+        },
+        {
+          "question_id": "authentication-5",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-1",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-2",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-3",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-4",
+          "correct": null
+        },
+        {
+          "question_id": "secure_coding-5",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-1",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-2",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-3",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-4",
+          "correct": null
+        },
+        {
+          "question_id": "security_testing-5",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-1",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-2",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-3",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-4",
+          "correct": null
+        },
+        {
+          "question_id": "access_control-5",
+          "correct": null
+        }
+      ],
+      "evidence_status": "eligible_submitted",
+      "evidence_source": "REPLACE_WITH_OBSERVED_SOURCE"
+    }
+  ],
+  "questions": [
+    {
+      "id": "python_logic-1",
+      "category": "Programming",
+      "skill_id": "python_logic",
+      "description": "Synthetic item 1 about Python program logic."
+    },
+    {
+      "id": "python_logic-2",
+      "category": "Programming",
+      "skill_id": "python_logic",
+      "description": "Synthetic item 2 about Python program logic."
+    },
+    {
+      "id": "python_logic-3",
+      "category": "Programming",
+      "skill_id": "python_logic",
+      "description": "Synthetic item 3 about Python program logic."
+    },
+    {
+      "id": "python_logic-4",
+      "category": "Programming",
+      "skill_id": "python_logic",
+      "description": "Synthetic item 4 about Python program logic."
+    },
+    {
+      "id": "python_logic-5",
+      "category": "Programming",
+      "skill_id": "python_logic",
+      "description": "Synthetic item 5 about Python program logic."
+    },
+    {
+      "id": "api_development-1",
+      "category": "Programming",
+      "skill_id": "api_development",
+      "description": "Synthetic item 1 about API endpoint development."
+    },
+    {
+      "id": "api_development-2",
+      "category": "Programming",
+      "skill_id": "api_development",
+      "description": "Synthetic item 2 about API endpoint development."
+    },
+    {
+      "id": "api_development-3",
+      "category": "Programming",
+      "skill_id": "api_development",
+      "description": "Synthetic item 3 about API endpoint development."
+    },
+    {
+      "id": "api_development-4",
+      "category": "Programming",
+      "skill_id": "api_development",
+      "description": "Synthetic item 4 about API endpoint development."
+    },
+    {
+      "id": "api_development-5",
+      "category": "Programming",
+      "skill_id": "api_development",
+      "description": "Synthetic item 5 about API endpoint development."
+    },
+    {
+      "id": "software_debugging-1",
+      "category": "Programming",
+      "skill_id": "software_debugging",
+      "description": "Synthetic item 1 about software debugging."
+    },
+    {
+      "id": "software_debugging-2",
+      "category": "Programming",
+      "skill_id": "software_debugging",
+      "description": "Synthetic item 2 about software debugging."
+    },
+    {
+      "id": "software_debugging-3",
+      "category": "Programming",
+      "skill_id": "software_debugging",
+      "description": "Synthetic item 3 about software debugging."
+    },
+    {
+      "id": "software_debugging-4",
+      "category": "Programming",
+      "skill_id": "software_debugging",
+      "description": "Synthetic item 4 about software debugging."
+    },
+    {
+      "id": "software_debugging-5",
+      "category": "Programming",
+      "skill_id": "software_debugging",
+      "description": "Synthetic item 5 about software debugging."
+    },
+    {
+      "id": "test_case_design-1",
+      "category": "Programming",
+      "skill_id": "test_case_design",
+      "description": "Synthetic item 1 about test case design."
+    },
+    {
+      "id": "test_case_design-2",
+      "category": "Programming",
+      "skill_id": "test_case_design",
+      "description": "Synthetic item 2 about test case design."
+    },
+    {
+      "id": "test_case_design-3",
+      "category": "Programming",
+      "skill_id": "test_case_design",
+      "description": "Synthetic item 3 about test case design."
+    },
+    {
+      "id": "test_case_design-4",
+      "category": "Programming",
+      "skill_id": "test_case_design",
+      "description": "Synthetic item 4 about test case design."
+    },
+    {
+      "id": "test_case_design-5",
+      "category": "Programming",
+      "skill_id": "test_case_design",
+      "description": "Synthetic item 5 about test case design."
+    },
+    {
+      "id": "sql_queries-1",
+      "category": "Database",
+      "skill_id": "sql_queries",
+      "description": "Synthetic item 1 about SQL queries."
+    },
+    {
+      "id": "sql_queries-2",
+      "category": "Database",
+      "skill_id": "sql_queries",
+      "description": "Synthetic item 2 about SQL queries."
+    },
+    {
+      "id": "sql_queries-3",
+      "category": "Database",
+      "skill_id": "sql_queries",
+      "description": "Synthetic item 3 about SQL queries."
+    },
+    {
+      "id": "sql_queries-4",
+      "category": "Database",
+      "skill_id": "sql_queries",
+      "description": "Synthetic item 4 about SQL queries."
+    },
+    {
+      "id": "sql_queries-5",
+      "category": "Database",
+      "skill_id": "sql_queries",
+      "description": "Synthetic item 5 about SQL queries."
+    },
+    {
+      "id": "schema_design-1",
+      "category": "Database",
+      "skill_id": "schema_design",
+      "description": "Synthetic item 1 about relational schema design."
+    },
+    {
+      "id": "schema_design-2",
+      "category": "Database",
+      "skill_id": "schema_design",
+      "description": "Synthetic item 2 about relational schema design."
+    },
+    {
+      "id": "schema_design-3",
+      "category": "Database",
+      "skill_id": "schema_design",
+      "description": "Synthetic item 3 about relational schema design."
+    },
+    {
+      "id": "schema_design-4",
+      "category": "Database",
+      "skill_id": "schema_design",
+      "description": "Synthetic item 4 about relational schema design."
+    },
+    {
+      "id": "schema_design-5",
+      "category": "Database",
+      "skill_id": "schema_design",
+      "description": "Synthetic item 5 about relational schema design."
+    },
+    {
+      "id": "database_backup-1",
+      "category": "Database",
+      "skill_id": "database_backup",
+      "description": "Synthetic item 1 about database backup."
+    },
+    {
+      "id": "database_backup-2",
+      "category": "Database",
+      "skill_id": "database_backup",
+      "description": "Synthetic item 2 about database backup."
+    },
+    {
+      "id": "database_backup-3",
+      "category": "Database",
+      "skill_id": "database_backup",
+      "description": "Synthetic item 3 about database backup."
+    },
+    {
+      "id": "database_backup-4",
+      "category": "Database",
+      "skill_id": "database_backup",
+      "description": "Synthetic item 4 about database backup."
+    },
+    {
+      "id": "database_backup-5",
+      "category": "Database",
+      "skill_id": "database_backup",
+      "description": "Synthetic item 5 about database backup."
+    },
+    {
+      "id": "data_validation-1",
+      "category": "Database",
+      "skill_id": "data_validation",
+      "description": "Synthetic item 1 about data validation."
+    },
+    {
+      "id": "data_validation-2",
+      "category": "Database",
+      "skill_id": "data_validation",
+      "description": "Synthetic item 2 about data validation."
+    },
+    {
+      "id": "data_validation-3",
+      "category": "Database",
+      "skill_id": "data_validation",
+      "description": "Synthetic item 3 about data validation."
+    },
+    {
+      "id": "data_validation-4",
+      "category": "Database",
+      "skill_id": "data_validation",
+      "description": "Synthetic item 4 about data validation."
+    },
+    {
+      "id": "data_validation-5",
+      "category": "Database",
+      "skill_id": "data_validation",
+      "description": "Synthetic item 5 about data validation."
+    },
+    {
+      "id": "routing-1",
+      "category": "Networking",
+      "skill_id": "routing",
+      "description": "Synthetic item 1 about network routing."
+    },
+    {
+      "id": "routing-2",
+      "category": "Networking",
+      "skill_id": "routing",
+      "description": "Synthetic item 2 about network routing."
+    },
+    {
+      "id": "routing-3",
+      "category": "Networking",
+      "skill_id": "routing",
+      "description": "Synthetic item 3 about network routing."
+    },
+    {
+      "id": "routing-4",
+      "category": "Networking",
+      "skill_id": "routing",
+      "description": "Synthetic item 4 about network routing."
+    },
+    {
+      "id": "routing-5",
+      "category": "Networking",
+      "skill_id": "routing",
+      "description": "Synthetic item 5 about network routing."
+    },
+    {
+      "id": "subnetting-1",
+      "category": "Networking",
+      "skill_id": "subnetting",
+      "description": "Synthetic item 1 about IP subnetting."
+    },
+    {
+      "id": "subnetting-2",
+      "category": "Networking",
+      "skill_id": "subnetting",
+      "description": "Synthetic item 2 about IP subnetting."
+    },
+    {
+      "id": "subnetting-3",
+      "category": "Networking",
+      "skill_id": "subnetting",
+      "description": "Synthetic item 3 about IP subnetting."
+    },
+    {
+      "id": "subnetting-4",
+      "category": "Networking",
+      "skill_id": "subnetting",
+      "description": "Synthetic item 4 about IP subnetting."
+    },
+    {
+      "id": "subnetting-5",
+      "category": "Networking",
+      "skill_id": "subnetting",
+      "description": "Synthetic item 5 about IP subnetting."
+    },
+    {
+      "id": "connectivity_troubleshooting-1",
+      "category": "Networking",
+      "skill_id": "connectivity_troubleshooting",
+      "description": "Synthetic item 1 about network connectivity troubleshooting."
+    },
+    {
+      "id": "connectivity_troubleshooting-2",
+      "category": "Networking",
+      "skill_id": "connectivity_troubleshooting",
+      "description": "Synthetic item 2 about network connectivity troubleshooting."
+    },
+    {
+      "id": "connectivity_troubleshooting-3",
+      "category": "Networking",
+      "skill_id": "connectivity_troubleshooting",
+      "description": "Synthetic item 3 about network connectivity troubleshooting."
+    },
+    {
+      "id": "connectivity_troubleshooting-4",
+      "category": "Networking",
+      "skill_id": "connectivity_troubleshooting",
+      "description": "Synthetic item 4 about network connectivity troubleshooting."
+    },
+    {
+      "id": "connectivity_troubleshooting-5",
+      "category": "Networking",
+      "skill_id": "connectivity_troubleshooting",
+      "description": "Synthetic item 5 about network connectivity troubleshooting."
+    },
+    {
+      "id": "device_configuration-1",
+      "category": "Networking",
+      "skill_id": "device_configuration",
+      "description": "Synthetic item 1 about network device configuration."
+    },
+    {
+      "id": "device_configuration-2",
+      "category": "Networking",
+      "skill_id": "device_configuration",
+      "description": "Synthetic item 2 about network device configuration."
+    },
+    {
+      "id": "device_configuration-3",
+      "category": "Networking",
+      "skill_id": "device_configuration",
+      "description": "Synthetic item 3 about network device configuration."
+    },
+    {
+      "id": "device_configuration-4",
+      "category": "Networking",
+      "skill_id": "device_configuration",
+      "description": "Synthetic item 4 about network device configuration."
+    },
+    {
+      "id": "device_configuration-5",
+      "category": "Networking",
+      "skill_id": "device_configuration",
+      "description": "Synthetic item 5 about network device configuration."
+    },
+    {
+      "id": "html_css-1",
+      "category": "Web Development",
+      "skill_id": "html_css",
+      "description": "Synthetic item 1 about HTML and CSS interfaces."
+    },
+    {
+      "id": "html_css-2",
+      "category": "Web Development",
+      "skill_id": "html_css",
+      "description": "Synthetic item 2 about HTML and CSS interfaces."
+    },
+    {
+      "id": "html_css-3",
+      "category": "Web Development",
+      "skill_id": "html_css",
+      "description": "Synthetic item 3 about HTML and CSS interfaces."
+    },
+    {
+      "id": "html_css-4",
+      "category": "Web Development",
+      "skill_id": "html_css",
+      "description": "Synthetic item 4 about HTML and CSS interfaces."
+    },
+    {
+      "id": "html_css-5",
+      "category": "Web Development",
+      "skill_id": "html_css",
+      "description": "Synthetic item 5 about HTML and CSS interfaces."
+    },
+    {
+      "id": "javascript_ui-1",
+      "category": "Web Development",
+      "skill_id": "javascript_ui",
+      "description": "Synthetic item 1 about JavaScript interfaces."
+    },
+    {
+      "id": "javascript_ui-2",
+      "category": "Web Development",
+      "skill_id": "javascript_ui",
+      "description": "Synthetic item 2 about JavaScript interfaces."
+    },
+    {
+      "id": "javascript_ui-3",
+      "category": "Web Development",
+      "skill_id": "javascript_ui",
+      "description": "Synthetic item 3 about JavaScript interfaces."
+    },
+    {
+      "id": "javascript_ui-4",
+      "category": "Web Development",
+      "skill_id": "javascript_ui",
+      "description": "Synthetic item 4 about JavaScript interfaces."
+    },
+    {
+      "id": "javascript_ui-5",
+      "category": "Web Development",
+      "skill_id": "javascript_ui",
+      "description": "Synthetic item 5 about JavaScript interfaces."
+    },
+    {
+      "id": "responsive_design-1",
+      "category": "Web Development",
+      "skill_id": "responsive_design",
+      "description": "Synthetic item 1 about responsive web design."
+    },
+    {
+      "id": "responsive_design-2",
+      "category": "Web Development",
+      "skill_id": "responsive_design",
+      "description": "Synthetic item 2 about responsive web design."
+    },
+    {
+      "id": "responsive_design-3",
+      "category": "Web Development",
+      "skill_id": "responsive_design",
+      "description": "Synthetic item 3 about responsive web design."
+    },
+    {
+      "id": "responsive_design-4",
+      "category": "Web Development",
+      "skill_id": "responsive_design",
+      "description": "Synthetic item 4 about responsive web design."
+    },
+    {
+      "id": "responsive_design-5",
+      "category": "Web Development",
+      "skill_id": "responsive_design",
+      "description": "Synthetic item 5 about responsive web design."
+    },
+    {
+      "id": "browser_testing-1",
+      "category": "Web Development",
+      "skill_id": "browser_testing",
+      "description": "Synthetic item 1 about browser testing."
+    },
+    {
+      "id": "browser_testing-2",
+      "category": "Web Development",
+      "skill_id": "browser_testing",
+      "description": "Synthetic item 2 about browser testing."
+    },
+    {
+      "id": "browser_testing-3",
+      "category": "Web Development",
+      "skill_id": "browser_testing",
+      "description": "Synthetic item 3 about browser testing."
+    },
+    {
+      "id": "browser_testing-4",
+      "category": "Web Development",
+      "skill_id": "browser_testing",
+      "description": "Synthetic item 4 about browser testing."
+    },
+    {
+      "id": "browser_testing-5",
+      "category": "Web Development",
+      "skill_id": "browser_testing",
+      "description": "Synthetic item 5 about browser testing."
+    },
+    {
+      "id": "authentication-1",
+      "category": "Cybersecurity",
+      "skill_id": "authentication",
+      "description": "Synthetic item 1 about user authentication."
+    },
+    {
+      "id": "authentication-2",
+      "category": "Cybersecurity",
+      "skill_id": "authentication",
+      "description": "Synthetic item 2 about user authentication."
+    },
+    {
+      "id": "authentication-3",
+      "category": "Cybersecurity",
+      "skill_id": "authentication",
+      "description": "Synthetic item 3 about user authentication."
+    },
+    {
+      "id": "authentication-4",
+      "category": "Cybersecurity",
+      "skill_id": "authentication",
+      "description": "Synthetic item 4 about user authentication."
+    },
+    {
+      "id": "authentication-5",
+      "category": "Cybersecurity",
+      "skill_id": "authentication",
+      "description": "Synthetic item 5 about user authentication."
+    },
+    {
+      "id": "secure_coding-1",
+      "category": "Cybersecurity",
+      "skill_id": "secure_coding",
+      "description": "Synthetic item 1 about secure coding."
+    },
+    {
+      "id": "secure_coding-2",
+      "category": "Cybersecurity",
+      "skill_id": "secure_coding",
+      "description": "Synthetic item 2 about secure coding."
+    },
+    {
+      "id": "secure_coding-3",
+      "category": "Cybersecurity",
+      "skill_id": "secure_coding",
+      "description": "Synthetic item 3 about secure coding."
+    },
+    {
+      "id": "secure_coding-4",
+      "category": "Cybersecurity",
+      "skill_id": "secure_coding",
+      "description": "Synthetic item 4 about secure coding."
+    },
+    {
+      "id": "secure_coding-5",
+      "category": "Cybersecurity",
+      "skill_id": "secure_coding",
+      "description": "Synthetic item 5 about secure coding."
+    },
+    {
+      "id": "security_testing-1",
+      "category": "Cybersecurity",
+      "skill_id": "security_testing",
+      "description": "Synthetic item 1 about security testing."
+    },
+    {
+      "id": "security_testing-2",
+      "category": "Cybersecurity",
+      "skill_id": "security_testing",
+      "description": "Synthetic item 2 about security testing."
+    },
+    {
+      "id": "security_testing-3",
+      "category": "Cybersecurity",
+      "skill_id": "security_testing",
+      "description": "Synthetic item 3 about security testing."
+    },
+    {
+      "id": "security_testing-4",
+      "category": "Cybersecurity",
+      "skill_id": "security_testing",
+      "description": "Synthetic item 4 about security testing."
+    },
+    {
+      "id": "security_testing-5",
+      "category": "Cybersecurity",
+      "skill_id": "security_testing",
+      "description": "Synthetic item 5 about security testing."
+    },
+    {
+      "id": "access_control-1",
+      "category": "Cybersecurity",
+      "skill_id": "access_control",
+      "description": "Synthetic item 1 about access control."
+    },
+    {
+      "id": "access_control-2",
+      "category": "Cybersecurity",
+      "skill_id": "access_control",
+      "description": "Synthetic item 2 about access control."
+    },
+    {
+      "id": "access_control-3",
+      "category": "Cybersecurity",
+      "skill_id": "access_control",
+      "description": "Synthetic item 3 about access control."
+    },
+    {
+      "id": "access_control-4",
+      "category": "Cybersecurity",
+      "skill_id": "access_control",
+      "description": "Synthetic item 4 about access control."
+    },
+    {
+      "id": "access_control-5",
+      "category": "Cybersecurity",
+      "skill_id": "access_control",
+      "description": "Synthetic item 5 about access control."
+    }
+  ]
+}

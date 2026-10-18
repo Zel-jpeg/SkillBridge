@@ -54,143 +54,130 @@ from django.utils import timezone
 # FUNCTION 1: score_submission()
 # ══════════════════════════════════════════════════════════════════════════════
 
+def validate_submission_answers(answers_data, questions):
+    """Validate the complete payload before any writes, including cleared inputs.
+
+    IDs must be positive JSON integers. Null choice IDs and empty text represent
+    unanswered questions. Unknown questions/choices and duplicate question IDs
+    are errors rather than silently discarded evidence.
+    """
+    from rest_framework.exceptions import ValidationError
+
+    def invalid(index, message):
+        raise ValidationError({'answers': f'Answer {index + 1}: {message}'})
+
+    if not isinstance(answers_data, list):
+        raise ValidationError({'answers': 'Must be a list.'})
+    by_id = {question.id: question for question in questions}
+    validated = {}
+    for index, answer in enumerate(answers_data):
+        if not isinstance(answer, dict):
+            invalid(index, 'Must be an object.')
+        question_id = answer.get('question_id')
+        if type(question_id) is not int or question_id <= 0:
+            invalid(index, 'question_id must be a positive integer.')
+        if question_id not in by_id:
+            invalid(index, 'Question does not belong to this assessment.')
+        if question_id in validated:
+            invalid(index, 'Duplicate question_id.')
+        choice_id = answer.get('selected_choice_id')
+        if choice_id is not None and (type(choice_id) is not int or choice_id <= 0):
+            invalid(index, 'selected_choice_id must be a positive integer or null.')
+        text_answer = answer.get('text_answer', '')
+        if not isinstance(text_answer, str):
+            invalid(index, 'text_answer must be a string.')
+        question = by_id[question_id]
+        choices = {choice.id: choice for choice in question.choices.all()}
+        if choice_id is not None and (question.question_type == 'identification' or choice_id not in choices):
+            invalid(index, 'Choice does not belong to this question or question type.')
+        if question.question_type != 'identification' and text_answer.strip():
+            invalid(index, 'Choice questions require a selected_choice_id, not text.')
+        validated[question_id] = {'choice': choices.get(choice_id), 'text': text_answer}
+    return validated
+
+
 def score_submission(student_response, answers_data, categories):
+    """Grade each authoritative question once; omissions contribute zero.
+
+    Empty submissions are accepted as zero against all categorized questions.
+    Persist only completed answers, preserving integrity-stop evidence semantics.
+    Identification remains exact after trimming and lowercasing; NLP ranking
+    does not influence grading. Existing finalized records are never backfilled.
+    Callers hold the attempt lock and finalize only after this atomic write.
     """
-    WHAT THIS DOES:
-    ───────────────
-    Automatically grades ALL answers submitted by a student for one assessment.
-    It handles three question types — MCQ, True/False, and Identification —
-    and then tallies scores per skill category (e.g., "Web Development",
-    "Database Management", etc.).
+    from django.db import transaction
+    from .models import ResponseAnswer, SkillScore
 
-    After grading, it writes a SkillScore record into the database for each
-    skill category found in the assessment. These SkillScore records are what
-    build the student's competency profile.
-
-    NLP TECHNIQUE USED — Text Normalization:
-    ─────────────────────────────────────────
-    For Identification questions, the student types a text answer (e.g., "CPU"
-    or "central processing unit"). We apply two NLP preprocessing steps:
-       1. .strip()  → removes leading/trailing whitespace
-       2. .lower()  → converts to lowercase for case-insensitive comparison
-    This is called "text normalization" — a foundational NLP technique that
-    ensures "CPU", "cpu", and "  Cpu  " are all treated as the same answer.
-
-    PARAMETERS:
-    ───────────
-    student_response : The StudentResponse object (links student + assessment)
-    answers_data     : List of answer dicts — e.g.:
-                         [{ 'question_id': 1, 'selected_choice_id': 5 },   ← MCQ/True-False
-                          { 'question_id': 2, 'text_answer': 'CPU' }]       ← Identification
-    categories       : All SkillCategory objects (for reference)
-
-    RETURNS:
-    ────────
-    A dict summarizing scores per category:
-    { 'Web Development': { 'raw': 7, 'max': 10, 'pct': 70.0 }, ... }
-    """
-    from .models import Question, AnswerChoice, ResponseAnswer, SkillScore
-
-    # ── STEP 1: Tally correct answers per skill category ──────────────────────
-    # We use a dictionary to count:
-    #   - 'raw': how many the student got correct in this category
-    #   - 'max': total number of questions in this category
-    # Example: { 3: {'raw': 7, 'max': 10}, 5: {'raw': 3, 'max': 5} }
-    #            ^ skill_category_id
+    questions = list(student_response.assessment.questions.select_related(
+        'skill_category',
+    ).prefetch_related('choices'))
+    answers = validate_submission_answers(answers_data, questions)
     tally = {}
-
-    for ans in answers_data:
-        # Retrieve the Question from the database, ensuring it belongs to
-        # the correct assessment (prevents answer injection attacks)
-        try:
-            question = Question.objects.select_related('skill_category').get(
-                id=ans.get('question_id'),
-                assessment=student_response.assessment
-            )
-        except Question.DoesNotExist:
-            continue  # Skip if question ID is invalid
-
-        # Initialize the tally for this skill category if not yet seen
-        cat_id = question.skill_category_id
-        if cat_id not in tally:
-            tally[cat_id] = {'raw': 0, 'max': 0}
-        tally[cat_id]['max'] += 1  # Count this question toward the max
-
-        # ── STEP 2: Determine if the answer is correct ────────────────────────
-        is_correct = False
-
-        if question.question_type in ('mcq', 'truefalse'):
-            # ── MCQ / True-False Grading ──────────────────────────────────────
-            # The student selected a choice (by ID). We look up that choice
-            # and check its is_correct flag (stored in the database).
-            # This is straightforward — no NLP needed here.
-            choice_id = ans.get('selected_choice_id')
-            if choice_id:
-                try:
-                    choice = AnswerChoice.objects.get(id=choice_id, question=question)
+    with transaction.atomic():
+        completed_answers = []
+        for question in questions:
+            answer = answers.get(question.id, {'choice': None, 'text': ''})
+            choice, text_answer = answer['choice'], answer['text']
+            is_correct = False
+            if question.question_type in ('mcq', 'truefalse'):
+                if choice is not None:
                     is_correct = choice.is_correct
-                    # Save the student's selected choice to ResponseAnswer
-                    ResponseAnswer.objects.update_or_create(
-                        response=student_response,
-                        question=question,
-                        defaults={'selected_choice': choice, 'text_answer': ''},
-                    )
-                except AnswerChoice.DoesNotExist:
-                    pass
+                    completed_answers.append(ResponseAnswer(
+                        response=student_response, question=question,
+                        selected_choice=choice, text_answer='',
+                    ))
+            elif question.question_type == 'identification' and text_answer.strip():
+                correct = [choice for choice in question.choices.all() if choice.is_correct]
+                is_correct = len(correct) == 1 and text_answer.strip().lower() == correct[0].choice_text.strip().lower()
+                completed_answers.append(ResponseAnswer(
+                    response=student_response, question=question,
+                    selected_choice=None, text_answer=text_answer,
+                ))
 
-        elif question.question_type == 'identification':
-            # ── Identification Grading (NLP: Text Normalization) ──────────────
-            # The student typed a free-text answer. We apply NLP preprocessing:
-            #   Step 1 — .strip()  : removes spaces at the edges of the string
-            #   Step 2 — .lower()  : converts all characters to lowercase
-            # This ensures "Central Processing Unit" == "central processing unit"
-            # The correct answer is stored in the DB as ONE AnswerChoice row
-            # where is_correct=True.
-            raw_answer = ans.get('text_answer', '').strip().lower()
-            try:
-                correct = AnswerChoice.objects.get(question=question, is_correct=True)
-                # Apply the same normalization to the stored correct answer
-                is_correct = raw_answer == correct.choice_text.strip().lower()
-            except AnswerChoice.DoesNotExist:
-                is_correct = False
-            # Save the student's raw text answer to ResponseAnswer
-            ResponseAnswer.objects.update_or_create(
+            if question.skill_category_id is not None:
+                row = tally.setdefault(question.skill_category_id, {
+                    'raw': 0, 'max': 0, 'name': question.skill_category.name,
+                })
+                row['max'] += 1
+                row['raw'] += int(is_correct)
+
+        # The caller locks the attempt. Fetch existing completed answers once,
+        # then batch inserts/updates without changing IDs or omitted-answer
+        # behavior. Per-answer get_or_create savepoints dominate concurrent
+        # submissions; these rows have no save hooks or auto-updated fields.
+        existing = {}
+        if completed_answers:
+            for saved in ResponseAnswer.objects.filter(
                 response=student_response,
-                question=question,
-                defaults={'selected_choice': None, 'text_answer': ans.get('text_answer', '')},
+                question_id__in=[answer.question_id for answer in completed_answers],
+            ):
+                if saved.question_id in existing:
+                    raise ResponseAnswer.MultipleObjectsReturned('Existing answers must be unique per question.')
+                existing[saved.question_id] = saved
+        creates, updates = [], []
+        for answer in completed_answers:
+            saved = existing.get(answer.question_id)
+            if saved is None:
+                creates.append(answer)
+            else:
+                saved.selected_choice_id = answer.selected_choice_id
+                saved.text_answer = answer.text_answer
+                updates.append(saved)
+        if creates:
+            ResponseAnswer.objects.bulk_create(creates)
+        if updates:
+            ResponseAnswer.objects.bulk_update(updates, ['selected_choice', 'text_answer'])
+
+        results = {}
+        for category_id, row in tally.items():
+            percentage = round(row['raw'] / row['max'] * 100, 2)
+            SkillScore.objects.update_or_create(
+                student=student_response.student,
+                assessment=student_response.assessment,
+                skill_category_id=category_id,
+                defaults={'raw_score': row['raw'], 'max_score': row['max'], 'percentage': percentage},
             )
-
-        # Increment the raw score if the answer was correct
-        if is_correct:
-            tally[cat_id]['raw'] += 1
-
-    # ── STEP 3: Write SkillScore records to the database ─────────────────────
-    # For each skill category, compute the percentage score and save it.
-    # Formula: percentage = (correct answers / total questions) × 100
-    # Example: 7 correct out of 10 questions = 70.00%
-    #
-    # These SkillScore rows are the student's COMPETENCY PROFILE —
-    # the output of the assessment that drives the recommendation engine.
-    results = {}
-    for cat_id, scores in tally.items():
-        pct = round(scores['raw'] / scores['max'] * 100, 2) if scores['max'] > 0 else 0.0
-        SkillScore.objects.update_or_create(
-            student=student_response.student,
-            assessment=student_response.assessment,
-            skill_category_id=cat_id,
-            defaults={
-                'raw_score': scores['raw'],
-                'max_score': scores['max'],
-                'percentage': pct,
-            }
-        )
-        try:
-            from .models import SkillCategory
-            cat = SkillCategory.objects.get(id=cat_id)
-            results[cat.name] = {'raw': scores['raw'], 'max': scores['max'], 'pct': pct}
-        except Exception:
-            pass
-
+            results[row['name']] = {'raw': row['raw'], 'max': row['max'], 'pct': percentage}
     return results
 
 
@@ -323,9 +310,11 @@ def generate_combined_recommendations(student, batch, combined_scores, profile, 
 
 
 def _rank_recommendations(student, skill_scores, categories, insights, batch):
+    from django.db import transaction
     from sklearn.feature_extraction.text import TfidfVectorizer
     from .models import Position, Recommendation, RecommendationConfiguration
-    from .recommendation_nlp import build_position_description, location_similarity, preprocess_texts
+    from .recommendation_nlp import (build_position_description, location_similarity, preprocess_texts,
+                                     company_address_text, valid_coordinates)
 
     categories = list(categories)
     score_lookup = {score.skill_category_id: score.percentage for score in skill_scores}
@@ -336,7 +325,7 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         return []
 
     positions = list(
-        Position.objects.select_related('company').prefetch_related(
+        Position.objects.order_by('id').select_related('company').prefetch_related(
             'requirements', 'requirements__skill_category'
         )
     )
@@ -361,8 +350,8 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         # Empty vocabulary is possible when all text is stop words.
         nlp_scores = np.zeros(len(positions), dtype=float)
 
-    Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
     results = []
+    pending = []
     for index, position in enumerate(positions):
         reqs = {
             requirement.skill_category_id: requirement.required_percentage / 100.0
@@ -393,12 +382,8 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
             'distance_km': round(distance_km, 2) if distance_km is not None else None,
             'generated_at': timezone.now(),
         }
-        Recommendation.objects.update_or_create(
-            student=student,
-            batch=batch,
-            position=position,
-            defaults=component_values,
-        )
+        pending.append((position, component_values))
+        coordinates = valid_coordinates(position.company.location_lat, position.company.location_lng)
         results.append({
             'position_id': position.id,
             'position_title': position.title,
@@ -409,20 +394,36 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
             'slots': position.slots_available,
             **component_values,
             'requested_model': requested_model,
-            'lat': position.company.location_lat,
-            'lng': position.company.location_lng,
-            'address': ', '.join(filter(None, [
-                (position.company.address or {}).get('barangay', ''),
-                (position.company.address or {}).get('city', ''),
-                (position.company.address or {}).get('province', ''),
-            ])) or None,
+            'lat': coordinates[0] if coordinates else None,
+            'lng': coordinates[1] if coordinates else None,
+            'address': company_address_text(position.company.address),
             'tags': list(dict.fromkeys(
                 [requirement.skill_category.name for requirement in position.requirements.all()]
                 + list(position.tags or [])
             )),
         })
 
-    results.sort(key=lambda item: item['match_score'], reverse=True)
+    # A batch has a unique (student, batch, position) key. Update in place so
+    # placement links keep the same recommendation IDs, without one savepoint
+    # and round trip per candidate. Nullable legacy batches retain their old
+    # lookup/ambiguity behavior because SQL NULL does not enforce that key.
+    with transaction.atomic():
+        Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
+        if batch is not None and pending:
+            Recommendation.objects.bulk_create(
+                [Recommendation(student=student, batch=batch, position=position, **values)
+                 for position, values in pending],
+                update_conflicts=True,
+                unique_fields=['student', 'batch', 'position'],
+                update_fields=list(pending[0][1]),
+            )
+        else:
+            for position, values in pending:
+                Recommendation.objects.update_or_create(
+                    student=student, batch=batch, position=position, defaults=values,
+                )
+
+    results.sort(key=lambda item: (-item['match_score'], item['position_id']))
     return results
 
 
@@ -532,9 +533,11 @@ def suggest_category(question_text, categories):
 
     # -- Option A: Simple Keyword Matching (Exact Substring) --
     question_lower = question_text.lower()
-    for cat_name in category_names:
-        if cat_name.lower() in question_lower:
-            return cat_name
+    import re
+    mentions = [name for name in category_names
+                if re.search(r'(?<!\w)' + re.escape(name.lower()) + r'(?!\w)', question_lower)]
+    if mentions:
+        return mentions[0] if len(mentions) == 1 else None
 
     # ── STEP 1: Build the corpus ───────────────────────────────────────────────
     # The corpus is the full collection of "documents" TF-IDF will analyze.
@@ -570,7 +573,9 @@ def suggest_category(question_text, categories):
         # ── STEP 6: Apply confidence threshold ────────────────────────────────
         # Only return a suggestion if the best score is above 0.05 (5%).
         # Below this threshold, the match is too weak to be useful.
-        return category_names[best_idx] if best_score > 0.05 else None
+        # Equal evidence is ambiguous; category/query order must not select a winner.
+        tied = np.count_nonzero(np.isclose(similarities, best_score, rtol=0, atol=1e-12)) > 1
+        return category_names[best_idx] if best_score > 0.05 and not tied else None
 
     except Exception:
         # If anything goes wrong (e.g., vocabulary is empty), return None

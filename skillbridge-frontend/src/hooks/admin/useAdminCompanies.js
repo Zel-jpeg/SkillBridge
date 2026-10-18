@@ -122,7 +122,7 @@ export function useAdminCompanies() {
     if (!res.ok) return res
 
     const newCompany = {
-      id:          res.data?.id ?? Date.now(),
+      id:          res.data.id,
       name:        company.name,
       image_url:   res.data?.image_url ?? null,
       address:     addrToString(company.addressParts) || company.name,
@@ -170,12 +170,13 @@ export function useAdminCompanies() {
     if (!confirmDeleteComp) return
     const { id, name } = confirmDeleteComp
     const result = await request('delete', `/api/admin/companies/${id}/`)
-    if (!result.ok) return
+    if (!result.ok) return result
     setCompanies(prev => prev.filter(c => c.id !== id))
     invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${name}" removed.`)
     applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
     setConfirmDeleteComp(null)
+    return result
   }
 
   // ── Position actions ──────────────────────────────────────────────
@@ -188,10 +189,10 @@ export function useAdminCompanies() {
       requirements: position.requirements,   // FIX: was 'skill_requirements'
       tags:         position.tags,
     })
-    if (!res.ok) return { ok: false }
+    if (!res.ok) return res
 
     const newPos = {
-      id:           res.data?.id ?? Date.now(),
+      id:           res.data.id,
       title:        position.title,
       slots:        position.slots,
       requirements: position.requirements,
@@ -215,7 +216,7 @@ export function useAdminCompanies() {
       requirements: position.requirements,
       tags:         position.tags,
     })
-    if (!res.ok) return { ok: false }
+    if (!res.ok) return res
 
     setCompanies(prev => prev.map(c =>
       c.id !== companyId ? c : {
@@ -236,20 +237,23 @@ export function useAdminCompanies() {
     return { ok: true }
   }
 
-  /** Optimistically remove position then fire DELETE. */
-  function confirmDeletePosition() {
+  /** Retain the position and dialog until protected deletion succeeds. */
+  async function confirmDeletePosition() {
     if (!confirmDeletePos) return
     const { company, position } = confirmDeletePos
+    const result = await request('delete', `/api/admin/positions/${position.id}/`)
+    if (!result.ok) return result
     setCompanies(prev => prev.map(c =>
       c.id !== company.id ? c : {
         ...c,
         positions: c.positions.filter(p => p.id !== position.id),
       }
     ))
-    request('delete', `/api/admin/positions/${position.id}/`)
     invalidateCache('/api/admin/companies/')   // force fresh fetch on next navigation
     showToast(`"${position.title}" removed.`)
+    applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
     setConfirmDeletePos(null)
+    return result
   }
 
   // ─────────────────────────────────────────────────────────────────

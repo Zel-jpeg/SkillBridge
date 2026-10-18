@@ -167,8 +167,8 @@ def publish_changes(recipients):
 def _safe_audience(*args):
     try:
         return audience(*args)
-    except Exception:
-        logger.exception('Change scope lookup failed; clients will revalidate')
+    except Exception as exc:
+        logger.error('Change scope lookup failed type=%s; clients will revalidate', type(exc).__name__)
         return {}
 
 
@@ -178,6 +178,9 @@ def notify_changes(kind):
         def wrapped(request, *args, **kwargs):
             if request.method in ('GET', 'HEAD', 'OPTIONS'):
                 return view(request, *args, **kwargs)
+            # Parse errors belong to DRF's 400 path. Do not swallow them inside
+            # audience recovery, where Request resets its parsed data to {}.
+            _ = request.data
             before = _safe_audience(kind, request, kwargs)
             marker = _operation.set(True)
             extra = set()

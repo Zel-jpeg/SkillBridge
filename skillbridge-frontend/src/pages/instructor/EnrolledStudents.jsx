@@ -51,7 +51,7 @@ export default function EnrolledStudents() {
     viewedBatch, isArchived, students, activeBatch, completed,
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
-    newBatchName, setNewBatchName, handleCreateBatch,
+    newBatchName, setNewBatchName, handleCreateBatch, batchBusy, batchError,
     handleEnroll, handleRemove, handleToggleRetake,
     showModal, setShowModal,
     selectedStudent, setSelectedStudent,
@@ -82,7 +82,7 @@ export default function EnrolledStudents() {
       {confirmRemove && (
         <ConfirmModal
           title="Remove student?"
-          message={`This will unenroll ${confirmRemove.name} (${confirmRemove.studentId}). Their assessment data will also be removed.`}
+          message={`Unenroll ${confirmRemove.name} (${confirmRemove.studentId}) from this batch? Assessment scores and placement history are preserved.`}
           confirmLabel="Remove"
           onConfirm={() => handleRemove(confirmRemove)}
           onCancel={() => setConfirmRemove(null)}
@@ -104,14 +104,16 @@ export default function EnrolledStudents() {
                 </p>
               </div>
             </div>
+            {batchError && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{batchError}</p>}
             <div className="flex gap-2">
-              <button onClick={() => setShowArchiveConf(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-              <button onClick={handleArchiveBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition-colors">Archive Batch</button>
+              <button disabled={batchBusy} onClick={() => setShowArchiveConf(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+              <button disabled={batchBusy} onClick={handleArchiveBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition-colors">{batchBusy ? 'Saving…' : 'Archive Batch'}</button>
             </div>
           </div>
         </div>
       )}
 
+      {batchError && !showArchiveConf && !showNewBatch && <p role="alert" className="px-4 py-2 text-sm text-rose-700 dark:text-rose-300">{batchError}</p>}
       {/* New batch modal */}
       {showNewBatch && (
         <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
@@ -126,9 +128,10 @@ export default function EnrolledStudents() {
                 placeholder={`AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
+            {batchError && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{batchError}</p>}
             <div className="flex gap-2">
-              <button onClick={() => setShowNewBatch(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-              <button onClick={handleCreateBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">Create Batch</button>
+              <button disabled={batchBusy} onClick={() => setShowNewBatch(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+              <button disabled={batchBusy} onClick={handleCreateBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">{batchBusy ? 'Saving…' : 'Create Batch'}</button>
             </div>
           </div>
         </div>
