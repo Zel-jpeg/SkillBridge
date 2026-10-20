@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/pages/auth/AdminLogin.jsx
 //
 // Admin-only login page.
@@ -20,6 +21,7 @@ const SCHOOL_LOCATION = "Panabo City, Davao del Norte · Institute of Computing"
 // ================================================================
 
 export default function AdminLogin() {
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const { establishSession } = useSession()
 
@@ -48,6 +50,7 @@ export default function AdminLogin() {
     try {
       const res = await api.post('/api/auth/login/', { email: username, password })
       const user = establishSession(res.data)
+      showToast('Signed in successfully.')
 
       navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
     } catch (err) {

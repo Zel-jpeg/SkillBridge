@@ -31,6 +31,7 @@ from .models import (
     RecommendationConfiguration,
 )
 from .change_events import category_created, notify_changes
+from .management_access import managed_batches, managed_assessments, selected_instructor, batch_payload, record_action, assessment_state
 from .recommendation_freshness import catalog_fingerprint, recommendations_stale
 from .serializers import UserSerializer
 from .admin_accounts import instructor_payload
@@ -950,29 +951,27 @@ def admin_nlp_configuration(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
+@transaction.atomic
 def instructor_batches(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
     if request.method == 'GET':
-        batches = (Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user))
+        batches = managed_batches(request.user)
         batches = batches.select_related('instructor').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
-        return Response([{
-            'id':          b.id,
-            'name':        b.name,
-            'status':      b.status,
-            'created_at':  b.created_at,
-            'student_count': b.enrolled_total,
-            'instructor_name': b.instructor.name if b.instructor else None,
-        } for b in batches])
+        return Response([batch_payload(b, b.enrolled_total) for b in batches])
 
     # POST — create batch
     name = request.data.get('name', '')
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 100:
         return Response({'error': 'Batch name must be text with 1 to 100 characters.', 'field': 'name'}, status=400)
 
-    batch = Batch.objects.create(name=name.strip(), instructor=request.user)
-    return Response({'id': batch.id, 'name': batch.name, 'status': batch.status}, status=201)
+    owner = selected_instructor(request.data.get('instructor_id')) if request.user.role == 'admin' else request.user
+    if request.user.role == 'instructor' and 'instructor_id' in request.data and request.data['instructor_id'] != request.user.id:
+        return Response({'error': 'You can create batches only for yourself.'}, status=403)
+    batch = Batch.objects.create(name=name.strip(), instructor=owner, created_by=request.user)
+    record_action(request.user, 'batch.create', 'batch', batch.id, batch.id, instructor_id=owner.id)
+    return Response(batch_payload(batch, 0), status=201)
 
 
 def _enrollment_request(request, batch_id, preview=False):
@@ -1009,6 +1008,8 @@ def _enrollment_request(request, batch_id, preview=False):
             f'Sign in with your DNSC Google account at {frontend_url}/login to take your assessment.', html,
         )
     rows = confirm_rows(items, batch, notify)
+    record_action(request.user, 'enrollment.confirm', 'batch', batch.id, batch.id,
+                  enrolled_count=sum(row['status'] == 'enrolled' for row in rows))
     return Response({'rows': rows, 'summary': summary(rows),
                      'enrolled': [r for r in rows if r['status'] == 'enrolled']})
 
@@ -1022,6 +1023,7 @@ def instructor_batch_enroll_preview(request, batch_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
+@transaction.atomic
 def instructor_batch_enroll(request, batch_id):
     return _enrollment_request(request, batch_id)
 
@@ -1036,14 +1038,14 @@ def instructor_batch_archive(request, batch_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
     try:
-        batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
-        batch = batch_query.get(id=batch_id)
+        batch = managed_batches(request.user).select_for_update().get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
     batch.status      = 'archived'
     batch.archived_at = timezone.now()
     batch.save(update_fields=['status', 'archived_at'])
     recalculate_enrolled_students(batch)
+    record_action(request.user, 'batch.archive', 'batch', batch.id, batch.id)
     return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at})
 
 
@@ -1057,14 +1059,14 @@ def instructor_batch_unarchive(request, batch_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
     try:
-        batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
-        batch = batch_query.get(id=batch_id)
+        batch = managed_batches(request.user).select_for_update().get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
     batch.status      = 'active'
     batch.archived_at = None
     batch.save(update_fields=['status', 'archived_at'])
     recalculate_enrolled_students(batch)
+    record_action(request.user, 'batch.reactivate', 'batch', batch.id, batch.id)
     return Response({'id': batch.id, 'status': 'active', 'archived_at': None})
 
 
@@ -1072,6 +1074,7 @@ def instructor_batch_unarchive(request, batch_id):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
+@transaction.atomic
 def instructor_student_retake(request, student_id):
     """Approve a specific attempt; legacy omission works only when unambiguous."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1086,7 +1089,7 @@ def instructor_student_retake(request, student_id):
             assessment_id = int(assessment_id)
         except (TypeError, ValueError):
             return Response({'error': 'Invalid assessment_id'}, status=400)
-    attempts = StudentResponse.objects.filter(student_id=student_id, submitted_at__isnull=False).select_related('assessment')
+    attempts = StudentResponse.objects.select_for_update(of=('self',)).filter(student_id=student_id, submitted_at__isnull=False).select_related('assessment')
     if assessment_id is not None:
         attempts = attempts.filter(assessment_id=assessment_id)
     elif attempts.count() != 1:
@@ -1103,6 +1106,8 @@ def instructor_student_retake(request, student_id):
     if retake_allowed is not None:
         attempt.retake_allowed = retake_allowed
         attempt.save(update_fields=['retake_allowed'])
+        record_action(request.user, 'attempt.retake', 'student', student_id, attempt.assessment.batch_id,
+                      assessment_id=attempt.assessment_id, retake_allowed=retake_allowed)
     return Response({
         'student_id': student_id,
         'assessment_id': attempt.assessment_id,
@@ -1123,6 +1128,8 @@ def instructor_student_remove(request, student_id):
     batch_id, error = _positive_int(request.query_params.get('batch_id'), 'batch_id')
     if error:
         return Response({'error': error, 'field': 'batch_id'}, status=400)
+    if request.user.role == 'admin' and batch_id is None:
+        return Response({'error': 'Choose the batch to unenroll from.', 'field': 'batch_id'}, status=400)
     batches = Batch.objects.filter(instructor=request.user)
     if batch_id is not None:
         batches = Batch.objects.filter(pk=batch_id)
@@ -1136,6 +1143,8 @@ def instructor_student_remove(request, student_id):
         return Response({'error': 'Student not found in your batches'}, status=404)
     Recommendation.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_current=False)
     CombinedCompetencyProfile.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_finalized=False, finalized_at=None)
+    for removed_batch in removed_batches:
+        record_action(request.user, 'enrollment.remove', 'student', student_id, removed_batch)
     return Response({'deleted': True, 'student_id': student_id})
 
 
@@ -1470,6 +1479,9 @@ def instructor_assessments(request):
             'title':            a.title,
             'batch_id':         a.batch_id,
             'batch_name':       a.batch.name if a.batch else None,
+            'instructor_id': a.batch.instructor_id if a.batch else None,
+            'created_by_id': a.created_by_id,
+            'created_by_name': a.created_by.name,
             'instructor_name':  a.batch.instructor.name if a.batch and a.batch.instructor else a.created_by.name,
             'duration_minutes': a.duration_minutes,
             'is_active':        a.is_active,
@@ -1531,7 +1543,7 @@ def instructor_assessments(request):
     batch = None
     if batch_id:
         try:
-            batch_query = Batch.objects.all() if request.user.role == 'admin' else Batch.objects.filter(instructor=request.user)
+            batch_query = managed_batches(request.user)
             batch = batch_query.get(id=batch_id)
         except Batch.DoesNotExist:
             return Response({'error': 'Batch not found or not yours'}, status=404)
@@ -1623,6 +1635,9 @@ def instructor_assessments(request):
 
         created_questions.append(question.id)
 
+    record_action(request.user, 'assessment.create', 'assessment', assessment.id, assessment.batch_id,
+                  after=assessment_state(assessment), question_count=len(created_questions))
+
     if batch and assessment.publication_status == Assessment.PUBLICATION_PUBLISHED and assessment.is_required and assessment.include_in_competency:
         recalculate_enrolled_students(batch)
 
@@ -1646,7 +1661,7 @@ def instructor_assessment_detail(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        queryset = managed_assessments(request.user)
         assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
@@ -1654,6 +1669,19 @@ def instructor_assessment_detail(request, assessment_id):
     old_scoring_state = (
         assessment.publication_status, assessment.is_required, assessment.include_in_competency,
     )
+    before = assessment_state(assessment)
+    if 'batch_id' in request.data and request.data['batch_id'] is not None and (type(request.data['batch_id']) is not int or request.data['batch_id'] <= 0):
+        return Response({'error': 'Choose a valid batch.', 'field': 'batch_id'}, status=400)
+    if 'batch_id' in request.data and request.data['batch_id'] != assessment.batch_id:
+        if assessment.batch_id is not None or assessment.publication_status != Assessment.PUBLICATION_DRAFT or StudentResponse.objects.filter(assessment=assessment).exists():
+            return Response({'error': 'Only a batchless draft without attempts can be assigned.', 'field': 'batch_id'}, status=409)
+        batch_id = request.data['batch_id']
+        if type(batch_id) is not int or batch_id <= 0:
+            return Response({'error': 'Choose a valid batch.', 'field': 'batch_id'}, status=400)
+        batch = managed_batches(request.user).filter(pk=batch_id, status='active').first()
+        if batch is None:
+            return Response({'error': 'Active batch not found.', 'field': 'batch_id'}, status=404)
+        assessment.batch = batch
 
     # Only allow changing non-question fields after students may have submitted
     if 'title' in request.data:
@@ -1723,6 +1751,10 @@ def instructor_assessment_detail(request, assessment_id):
         from .assessment_authoring import apply_changes
         apply_changes(assessment, question_plan, request.user)
     assessment.save()
+    record_action(request.user, 'assessment.update', 'assessment', assessment.id, assessment.batch_id,
+                  before=before, after=assessment_state(assessment),
+                  question_change_counts={key: len(value) for key, value in request.data.get('question_changes', {}).items()},
+                  title_changed='title' in request.data, schedule_changed=any(key in request.data for key in ('available_at', 'due_at')))
     new_scoring_state = (
         assessment.publication_status, assessment.is_required, assessment.include_in_competency,
     )
@@ -1741,6 +1773,8 @@ def instructor_assessment_detail(request, assessment_id):
         'display_order': assessment.display_order,
         'available_at': assessment.available_at,
         'due_at': assessment.due_at,
+        'batch_id': assessment.batch_id,
+        'batch_name': assessment.batch.name if assessment.batch else None,
         **({'questions': authoring_questions(assessment)} if question_plan is not None else {}),
     })
 
@@ -1754,7 +1788,7 @@ def instructor_assessment_questions(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        queryset = managed_assessments(request.user)
         assessment = queryset.get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
@@ -1829,7 +1863,7 @@ def instructor_assessment_add_questions(request, assessment_id):
         return Response({'error': 'Forbidden'}, status=403)
  
     try:
-        queryset = Assessment.objects.all() if request.user.role == 'admin' else Assessment.objects.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user))
+        queryset = managed_assessments(request.user)
         assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
@@ -1911,6 +1945,8 @@ def instructor_assessment_add_questions(request, assessment_id):
     submissions_cleared = False
  
     total = assessment.questions.count()
+    record_action(request.user, 'question.append', 'assessment', assessment.id, assessment.batch_id,
+                  added_count=created_count)
     return Response({
         'added':               created_count,
         'total':               total,
@@ -1967,6 +2003,8 @@ def instructor_question_detail(request, question_id):
  
     # ── DELETE ────────────────────────────────────────────────────────────────
     if request.method == 'DELETE':
+        record_action(request.user, 'question.delete', 'question', question.id, question.assessment.batch_id,
+                      assessment_id=question.assessment_id)
         question.delete()
         return Response({'ok': True})
  
@@ -2040,6 +2078,8 @@ def instructor_question_detail(request, question_id):
                     )
  
     # Return refreshed question so the frontend can reconcile its local state
+    record_action(request.user, 'question.update', 'question', question.id, question.assessment.batch_id,
+                  assessment_id=question.assessment_id, changed_fields=sorted(data))
     choices_out = [
         {'id': c.id, 'text': c.choice_text, 'is_correct': c.is_correct}
         for c in question.choices.order_by('id').all()
@@ -2486,7 +2526,17 @@ def instructor_student_recommendations(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     # ── Only pull from the active batch ───────────────────────────
-    active_batch = Batch.objects.filter(instructor=request.user, status='active').first()
+    batches = managed_batches(request.user).filter(status='active')
+    selected_batch = request.query_params.get('batch_id')
+    if selected_batch:
+        if not selected_batch.isdigit() or int(selected_batch) < 1:
+            return Response({'error': 'Invalid batch_id'}, status=400)
+        batches = batches.filter(pk=int(selected_batch))
+        if not batches.exists():
+            return Response({'error': 'Batch not found'}, status=404)
+    elif request.user.role == 'admin':
+        return admin_student_recommendations(request._request)
+    active_batch = batches.first()
     if not active_batch:
         return Response([])  # No active batch → empty dashboard (not archived data)
 
@@ -2595,19 +2645,19 @@ def instructor_companies(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     # Students belonging to this instructor's batches
-    batches = Batch.objects.filter(instructor=request.user)
+    batches = managed_batches(request.user)
     enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch', 'student')
     
     student_batch_info = {}
     for e in enrollments:
-        student_batch_info[e.student_id] = {
+        student_batch_info[(e.student_id, e.batch_id)] = {
             'name': e.batch.name,
             'status': e.batch.status
         }
-    student_ids = list(student_batch_info.keys())
+    student_ids = list({student_id for student_id, _ in student_batch_info})
     catalog = catalog_fingerprint()
     unlocked_batches = {
-        e.student_id: e.batch_id for e in enrollments
+        (e.student_id, e.batch_id) for e in enrollments
         if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch, catalog=catalog)
     }
 
@@ -2621,7 +2671,7 @@ def instructor_companies(request):
     )
     recs_by_position = defaultdict(list)
     for r in all_recs:
-        if r.batch_id is not None and unlocked_batches.get(r.student_id) == r.batch_id:
+        if (r.student_id, r.batch_id) in unlocked_batches:
             recs_by_position[r.position_id].append(r)
 
     companies = (
@@ -2647,8 +2697,8 @@ def instructor_companies(request):
                     'location_score_component': round(float(r.location_score_component), 1),
                     'model_used': r.model_used,
                     'distance_km': r.distance_km,
-                    'batch_name':  student_batch_info.get(r.student.id, {}).get('name', ''),
-                    'batch_status': student_batch_info.get(r.student.id, {}).get('status', 'active'),
+                    'batch_name':  student_batch_info.get((r.student_id, r.batch_id), {}).get('name', ''),
+                    'batch_status': student_batch_info.get((r.student_id, r.batch_id), {}).get('status', 'active'),
                 }
                 for r in recs_by_position.get(pos.id, [])
             ]

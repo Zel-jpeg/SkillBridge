@@ -76,6 +76,7 @@ class Batch(models.Model):
 
     name        = models.CharField(max_length=100)               # e.g. "AY 2025-2026"
     instructor  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='batches')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_batches')
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     archived_at = models.DateTimeField(blank=True, null=True)
     created_at  = models.DateTimeField(auto_now_add=True)
@@ -520,3 +521,18 @@ class ChangeEvent(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=['recipient', 'id'], name='change_recipient_cursor_idx')]
+
+
+class ManagementAction(models.Model):
+    """Durable staff actions; metadata excludes question content and answer keys."""
+
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='management_actions')
+    action = models.CharField(max_length=60)
+    target_type = models.CharField(max_length=30)
+    target_id = models.PositiveBigIntegerField()
+    batch_id_snapshot = models.PositiveBigIntegerField(null=True, blank=True, db_index=True)
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']

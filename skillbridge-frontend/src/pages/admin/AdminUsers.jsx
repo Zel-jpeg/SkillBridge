@@ -52,7 +52,7 @@ export default function AdminUsers() {
     handleToggleRetake, handleUpdateUser, handleRemoveUser, handleRestoreUser,
     confirmDeleteStudent, confirmRemoveStudent, setConfirmRemoveStudent,
     confirmRejectPending, setConfirmRejectPending,
-    toast,
+
   } = useAdminUsers()
 
   const TABS = [
@@ -82,13 +82,6 @@ export default function AdminUsers() {
     <div className="min-w-0">
 
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-60 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {toast}
-        </div>
-      )}
 
       {/* Modals */}
       {showEnrollment && <StudentEnrollmentModal onClose={() => setShowEnrollment(false)} onEnrolled={handleEnrollmentComplete} />}

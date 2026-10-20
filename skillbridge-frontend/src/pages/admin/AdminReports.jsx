@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminReports.jsx
 // System-wide analytics: submissions, match distribution, skill breakdown, top companies.
@@ -49,6 +50,7 @@ function BarRow({ label, value, max, colorClass, right, tag }) {
 }
 
 function NlpConfigurationCard() {
+  const { showToast } = useToast()
   const { data: config, error: configError } = useApi('/api/admin/nlp-configuration/')
   const [selected, setSelected] = useState('spacy_md')
   const selectedSeeded = useRef(false)
@@ -73,8 +75,10 @@ function NlpConfigurationCard() {
       invalidateCache('/api/admin/reports/')
       invalidateCache('/api/admin/students/recommendations/')
       setMessage(data.message)
+      showToast(data.message || 'Active model updated.')
     } catch (err) {
       setMessage(err.response?.data?.error || 'Could not update the active model.')
+      showToast(err.response?.data?.error || 'Could not update the active model.', 'error')
     } finally { setBusy(false) }
   }
 
@@ -83,9 +87,11 @@ function NlpConfigurationCard() {
     try {
       const { data } = await api.post('/api/admin/rerun-recommendations/', {}, { timeout: 120000 })
       setMessage(data.message || 'Recommendations refreshed.')
+      showToast(data.message || 'Recommendations refreshed.')
       ;['/api/admin/reports/', '/api/admin/students/recommendations/', '/api/instructor/students/recommendations/'].forEach(invalidateCache)
     } catch (err) {
       setMessage(err.response?.data?.error || 'Could not re-run recommendations.')
+      showToast(err.response?.data?.error || 'Could not re-run recommendations.', 'error')
     } finally { setBusy(false) }
   }
 

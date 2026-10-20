@@ -1,8 +1,11 @@
 """Synthetic taxonomy protection and assessment report/download failures."""
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from playwright.sync_api import sync_playwright, expect
+
+BASE = os.environ.get('TOAST_TEST_BASE', 'http://127.0.0.1:5178')
 
 ARTIFACTS = Path(__file__).parent / 'artifacts/taxonomy-report-recovery'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
@@ -47,7 +50,7 @@ with sync_playwright() as p:
     page = context.new_page()
     page.on('pageerror', lambda error: errors.append(str(error)))
     try:
-        page.goto('http://127.0.0.1:5178/admin/skills')
+        page.goto(BASE + '/admin/skills')
         page.wait_for_load_state('networkidle')
         page.get_by_role('button', name='Add Skill', exact=True).click()
         modal = page.locator('div.fixed.inset-0').filter(has=page.get_by_role('heading', name='Add Skill Category', exact=True)).last
@@ -56,34 +59,36 @@ with sync_playwright() as p:
         modal.get_by_role('button', name='Add Skill', exact=True).evaluate('(b)=>{b.click();b.click()}')
         expect(modal.get_by_text('Synthetic taxonomy validation failed.', exact=True)).to_be_visible()
         expect(name).to_have_value('Synthetic manual category')
+        expect(page.locator('.sb-toast-error')).to_contain_text('Synthetic taxonomy validation failed.')
         assert len(saves) == 1
         modal.get_by_role('button', name='Add Skill', exact=True).click()
         expect(modal).to_have_count(0)
+        expect(page.locator('.sb-toast-success')).to_contain_text('Skill added successfully.')
         row = page.get_by_role('row').filter(has=page.get_by_text('Protected Programming', exact=True))
         row.get_by_title('Delete skill', exact=True).click()
         confirmation = page.get_by_role('dialog', name='Delete Skill Category?', exact=True)
         confirmation.get_by_role('button', name='Delete', exact=True).click()
-        expect(confirmation.get_by_role('alert')).to_have_text('Synthetic category has score history and cannot be deleted.')
+        expect(confirmation.locator('[role=alert]:not(.sb-toast-message)')).to_have_text('Synthetic category has score history and cannot be deleted.')
         confirmation.get_by_role('button', name='Cancel', exact=True).click()
         expect(row).to_be_visible()
         checks.append('Taxonomy validation retains draft and blocks double writes; protected delete retains confirmation and existing category')
-        page.goto('http://127.0.0.1:5178/admin/reports')
+        page.goto(BASE + '/admin/reports')
         page.wait_for_load_state('networkidle')
         generate = page.get_by_role('button', name='Generate report', exact=True)
         generate.click()
         expect(page.get_by_text('No records match the selected filters.', exact=True)).to_be_visible()
         generate.click()
-        expect(page.get_by_role('alert')).to_have_text('The server returned invalid data. Please retry.')
+        expect(page.locator('[role=alert]:not(.sb-toast-message)')).to_have_text('The server returned invalid data. Please retry.')
         expect(page.get_by_text('No records match the selected filters.', exact=True)).to_be_visible()
         expect(generate).to_be_enabled()
         generate.click()
-        expect(page.get_by_role('alert')).to_have_text('Server is unavailable. Check your connection.')
+        expect(page.locator('[role=alert]:not(.sb-toast-message)')).to_have_text('Server is unavailable. Check your connection.')
         assert 'Synthetic private detail' not in page.locator('body').inner_text()
         generate.click()
-        expect(page.get_by_role('alert')).to_have_count(0)
+        expect(page.locator('[role=alert]:not(.sb-toast-message)')).to_have_count(0)
         csv = page.get_by_role('button', name='Download CSV', exact=True)
         csv.click()
-        expect(page.get_by_role('alert')).to_have_text('CSV export failed.')
+        expect(page.locator('[role=alert]:not(.sb-toast-message)')).to_have_text('CSV export failed.')
         expect(csv).to_be_enabled()
         with page.expect_download() as event:
             csv.click()

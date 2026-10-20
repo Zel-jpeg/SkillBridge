@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import { ContentSkeleton } from '../../components/DataSection'
 // src/pages/student/StudentAssessment.jsx
 //
@@ -20,6 +21,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import FocusedStudentHeader from '../../components/layout/FocusedStudentHeader'
 import api from '../../api/axios'
+import { requestErrorMessage } from '../../api/requestErrors'
 import { useApi, invalidateCache, fetchWithDedup } from '../../hooks/useApi'
 import { remainingAttemptSeconds } from '../../utils/assessmentClock'
 import { attemptStorageKey } from '../../utils/attemptStorage'
@@ -271,6 +273,7 @@ function QuestionNavigator({ questions, answers, current, onJump, isReview, clas
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════════
 export default function StudentAssessment() {
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const { assessmentId: routeAssessmentId } = useParams()
 
@@ -388,6 +391,7 @@ export default function StudentAssessment() {
         saveError: false,
       })
     } else {
+      showToast('Assessment submitted successfully. Your responses have been saved.')
       navigate(`/student/assessments/${id}/results`, { replace: true })
     }
   }
@@ -675,8 +679,8 @@ export default function StudentAssessment() {
       finalizingRef.current = false
       integrityArmedRef.current = true
       setSubmitting(false)
-      const msg = err.response?.data?.error || err.response?.data?.answers || 'Submission could not be confirmed. Your answers are kept on this device. Check the assessment list before retrying.'
-      alert(msg)
+      const message = requestErrorMessage(err, { mutation: true })
+      showToast(`${message} Your answers are kept on this device. Check the assessment list before retrying.`, 'error', 12000)
       return
     }
     await finishRecordedAttempt(result.data)

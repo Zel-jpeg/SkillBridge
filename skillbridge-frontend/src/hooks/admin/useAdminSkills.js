@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import { useState, useRef } from 'react'
 import api from '../../api/axios'
 import { fetchWithDedup, updateCachedData, useApi } from '../useApi'
@@ -17,7 +18,6 @@ export function useAdminSkills() {
   const [saving, setSaving] = useState(false)
   const pending = useRef(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [toast, setToast] = useState('')
 
   const filteredSkills = skills.filter(s => 
     s.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -25,10 +25,7 @@ export function useAdminSkills() {
     (s.tags || []).some(tag => tag.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const showToast = (msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
-  }
+  const { showToast } = useToast()
 
   const handleSave = async (skillData) => {
     if (pending.current) return { ok: false, error: 'A save is already in progress.' }
@@ -51,7 +48,9 @@ export function useAdminSkills() {
       fetchWithDedup(SKILLS_URL).catch(() => {})
       return { ok: true }
     } catch (err) {
-      return { ok: false, error: requestErrorMessage(err, { mutation: true }) }
+      const message = requestErrorMessage(err, { mutation: true })
+      showToast(message, 'error')
+      return { ok: false, error: message }
     } finally {
       pending.current = false
       setSaving(false)
@@ -67,7 +66,9 @@ export function useAdminSkills() {
       setDeleteConfirm(null)
       showToast('Skill deleted successfully.')
     } catch (error) {
-      return { ok: false, message: requestErrorMessage(error, { mutation: true }) }
+      const message = requestErrorMessage(error, { mutation: true })
+      showToast(message, 'error')
+      return { ok: false, message }
     }
   }
 
@@ -97,6 +98,5 @@ export function useAdminSkills() {
     deleteConfirm,
     setDeleteConfirm,
     handleDelete,
-    toast
   }
 }

@@ -1,3 +1,5 @@
+import { normalizeStudent } from '../../utils/managementStudent'
+import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useEnrolledStudents.js
 //
 // Data hook for EnrolledStudents.
@@ -38,52 +40,6 @@ const PAGE_SIZE = 10
 const SSE_PATH  = '/api/instructor/events/'
 
 // ── Normalize raw API student → local shape ───────────────────────────────────
-function normalizeStudent(s) {
-  const parsedScores = {}
-  const parsedTags = {}
-  for (const [k, v] of Object.entries(s.skill_scores ?? {})) {
-    if (typeof v === 'object' && v !== null) {
-      parsedScores[k] = v.percentage
-      parsedTags[k] = v.tag
-    } else {
-      parsedScores[k] = v
-      parsedTags[k] = null
-    }
-  }
-  if (!s.recommendations_locked && s.combined_category_scores?.length) {
-    for (const key of Object.keys(parsedScores)) delete parsedScores[key]
-    for (const score of s.combined_category_scores) parsedScores[score.category] = score.percentage
-  }
-
-  return {
-    id:                  s.id,
-    name:                s.name,
-    studentId:           s.school_id || '',
-    email:               s.email,
-    course:              s.course,
-    status:              s.assessment_results?.some(a => a.attempt_status === 'stopped' || a.is_flagged) ? 'stopped' : s.all_required_completed ? 'completed' : 'pending',
-    retakeAllowed:       s.retake_allowed ?? false,
-    assessmentId:       s.assessment_id ?? null,
-    isFlagged:           s.is_flagged ?? false,
-    stoppedReason:       s.stopped_reason_display || '',
-    violationCount:      s.violation_count ?? 0,
-    scores:              parsedScores,
-    tags:                parsedTags,
-    top_recommendations: s.top_recommendations ?? [],
-    competencyProfile:   s.competency_profile ?? null,
-    placement:           s.placement ?? { status: 'unplaced' },
-    address:             s.address        ?? {},
-    photoUrl:            s.photo_url      || null,
-    assessmentResults: s.assessment_results ?? [],
-    combinedCategoryScores: s.combined_category_scores ?? [],
-    combinedCompetencyProfile: s.combined_competency_profile ?? null,
-    recommendationsLocked: s.recommendations_locked ?? true,
-    completedRequiredCount: s.completed_required_count ?? 0,
-    totalRequiredCount: s.total_required_count ?? 0,
-    remainingRequiredCount: s.remaining_required_count ?? 0,
-  }
-}
-
 export function useEnrolledStudents() {
   // ── Real-time SSE connection ──────────────────────────────────────
   // Singleton — shared with useInstructorDashboard if both are mounted.
@@ -164,12 +120,8 @@ export function useEnrolledStudents() {
   const [batchBusy, setBatchBusy] = useState(false)
   const [batchError, setBatchError] = useState('')
   const batchPending = useRef(false)
-  const [toast,           setToast]           = useState(null)
 
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 4000)
-  }, [])
+  const { showToast } = useToast()
 
   // Escape closes all modals
   useEffect(() => {
@@ -262,7 +214,9 @@ export function useEnrolledStudents() {
       invalidateCache('/api/instructor/assessments/')
       return data
     } catch (error) {
-      setBatchError(requestErrorMessage(error, { mutation: true }))
+      const message = requestErrorMessage(error, { mutation: true })
+      setBatchError(message)
+      showToast(message, 'error')
       return null
     } finally { batchPending.current = false; setBatchBusy(false) }
   }
@@ -273,6 +227,7 @@ export function useEnrolledStudents() {
     setBatches(prev => prev.map(batch => batch.id === data.id
       ? { ...batch, status: data.status, archivedAt: data.archived_at } : batch))
     setShowArchiveConf(false)
+    showToast('Batch archived successfully.')
     setShowNewBatch(true)
   }
 
@@ -299,7 +254,7 @@ export function useEnrolledStudents() {
     const st = students.find(s => s.id === studentId)
     const attempt = st && assessmentRetakeCandidate(st, assessmentId)
     if (!attempt) {
-      showToast('Select a finalized assessment attempt for retake approval.')
+      showToast('Select a finalized assessment attempt for retake approval.', 'warning')
       return
     }
     try {
@@ -317,7 +272,7 @@ export function useEnrolledStudents() {
       // Invalidate so the next page visit re-fetches the updated retake status
       invalidateCache('/api/instructor/batches/')
       invalidateCache('/api/instructor/students/recommendations/')
-    } catch (err) { showToast(err.response?.data?.error || 'Retake update failed.'); return }
+    } catch (err) { showToast(requestErrorMessage(err, { mutation: true }), 'error'); return }
     setBatches(prev => prev.map(b =>
       b.id === activeBatchId
         ? { ...b, students: b.students.map(s => s.id === studentId ? { ...s, assessmentResults: s.assessmentResults.map(a => a.id === assessmentId ? { ...a, retake_allowed: !a.retake_allowed } : a) } : s) }
@@ -348,7 +303,9 @@ export function useEnrolledStudents() {
       showToast(`${student.name} has been unenrolled from this batch. Assessment history is preserved.`)
       return { ok: true }
     } catch (error) {
-      return { ok: false, message: requestErrorMessage(error, { mutation: true }) }
+      const message = requestErrorMessage(error, { mutation: true })
+      showToast(message, 'error')
+      return { ok: false, message }
     }
   }
 
@@ -412,7 +369,7 @@ export function useEnrolledStudents() {
     // Derived
     filtered, paginated, categories,
     // Toast
-    toast, showToast,
+    showToast,
     PAGE_SIZE,
   }
 }

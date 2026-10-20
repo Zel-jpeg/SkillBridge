@@ -3,6 +3,19 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('admin ownership choices, action history and batch mutation envelopes reject malformed data', () => {
+  const cases = [
+    ['/api/admin/batch-instructors/', 'get', {}, [{ id: 2, name: 'Synthetic Instructor' }]],
+    ['/api/admin/management-actions/?batch_id=3', 'get', { count: 2, results: {} }, { count: 1, results: [{ id: 1, action: 'batch.create', actor_name: 'Synthetic Admin' }] }],
+    ['/api/admin/batches/3/', 'patch', { id: 3, name: 'Batch', instructor_id: null }, { id: 3, name: 'Batch', instructor_id: 2 }],
+  ]
+  for (const [url, method, invalid, valid] of cases) {
+    assert.throws(() => validateApiResponse({ data: invalid, status: 200, config: { url, method } }), { code: 'ERR_BAD_RESPONSE' })
+    const response = { data: valid, status: 200, config: { url, method } }
+    assert.equal(validateApiResponse(response), response)
+  }
+})
+
 test('invalid collection/profile/results responses are rejected before publication; downloads remain usable', () => {
   for (const [url, data] of [['/api/categories/', {}], ['/api/students/me/', []],
     ['/api/student/results/combined/', { recommendations_locked: false, recommendations: {}, combined_category_scores: [] }],

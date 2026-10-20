@@ -12,7 +12,7 @@
 //   onClose      — close handler
 //   onSelectStudent(student) — opens StudentModal for a student
 
-import { XIcon } from '../Icons'
+import DialogShell from '../DialogShell'
 import Avatar from '../Avatar'
 
 // ── Score helpers (local, no import needed) ────────────────────────
@@ -57,15 +57,6 @@ const TrophyIcon = ({ size = 22 }) => (
     <path d="M4 2h16v7a8 8 0 0 1-16 0z"/>
     <path d="M9 17v1a4 4 0 0 0-4 4h14a4 4 0 0 0-4-4v-1"/>
     <path d="M8 17h8"/>
-  </svg>
-)
-
-const UserGroupIcon = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 )
 
@@ -158,39 +149,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
   const rest = ranked.slice(3)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm px-0 sm:px-4 pb-0"
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xl flex flex-col max-h-[88vh] overflow-hidden"
-        style={{ animation: 'skillModalIn 0.26s cubic-bezier(0.34,1.1,0.64,1) both' }}
-      >
-
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-              <TrophyIcon size={18} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                {category} Leaderboard
-              </h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1.5">
-                <UserGroupIcon size={11} />
-                {ranked.length} assessed · {pendingStudents.length} pending
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <XIcon size={16} />
-          </button>
-        </div>
-
+    <DialogShell title={`${category} Leaderboard`} description={`${ranked.length} assessed · ${pendingStudents.length} pending`} onClose={onClose}>
         {/* ── Scrollable body ────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
 
@@ -328,20 +287,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
             Click any student to view their full assessment details
           </p>
         </div>
-      </div>
 
-      <style>{`
-        @keyframes skillModalIn {
-          from { transform: translateY(32px) scale(0.97); opacity: 0; }
-          to   { transform: translateY(0)    scale(1);    opacity: 1; }
-        }
-        @media (max-width: 639px) {
-          @keyframes skillModalIn {
-            from { transform: translateY(100%); opacity: 0.8; }
-            to   { transform: translateY(0);    opacity: 1; }
-          }
-        }
-      `}</style>
-    </div>
+    </DialogShell>
   )
 }

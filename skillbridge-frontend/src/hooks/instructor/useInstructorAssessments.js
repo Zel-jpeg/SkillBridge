@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useInstructorAssessments.js
 //
 // Data hook for InstructorAssessments page.
@@ -28,7 +29,6 @@ import { useSSE } from '../useSSE'
 import { manilaApiDate, toManilaInput } from '../../utils/assessmentDates'
 import { filterAssessments } from '../../utils/assessmentManagement'
 
-const SSE_PATH = '/api/instructor/events/'
 
 // ── Default choices for each question type ────────────────────────────────────
 function defaultChoicesForType(type) {
@@ -115,9 +115,9 @@ function questionPayload(q) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useInstructorAssessments() {
+export function useInstructorAssessments({ role = 'instructor' } = {}) {
   // ── SSE for real-time updates ─────────────────────────────────────────────
-  useSSE(SSE_PATH)
+  useSSE(`/api/${role}/events/`)
 
   // ── Assessment + batch lists ──────────────────────────────────────────────
   const { data: assessmentsRaw, loading: loadingList } = useApi('/api/instructor/assessments/')
@@ -162,7 +162,8 @@ export function useInstructorAssessments() {
   // ── Assessment metadata edit fields ──────────────────────────────────────
   const [editTitle,    setEditTitle]    = useState('')
   const [editDuration, setEditDuration] = useState('')
-  const [editSettings, setEditSettings] = useState({})
+  const [editSettings, setEditSettings] = useState({ batch_id: '', publication_status: 'draft',
+    is_required: true, include_in_competency: true, display_order: '0', available_at: '', due_at: '' })
 
   // ── Question edit state ───────────────────────────────────────────────────
   const [editedQuestions, setEditedQuestions] = useState([])
@@ -187,12 +188,8 @@ export function useInstructorAssessments() {
   const [saving,          setSaving]          = useState(false)
   const [saveError, setSaveError] = useState('')
   const savePending = useRef(false)
-  const [toast,           setToast]           = useState(null)
 
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 4000)
-  }, [])
+  const { showToast } = useToast()
 
   const loadQuestions = useCallback(async (a) => {
     const load = ++questionLoad.current
@@ -219,7 +216,7 @@ export function useInstructorAssessments() {
     setSelected(a)
     setEditTitle(a.title || '')
     setEditDuration(String(a.duration_minutes ?? 60))
-    setEditSettings({ publication_status: a.publication_status, is_required: a.is_required,
+    setEditSettings({ batch_id: a.batch_id ?? '', publication_status: a.publication_status, is_required: a.is_required,
       include_in_competency: a.include_in_competency, display_order: String(a.display_order ?? 0),
       available_at: toManilaInput(a.available_at), due_at: toManilaInput(a.due_at) })
     setEditedQuestions([])
@@ -347,6 +344,7 @@ export function useInstructorAssessments() {
 
       const saved = await api.patch(`/api/instructor/assessments/${selected.id}/`, {
         title: editTitle.trim(), duration_minutes: Number(editDuration),
+        ...(editSettings.batch_id !== '' ? { batch_id: Number(editSettings.batch_id) } : {}),
         question_changes: {
           delete_ids: toDelete.map(question => question.id),
           update: toPatch.map(question => ({ id: question.id, ...questionPayload(question) })),
@@ -385,8 +383,11 @@ export function useInstructorAssessments() {
         question_count:   freshQs.length,
       }))
       showToast('Assessment saved successfully.')
+      return true
     } catch (err) {
-      setSaveError(requestErrorMessage(err, { mutation: true }))
+      const message = requestErrorMessage(err, { mutation: true })
+      setSaveError(message)
+      showToast(message, 'error')
     } finally {
       savePending.current = false
       setSaving(false)
@@ -394,7 +395,18 @@ export function useInstructorAssessments() {
   }, [selected, editTitle, editDuration, editSettings, editedQuestions, showToast])
 
   // ─────────────────────────────────────────────────────────────────────────
+  const dirty = Boolean(selected && (editTitle !== selected.title || String(editDuration) !== String(selected.duration_minutes) ||
+    editedQuestions.some(q => q._dirty || q._isNew || q._deleted) ||
+    ['publication_status', 'is_required', 'include_in_competency'].some(key => editSettings[key] !== selected[key]) ||
+    String(editSettings.batch_id || '') !== String(selected.batch_id || '') ||
+    String(editSettings.display_order) !== String(selected.display_order ?? 0) ||
+    editSettings.available_at !== toManilaInput(selected.available_at) || editSettings.due_at !== toManilaInput(selected.due_at)))
   return {
+    dirty,
+    importQuestions: rows => setEditedQuestions(previous => [...previous, ...rows.map(row => normalizeQuestion({
+      ...row, category: categories.find(category => category.name.toLowerCase() === row.category.toLowerCase()) || { id: `import:${row.category}`, name: row.category },
+      choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,
+    }, true))]),
     // ── List ─────────────────────────────────────────────────────────────────
     loadingList, filtered, stats, batchOptions,
     // ── Filters ──────────────────────────────────────────────────────────────
@@ -425,6 +437,5 @@ export function useInstructorAssessments() {
     confirmRemoveQuestion, setConfirmRemoveQuestion,
     confirmRemoveQuestionAction,
     saving, saveAllChanges, saveError,
-    toast,
   }
 }

@@ -53,7 +53,7 @@ export default function InstructorDashboard() {
     sortBy, sortDir, toggleSort,
     view, setView, page, setPage,
     selectedStudent, setSelectedStudent,
-    toast,
+
     completed, pending, avgOverall, leaders,
     displayed, paginated,
     PAGE_SIZE, categories,
@@ -74,12 +74,6 @@ export default function InstructorDashboard() {
     <div className="min-w-0">
 
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {toast}
-        </div>
-      )}
 
       {selectedStudent && (
         <StudentModal

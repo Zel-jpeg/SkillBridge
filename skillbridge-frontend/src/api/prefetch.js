@@ -12,6 +12,7 @@ export const DESTINATION_QUERIES = {
   '/instructor/assessments': ['/api/instructor/assessments/', '/api/instructor/batches/'],
   '/instructor/companies': ['/api/instructor/companies/'],
   '/admin/assessments': ['/api/instructor/assessments/'],
+  '/admin/batches': ['/api/instructor/batches/'],
   '/admin/skills': ['/api/admin/skills/'],
   '/admin/companies': ['/api/admin/companies/'],
 }
@@ -26,6 +27,8 @@ const PAGE_QUERIES = {
   '/student/results': ['/api/student/results/combined/', '/api/students/me/'],
   '/instructor/dashboard': ['/api/instructor/students/recommendations/', '/api/instructor/assessments/'],
   '/instructor/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/categories/'],
+  '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/categories/'],
+  '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
   '/admin/dashboard': ['/api/admin/stats/', '/api/admin/students/recommendations/'],
   '/admin/users': ['/api/admin/users/'],

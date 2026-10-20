@@ -141,19 +141,13 @@ export default function AdminSkills() {
   const {
     skills, loading, error, search, setSearch,
     showModal, setShowModal, selectedSkill, openAdd, openEdit,
-    saving, handleSave, deleteConfirm, setDeleteConfirm, handleDelete, toast
+    saving, handleSave, deleteConfirm, setDeleteConfirm, handleDelete
   } = useAdminSkills()
 
   return (
     <div className="min-w-0">
 
 
-      {toast && (
-        <div className="fixed top-4 right-4 z-60 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {toast}
-        </div>
-      )}
 
       {showModal && (
         <SkillModal

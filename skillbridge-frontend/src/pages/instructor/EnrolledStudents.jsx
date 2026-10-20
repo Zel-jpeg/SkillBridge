@@ -59,7 +59,7 @@ export default function EnrolledStudents() {
     search, setSearch, course, setCourse, status, setStatus,
     view, setView, page, setPage,
     filtered, paginated,
-    toast, PAGE_SIZE,
+    PAGE_SIZE,
     categories,
   } = useEnrolledStudents()
 
@@ -70,13 +70,6 @@ export default function EnrolledStudents() {
     <div className="min-w-0">
 
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {toast}
-        </div>
-      )}
 
       {/* Modals */}
       {confirmRemove && (

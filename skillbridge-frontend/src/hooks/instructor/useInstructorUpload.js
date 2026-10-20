@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useInstructorUpload.js
 //
 // Data hook for InstructorUpload (Assessment Creator).
@@ -204,6 +205,7 @@ CATEGORY: Computer Hardware
 // MAIN HOOK
 // ════════════════════════════════════════════════════════════════
 export function useInstructorUpload() {
+  const { showToast } = useToast()
   const [draftKey] = useState(() => authoringDraftKey())
   const publishingRef = useRef(false)
   // ── Batches ───────────────────────────────────────────────────
@@ -213,7 +215,10 @@ export function useInstructorUpload() {
   // Assessment metadata
   const [title,           setTitle]           = useState('')
   const [duration,        setDuration]        = useState('')
-  const [selectedBatchId, setSelectedBatchId] = useState(null)
+  const [selectedBatchId, setSelectedBatchId] = useState(() => {
+    const value = new URLSearchParams(window.location.search).get('batch_id')
+    return value && /^\d+$/.test(value) ? Number(value) : null
+  })
   const [publicationStatus, setPublicationStatus] = useState('draft')
   const [isRequired, setIsRequired] = useState(true)
   const [includeInCompetency, setIncludeInCompetency] = useState(true)
@@ -482,16 +487,9 @@ export function useInstructorUpload() {
     setXlsxLoading(true)
     setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(file.name); setXlsxImported(false)
     try {
-      if (!window.XLSX) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script')
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-          s.onload = resolve; s.onerror = reject
-          document.head.appendChild(s)
-        })
-      }
-      const wb  = window.XLSX.read(await file.arrayBuffer(), { type: 'array' })
-      const raw = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
+      const XLSX = await import('xlsx')
+      const wb  = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
       const rows = [], errs = []
 
       raw.forEach((row, i) => {
@@ -722,9 +720,11 @@ export function useInstructorUpload() {
       clearDraft(draftKey)
       setPublished(true)
       setPublishedId(res.data.id)
+      showToast(publicationStatus === 'published' ? 'Assessment published successfully.' : 'Assessment draft saved successfully.')
     } catch (err) {
       const msg = requestErrorMessage(err, { mutation: true })
       setPublishError(msg)
+      showToast(msg, 'error')
     } finally {
       publishingRef.current = false
       setPublishing(false)

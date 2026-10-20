@@ -1,6 +1,7 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
-  users: [/^\/api\/admin\/(users|stats)\/$/, /^\/api\/auth\/me\/$/],
+  users: [/^\/api\/admin\/(users|stats|batch-instructors)\/$/, /^\/api\/auth\/me\/$/],
+  management: [/^\/api\/admin\/management-actions\/$/],
   students: [/^\/api\/admin\/(users|stats|reports|students\/recommendations)\/$/, /^\/api\/instructor\/(students\/recommendations|batches\/\d+\/students|companies)\/$/, /^\/api\/students\/me\/$/, /^\/api\/nlp\/students\/\d+\/text\/$/],
   batches: [/^\/api\/instructor\/batches\/(?:\d+\/students\/)?$/, /^\/api\/admin\/(stats|reports|users)\/$/, /^\/api\/students\/me\/$/],
   assessments: [/^\/api\/assessments\/(?:active\/)?$/, /^\/api\/instructor\/assessments\/(?:\d+\/questions\/)?$/, /^\/api\/admin\/(stats|reports)\/$/],

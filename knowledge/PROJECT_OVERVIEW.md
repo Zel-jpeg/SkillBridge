@@ -59,6 +59,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Shared notification toasts](NOTIFICATION_TOASTS.md): App-wide countdown cards,
+  hover/focus/touch pause, modal/fullscreen support, role/action coverage and local
+  responsive/dark-mode browser verification.
+
 - [Release and recovery handoff](RELEASE_AND_RECOVERY_HANDOFF.md): Owner-run
   Vercel/Railway release, safe readiness probe, isolated restore and pending live checks.
 
@@ -179,6 +183,14 @@ and fallback when explaining results.
 
 - [Admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md): Paginated card/list
   views, protected management drafts, lazy modal sections and synthetic UI checks.
+
+- [Instructor/admin capability review and plan](ROLE_CAPABILITIES_REVIEW_AND_PLAN.md):
+  Current UI/API access matrix, missing admin authoring and batch workflows,
+  ownership/scope inconsistencies and a proposed implementation sequence.
+
+- [Admin management implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md): Shared
+  authoring, admin batch/instructor assignment, scoped unenrollment, audit history,
+  migration 0021, local verification and resumable checkpoint.
 
 - [Database connection troubleshooting](DATABASE_CONNECTIONS.md): Local startup
   stalls, bounded PostgreSQL connection waits and Supabase access checks.

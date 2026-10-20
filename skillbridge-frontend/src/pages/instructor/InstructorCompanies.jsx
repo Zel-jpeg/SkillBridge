@@ -681,7 +681,7 @@ export default function InstructorCompanies() {
     search, setSearch,
     editing, openEdit, closeEdit,
     saving, saveError, handleSave,
-    toast,
+
   } = useInstructorCompanies()
 
   const [selected, setSelected] = useState(null)
@@ -699,13 +699,6 @@ export default function InstructorCompanies() {
     <div className="min-w-0">
 
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-70 bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 whitespace-nowrap pointer-events-none">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {toast}
-        </div>
-      )}
 
       {/* Detail modal */}
       {selected && !editing && (

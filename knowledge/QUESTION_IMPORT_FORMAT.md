@@ -1,5 +1,10 @@
 # Accepted questionnaire import format
 
+20 October admin authoring follow-up: the shared parsers load the installed `xlsx`
+package on demand instead of injecting a CDN script. Formats below are unchanged.
+Admin authoring stages parsed questions locally and saves them with the other
+edits. See [implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md) for browser checks.
+
 On 18 October 2026 the user explicitly directed that the existing questionnaire
 format be treated as final for the 28-task release, with an update later this
 week if the adviser file differs. This supersedes the prior official-sample

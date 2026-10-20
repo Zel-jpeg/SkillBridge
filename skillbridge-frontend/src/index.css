@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/* Shared notification cards. The bar's animation is also the dismissal clock. */
+.sb-toast-viewport { position: fixed; inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) auto auto; margin: 0; padding: 8px; width: min(396px, calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right))); max-width: none; max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border: 0; background: transparent; overflow: auto; overscroll-behavior: contain; z-index: 2147483647; pointer-events: none; }
+.sb-toast-viewport[data-active=false] { display: none; }
+.sb-toast-viewport[data-active=true] { display: grid; gap: 10px; }
+.sb-toast { --sb-toast-surface: #fff; --sb-toast-accent: #16a34a; position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 14px 10px 17px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: var(--sb-toast-surface); color: #4b5563; box-shadow: 0 4px 16px #0000001f; pointer-events: auto; animation: sb-toast-enter .2s ease-out both; }
+.sb-toast-error { --sb-toast-accent: #dc2626; }
+.sb-toast-warning { --sb-toast-accent: #b45309; }
+.sb-toast-info { --sb-toast-accent: #2563eb; }
+.sb-toast-icon { display: flex; flex: 0 0 auto; color: var(--sb-toast-accent); }
+.sb-toast-message { flex: 1; min-width: 0; max-height: 40dvh; margin: 0; overflow: auto; overflow-wrap: anywhere; font-size: 13px; font-weight: 400; line-height: 1.55; }
+.sb-toast-close { align-self: flex-start; display: grid; place-items: center; flex: 0 0 36px; min-height: 36px; margin-top: -6px; border: 0; border-radius: 6px; background: transparent; color: #6b7280; cursor: pointer; }
+.sb-toast-close:hover { background: #f3f4f6; color: #111827; }
+.sb-toast-close:focus-visible { outline: 2px solid var(--sb-toast-accent); outline-offset: -2px; }
+.sb-toast-track { position: absolute; inset: auto 0 0; height: 3px; overflow: hidden; border-radius: 0 0 8px 8px; background: color-mix(in srgb, var(--sb-toast-accent) 15%, var(--sb-toast-surface)); }
+.sb-toast-timer { height: 100%; background: var(--sb-toast-accent); transform-origin: left; }
+.dark .sb-toast { --sb-toast-surface: #1f2937; --sb-toast-accent: #4ade80; color: #e5e7eb; border-color: #4b5563; box-shadow: 0 4px 20px #0006; }
+.dark .sb-toast-error { --sb-toast-accent: #fb7185; }
+.dark .sb-toast-warning { --sb-toast-accent: #fbbf24; }
+.dark .sb-toast-info { --sb-toast-accent: #60a5fa; }
+.dark .sb-toast-close { color: #9ca3af; }
+.dark .sb-toast-close:hover { background: #374151; color: #fff; }
+@keyframes sb-toast-enter { from { opacity: 0; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
+@media (pointer: coarse) { .sb-toast-close { flex-basis: 44px; min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .sb-toast { animation: none; } }
+
 /* Initial section placeholders reserve space; background refresh keeps content. */
 .sb-skeleton { display: grid; gap: 1rem; width: 100%; }
 .sb-skeleton-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
@@ -48,10 +73,6 @@
 .enrollment-dialog button { cursor: pointer; }
 .enrollment-dialog button:disabled { opacity: .5; cursor: not-allowed; }
 .enrollment-dialog :focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; }
-.enrollment-toast { position: fixed; inset: 16px 16px auto auto; z-index: 100; width: max-content; max-width: min(420px, calc(100vw - 32px)); margin: 0; display: flex; align-items: center; gap: 10px; padding: 12px 20px; border: 0; border-radius: 16px; background: #16a34a; color: #fff; box-shadow: 0 12px 30px #0003; font-size: 14px; font-weight: 600; animation: enrollment-toast-in .2s ease-out both; }
-.enrollment-toast:not(:popover-open):not([data-visible=true]) { display: none; }
-.enrollment-toast svg { flex: 0 0 auto; }
-@keyframes enrollment-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .enrollment-button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; color: #374151; box-shadow: 0 1px 2px #0000000d; font-size: 12px; font-weight: 650; transition: color .15s, background .15s, border-color .15s, box-shadow .15s, transform .15s; }
 .enrollment-button:hover:not(:disabled) { color: #15803d; border-color: #86efac; background: #f0fdf4; box-shadow: 0 4px 10px #16a34a1a; transform: translateY(-1px); }
 .enrollment-button-danger { color: #be123c; border-color: #fecdd3; background: #fff1f2; }

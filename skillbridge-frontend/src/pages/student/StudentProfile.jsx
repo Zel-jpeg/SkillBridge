@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import { loadLeaflet, geocodeAddress } from '../../utils/externalServices'
 import MapStatus from '../../components/MapStatus'
 import DataSection from '../../components/DataSection'
@@ -168,6 +169,7 @@ function ReadOnlyField({ label, value }) {
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════
 export default function StudentProfile() {
+  const { showToast } = useToast()
   const navigate = useNavigate()
 
   // ── Real API call ───────────────────────────────────────────────
@@ -311,12 +313,14 @@ export default function StudentProfile() {
       invalidateCache('/api/student/results/')
 
       setSaved(true)
+      showToast('Profile saved successfully.')
     } catch (err) {
       const msg = requestErrorMessage(err, { mutation: true })
       const field = { name: 'editName', studentId: 'editStudentId', course: 'editCourse',
         phone: 'phone', stayingAt: 'stayingAt', travelWilling: 'travelWilling' }[err.response?.data?.field]
       if (field) setErrors(previous => ({ ...previous, [field]: msg }))
       setSaveError(msg)
+      showToast(msg, 'error')
     } finally {
       savingRef.current = false
       setSaving(false)

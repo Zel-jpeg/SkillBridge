@@ -26,11 +26,11 @@ def category_created(created):
         marker.add('taxonomy')
 
 TOPICS = {
-    'student': ['students', 'results', 'placements'],
-    'batch': ['batches', 'students', 'assessments', 'results', 'placements'],
-    'assessment': ['assessments', 'students', 'results', 'placements', 'taxonomy'],
-    'question': ['assessments', 'taxonomy'],
-    'attempt': ['assessments', 'students', 'results', 'placements'],
+    'student': ['students', 'results', 'placements', 'management'],
+    'batch': ['batches', 'students', 'assessments', 'results', 'placements', 'management'],
+    'assessment': ['assessments', 'students', 'results', 'placements', 'taxonomy', 'management'],
+    'question': ['assessments', 'taxonomy', 'management'],
+    'attempt': ['assessments', 'students', 'results', 'placements', 'management'],
     'catalog': ['catalog', 'results', 'students', 'placements'],
     'taxonomy': ['taxonomy', 'catalog', 'assessments', 'results', 'students', 'placements'],
     'configuration': ['configuration', 'results', 'students', 'placements'],

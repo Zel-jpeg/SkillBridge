@@ -1,3 +1,4 @@
+import { useToast } from '../context/ToastContext'
 import DataSection from './DataSection'
 import { useState } from 'react'
 import api from '../api/axios'
@@ -10,6 +11,7 @@ const kinds = [['batch_progress', 'Batch Assessment Progress'], ['student_compet
 const field = 'min-w-0 max-w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
 
 export default function AssessmentReportPanel() {
+  const { showToast } = useToast()
   const { data: batchesData } = useApi('/api/instructor/batches/')
   const { data: assessmentsData } = useApi('/api/instructor/assessments/')
   const batches = Array.isArray(batchesData) ? batchesData : []
@@ -26,8 +28,8 @@ export default function AssessmentReportPanel() {
   const generate = async () => {
     setBusy(true); setError('')
     const revision = freshness.begin()
-    try { setPayload((await api.get('/api/management/assessment-reports/', { params: params() })).data); freshness.complete(revision) }
-    catch (err) { setError(err.response?.data?.error || 'Report could not be generated.') }
+    try { setPayload((await api.get('/api/management/assessment-reports/', { params: params() })).data); freshness.complete(revision); showToast('Assessment report generated.') }
+    catch (err) { const message = err.response?.data?.error || 'Report could not be generated.'; setError(message); showToast(message, 'error') }
     finally { setBusy(false) }
   }
   const csv = async () => {
@@ -37,7 +39,8 @@ export default function AssessmentReportPanel() {
       const url = URL.createObjectURL(response.data)
       const link = document.createElement('a'); link.href = url; link.download = `skillbridge-${kind}-${new Date().toISOString().slice(0, 10)}.csv`; link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-    } catch { setError('CSV export failed.') } finally { setBusy(false) }
+      showToast('CSV report downloaded.')
+    } catch { setError('CSV export failed.'); showToast('CSV export failed.', 'error') } finally { setBusy(false) }
   }
   const pdf = async () => {
     if (!payload) return
@@ -50,7 +53,8 @@ export default function AssessmentReportPanel() {
         student,
       }, jsPDF, autoTableModule.default)
       doc.save(`skillbridge-${kind}-${new Date().toISOString().slice(0, 10)}.pdf`)
-    } catch { setError('PDF export failed.') } finally { setBusy(false) }
+      showToast('PDF report downloaded.')
+    } catch { setError('PDF export failed.'); showToast('PDF export failed.', 'error') } finally { setBusy(false) }
   }
   return <section className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
     <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assessment reports</h2>

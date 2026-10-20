@@ -1,3 +1,5 @@
+import { useToast } from '../../context/ToastContext'
+import { requestErrorMessage } from '../../api/requestErrors'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
@@ -15,10 +17,7 @@ const PAGE_SIZE = 25
 export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled }) {
   const dialog = useRef(null)
   const reviewDialog = useRef(null)
-  const dialogToast = useRef(null)
-  const reviewDialogToast = useRef(null)
   const fileRef = useRef(null)
-  const toastTimer = useRef(null)
   const { data: batchesData } = useApi('/api/instructor/batches/')
   const batches = Array.isArray(batchesData) ? batchesData.filter(batch => batch.status === 'active') : []
   const [target, setTarget] = useState(String(batchId ?? ''))
@@ -34,7 +33,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   const [view, setView] = useState('list')
   const [editingIndex, setEditingIndex] = useState(null)
   const [dirty, setDirty] = useState(false)
-  const [toast, setToast] = useState('')
+  const { showToast } = useToast()
   const [page, setPage] = useState(0)
   const [verified, setVerified] = useState(false)
   const [spreadsheetReview, setSpreadsheetReview] = useState(false)
@@ -42,7 +41,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   useEffect(() => {
     dialog.current.showModal()
-    return () => window.clearTimeout(toastTimer.current)
   }, [])
 
   const selectedBatch = batches.find(b => String(b.id) === target)
@@ -52,26 +50,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   function invalidateReview() { setReview(null); setVerified(false); setDirty(false) }
 
-  function showReviewToast(message) {
-    window.clearTimeout(toastTimer.current)
-    setToast(message)
-    window.requestAnimationFrame(() => {
-      const element = reviewDialog.current?.open ? reviewDialogToast.current : dialogToast.current
-      if (!element) return
-      if (typeof element.showPopover === 'function') {
-        if (!element.matches(':popover-open')) element.showPopover()
-      } else {
-        element.dataset.visible = 'true'
-      }
-    })
-    toastTimer.current = window.setTimeout(() => {
-      for (const element of [dialogToast.current, reviewDialogToast.current]) {
-        if (element?.matches?.(':popover-open')) element.hidePopover()
-        if (element) delete element.dataset.visible
-      }
-      setToast('')
-    }, 4000)
-  }
 
   function openSpreadsheetReview() {
     dialog.current.close()
@@ -92,9 +70,9 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     try {
       const { data } = await api.post(`/api/instructor/batches/${target}/enroll/preview/`, { students: nextRows })
       setRows(data.rows); setReview(data); setResult(null); setPage(0); setEditingIndex(null); setDirty(false)
-      if (successMessage) showReviewToast(successMessage)
+      if (successMessage) showToast(successMessage)
       return true
-    } catch (err) { setError(err.response?.data?.error || 'Preview failed. No enrollment was confirmed.') }
+    } catch (err) { const message = requestErrorMessage(err); setError(message); showToast(message, 'error') }
     finally { setBusy(false) }
     return false
   }
@@ -120,11 +98,13 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
       invalidateCache('/api/admin/users/')
       invalidateCache('/api/instructor/batches/')
       const enrolled = data.summary?.enrolled ?? 0
-      showReviewToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
+      showToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
       onEnrolled?.(data)
     } catch (err) {
       invalidateReview()
-      setError(err.response?.data?.error || 'Confirmation response unavailable. Preview again to check enrollment before retrying.')
+      const message = requestErrorMessage(err, { mutation: true })
+      setError(message)
+      showToast(message, 'error')
     } finally { setBusy(false) }
   }
 
@@ -217,10 +197,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   return <><dialog ref={dialog} className="enrollment-dialog" aria-labelledby="enrollment-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
-    <div ref={dialogToast} popover="manual" className="enrollment-toast" role="status">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      {toast}
-    </div>
     <header className="enrollment-header">
       <div>
         <h2 id="enrollment-title">Enroll students</h2>
@@ -304,10 +280,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   </dialog>
   <dialog ref={reviewDialog} className="enrollment-dialog enrollment-review-dialog" aria-labelledby="enrollment-review-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
-    <div ref={reviewDialogToast} popover="manual" className="enrollment-toast" role="status">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      {toast}
-    </div>
     <header className="enrollment-header">
       <div><h2 id="enrollment-review-title">{result ? 'Enrollment results' : 'Review students'}</h2>
         <p>{selectedBatch?.name || 'Selected batch'} — {selectedBatch?.instructor_name || 'Instructor unassigned'}</p></div>

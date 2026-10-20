@@ -963,7 +963,7 @@ export default function AdminCompanies() {
     handleAddPosition,
     handleSavePosition,
     confirmDeletePosition,
-    toast,
+
   } = useAdminCompanies()
 
   const [search,        setSearch]        = useState('')
@@ -1044,15 +1044,6 @@ export default function AdminCompanies() {
         />
       )}
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 pointer-events-none">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          {toast}
-        </div>
-      )}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 

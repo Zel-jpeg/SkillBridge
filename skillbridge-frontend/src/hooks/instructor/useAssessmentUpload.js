@@ -1,10 +1,10 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useAssessmentUpload.js
 //
 // State + logic for the "Add Questions" upload modal inside InstructorAssessments.
 // Supports Excel (.xlsx/.csv) and Text (.txt) — same formats as InstructorUpload.
 //
-// After a successful upload the server appends questions and clears all student
-// submissions so everyone retakes the assessment with the full question set.
+// Questions can be appended only before an attempt. Existing scores are preserved.
 //
 // API: POST /api/instructor/assessments/:id/questions/add/
 
@@ -50,7 +50,8 @@ function rowsToPayload(rows) {
   })
 }
 
-export function useAssessmentUpload({ assessmentId, onSuccess }) {
+export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
+  const { showToast } = useToast()
   // ── Tab ───────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState('excel')  // 'excel' | 'text'
 
@@ -71,6 +72,7 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
   // ── Submit state ──────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const submitPending = useRef(false)
 
   // ── Excel parsing (mirrors useInstructorUpload.parseExcelQuestions) ────────
   async function parseExcelQuestions(file) {
@@ -79,17 +81,9 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
     setXlsxErrors([])
     setXlsxFileName(file.name)
     try {
-      if (!window.XLSX) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script')
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-          s.onload = resolve
-          s.onerror = reject
-          document.head.appendChild(s)
-        })
-      }
-      const wb  = window.XLSX.read(await file.arrayBuffer(), { type: 'array' })
-      const raw = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
+      const XLSX = await import('xlsx')
+      const wb  = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
       const rows = []
       const errs = []
 
@@ -186,30 +180,38 @@ export function useAssessmentUpload({ assessmentId, onSuccess }) {
   // ── Submit parsed rows to the backend ─────────────────────────────────────
   const handleSubmit = useCallback(async () => {
     const rows = tab === 'excel' ? xlsxRows : txtRows
-    if (!rows.length || !assessmentId) return
+    if (!rows.length || !assessmentId || submitPending.current) return
+    submitPending.current = true
 
     setSubmitting(true)
     setSubmitError('')
     try {
+      if (onImport) {
+        await onImport(rowsToPayload(rows))
+        reset()
+        return
+      }
       const res = await api.post(
         `/api/instructor/assessments/${assessmentId}/questions/add/`,
         {
           questions:         rowsToPayload(rows),
-          clear_submissions: true,
         }
       )
       // Invalidate cache so the list and questions drawer both refresh
       invalidateCache('/api/instructor/assessments/')
       invalidateCache(`/api/instructor/assessments/${assessmentId}/questions/`)
+      showToast('Questions added successfully.')
       onSuccess?.(res.data)
       reset()
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.detail || 'Upload failed. Please try again.'
       setSubmitError(msg)
+      showToast(msg, 'error')
     } finally {
+      submitPending.current = false
       setSubmitting(false)
     }
-  }, [tab, xlsxRows, txtRows, assessmentId, onSuccess])
+  }, [tab, xlsxRows, txtRows, assessmentId, onSuccess, onImport, showToast])
 
   // ── Reset all state ───────────────────────────────────────────────────────
   function reset() {

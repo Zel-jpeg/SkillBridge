@@ -1,5 +1,11 @@
 # Admin assessment oversight
 
+20 October follow-up: [admin management implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md)
+adds the admin creator and shared authoring dialog. Questions offers Edit assessment
+and questions, with atomic draft changes and unchanged attempt locks. Existing
+settings/attempt workflows remain. Earlier statements below about unchanged
+backend contracts describe the original oversight UI change.
+
 The Admin Assessments page follows Admin Users' content width, compact controls,
 rounded white surfaces, green accents and default card view. The existing shell
 and Admin Users page are unchanged. List view uses a table with its own horizontal

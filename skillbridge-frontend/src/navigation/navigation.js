@@ -27,6 +27,8 @@ export const ROLE_NAVIGATION = {
     { label: 'Placements', path: '/admin/placements', icon: 'placements' },
     { label: 'Users', path: '/admin/users', icon: 'users' },
     { label: 'Assessments', path: '/admin/assessments', icon: 'assessments' },
+    { label: 'New Assessment', path: '/admin/assessment/create', icon: 'create' },
+    { label: 'Batches', path: '/admin/batches', icon: 'users' },
     { label: 'Reports', path: '/admin/reports', icon: 'reports' },
   ],
 }

@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/admin/useAdminUsers.js
 //
 // Data hook for AdminUsers page.
@@ -9,7 +10,7 @@
 //   When the server detects DB changes it sends invalidate URLs →
 //   useApi re-fetches /api/admin/users/ silently → useEffect re-normalizes.
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useApi, invalidateCache, fetchWithDedup, getCachedData, updateCachedData } from '../useApi'
 import { reconcileAccountCollection } from '../../utils/accountCollection'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
@@ -132,11 +133,7 @@ export function useAdminUsers() {
   const [view,             setView]          = useState('grid')
 
   // ── Toast ─────────────────────────────────────────────────────────
-  const [toast, setToast] = useState(null)
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }, [])
+  const { showToast } = useToast()
 
   // ── Normalize API response ────────────────────────────────────────
   // Runs whenever usersData changes — including SSE-triggered re-fetches.
@@ -406,6 +403,5 @@ export function useAdminUsers() {
     confirmDeleteStudent,
     confirmRemoveStudent, setConfirmRemoveStudent,
     confirmRejectPending, setConfirmRejectPending,
-    toast,
   }
 }

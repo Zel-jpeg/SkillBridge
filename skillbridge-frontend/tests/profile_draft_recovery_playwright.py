@@ -1,9 +1,12 @@
 """Profile failure retention and staff draft account isolation; synthetic API only."""
 import json
+import os
 import re
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
+
+BASE = os.environ.get('TOAST_TEST_BASE', 'http://127.0.0.1:5178')
 
 ARTIFACTS = Path(__file__).parent / 'artifacts/profile-draft-recovery'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
@@ -42,7 +45,7 @@ with sync_playwright() as p:
         context.route('**/*', route_request)
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
-        page.goto('http://127.0.0.1:5178/student/profile')
+        page.goto(BASE + '/student/profile')
         page.wait_for_load_state('networkidle')
         expect(page.get_by_text('Result notification emails are not available. View your latest results on the Results page.', exact=True)).to_be_visible()
         expect(page.get_by_role('checkbox')).to_have_count(0)
@@ -53,6 +56,7 @@ with sync_playwright() as p:
         save.evaluate('(b)=>{b.click();b.click()}')
         expect(page.get_by_text('Synthetic duplicate ID; correct your student ID.').first).to_be_visible()
         expect(phone).to_have_value('09987654321')
+        expect(page.locator('.sb-toast-error').first).to_be_visible()
         expect(save).to_be_enabled()
         assert len(mutations) == 1
         assert mutations[0]['pinLat'] is None and mutations[0]['pinLng'] is None
@@ -63,14 +67,15 @@ with sync_playwright() as p:
         expect(phone).to_have_value('09987654321')
         expect(save).to_be_enabled()
         assert len(mutations) == 2  # No transport replay for an uncertain mutation.
-        expect(page.get_by_text('Profile saved successfully')).to_have_count(0)
+        expect(page.get_by_text('Profile saved successfully', exact=True)).to_have_count(0)
         save.click()
         expect(page.get_by_text('The save could not be confirmed. Refresh the current records before trying again.', exact=True)).to_be_visible()
         expect(phone).to_have_value('09987654321')
-        expect(page.get_by_text('Profile saved successfully')).to_have_count(0)
+        expect(page.get_by_text('Profile saved successfully', exact=True)).to_have_count(0)
         assert page.evaluate("JSON.parse(localStorage.getItem('sb-user')).id") == 1
         save.click()
-        expect(page.get_by_text('Profile saved successfully')).to_be_visible()
+        expect(page.get_by_text('Profile saved successfully', exact=True)).to_be_visible()
+        expect(page.locator('.sb-toast-success')).to_contain_text('Profile saved successfully.')
         assert len(mutations) == 4
         checks.append('Network/invalid-response failures clear loading without automatic replay, cache corruption or false success; explicit retry saves')
         page.evaluate('window.scrollTo(0,0)')
@@ -93,7 +98,7 @@ with sync_playwright() as p:
             context.route('**/*', staff_route)
             page = context.new_page()
             page.on('pageerror', lambda error: errors.append(str(error)))
-            page.goto('http://127.0.0.1:5178/instructor/assessment/create')
+            page.goto(BASE + '/instructor/assessment/create')
             page.wait_for_load_state('networkidle')
             restore = page.get_by_role('button', name='Restore draft', exact=True)
             if owner == 1:

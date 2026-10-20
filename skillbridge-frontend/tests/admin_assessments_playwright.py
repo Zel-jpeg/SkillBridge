@@ -3,6 +3,7 @@
 Run with local Vite on port 5175. Uses Python Playwright and installed Chrome.
 """
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -12,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent / '.runtime-win'))
 sys.path.insert(1, str(Path(__file__).parent / '.runtime'))
 from playwright.sync_api import sync_playwright, expect
 
-BASE = 'http://127.0.0.1:5175'
+BASE = os.environ.get('ADMIN_MANAGEMENT_FRONTEND_URL', 'http://127.0.0.1:5175')
 API = '/api/instructor/assessments/'
 ARTIFACTS = Path(__file__).parent / 'artifacts/admin-assessments'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,12 @@
 # Authentication, route loading and background preparation
 
+20 October admin management follow-up: `/admin/batches` prepares the batch list
+and loads eligible instructor choices in the foreground. Selected rosters and
+explicitly requested action history load separately. `/admin/assessment/create`
+reuses creator reference reads. Question authoring is lazy-loaded on explicit
+entry; keys remain outside automatic navigation preparation. See
+[implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md).
+
 Implemented and checked locally on 17 October 2026. Measurements below distinguish
 synthetic browser delays, local backend execution and production build sizes.
 They do not establish deployment login durations.

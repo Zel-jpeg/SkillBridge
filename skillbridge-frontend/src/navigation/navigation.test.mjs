@@ -5,7 +5,7 @@ import { ROLE_NAVIGATION, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPa
 const expected = {
   student: ['dashboard', 'assessments', 'results'],
   instructor: ['dashboard', 'students', 'assessments', 'assessment/create', 'companies', 'placements'],
-  admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'reports'],
+  admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'assessment/create', 'batches', 'reports'],
 }
 
 for (const [role, destinations] of Object.entries(expected)) {

@@ -18,6 +18,13 @@ export function validateApiResponse(response) {
         typeof row.company === 'string' && typeof row.position === 'string' && Array.isArray(row.tags))
   } else if (method === 'get' && ['/api/admin/companies/', '/api/instructor/companies/', '/api/student/companies/'].includes(path)) {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string' && Array.isArray(row.positions))
+  } else if (method === 'get' && path === '/api/admin/batch-instructors/') {
+    valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string')
+  } else if (method === 'get' && path === '/api/admin/management-actions/') {
+    valid = object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && Array.isArray(data.results) &&
+      data.results.every(row => object(row) && id(row.id) && typeof row.action === 'string' && typeof row.actor_name === 'string')
+  } else if (method === 'patch' && /^\/api\/admin\/batches\/\d+\/$/.test(path)) {
+    valid = object(data) && id(data.id) && id(data.instructor_id) && typeof data.name === 'string'
   } else if (method === 'get' && ['/api/categories/', '/api/instructor/batches/', '/api/instructor/assessments/'].includes(path)) {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id))
   } else if (method === 'get' && path === '/api/admin/users/') {

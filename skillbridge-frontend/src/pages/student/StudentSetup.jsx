@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import { loadLeaflet, geocodeAddress } from '../../utils/externalServices'
 import MapStatus from '../../components/MapStatus'
 // src/pages/student/StudentSetup.jsx
@@ -147,6 +148,7 @@ function PinMap({ center, pinned, onPin }) {
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════
 export default function StudentSetup() {
+  const { showToast } = useToast()
   const navigate    = useNavigate()
   const TOTAL_STEPS = 4
   const [step, setStep] = useState(1)
@@ -271,8 +273,10 @@ export default function StudentSetup() {
     try {
       const res = await api.patch('/api/students/me/profile/', formData)
       localStorage.setItem('sb-user', JSON.stringify(res.data))
+      showToast('Profile setup completed successfully.')
       navigate('/student/dashboard')
     } catch (err) {
+      showToast(requestErrorMessage(err, { mutation: true }), 'error')
       const status = err.response?.status
   
       if (err.userMessage) {

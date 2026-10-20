@@ -1,5 +1,6 @@
 from django.urls import path
 from .admin_accounts import admin_account_detail
+from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
 from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
@@ -7,6 +8,9 @@ from .sse import admin_events, instructor_events, student_events
 from .health import health
 
 urlpatterns = [
+    path('admin/batch-instructors/', admin_batch_instructors, name='admin_batch_instructors'),
+    path('admin/batches/<int:batch_id>/', admin_batch_detail, name='admin_batch_detail'),
+    path('admin/management-actions/', admin_management_actions, name='admin_management_actions'),
     path('health/', health, name='health'),
     path('admin/taxonomy-quality/', taxonomy_quality, name='taxonomy_quality'),
     path('nlp/students/<int:student_id>/text/', student_nlp_text, name='student_nlp_text'),

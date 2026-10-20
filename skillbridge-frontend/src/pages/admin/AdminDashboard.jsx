@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminDashboard.jsx  (SLIMMED — 588 → ~170 lines)
 // All data + logic now in useAdminDashboard.js
@@ -37,6 +38,7 @@ function matchBg(pct) {
 }
 
 export default function AdminDashboard() {
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const {
     stats, topMatches,
@@ -54,8 +56,10 @@ export default function AdminDashboard() {
     try {
       const res = await api.post('/api/admin/rerun-recommendations/')
       setRerunMsg(res.data.message || 'Done!')
+      showToast(res.data.message || 'Recommendations refreshed.')
     } catch {
       setRerunMsg('Re-run failed. Try again.')
+      showToast('Could not refresh recommendations. Please try again.', 'error')
     } finally {
       setRerunning(false)
       setTimeout(() => setRerunMsg(''), 4000)

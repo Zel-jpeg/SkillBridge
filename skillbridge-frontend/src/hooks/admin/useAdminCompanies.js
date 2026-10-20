@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/admin/useAdminCompanies.js
 //
 // Data hook for AdminCompanies.
@@ -21,7 +22,7 @@
 //   PATCH  /api/admin/positions/:id/           → update (title, slots, requirements)
 //   DELETE /api/admin/positions/:id/
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useApi, invalidateCache, applyDataChange } from '../useApi'
 import { useSSE } from '../useSSE'
 import { companyRequest } from '../../utils/companyImages'
@@ -103,11 +104,7 @@ export function useAdminCompanies() {
     : SKILL_CATEGORIES_FALLBACK
 
   // ── Toast ─────────────────────────────────────────────────────────
-  const [toast, setToast] = useState(null)
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }, [])
+  const { showToast } = useToast()
 
   // ── Company actions ───────────────────────────────────────────────
 
@@ -274,7 +271,6 @@ export function useAdminCompanies() {
     handleAddPosition,
     handleSavePosition,
     confirmDeletePosition,
-    toast,
     SKILL_CATEGORIES_FALLBACK,
   }
 }

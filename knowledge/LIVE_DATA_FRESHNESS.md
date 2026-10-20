@@ -1,5 +1,11 @@
 # Live data freshness
 
+20 October admin management follow-up: ownership changes retain before/after
+recipient scopes and invalidate both owners' access. The `management` topic
+refreshes observed admin action history; account changes refresh eligible
+instructor choices. New actions reuse the existing cache and committed change
+pipeline. Reports remain snapshots. See [implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md).
+
 Implemented and locally verified on 2026-10-16. No deployment or production
 database operations were performed.
 

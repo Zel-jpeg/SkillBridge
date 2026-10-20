@@ -11,7 +11,7 @@
 //
 // API: GET /api/instructor/students/recommendations/
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useApi } from '../useApi'
 import { useSSE } from '../useSSE'
 
@@ -87,12 +87,6 @@ export function useInstructorDashboard() {
   const [view,            setView]            = useState('list')
   const [page,            setPage]            = useState(1)
   const [selectedStudent, setSelectedStudent] = useState(null)
-  const [toast,           setToast]           = useState(null)
-
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }, [])
 
   // ── Sync selectedStudent with fresh data ────────────────────────────
   useEffect(() => {
@@ -183,7 +177,6 @@ export function useInstructorDashboard() {
     view, setView,
     page: visiblePage, setPage,
     selectedStudent, setSelectedStudent,
-    toast, showToast,
     // Derived
     completed, pending, avgOverall, leaders,
     displayed, paginated,

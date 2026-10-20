@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
@@ -14,6 +15,7 @@ const SUBTITLE           = "Sign in with your DNSC-provided Google account to co
 const ACCESS_NOTE        = "Access is limited to enrolled OJT students and DNSC faculty only."
 
 export default function LoginPage() {
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const { establishSession } = useSession()
   const [error,   setError]   = useState('')
@@ -38,6 +40,7 @@ export default function LoginPage() {
         )
 
         const user = establishSession(res.data)
+        showToast('Signed in successfully.')
 
         navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
 

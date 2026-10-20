@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/student/useStudentProfile.js
 //
 // Manages all state and logic for StudentProfile.jsx:
@@ -32,6 +33,7 @@ function getCachedUser() {
 }
 
 export function useStudentProfile() {
+  const { showToast } = useToast()
   // ── Fetch student data ──────────────────────────────────────────────────
   const { data: apiStudent, loading: apiLoading } = useApi(
     '/api/students/me/',
@@ -131,9 +133,11 @@ export function useStudentProfile() {
       invalidateCache('/api/student/results/')
 
       setSaved(true)
+      showToast('Profile saved successfully.')
     } catch (err) {
       const msg = requestErrorMessage(err, { mutation: true })
       setSaveError(msg)
+      showToast(msg, 'error')
     } finally {
       setSaving(false)
     }

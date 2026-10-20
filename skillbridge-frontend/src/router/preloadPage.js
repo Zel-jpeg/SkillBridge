@@ -8,6 +8,7 @@ const pages = {
   '/instructor/assessments': () => import('../pages/instructor/InstructorAssessments'),
   '/instructor/companies': () => import('../pages/instructor/InstructorCompanies'),
   '/admin/assessments': () => import('../pages/admin/AdminAssessments'),
+  '/admin/batches': () => import('../pages/admin/AdminBatches'),
   '/admin/skills': () => import('../pages/admin/AdminSkills'),
   '/admin/companies': () => import('../pages/admin/AdminCompanies'),
 }

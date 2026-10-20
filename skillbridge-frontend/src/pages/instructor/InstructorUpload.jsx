@@ -92,9 +92,11 @@ function UploadErrors({ errors }) {
 // ════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ════════════════════════════════════════════════════════════════
-export default function InstructorUpload() {
+export default function InstructorUpload({ role = 'instructor' }) {
+  const studentsPath = role === 'admin' ? '/admin/batches' : '/instructor/students'
   const navigate = useNavigate()
   const [confirmPublish, setConfirmPublish] = useState(false)
+  const [instructorFilter, setInstructorFilter] = useState('all')
 
 
   const {
@@ -151,7 +153,7 @@ export default function InstructorUpload() {
             </p>
           </div>
           <div className="flex gap-3 w-full">
-            <button onClick={() => navigate('/instructor/students')}
+            <button onClick={() => navigate(studentsPath)}
               className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               View students
             </button>
@@ -195,7 +197,7 @@ export default function InstructorUpload() {
         )}
 
         {/* Back + header */}
-        <button onClick={() => navigate('/instructor/dashboard')}
+        <button onClick={() => navigate(`/${role}/assessments`)}
           className="inline-flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors group w-fit -mb-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="transition-transform group-hover:-translate-x-0.5">
             <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -252,6 +254,8 @@ export default function InstructorUpload() {
               {errors.duration && <p className="text-xs text-red-500 mt-1.5">{errors.duration}</p>}
             </div>
 
+            {role === 'admin' && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter batches by instructor<select aria-label="Filter creation batches by instructor" value={instructorFilter} onChange={event => { setInstructorFilter(event.target.value); setSelectedBatchId(null) }} className="mt-2 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800"><option value="all">All instructors</option>{[...new Map(batches.map(batch => [batch.instructor_id, batch.instructor_name])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>}
+
             {/* Batch selector */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -266,20 +270,21 @@ export default function InstructorUpload() {
               ) : batches.length === 0 ? (
                 <div className="w-full px-4 py-3 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-600">
                   No batches yet —{' '}
-                  <button onClick={() => navigate('/instructor/students')} className="text-green-600 dark:text-green-400 hover:underline">
+                  <button onClick={() => navigate(studentsPath)} className="text-green-600 dark:text-green-400 hover:underline">
                     create one first
                   </button>
                 </div>
               ) : (
                 <select
+                  aria-label="Assign to batch"
                   value={selectedBatchId ?? ''}
                   onChange={e => setSelectedBatchId(e.target.value ? Number(e.target.value) : null)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white outline-none focus:border-green-500 transition-colors cursor-pointer"
                 >
                   <option value="">— No batch assigned —</option>
-                  {batches.map(b => (
+                  {batches.filter(b => instructorFilter === 'all' || String(b.instructor_id) === instructorFilter).map(b => (
                     <option key={b.id} value={b.id}>
-                      {b.name}{b.status === 'archived' ? ' (Archived)' : ' ★'}
+                      {b.name}{role === 'admin' ? ` · ${b.instructor_name}` : ''}{b.status === 'archived' ? ' (Archived)' : ' ★'}
                     </option>
                   ))}
                 </select>

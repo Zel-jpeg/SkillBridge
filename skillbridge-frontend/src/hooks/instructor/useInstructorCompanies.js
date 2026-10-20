@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useInstructorCompanies.js
 //
 // Fetches all companies with positions + matched students for this instructor's batches.
@@ -24,11 +25,7 @@ export function useInstructorCompanies() {
   const [saveError, setSaveError] = useState(null)
 
   // ── Toast ──────────────────────────────────────────────────────────
-  const [toast, setToast] = useState(null)
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3500)
-  }
+  const { showToast } = useToast()
 
   // ── Search + filter ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -81,11 +78,13 @@ export function useInstructorCompanies() {
       applyDataChange({ topics: ['catalog', 'results', 'students', 'placements'] })
       closeEdit()
     } catch (err) {
-      setSaveError(err.response?.data?.error ?? 'Failed to save. Please try again.')
+      const message = err.response?.data?.error ?? 'Failed to save. Please try again.'
+      setSaveError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
-  }, [editing, raw])
+  }, [editing, raw, showToast])
 
   return {
     companies: filtered, allCompanies: companies,
@@ -97,6 +96,5 @@ export function useInstructorCompanies() {
     editing, openEdit, closeEdit,
     saving, saveError, handleSave,
     // Toast
-    toast,
   }
 }

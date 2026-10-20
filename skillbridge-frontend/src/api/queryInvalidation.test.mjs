@@ -3,6 +3,15 @@ import assert from 'node:assert/strict'
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 import { createCacheStore } from './cacheStore.js'
 
+test('batch ownership changes refresh rosters, authoring and selected audit pages; account changes refresh owner choices', () => {
+  const change = { topics: ['batches', 'students', 'assessments', 'management'], batch_ids: [3] }
+  for (const url of ['/api/instructor/batches/', '/api/instructor/batches/3/students/', '/api/instructor/assessments/',
+    '/api/admin/management-actions/?batch_id=3&offset=50']) assert.equal(queryAffected(url, change), true)
+  assert.equal(queryAffected('/api/admin/management-actions/?batch_id=4', change), false)
+  assert.equal(queryAffected('/api/instructor/batches/4/students/', change), false)
+  assert.equal(queryAffected('/api/admin/batch-instructors/', { topics: ['users'] }), true)
+})
+
 test('company branding and Google identity changes reuse current cache topics', () => {
   const catalog = { topics: ['catalog', 'results', 'students', 'placements'] }
   const identity = { topics: ['users', 'students', 'batches', 'placements'], student_ids: [7], batch_ids: [4] }

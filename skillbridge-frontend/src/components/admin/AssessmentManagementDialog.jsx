@@ -1,4 +1,5 @@
-import { useEffect, useId, useReducer, useRef, useState } from 'react'
+import { useToast } from '../../context/ToastContext'
+import { lazy, Suspense, useEffect, useId, useReducer, useRef, useState } from 'react'
 import DialogShell from '../DialogShell'
 import ConfirmModal from './ConfirmModal'
 import AssessmentSettings from '../instructor/AssessmentSettings'
@@ -10,6 +11,8 @@ import { useAssessmentQuery } from '../../hooks/admin/useAdminAssessments'
 import { ASSESSMENTS_URL, assessmentDraft, assessmentEditorReducer, draftIsDirty, initialEditor, validateAssessmentDraft } from '../../utils/adminAssessmentState'
 import { manilaApiDate, manilaDateTime } from '../../utils/assessmentDates'
 import { ActionSpinner, AssessmentIntegrity, AssessmentPagination, AssessmentProgress, AssessmentRetry, AssessmentSkeleton, AssessmentStatus, CategorySummary } from './AssessmentPresentation'
+
+const AssessmentAuthoringDialog = lazy(() => import('../assessment/AssessmentAuthoringDialog'))
 
 const sections = ['Overview', 'Settings', 'Students & attempts', 'Questions']
 const input = 'mt-1 w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
@@ -25,11 +28,13 @@ export default function AssessmentManagementDialog({ assessment, onClose }) {
 }
 
 function ManagementDetails({ assessment: a, onClose }) {
+  const { showToast } = useToast()
   const [editor, edit] = useReducer(assessmentEditorReducer, a, initialEditor)
   const { draft, baseline } = editor
   const dirty = draftIsDirty(draft, baseline)
   useEffect(() => { edit({ type: 'remote', assessment: a }) }, [a])
   const [section, setSection] = useState(0)
+  const [authoring, setAuthoring] = useState(false)
   const [confirmation, setConfirmation] = useState(null)
   const [saving, setSaving] = useState(false)
   const [retaking, setRetaking] = useState(false)
@@ -91,8 +96,10 @@ function ManagementDetails({ assessment: a, onClose }) {
       if (a.batch_id) urls.push(`/api/instructor/batches/${a.batch_id}/students/`)
       urls.forEach(invalidateCache)
       setFeedback({ text: 'Assessment updated. Student completion and recommendations now reflect the server state.' })
+      showToast('Assessment settings saved successfully.')
       setErrors({})
     } catch (err) {
+      showToast(err.response?.data?.error || 'Could not save assessment settings.', 'error')
       if ([403, 404].includes(err.response?.status)) setLostAccess(true)
       else {
         setFeedback({ error: true, text: err.response?.data?.error || 'Update failed. Please retry saving.' })
@@ -114,14 +121,17 @@ function ManagementDetails({ assessment: a, onClose }) {
       const urls = [ASSESSMENTS_URL, '/api/admin/users/', '/api/admin/stats/']
       urls.forEach(invalidateCache)
       setFeedback({ text: 'Assessment-specific retake updated.' })
+      showToast('Assessment retake permission updated.')
     } catch (err) {
       setFeedback({ error: true, text: err.response?.data?.error || 'Retake update failed. Please retry.' })
+      showToast(err.response?.data?.error || 'Retake update failed. Please retry.', 'error')
     } finally { setRetaking(false) }
   }
 
+  if (authoring) return <Suspense fallback={<DialogShell title="Loading assessment editor" onClose={() => setAuthoring(false)}><p className="p-5">Loading authoring tools…</p></DialogShell>}><AssessmentAuthoringDialog assessment={a} onClose={() => setAuthoring(false)} /></Suspense>
   if (unavailable) return <UnavailableDialog onClose={onClose} />
   return <DialogShell title={a.title} description="Review assessment details, edit settings, and manage student attempts." onClose={close} closeLabel="Close assessment details"
-    headerDetails={<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"><AssessmentStatus status={a.publication_status} /><span>{a.instructor_name} · {a.batch_name || 'Unassigned batch'}</span></div>}
+    headerDetails={<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"><AssessmentStatus status={a.publication_status} /><span>{a.batch_id ? `Responsible instructor: ${a.instructor_name}` : 'No responsible instructor assigned'} · {a.batch_name || 'Unassigned batch'}</span>{a.created_by_name && <span>Created by: {a.created_by_name}</span>}</div>}
     footer={<div className="flex flex-wrap items-center justify-between gap-2"><p aria-live="polite" className={`text-xs ${dirty ? 'text-amber-800 dark:text-amber-300' : 'text-gray-500 dark:text-gray-400'}`}>{saving ? 'Saving changes…' : dirty ? 'Unsaved changes' : 'All settings saved'}</p><div className="flex gap-2"><button className={secondary} disabled={saving || retaking} onClick={close}>{dirty ? 'Cancel' : 'Close'}</button>{section === 1 && <button type="submit" form={`${id}-settings`} disabled={!dirty || saving || retaking} className={primary}>{saving && <ActionSpinner />}{saving ? 'Saving…' : 'Review & save'}</button>}</div></div>}>
     <div className="sb-detail-tabs px-2 sm:px-5" role="tablist" aria-label="Assessment management sections">{sections.map((name, index) => <button type="button" key={name} ref={node => { tabRefs.current[index] = node }} className="sb-detail-tab" role="tab" id={`${id}-tab-${index}`} aria-selected={section === index} aria-controls={`${id}-panel-${index}`} tabIndex={section === index ? 0 : -1} onClick={() => setSection(index)} onKeyDown={event => navigate(event, index)}>{name}</button>)}</div>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
@@ -144,7 +154,7 @@ function ManagementDetails({ assessment: a, onClose }) {
           {retaking && <p role="status" className="my-3 flex items-center gap-2 text-xs"><ActionSpinner />Updating retake approval…</p>}
           {selectedStudent && <fieldset disabled={retaking} className="mt-5 min-w-0 border-t border-gray-100 pt-4 dark:border-gray-800"><legend className="sr-only">Selected student details</legend><h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{selectedStudent.name}</h4><AssessmentStudentDetail key={selectedStudent.id} student={selectedStudent} retakeAssessmentId={a.id} onToggleRetake={retake} /></fieldset>}
         </>}</section>}
-        {index === 3 && section === 3 && <section className="space-y-4"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions & authorized answer key</h3><p className="text-xs text-gray-500 dark:text-gray-400">Answer keys load only when you explicitly request them. This view is restricted to authorized assessment managers.</p><button className={secondary} aria-expanded={authorizedKey} onClick={() => { setAuthorizedKey(value => !value); setQuestionPage(1) }}>{authorizedKey ? 'Hide answer key' : 'View authorized answer key'}</button>
+        {index === 3 && section === 3 && <section className="space-y-4"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Questions & authorized answer key</h3><button className={secondary} disabled={dirty} onClick={() => setAuthoring(true)}>Edit assessment and questions</button>{dirty && <p className="text-xs text-amber-800 dark:text-amber-300">Save or reset your settings before opening the authoring editor.</p>}<p className="text-xs text-gray-500 dark:text-gray-400">Answer keys load only when you explicitly request them. This view is restricted to authorized assessment managers.</p><button className={secondary} aria-expanded={authorizedKey} onClick={() => { setAuthorizedKey(value => !value); setQuestionPage(1) }}>{authorizedKey ? 'Hide answer key' : 'View authorized answer key'}</button>
           {authorizedKey && <>{questionError && <AssessmentRetry onRetry={() => retry(questionUrl)}>Could not load the authorized answer key.</AssessmentRetry>}{!questionData && !questionError ? <AssessmentSkeleton layout="list" count={4} /> : questionData && <><ol start={(currentQuestionPage - 1) * 10 + 1} className="list-decimal space-y-3 pl-5">{questions.slice((currentQuestionPage - 1) * 10, currentQuestionPage * 10).map(q => <li key={q.id} className="break-words rounded-lg border border-gray-100 p-3 text-sm dark:border-gray-800"><p className="font-medium text-gray-900 dark:text-white">{q.question_text}</p><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{q.category?.name || 'Uncategorized'} · {q.question_type?.replaceAll('_', ' ')}</p><p className="mt-2 text-xs text-green-800 dark:text-green-300">Key: {q.choices?.filter(c => c.is_correct).map(c => c.text).join(', ') || 'No answer key provided'}</p></li>)}</ol>{!questions.length && <p className="text-xs">No questions added.</p>}<AssessmentPagination total={questions.length} page={currentQuestionPage} onPage={setQuestionPage} noun="questions" /></>}</>}
         </section>}
       </div>)}
