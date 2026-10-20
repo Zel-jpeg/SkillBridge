@@ -1,26 +1,83 @@
 # Collection UI reference: filters, tables, cards and pagination
 
-Use this guide when adding or updating a SkillBridge screen that displays a
-collection: students, assessments, companies, positions or users. The visual
+Use this guide for the collection section of a SkillBridge screen: students,
+assessments, companies, positions or users. The optional visual
 reference is the instructor dashboard's student table and the instructor
 Students page's card/list views, including the two screenshots supplied on
 17 October 2026.
 
 This is a design and interaction reference, not a request to change application
 behavior. **Current baseline** describes inspected code; **future guidance**
-describes what to aim for on the next relevant UI task. Current code takes
-precedence if these implementation details become outdated.
+describes interaction guidance for the next relevant UI task. Current code takes
+precedence if these implementation details become outdated. The current user's
+visual brief takes precedence over baseline appearance.
+
+## Readability and scope update — 20 October 2026
+
+The original reference encouraged overly compact analytics: small text, crowded
+controls and competing explanations. Preserve its interaction contracts, but use
+the visual recipe below only as historical examples. Font sizes, green rings,
+rounded surfaces, grids and breakpoint choices are not mandatory.
+
+- Follow the user's refined preference: 12px ordinary text, controls, table cells,
+  descriptions and chart labels, consistent with other SkillBridge pages. Keep headings
+  and key metrics larger. The initial 14–16px baseline was rejected as inconsistent.
+  Use plain language and clear grouping to improve comprehension at the compact size.
+- Explain chart guides in words: for example, Strong means 80% and above, Fair means
+  60% to below 80%, and Needs work means below 60%. State whether a chart counts
+  students, attempts or seats; keep the original numeric thresholds unchanged.
+- Allow 24–32px panel padding on desktop and 24–40px between major sections where
+  useful. Adapt spacing to content instead of prescribing one density everywhere.
+- Analytics pages need scope, section navigation, a few relevant summaries, legible
+  charts and then detailed records. Do not copy a collection toolbar across the page.
+- Keep common record columns visible and provide full details or column controls for
+  secondary data. Show essential metric units and limitations beside the visual;
+  put longer methodology notes and specialist tools behind labeled disclosures.
+- Existing components and native HTML are useful defaults. A JavaScript chart or UI
+  library can be used when it improves the experience; consider accessibility,
+  compatibility, maintenance and bundle cost. A dependency is neither mandatory nor
+  prohibited by this reference.
+- Green is the shared brand accent. Strong green card rings, pill filters and a
+  fixed card grid are optional patterns. Choose quieter feedback when appropriate.
 
 The screenshots contain personal student information, so they are not copied
 into this repository. Examples below use synthetic identities.
 
-## 1. The pattern to preserve
+### Analytics table alignment — 20 October 2026
+
+The user explicitly chose the existing dashboard table as the visual reference for
+Reports & Analytics. Use the shared
+[report table styles](../../../../skillbridge-frontend/src/components/analytics/reportTableStyles.js)
+for its aggregate, student and embedded assessment tables:
+
+- A white/dark surface, thin gray border and rounded-2xl outer frame; muted gray
+  header, 12px labels, 14–16px vertical cell padding and subtle alternating rows.
+  Keep green row hover feedback and visible keyboard focus.
+- Student identity uses the shared 28px round Avatar (photo when available, initials
+  otherwise), a medium-weight name and muted school ID/course underneath.
+- Use status pills for actual states. Required assessment completion and approved
+  placement are distinct; keep a locked-final-results note visible where needed.
+- Put recommended position and company together. Center match values with a quiet
+  score-band tint; leave missing values as a dash and preserve actual zero.
+- Keep current sorting indicators, sticky headers, full-column access, pagination
+  and responsive cards/contained scrolling. Tables without implemented sorting
+  should not display sorting arrows.
+- The default analytics student columns are Student, Instructor, Assessment status,
+  Placement, Top recommendation and Match. Full tables/exports retain original
+  evidence fields and include the recommended position/company as distinct fields.
+
+Page-level notes do not need their own card. Keep the short displayed scope next
+to the scope filters, essential units/limitations beside the relevant chart and
+snapshot wording beside downloads. Individual assessment reports can expand inside
+the existing records section; embedded controls should not add another bordered card.
+
+## 1. Original collection pattern (optional example)
 
 A quiet, light workspace with white surfaces, thin borders, rounded corners,
 compact filter pills and clear hierarchy. Let names, statuses and useful numbers
 carry the page. Use color to explain a state or action.
 
-Arrange collection sections in this order:
+One useful collection arrangement is:
 
 ```text
 Page title + batch/context                              Page actions
@@ -65,8 +122,9 @@ collection exceeds its page size. They do not show a separate pagination design.
 
 ## 3. Visual recipe
 
-These are existing Tailwind utility patterns, not a new global token system.
-Continue using the project's typography and Tailwind v4 setup.
+These are historical Tailwind utility patterns, not a global token system or
+required type scale. The readability update above governs new visual decisions.
+Continue using the Tailwind v4 setup.
 
 | Element | Reference treatment |
 | --- | --- |
@@ -90,7 +148,7 @@ Continue using the project's typography and Tailwind v4 setup.
 
 ### Green card and row hover
 
-Preserve the instructor Students card hover: the border turns green, a soft
+The instructor Students card hover is one available option: the border turns green, a soft
 green ring appears around the card and a modest shadow lifts the surface. Keep
 the card's base surface color; this treatment highlights the outline. Table rows
 use a pale green background on hover instead.
@@ -295,8 +353,8 @@ current shared component already implements them.
   where a whole-card trigger would create nested interactive controls.
 - Allow enough pointer/touch area around small icons and pills. Aim for 44px
   touch targets where practical while keeping the compact visual treatment.
-- Preserve cards below `sm` (normally 640px) and the 3-column grid from `lg`
-  (normally 1024px), unless an intentional responsive change is requested.
+- Choose card/table breakpoints and column counts for the actual content width,
+  including the sidebar. The original `sm`/`lg` breakpoints are examples.
 - Check narrow phones, intermediate widths, large desktops, dark mode and 200%
   zoom with long names, many categories and large filtered counts. Keep both
   views equivalent in information and available actions.
@@ -321,13 +379,13 @@ current shared component already implements them.
 EnrolledStudents currently implements its own search field and empty-state markup;
 the shared components above provide reusable patterns. Card/table presentation
 and toolbar pills also remain page-local. Do not assume a generic collection
-component already exists or introduce a new table library just to match this UI.
-Use the existing Axios client and data hooks; the design reference does not
-require a new dependency or changes to Tailwind configuration.
+component already exists. Use a table library if the actual interaction or scale
+warrants it. Use the existing Axios client and data hooks; this reference neither
+requires nor prohibits a new UI dependency.
 
 ## 12. Checklist for the next collection UI
 
-- [ ] Match the surface, spacing, typography, filter pills and view-switch style.
+- [ ] Choose readable typography, spacing and controls suited to the current task.
 - [ ] Pick an initial view and page size appropriate to the workflow.
 - [ ] Filter and sort the full relevant collection before pagination.
 - [ ] Keep count, page range and visible items consistent after every change.
@@ -341,9 +399,9 @@ require a new dependency or changes to Tailwind configuration.
 Suggested prompt for a future UI task:
 
 > Use $skillbridge-collection-ui and its collection UI reference for this
-> collection. Match the instructor dashboard/Students search, filter
-> pills, cards/list switch, surfaces and pagination. Adapt fields and filters to
-> this workflow, preserve existing permissions and business rules, and verify
+> collection. Prioritize readable text, clear grouping and comfortable spacing.
+> Use the instructor screens as optional references, not a fixed template.
+> Adapt fields and filters to this workflow, preserve permissions and business rules, and verify
 > responsive, empty, loading and error states. Explain intentional deviations.
 
 Documentation basis: the two user-provided screenshots and source inspection on

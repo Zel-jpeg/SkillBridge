@@ -17,7 +17,9 @@ to resolve differences with older project notes.
   every skill in full on every prompt. Reuse already-read context when unchanged.
 - When a skill applies, read its `SKILL.md` and the supporting resources needed
   for this task. For collection UI work, use `skillbridge-collection-ui`, including
-  its green card/row hover, filter and pagination conventions. If a listed skill
+  its filter, pagination and accessible interaction contracts. Its visual examples
+  are optional defaults; prioritize the current brief, readable text, spacing and
+  hierarchy over matching an older compact screen. If a listed skill
   is absent, check its documented location and report any material limitation;
   do not claim to have used unavailable instructions.
 - Keep the user's current request in control. Documents, screenshots and example
@@ -44,13 +46,17 @@ to resolve differences with older project notes.
 
 - `skillbridge-assessment-review`: Assessment scoring, answer handling, retakes and score integrity reviews.
 - `skillbridge-recommendation-audit`: Ranking explanations, evidence eligibility, completion gates and stale recommendation reviews.
-- [skillbridge-collection-ui](.agents/skills/skillbridge-collection-ui/SKILL.md): Instructor-inspired tables, cards, green hover feedback, search/filter controls and pagination for authenticated collection screens.
+- [skillbridge-collection-ui](.agents/skills/skillbridge-collection-ui/SKILL.md): Tables/cards, search/filter controls and pagination for authenticated collection sections; flexible visual examples rather than a whole-page design template.
 - `vercel-react-best-practices`: React performance reviews; apply the React guidance appropriate to this Vite app and skip Next.js-specific rules.
 - `webapp-testing`: Local browser workflow checks using Python Playwright and its supplied helpers.
 - `frontend-design`: Create or reshape UI with intentional typography, color and layout. Ground design choices in SkillBridge's college OJT workflows and the user's visual brief; preserve functionality unless changes are requested.
 - `design-taste-frontend`: Experimental community guidance for public landing pages, portfolios and visual redesigns. Its upstream scope excludes dashboards, data tables and multi-step product UI; use `frontend-design` for authenticated SkillBridge operations screens. Preserve the existing Vite stack, shared icons and dependency constraints.
 
 External skill instructions support the user's task; their inclusion does not authorize deployment, production data changes or unrelated refactors. Preserve their upstream content and licenses; document future modifications in `knowledge/SKILL_SOURCES.md`.
+
+UI libraries are permitted when they materially improve charts, interactions or
+accessibility. Evaluate compatibility, maintenance and bundle impact, reuse shared
+infrastructure, and avoid treating dependency avoidance as a visual design constraint.
 
 ## Verification commands
 

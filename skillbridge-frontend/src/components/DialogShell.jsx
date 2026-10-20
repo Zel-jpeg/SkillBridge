@@ -26,7 +26,7 @@ function lockBody() {
 }
 
 /** Native top-layer modality supplies inert background, focus trapping and nested Escape handling. */
-export default function DialogShell({ title, description, avatar, headerDetails, children, footer, onClose, size = 'detail', closeLabel = 'Close details' }) {
+export default function DialogShell({ title, description, avatar, headerDetails, children, footer, onClose, size = 'detail', closeLabel = 'Close details', restoreFocusRef }) {
   const { expired } = useSession()
   const dialog = useRef(null)
   const backdropStart = useRef(false)
@@ -34,7 +34,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
   useEffect(() => {
     if (expired) return
     const node = dialog.current
-    const opener = document.activeElement
+    const opener = restoreFocusRef?.current || document.activeElement
     const unlock = lockBody()
     node.showModal()
     return () => {
@@ -46,7 +46,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
         if (opener?.isConnected && (!top || top.contains(opener))) opener.focus({ preventScroll: true })
       })
     }
-  }, [expired])
+  }, [expired, restoreFocusRef])
 
   function outside(event) {
     const rect = dialog.current.getBoundingClientRect()

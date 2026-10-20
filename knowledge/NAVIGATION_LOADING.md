@@ -1,5 +1,12 @@
 # Authentication, route loading and background preparation
 
+20 October analytics filter refinement: Reports & Analytics retains its rendered
+last-good report across filter keys, with an explicit background-update status.
+Dates apply as a validated pair. Server/network errors offer retry without
+replacing known results with empty data; access loss clears them. Filter changes
+do not reload the document or replace the whole report with a skeleton. See
+[analytics implementation](ANALYTICS_IMPLEMENTATION.md).
+
 20 October admin management follow-up: `/admin/batches` prepares the batch list
 and loads eligible instructor choices in the foreground. Selected rosters and
 explicitly requested action history load separately. `/admin/assessment/create`
@@ -121,20 +128,21 @@ started during page-code loading; dependent reads still use the page hooks.
 | `/student/assessments/:id/results` | `student/results/?assessment_id=:id` | `student/results/review/?assessment_id=:id` only after authorized result; independent review skeleton/error |
 | `/student/results` | Combined results and student location; lock/error state guarded | `student/companies/` only when its tab is opened and results are unlocked; maps/previews separate |
 | `/student/profile` | `students/me/`; profile skeleton, existing one-time draft seeding | Address lookups/map, save action; refresh does not reseed edits |
-| `/instructor/dashboard` | Scoped `instructor/students/recommendations/` and assessment list; independent cards/list | Student and skill dialogs on selection |
+| `/instructor/dashboard` | Scoped `instructor/students/recommendations/` and `management/analytics/`; linked summary and student list | Student and skill dialogs on selection |
+| `/instructor/reports` | `management/analytics/` and authorized parameter variants | Assessment export references on expansion; student roster on detail selection; CSV/PDF snapshots on action |
 | `/instructor/students` | `instructor/batches/`, then selected `batches/:id/students/` | Other rosters only on selection; enrollment preview/commit and retakes on action |
 | `/instructor/assessments` | `instructor/assessments/`, batch filters | Selected questions and categories on explicit edit; retry does not reset metadata; upload dialog on demand |
 | `/instructor/assessment/create` | Batches, existing assessment order references, categories; independent field placeholders | Suggestions, parsing, upload and publish actions; draft state preserved |
 | `/instructor/companies` | Scoped company list | Maps/edit dialogs/NLP previews when opened |
 | `/instructor/placements` | Suggestions with `include_history=true&include_placed=true`; history `?limit=500`; independent sections | Reports, detail and decision dialogs, manual assignment on action |
 | `/instructor/pending` | Local routing state | No protected reads or queue |
-| `/admin/dashboard` | `admin/stats/` and admin student recommendations; independent statistics/list | Recommendation rerun only on action |
+| `/admin/dashboard` | `management/analytics/` and admin student recommendations; independent summary/list | Recommendation rerun only on action; summary links open scoped analytics records |
 | `/admin/users` | `admin/users/` | User/approval/enrollment dialogs on action; enrollment batch list shares cache |
 | `/admin/assessments` | Authorized shared staff assessment list | Selected roster and explicitly toggled authorized question key; independent loading/error |
 | `/admin/skills` | `admin/skills/` | Saved-taxonomy diagnostics and tag suggestions on action |
 | `/admin/companies` | `admin/companies/` | Categories only when a position editor opens; maps/details on demand |
 | `/admin/placements` | Same parameterized placement keys as instructor, system-wide server scope | Reports and decision dialogs on action |
-| `/admin/reports` | `admin/reports/`, placement analytics and NLP configuration as independent sections | Report filter references after panel mount; generated reports, exports, comparison and taxonomy diagnostics remain explicit snapshots |
+| `/admin/reports` | Shared `management/analytics/` with authorized filters | Assessment export references and advanced NLP configuration on expansion; comparison/taxonomy only on explicit action; downloads retain displayed snapshots |
 | Configuration panel | `admin/nlp-configuration/`, inside reports; no separate route | Save/rerun actions unchanged; local selection not reseeded by refresh |
 | Shared shell/profile | Existing deduplicated `me` query, cached identity fallback | Hover/focus queue promotion; menu and sidebar remain usable |
 | Detail panels | Existing selected student/evidence data; selected roster where required | NLP text only when expanded; report snapshots are never automatically regenerated |

@@ -65,10 +65,10 @@ function Overview({ student, state, instructorName, compact }) {
         <dt>Recommendations</dt><dd>{state.locked ? 'Locked' : 'Unlocked'}</dd>
         <dt>Combined profile</dt><dd>{state.profile ? 'Finalized' : 'Awaiting completion'}</dd>
         <dt>Finalized</dt><dd>{state.profile?.finalized_at ? manilaDateTime(state.profile?.finalized_at) : 'Not finalized'}</dd>
-        <dt>Batch</dt><dd>{student.batch?.name || 'No active batch'}</dd>
+        <dt>Batch</dt><dd>{student.batch?.name || student.batchLabel || 'No active batch'}</dd>
         <dt>Instructor</dt><dd>{student.instructor || instructorName || 'Instructor not provided'}</dd>
       </dl>{state.locked && <p className="sb-detail-muted mt-4 leading-relaxed">{lockExplanation(state)}</p>}</section>
-      <section className="min-w-0"><h3 className="sb-detail-heading mb-4">Current OJT placement</h3><PlacementStatusCard placement={student.placement} audience="instructor" detail={!compact} compact={compact} /></section>
+      <section className="min-w-0"><h3 className="sb-detail-heading mb-4">Current OJT placement</h3>{student.placementKnown === false ? <p className="sb-detail-muted">Placement status is not included in this dashboard. View Placements for the current decision.</p> : <PlacementStatusCard placement={student.placement} audience="instructor" detail={!compact} compact={compact} />}</section>
     </div>
     {!compact && state.results.length > 0 && <section className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
       <h3 className="sb-detail-heading">Assessment snapshot</h3><p className="sb-detail-muted">First {Math.min(3, state.results.length)} of {state.results.length} assigned assessments. Full current results are under Assessments.</p>

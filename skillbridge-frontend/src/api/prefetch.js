@@ -25,15 +25,16 @@ const PLACEMENT_QUERIES = ['/api/placements/suggestions/?include_history=true&in
 const PAGE_QUERIES = {
   ...DESTINATION_QUERIES,
   '/student/results': ['/api/student/results/combined/', '/api/students/me/'],
-  '/instructor/dashboard': ['/api/instructor/students/recommendations/', '/api/instructor/assessments/'],
+  '/instructor/dashboard': ['/api/instructor/students/recommendations/', '/api/management/analytics/'],
+  '/instructor/reports': ['/api/management/analytics/'],
   '/instructor/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/categories/'],
   '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/categories/'],
   '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
-  '/admin/dashboard': ['/api/admin/stats/', '/api/admin/students/recommendations/'],
+  '/admin/dashboard': ['/api/management/analytics/', '/api/admin/students/recommendations/'],
   '/admin/users': ['/api/admin/users/'],
   '/admin/placements': PLACEMENT_QUERIES,
-  '/admin/reports': ['/api/admin/reports/', '/api/admin/placement-analytics/', '/api/admin/nlp-configuration/'],
+  '/admin/reports': ['/api/management/analytics/'],
 }
 
 function identity() {

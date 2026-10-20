@@ -29,6 +29,7 @@ const InstructorPending = lazy(() => import('./pages/instructor/InstructorPendin
 const InstructorAssessments = lazy(() => import('./pages/instructor/InstructorAssessments'))
 const InstructorCompanies = lazy(() => import('./pages/instructor/InstructorCompanies'))
 const InstructorPlacements = lazy(() => import('./pages/placements/PlacementsPage').then(module => ({ default: module.InstructorPlacements })))
+const ReportsAnalytics = lazy(() => import('./pages/reports/ReportsAnalytics'))
 
 // Admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
@@ -94,6 +95,7 @@ function App() {
 
       <Route element={<PrivateRoute role="instructor"><AuthenticatedShell role="instructor" /></PrivateRoute>}>
         <Route path="/instructor/dashboard" element={<Page><InstructorDashboard /></Page>} />
+        <Route path="/instructor/reports" element={<Page><ReportsAnalytics role="instructor" /></Page>} />
         <Route path="/instructor/students" element={<Page><EnrolledStudents /></Page>} />
         <Route path="/instructor/assessments" element={<Page><InstructorAssessments /></Page>} />
         <Route path="/instructor/assessment/create" element={<Page><InstructorUpload /></Page>} />

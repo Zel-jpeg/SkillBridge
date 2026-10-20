@@ -80,8 +80,8 @@ function PodiumCard({ student, rank, score, onSelectStudent }) {
   const avatarSize = rank === 1 ? 'w-14 h-14 text-base' : 'w-11 h-11 text-sm'
 
   return (
-    <div
-      className={`relative flex flex-col items-center gap-2 rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${cardStyle} ${rank === 1 ? 'pt-5' : 'pt-4'}`}
+    <button type="button" aria-haspopup="dialog" aria-label={`View ${student.name}'s details`}
+      className={`relative w-full flex flex-col items-center gap-2 rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${cardStyle} ${rank === 1 ? 'pt-5' : 'pt-4'}`}
       onClick={() => onSelectStudent(student)}
       title={`View ${student.name}'s details`}
     >
@@ -123,7 +123,7 @@ function PodiumCard({ student, rank, score, onSelectStudent }) {
       {rank === 1 && (
         <div className="absolute inset-0 rounded-2xl ring-2 ring-amber-300/40 dark:ring-amber-700/30 pointer-events-none" />
       )}
-    </div>
+    </button>
   )
 }
 
@@ -133,8 +133,8 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
 
   // Sort completed students for this skill, descending by score
   const ranked = allStudents
-    .filter(s => s.status === 'completed' && s.scores[category] != null)
-    .sort((a, b) => b.scores[category] - a.scores[category])
+    .filter(s => s.status === 'completed' && s.recommendationsLocked !== true && Number.isFinite(s.scores[category]))
+    .sort((a, b) => b.scores[category] - a.scores[category] || a.name.localeCompare(b.name) || a.id - b.id)
 
   const pendingStudents = allStudents.filter(s => s.status === 'pending')
 
@@ -212,9 +212,9 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
                       const rank = i + 4
                       const score = s.scores[category]
                       return (
-                        <div
+                        <button type="button" aria-haspopup="dialog"
                           key={s.id}
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer transition-colors group"
+                          className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-green-50 dark:hover:bg-green-950/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600 cursor-pointer transition-colors group"
                           onClick={() => onSelectStudent(s)}
                         >
                           {/* Rank badge */}
@@ -245,7 +245,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
                               {score}%
                             </span>
                           </div>
-                        </div>
+                        </button>
                       )
                     })}
                   </div>
@@ -261,9 +261,9 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {pendingStudents.map(s => (
-                      <div
+                      <button type="button" aria-haspopup="dialog"
                         key={s.id}
-                        className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-xl px-2.5 py-1.5 cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                        className="focus-visible:outline-2 focus-visible:outline-green-600 flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-xl px-2.5 py-1.5 cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                         onClick={() => onSelectStudent(s)}
                         title={s.name}
                       >
@@ -271,7 +271,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
                         <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[100px]">
                           {s.name.split(' ')[0]}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

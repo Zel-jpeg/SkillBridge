@@ -19,6 +19,22 @@ skills. Check the local folders for availability in the current checkout. The su
 
 ### SkillBridge Collection UI
 
+- Analytics table alignment, October 20, 2026: the user selected the existing
+  dashboard table as the Reports & Analytics visual reference. The local reference
+  now links the shared report-table styles and records its avatar/identity hierarchy,
+  status pills, numeric cells and contextual-note/embedded-export placement. The new
+  reference screenshots contain personal data and were not copied into the repository.
+- Further refined October 20, 2026: the user prefers 12px ordinary UI text to match
+  existing pages. Keep larger headings/metrics, simplify chart guides into words and
+  use grouping/spacing rather than a blanket font-size increase. This supersedes the
+  14–16px body-text suggestion in the first readability revision.
+- Updated on October 20, 2026 after the user found Reports & Analytics too small,
+  cramped and difficult to read. The local skill now preserves collection behavior
+  while treating the instructor screen styling as optional. Its scope excludes
+  whole-page analytics/form/dialog design; typography, spacing, layout and useful
+  JavaScript libraries can follow the current brief. The reference retains the
+  original baseline and adds explicit readability guidance. Root `AGENTS.md` now
+  follows that distinction. No external skill or license was modified.
 - Added on October 17, 2026 at the user's request to reuse instructor dashboard
   and Students collection styling, including green hover feedback.
 - The detailed [collection UI reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md)

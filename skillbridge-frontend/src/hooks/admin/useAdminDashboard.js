@@ -11,6 +11,7 @@
 import { useState, useMemo } from 'react'
 import { useApi } from '../useApi'
 import { useSSE } from '../useSSE'
+import { normalizeDashboardStudent } from '../../utils/dashboardStudents'
 
 const PAGE_SIZE = 10
 const SSE_PATH  = '/api/admin/events/'
@@ -19,42 +20,13 @@ export function useAdminDashboard() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
-  const { data: statsData }    = useApi('/api/admin/stats/')
   const { data: studentsData } = useApi('/api/admin/students/recommendations/')
 
   // ── Normalize API data ────────────────────────────────────────────
   const students = useMemo(() => {
     if (!studentsData || !Array.isArray(studentsData)) return []
-    return studentsData.map(s => ({
-      id:         s.id,
-      name:       s.student_name || s.name,
-      studentId:  s.school_id    || s.student_id || '',
-      email:      s.email        || '',
-      course:     s.course       || '',
-      instructor: s.instructor_name || s.instructor || '',
-      status:     s.has_submitted ? 'completed' : 'pending',
-      match:      s.top_match_score   ?? null,
-      position:   s.top_position_name ?? null,
-      company:    s.top_company_name  ?? null,
-      photoUrl:   s.photo_url         || null,
-    }))
+    return studentsData.map(normalizeDashboardStudent)
   }, [studentsData])
-
-  const topMatches = useMemo(() =>
-    [...students]
-      .filter(s => s.match !== null)
-      .sort((a, b) => (b.match ?? 0) - (a.match ?? 0))
-      .slice(0, 4)
-      .map(s => ({
-        student:   s.name,
-        studentId: s.studentId,
-        course:    s.course,
-        company:   s.company,
-        position:  s.position,
-        match:     s.match,
-        photoUrl:  s.photoUrl,
-      }))
-  , [students])
 
   // ── UI state ──────────────────────────────────────────────────────
   const [search,       setSearch]  = useState('')
@@ -81,30 +53,10 @@ export function useAdminDashboard() {
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
   const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
 
-  const stats = {
-    total_students:       statsData?.total_students       ?? 0,
-    total_companies:      statsData?.total_companies      ?? 0,
-    open_positions:       statsData?.open_positions       ?? 0,
-    recommendations_made: statsData?.recommendations_made ?? 0,
-    total_assessments: statsData?.total_assessments ?? 0,
-    published_assessments: statsData?.published_assessments ?? 0,
-    draft_assessments: statsData?.draft_assessments ?? 0,
-    closed_assessments: statsData?.closed_assessments ?? 0,
-    required_completion_rate: statsData?.required_completion_rate ?? 0,
-    completed_required_students: statsData?.completed_required_students ?? 0,
-    in_progress_students: statsData?.in_progress_students ?? 0,
-    stopped_or_flagged_attempts: statsData?.stopped_or_flagged_attempts ?? 0,
-    retakes_approved: statsData?.retakes_approved ?? 0,
-    final_profiles_generated: statsData?.final_profiles_generated ?? 0,
-    recommendations_unlocked_students: statsData?.recommendations_unlocked_students ?? 0,
-    unplaced_students: statsData?.unplaced_students ?? 0,
-  }
 
   return {
-    stats,
     students,
-    topMatches,
-    loading: !statsData && !studentsData,
+    loading: !studentsData,
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
     view, setView,

@@ -40,6 +40,13 @@ export function validateApiResponse(response) {
     valid = object(data) && Array.isArray(data.placements)
   } else if (method === 'get' && path === '/api/placements/reports/') {
     valid = object(data) && Array.isArray(data.records) && object(data.summary)
+  } else if (method === 'get' && path === '/api/management/analytics/') {
+    valid = object(data) && object(data.summary) && object(data.scope) && object(data.options) &&
+      typeof data.generated_at === 'string' && ['admin', 'instructor'].includes(data.role) &&
+      ['students', 'required_complete', 'approved', 'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining'].every(key => Number.isSafeInteger(data.summary[key]) && data.summary[key] >= 0) &&
+      ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
+      data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons) && object(row.scores) && object(row.attempt_states)) &&
+      ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key]))
   } else if (method === 'get' && path === '/api/management/assessment-reports/') {
     valid = object(data) && Array.isArray(data.rows) && typeof data.generated_at === 'string' && Number.isFinite(Date.parse(data.generated_at))
   } else if (method === 'get' && /^\/api\/instructor\/assessments\/\d+\/questions\/$/.test(path)) {

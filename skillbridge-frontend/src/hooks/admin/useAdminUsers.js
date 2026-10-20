@@ -122,7 +122,7 @@ export function useAdminUsers() {
   const [confirmRejectPending, setConfirmRejectPending] = useState(null)
 
   // ── Table state ───────────────────────────────────────────────────
-  const [activeTab,        setActiveTab]     = useState('students')
+  const [activeTab,        setActiveTab]     = useState(() => new URLSearchParams(window.location.search).get('tab') === 'pending' ? 'pending' : 'students')
   const [search,           setSearch]        = useState('')
   const [filterStatus,     setFilterStatus]  = useState('all')
   const [filterCourse,     setFilterCourse]  = useState('all')

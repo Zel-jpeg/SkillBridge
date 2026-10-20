@@ -19,6 +19,7 @@ export const ROLE_NAVIGATION = {
     { label: 'New Assessment', path: '/instructor/assessment/create', icon: 'create' },
     { label: 'Companies', path: '/instructor/companies', icon: 'companies' },
     { label: 'Placements', path: '/instructor/placements', icon: 'placements' },
+    { label: 'Reports & Analytics', path: '/instructor/reports', icon: 'reports' },
   ],
   admin: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: 'dashboard' },
@@ -29,7 +30,7 @@ export const ROLE_NAVIGATION = {
     { label: 'Assessments', path: '/admin/assessments', icon: 'assessments' },
     { label: 'New Assessment', path: '/admin/assessment/create', icon: 'create' },
     { label: 'Batches', path: '/admin/batches', icon: 'users' },
-    { label: 'Reports', path: '/admin/reports', icon: 'reports' },
+    { label: 'Reports & Analytics', path: '/admin/reports', icon: 'reports' },
   ],
 }
 

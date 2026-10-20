@@ -1,5 +1,20 @@
 # Live data freshness
 
+20 October analytics filter refinement: date ranges apply together after local
+validation. Analytics keeps its last successful authorized report visible while a
+new filter URL fetches, then replaces it on success. Transient failures show a
+warning and retry while preserving the old report with its actual scope; exports
+remain disabled until the requested result succeeds. Access loss/session cleanup
+clears retained records. This uses the shared query store and introduces no new
+poller or backend recalculation. See [analytics implementation](ANALYTICS_IMPLEMENTATION.md).
+
+20 October staff analytics follow-up: `management/analytics/` uses the existing
+cache/SSE/visible refresh. Cohort, evidence, catalog, configuration and placement
+changes invalidate analytics variants; frontend batch-ID pruning is bypassed for
+this endpoint because capacity is shared. Existing server event audiences still
+apply. Displayed data refreshes; CSV/PDF exports retain the selected loaded snapshot.
+See [analytics implementation](ANALYTICS_IMPLEMENTATION.md).
+
 20 October admin management follow-up: ownership changes retain before/after
 recipient scopes and invalidate both owners' access. The `management` topic
 refreshes observed admin action history; account changes refresh eligible

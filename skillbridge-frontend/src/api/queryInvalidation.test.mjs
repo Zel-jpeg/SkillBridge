@@ -1,5 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+
+test('shared analytics refreshes for capacity consumption in another batch and remains read-only', () => {
+  assert.equal(queryAffected('/api/management/analytics/?batch_id=4', { topics: ['placements'], batch_ids: [5] }), true)
+  assert.equal(queryAffected('/api/management/analytics/?course=BSIT', { topics: ['configuration'] }), true)
+  assert.equal(queryAffected('/api/management/analytics/', { resync: true }), true)
+  assert.equal(queryAffected('/api/management/analytics/', { topics: ['unknown'] }), false)
+})
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 import { createCacheStore } from './cacheStore.js'
 

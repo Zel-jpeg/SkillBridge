@@ -276,7 +276,7 @@ def management_combined_state(student, batch):
     }, unlocked
 
 
-def bulk_management_states(students, batch):
+def bulk_management_states(students, batch, include_history=True):
     """Build roster/dashboard state in grouped queries without recalculating NLP."""
     ids = [student.id for student in students]
     assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
@@ -285,7 +285,7 @@ def bulk_management_states(students, batch):
     responses = list(StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id))
     response_map = {(r.student_id, r.assessment_id): r for r in responses}
     histories = {}
-    for h in AssessmentAttemptHistory.objects.filter(response_id__in=[r.id for r in responses]).order_by('attempt_number'):
+    for h in (AssessmentAttemptHistory.objects.filter(response_id__in=[r.id for r in responses]).order_by('attempt_number') if include_history else []):
         histories.setdefault(h.response_id, []).append({
             'attempt_number': h.attempt_number, 'status': h.status, 'started_at': h.started_at,
             'submitted_at': h.submitted_at, 'stopped_at': h.stopped_at, 'is_flagged': h.is_flagged,

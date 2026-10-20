@@ -66,7 +66,10 @@ export default function AdminBatches() {
   const { data: ownerData } = useApi(OWNERS)
   const batches = useMemo(() => batchData || [], [batchData])
   const owners = ownerData || []
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('batch_id'))
+    return Number.isSafeInteger(id) && id > 0 ? id : null
+  })
   const [search, setSearch] = useState('')
   const [owner, setOwner] = useState('all')
   const [status, setStatus] = useState('all')

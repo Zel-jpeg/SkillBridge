@@ -16,6 +16,9 @@ const paths = {
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
+  // Analytics includes shared capacity as well as scoped cohort data. A foreign
+  // placement may consume a visible seat, so do not prune it by cohort IDs.
+  if (path === '/api/management/analytics/') return Boolean(change.resync || change.urls?.some(url => new URL(url, parsed.origin).pathname === path) || change.topics?.some(topic => Object.hasOwn(paths, topic)))
   // Never subscribe attempt POSTs or generated snapshots to background GETs.
   if (change.resync) return Object.values(paths).flat().some(pattern => pattern.test(path))
   if (change.urls?.some(key => new URL(key, parsed.origin).pathname === path)) return true

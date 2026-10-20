@@ -59,6 +59,16 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Staff analytics implementation](ANALYTICS_IMPLEMENTATION.md): Role-specific
+  linked dashboard cards, scoped Reports & Analytics, chart drill-downs, snapshot
+  exports, recorded activity/history limits and local verification.
+- [Approved dashboard and analytics plan](DASHBOARD_AND_ANALYTICS_PLAN.md): Design
+  rationale, metric definitions and historical-snapshot boundary.
+
+- [Dashboard highlights](DASHBOARD_HIGHLIGHTS.md): Shared clickable top matches,
+  skill leaderboards and student details for admin/instructor dashboards; frontend
+  evidence presentation, role scopes and synthetic responsive checks.
+
 - [Shared notification toasts](NOTIFICATION_TOASTS.md): App-wide countdown cards,
   hover/focus/touch pause, modal/fullscreen support, role/action coverage and local
   responsive/dark-mode browser verification.
@@ -175,7 +185,9 @@ and fallback when explaining results.
 - [Collection UI skill](../.agents/skills/skillbridge-collection-ui/SKILL.md) and
   [reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md): Instructor-inspired
   search/filter toolbars, table and card views, pagination, visual conventions
-  and acceptance guidance for future collection screens.
+  and acceptance guidance for collection sections. Visual recipes are optional;
+  prioritize readable typography, spacing and the current brief. Useful UI libraries
+  are permitted. See the October 20 readability update in the reference.
 
 - [Student company browsing](STUDENT_COMPANY_BROWSING.md): Compact recommendation
   cards grouped by company, positions ranked within company details, suggested

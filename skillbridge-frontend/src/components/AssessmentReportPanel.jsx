@@ -6,11 +6,26 @@ import { useApi } from '../hooks/useApi'
 import { useSnapshotFreshness } from '../hooks/useSnapshotFreshness'
 import { manilaDateTime } from '../utils/assessmentDates'
 import { buildAssessmentReportPdf } from '../utils/assessmentReportPdf'
+import Avatar from './Avatar'
+import { reportTableStyles as tableStyles } from './analytics/reportTableStyles'
 
 const kinds = [['batch_progress', 'Batch Assessment Progress'], ['student_competency', 'Student Competency'], ['assessment_completion', 'Assessment Completion']]
 const field = 'min-w-0 max-w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
 
-export default function AssessmentReportPanel() {
+function AssessmentReportTable({ payload, kind }) {
+  const completion = kind === 'assessment_completion'
+  const columns = completion ? ['Assessment', 'Batch', 'Assigned', 'Submitted', 'In progress', 'Not started', 'Stopped/flagged', 'Completion'] : ['Student', 'Batch', 'Progress', 'Recommendations', 'Assessments']
+  return <div role="region" aria-label="Individual assessment report table" tabIndex={0} className={`max-h-80 ${tableStyles.frame}`}><table className={`min-w-[650px] ${tableStyles.table}`}>
+    <caption className="sr-only">Generated individual assessment report</caption>
+    <thead className={tableStyles.head}><tr>{columns.map((column, index) => <th scope="col" key={column} className={`${index === 0 ? 'px-5' : 'px-3'} py-3.5 font-medium ${completion && index >= 2 ? 'text-center' : ''}`}>{column}</th>)}</tr></thead>
+    <tbody>{payload.rows.map((row, index) => {
+      const values = completion ? [row.assessment, row.batch, row.assigned, row.submitted, row.in_progress, row.not_started, row.stopped_or_flagged, `${row.completion_percentage}%`] : [row.student, row.batch, `${row.completed_required_count}/${row.total_required_count}`, row.recommendations_locked ? 'Locked' : 'Unlocked', row.assessments.map(item => `${item.title}: ${item.status}`).join(' · ')]
+      return <tr key={index} className={tableStyles.row}>{values.map((value, column) => <td key={column} className={`${tableStyles.cell} ${column === 0 ? 'px-5!' : ''} ${completion && column >= 2 ? 'text-center tabular-nums' : ''}`}>{column === 0 ? <div className="flex items-center gap-3">{!completion && <Avatar name={row.student} className="h-7 w-7 rounded-full text-xs" />}<span className="font-medium text-gray-900 dark:text-white">{value}</span></div> : value}</td>)}</tr>
+    })}</tbody>
+  </table></div>
+}
+
+export default function AssessmentReportPanel({ embedded = false }) {
   const { showToast } = useToast()
   const { data: batchesData } = useApi('/api/instructor/batches/')
   const { data: assessmentsData } = useApi('/api/instructor/assessments/')
@@ -56,9 +71,9 @@ export default function AssessmentReportPanel() {
       showToast('PDF report downloaded.')
     } catch { setError('PDF export failed.'); showToast('PDF export failed.', 'error') } finally { setBusy(false) }
   }
-  return <section className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-    <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assessment reports</h2>
-    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Progress and scores stay assessment-specific; recommendations appear only after final completion. No answer keys are exported.</p>
+  return <section aria-label="Individual assessment report controls" className={embedded ? 'min-w-0 [&_select]:min-h-11 [&_select]:text-xs [&_input]:text-xs [&_button]:min-h-11 [&_button]:text-xs' : 'rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900'}>
+    {!embedded && <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assessment reports</h2>}
+    <p className="mb-3 text-xs leading-5 text-gray-500 dark:text-gray-400">{embedded ? 'Choose filters for this individual report. ' : ''}Progress and scores stay assessment-specific; recommendations appear only after final completion. No answer keys are exported.</p>
 <DataSection urls={['/api/instructor/batches/', '/api/instructor/assessments/']} layout="panel" count={1}>    <div className="flex flex-wrap gap-2">
       <select aria-label="Report type" className={field} value={kind} onChange={e => { setKind(e.target.value); setPayload(null) }}>{kinds.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select>
       <select aria-label="Batch filter" className={field} value={batch} onChange={e => { setBatch(e.target.value); setAssessment(''); setPayload(null) }}><option value="">All batches</option>{batches.map(b => <option key={b.id} value={b.id}>{b.name} · {b.instructor_name}</option>)}</select>
@@ -70,6 +85,6 @@ export default function AssessmentReportPanel() {
     </div></DataSection>
     {error && <p role="alert" className="mt-3 text-sm text-rose-700 dark:text-rose-400">{error}</p>}
     {payload && freshness.stale && <p role="status" className="mt-3 text-sm text-amber-700 dark:text-amber-400">Underlying data may have changed. This report still shows its generated snapshot. <button type="button" onClick={generate} disabled={busy} className="underline">Regenerate report</button></p>}
-    {payload && <div className="mt-4"><p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Generated {manilaDateTime(payload.generated_at)} · {payload.rows.length} records</p>{payload.rows.length === 0 ? <p className="text-sm text-gray-500">No records match the selected filters.</p> : <div className="max-h-72 overflow-auto"><table className="min-w-[650px] w-full text-left text-xs text-gray-700 dark:text-gray-300"><thead className="sticky top-0 bg-gray-100 dark:bg-gray-800"><tr>{kind === 'assessment_completion' ? ['Assessment', 'Batch', 'Assigned', 'Submitted', 'In progress', 'Not started', 'Stopped/flagged', 'Completion'].map(h => <th key={h} className="p-2">{h}</th>) : ['Student', 'Batch', 'Progress', 'Recommendations', 'Assessments'].map(h => <th key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{payload.rows.map((r, i) => <tr key={i} className="border-t border-gray-100 dark:border-gray-800">{kind === 'assessment_completion' ? [r.assessment, r.batch, r.assigned, r.submitted, r.in_progress, r.not_started, r.stopped_or_flagged, `${r.completion_percentage}%`].map((v, j) => <td key={j} className="p-2">{v}</td>) : [r.student, r.batch, `${r.completed_required_count}/${r.total_required_count}`, r.recommendations_locked ? 'Locked' : 'Unlocked', r.assessments.map(a => `${a.title}: ${a.status}`).join(' · ')].map((v, j) => <td key={j} className="p-2">{v}</td>)}</tr>)}</tbody></table></div>}</div>}
+    {payload && <div className="mt-4"><p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Generated {manilaDateTime(payload.generated_at)} · {payload.rows.length} records</p>{payload.rows.length === 0 ? <p className="text-sm text-gray-500">No records match the selected filters.</p> : <AssessmentReportTable payload={payload} kind={kind} />}</div>}
   </section>
 }

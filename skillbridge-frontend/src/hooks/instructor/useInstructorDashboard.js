@@ -14,6 +14,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useApi } from '../useApi'
 import { useSSE } from '../useSSE'
+import { normalizeDashboardStudent } from '../../utils/dashboardStudents'
 
 const PAGE_SIZE  = 6
 const SSE_PATH   = '/api/instructor/events/'
@@ -45,38 +46,11 @@ export function useInstructorDashboard() {
   useSSE(SSE_PATH)
   // Add a cache-buster so the browser doesn't intercept this and serve the old JSON from disk
   const { data: apiData, loading: apiLoading } = useApi('/api/instructor/students/recommendations/')
-  const { data: assessmentsData } = useApi('/api/instructor/assessments/')
-  const assessments = Array.isArray(assessmentsData) ? assessmentsData : []
 
   // ── Normalize API → student shape ─────────────────────────────────
   const studentsList = useMemo(() => {
     if (!apiData || !Array.isArray(apiData)) return []
-    return apiData.map(s => ({
-      id:                  s.id,
-      name:                s.student_name || s.name,
-      studentId:           s.school_id    || s.student_id || '',
-      email:               s.email        || '',
-      course:              s.course       || '',
-      batch:               s.batch ?? null,
-      status:              s.attempt_status === 'stopped' ? 'stopped' : s.has_submitted ? 'completed' : 'pending',
-      scores:              s.skill_scores  || {},
-      retakeAllowed:       s.retake_allowed ?? false,
-      isFlagged:           s.is_flagged ?? false,
-      stoppedReason:       s.stopped_reason_display || '',
-      violationCount:      s.violation_count ?? 0,
-      top_recommendations: s.top_recommendations ?? [],
-      competencyProfile:   s.competency_profile ?? null,
-      placement:           s.placement ?? { status: 'unplaced' },
-      address:             s.address ?? {},
-      photoUrl:            s.photo_url || null,
-      assessmentResults: s.assessment_results ?? [],
-      combinedCategoryScores: s.combined_category_scores ?? [],
-      combinedCompetencyProfile: s.combined_competency_profile ?? null,
-      recommendationsLocked: s.recommendations_locked ?? true,
-      completedRequiredCount: s.completed_required_count ?? 0,
-      totalRequiredCount: s.total_required_count ?? 0,
-      remainingRequiredCount: s.remaining_required_count ?? 0,
-    }))
+    return apiData.map(normalizeDashboardStudent)
   }, [apiData])
 
   // ── UI state ──────────────────────────────────────────────────────
@@ -98,11 +72,6 @@ export function useInstructorDashboard() {
 
   // ── Derived stats ─────────────────────────────────────────────────
   const completed = studentsList.filter(s => s.status === 'completed')
-  const pending   = studentsList.filter(s => s.status === 'pending')
-
-  const avgOverall = Math.round(
-    completed.reduce((sum, s) => sum + (average(s.scores) ?? 0), 0) / (completed.length || 1)
-  )
 
   // Derive categories dynamically from actual score keys in completed students
   // This ensures we always show exactly the skill categories from the assessment.
@@ -119,15 +88,6 @@ export function useInstructorDashboard() {
     }
     return Array.from(seen).sort()
   }, [completed, studentsList])
-
-  // Top scorer per category
-  const leaders = categories.map(cat => {
-    const top = completed.reduce((best, s) => {
-      const score = s.scores[cat] ?? 0
-      return score > (best?.scores[cat] ?? -1) ? s : best
-    }, null)
-    return { category: cat, student: top, score: top?.scores[cat] ?? 0 }
-  })
 
   // ── Filtered + sorted ─────────────────────────────────────────────
   const displayed = useMemo(() => {
@@ -164,12 +124,6 @@ export function useInstructorDashboard() {
 
   return {
     studentsList, loading: apiLoading,
-    assessmentStats: {
-      total: assessments.length,
-      published: assessments.filter(a => a.publication_status === 'published').length,
-      draft: assessments.filter(a => a.publication_status === 'draft').length,
-      closed: assessments.filter(a => a.publication_status === 'closed').length,
-    },
     // UI state
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
@@ -178,7 +132,6 @@ export function useInstructorDashboard() {
     page: visiblePage, setPage,
     selectedStudent, setSelectedStudent,
     // Derived
-    completed, pending, avgOverall, leaders,
     displayed, paginated,
     PAGE_SIZE, categories,
     average,

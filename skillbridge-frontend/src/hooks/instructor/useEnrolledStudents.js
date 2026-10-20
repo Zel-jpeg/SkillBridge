@@ -74,6 +74,8 @@ export function useEnrolledStudents() {
   })
 
   const [activeBatchId, setActiveBatchId] = useState(() => {
+    const requested = Number(new URLSearchParams(window.location.search).get('batch_id'))
+    if (batches.some(batch => batch.id === requested)) return requested
     if (batches.length > 0) {
       const active = batches.find(b => b.status === 'active')
       return active?.id ?? batches[batches.length - 1]?.id ?? null
@@ -171,6 +173,8 @@ export function useEnrolledStudents() {
     // Preserve active batch selection across re-renders
     setActiveBatchId(prev => {
       if (prev && normalized.some(b => b.id === prev)) return prev
+      const requested = Number(new URLSearchParams(window.location.search).get('batch_id'))
+      if (normalized.some(batch => batch.id === requested)) return requested
       const active = normalized.find(b => b.status === 'active')
       return active?.id ?? normalized[normalized.length - 1]?.id ?? null
     })

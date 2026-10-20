@@ -1,5 +1,6 @@
 from django.urls import path
 from .admin_accounts import admin_account_detail
+from .analytics import management_analytics
 from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
 from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
@@ -45,6 +46,7 @@ urlpatterns = [
     path('instructor/batches/<int:batch_id>/unarchive/',  views.instructor_batch_unarchive, name='instructor_batch_unarchive'),
     path('instructor/students/<int:student_id>/retake/',  views.instructor_student_retake,  name='instructor_student_retake'),
     path('management/assessment-reports/', views.management_assessment_reports, name='management_assessment_reports'),
+    path('management/analytics/', management_analytics, name='management_analytics'),
     path('instructor/students/<int:student_id>/',         views.instructor_student_remove,  name='instructor_student_remove'),
 
     # ── Instructor — Assessments ──────────────────────────────────────────────

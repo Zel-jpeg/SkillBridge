@@ -8,7 +8,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTIFACTS = ROOT / 'skillbridge-frontend/tests/artifacts/admin-management'
+ANALYTICS = '--analytics' in sys.argv
+ARTIFACTS = ROOT / 'skillbridge-frontend/tests/artifacts' / ('analytics' if ANALYTICS else 'admin-management')
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 
 
@@ -36,7 +37,7 @@ env = {**os.environ, 'ADMIN_MANAGEMENT_API_PORT': str(api_port),
     'ADMIN_MANAGEMENT_FRONTEND_PORT': str(frontend_port),
     'ADMIN_MANAGEMENT_FRONTEND_URL': f'http://127.0.0.1:{frontend_port}', 'PYTHONIOENCODING': 'utf-8'}
 commands = [
-    ([str(ROOT / 'skillbridge-backend/venv/Scripts/python.exe'), '-u', str(ROOT / 'skillbridge-frontend/tests/admin_management_server.py')], api_port),
+    ([str(ROOT / 'skillbridge-backend/venv/Scripts/python.exe'), '-u', str(ROOT / 'skillbridge-frontend/tests' / ('analytics_server.py' if ANALYTICS else 'admin_management_server.py'))], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), str(ROOT / 'skillbridge-frontend'), '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port),
 ]
 processes, files = [], []
@@ -49,8 +50,8 @@ try:
         processes.append((process, port))
     for process, port in processes:
         ready(process, port)
-    script = 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
-    args = [arg for arg in sys.argv[1:] if arg != '--oversight']
+    script = 'analytics_playwright.py' if ANALYTICS else 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
+    args = [arg for arg in sys.argv[1:] if arg not in ('--oversight', '--analytics')]
     result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script), *args], cwd=ROOT, env=env)
     raise SystemExit(result.returncode)
 finally:
