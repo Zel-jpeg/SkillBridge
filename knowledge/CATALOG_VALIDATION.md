@@ -1,5 +1,10 @@
 # Catalog validation and recovery
 
+20 October2026:shared category creation reuses strict admin skill validation;
+malformed names,envelopes,descriptions and tags return400 before writes.
+[Ranking freshness](RECOMMENDATION_FRESHNESS.md) also detects input changes before
+visibility or approval; capacity remains a separate check.
+
 Company/position mutations validate all supplied values before saving related
 records. Company image envelope, address and coordinate checks remain shared;
 company names must be nonempty text of at most 255 characters, and booleans are

@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from .recommendation_freshness import input_fingerprint
 
 from django.urls import reverse
 from django.utils import timezone
@@ -546,6 +547,11 @@ class OJTPlacementAPITests(APITestCase):
             location_score_component=75,
             distance_km=5,
         )
+
+        # These manually constructed rankings represent current generated data.
+        for profile in CombinedCompetencyProfile.objects.select_related('student'):
+            profile.ranking_input_fingerprint = input_fingerprint(profile.student)
+            profile.save(update_fields=['ranking_input_fingerprint'])
 
     def _approve(self, recommendation):
         self.client.force_authenticate(self.admin)

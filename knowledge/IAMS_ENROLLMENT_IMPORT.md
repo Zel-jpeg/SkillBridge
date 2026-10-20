@@ -62,8 +62,15 @@ lists, ambiguous headers and unreadable files produce explicit errors.
 1. Select an active target batch and upload/drop a file or enter one student.
    File preview opens a separate wide review dialog; Back returns to the compact
    upload dialog with a Continue review action. On mobile, review fills the
-   viewport and the table scrolls within its own container. Manual review stays
-   in the compact dialog.
+   viewport. The default compact List view shows each student's row, identity,
+   program/year, email, status and actions on one line; Edit reveals every field
+   for correction below that row and changes to Done. Done revalidates the full
+   review automatically and shows a top-right success toast above the dialog.
+   The icon switcher can show two student cards per row on large screens. Below
+   640px, the review automatically uses the full
+   card layout and hides the view switcher. Both views avoid horizontal scrolling.
+   The source is labeled clearly as `Row 9`, while the worksheet name remains
+   metadata. Manual review stays compact.
 2. `POST /api/instructor/batches/{id}/enroll/preview/` receives `students`.
 3. The backend normalizes, generates emails, checks identities/enrollments and
    returns `rows`, `summary` and a signed `review_token`. Preview creates no
@@ -73,9 +80,11 @@ lists, ambiguous headers and unreadable files produce explicit errors.
    existing, already enrolled, unsupported, duplicate, invalid and conflict.
    Rows can be edited or removed. All copies of a duplicate are blocked until
    corrected or removed and previewed again.
-5. Changes invalidate the review and its counts. Review again, then explicitly
-   verify final DNSC addresses. The dialog states enrollment, skip and planned
-   notification counts before confirmation.
+5. While changes await validation, confirmation is disabled but the address
+   verification checkbox stays visible and keeps its value. Done validates List
+   edits automatically; Apply changes handles edits made in Cards/mobile view.
+   The dialog then updates enrollment, skip and planned notification counts
+   before confirmation.
 6. `POST /api/instructor/batches/{id}/enroll/` requires the exact reviewed `rows`
    as `students` and its `review_token`. Tokens expire after 30 minutes and bind
    rows, actor and batch. Every eligible row is revalidated against current data.
@@ -83,6 +92,8 @@ lists, ambiguous headers and unreadable files produce explicit errors.
    new preview. A retry after a lost response must start with preview.
 7. Results distinguish enrolled, already_enrolled, unsupported, duplicate,
    invalid, conflict, skipped and failed, with separate notification statuses.
+   A top-right completion toast is rendered in the dialog's browser top layer,
+   so it remains visible while the enrollment results dialog is open.
 
 The central Python `generate_dnsc_email` function lowercases and trims names,
 uses Unicode NFKD decomposition, removes combining diacritics, maps typographic
@@ -103,17 +114,24 @@ The rule also applies to new students from the legacy template and manual entry.
 Instructors and administrators may correct the display name in review before
 confirming; an explicitly edited display name keeps its chosen capitalization
 through re-preview, while changing first or last name resets that override.
-Existing student account names are left unchanged, including when
-their enrollment fills an empty school_id or course. The model no longer
-applies `.title()` to student names on save, which previously changed `Bali-os`
-to `Bali-Os`.
+Established student account names are left unchanged. A pending Google
+registration with no Student ID and no enrollment is the narrow exception: its
+first reviewed enrollment replaces the provisional Google display name with the
+reviewed IAMS name. Later Google sign-ins refresh the profile photo without
+overwriting that name. The model no longer applies `.title()` to student names
+on save, which previously changed `Bali-os` to `Bali-Os`.
+The student dashboard keeps the complete reviewed name in account data and uses
+the DNSC email convention to show all given names, without the surname, beside
+the wave emoji. If an edited email cannot identify the given-name portion safely,
+the greeting falls back to the first name.
 
 ## Database integrity and migration
 
 Identity checks use both case-insensitive email and school_id, and reject role,
 inactive-account, email, populated-ID and populated-program conflicts. Existing
 students can enroll; only empty school_id/course fields are filled, and pending
-students are approved. Existing names/emails/populated IDs are preserved.
+students are approved. Established names, emails and populated IDs are
+preserved; only the provisional name exception described above is updated.
 Already-enrolled students are reported without notification.
 
 Each eligible row uses its own atomic transaction. A failed enrollment rolls
@@ -302,8 +320,8 @@ range and remains available for repeat testing.
 Browser coverage includes both instructor/admin pages at 375, 768, 1024 and
 1366 pixels: the single IAMS template download, file parsing, wide review,
 email and name editing, explicit revalidation, Back/Continue, unsupported and
-duplicate filters, counts, no document horizontal overflow, and internal table
-scrolling. Both roles completed manual enrollment. Admin completed a real IAMS
+duplicate filters, counts, clear button hover feedback and no document, dialog,
+or record-card horizontal overflow. Both roles completed manual enrollment. Admin completed a real IAMS
 confirmation against the isolated API, then repeated preview and observed three
 already-enrolled rows with zero ready rows/notifications. Keyboard focus remained
 inside the dialog; Escape closed it. Screenshots were inspected at 375 and 1366

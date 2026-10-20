@@ -101,8 +101,24 @@ and fallback when explaining results.
   agent handoff, preview-only first changes, verification gates and a copyable
   Phase 1 prompt; later ranking activation remains a separate task.
 
+- [NLP rollback](NLP_ROLLBACK.md): User-cancelled improvement work, restored
+  original application behavior and cleanup of experiment storage; see the
+  [checkpoint](NLP_IMPLEMENTATION_CHECKPOINT.md) for migration/verification status.
+
 - [Question assistance](QUESTION_ASSISTANCE.md): Advisory suggestions, staff
   permissions, manual fallback and evidence-grounded generated text.
+
+- [Position-tag relevance](POSITION_TAG_RELEVANCE.md): Network Specialist aliases
+  and exclusion of broad Tools products from position suggestions; saved tags and
+  original category/matching rules preserved.
+
+- [General position-suggestion proposal](POSITION_SUGGESTION_DESIGN.md): Verified
+  hard-coded versus database tag precedence and proposed role/category compatibility,
+  provenance and explicit tool selection across roles; not yet implemented.
+
+- [Expanded suggestion vocabulary](NLP_SUGGESTION_VOCABULARY.md): Restored35 category
+  lists/33 role profiles with generic Tools exclusion retained; category/role
+  suggestions require review and do not rewrite saved tags automatically.
 
 - [NLP design decision](NLP_DESIGN_DECISION.md): Proposed evidence-based input
   contracts, matching/model boundaries, notebook comparison review and copyable
@@ -110,6 +126,10 @@ and fallback when explaining results.
 
 - [Recommendation contract](RECOMMENDATION_CONTRACT.md): Preserved weights,
   coordinate validation, stable ranking, eligibility boundaries and isolated tests.
+
+- [Saved recommendation freshness](RECOMMENDATION_FRESHNESS.md): Catalog/model/pin
+  provenance, stale-result locks, explicit refresh, legacy migration and preserved
+  score/placement history.
 
 - [Offline NLP feature experiment](NLP_PROPOSAL_EXPERIMENT.md): Colab comparison
   of automatic task descriptions and question-level evidence, with simulation

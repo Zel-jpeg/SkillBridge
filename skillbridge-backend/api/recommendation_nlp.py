@@ -34,7 +34,7 @@ MODEL_OPTIONS = {
 
 from .skill_taxonomy import (
     SKILL_TAGS as DEFAULT_SKILL_TAGS, ROLE_TAGS as POSITION_TAGS,
-    canonical_category, is_generic_tag, key as taxonomy_key,
+    ROLE_ALIASES, BROAD_POSITION_CATEGORIES, canonical_category, suggestion_category, is_generic_tag, key as taxonomy_key,
 )
 from collections import Counter
 
@@ -76,7 +76,7 @@ def normalize_tags(value, limit=30):
 
 
 def suggest_skill_tags(name, description=''):
-    canonical = canonical_category(name)
+    canonical = suggestion_category(name)
     if canonical in DEFAULT_SKILL_TAGS:
         return list(DEFAULT_SKILL_TAGS[canonical])
     # Unknown categories use description evidence, not fragments of the name.
@@ -90,9 +90,11 @@ def suggest_position_tags(title, requirements=None):
     normalized = taxonomy_key(title)
     normalized = normalized.replace('back end', 'backend').replace('front end', 'frontend')
     normalized = normalized.replace('quality assurance', 'qa tester')
+    padded = f' {normalized} '
     role_tags = []
     for role, tags in POSITION_TAGS.items():
-        if taxonomy_key(role) in normalized:
+        aliases = [role, *ROLE_ALIASES.get(role, [])]
+        if any(f' {taxonomy_key(alias)} ' in padded for alias in aliases):
             role_tags.extend(tags)
     if role_tags:
         return normalize_tags(role_tags, limit=16)
@@ -106,7 +108,10 @@ def suggest_position_tags(title, requirements=None):
         except (ValueError, TypeError):
             return 0
     suggestions = []
-    for item in sorted(requirements or [], key=percentage, reverse=True)[:2]:
+    specific_requirements = [item for item in requirements or []
+                             if suggestion_category(item.get('name') or item.get('category') or '')
+                             not in BROAD_POSITION_CATEGORIES]
+    for item in sorted(specific_requirements, key=percentage, reverse=True)[:2]:
         if percentage(item) <= 0:
             continue
         name = item.get('name') or item.get('category') or ''

@@ -16,6 +16,7 @@ export function dashboardAssessmentAction(progress, assessments = []) {
   if (retake) return { label: 'Retake Available', to: '/student/assessments' }
   const stopped = assessments.find(item => item.attempt_status === 'stopped' && !item.retake_allowed)
   if (stopped) return { label: 'View Assessment Status', to: '/student/assessments' }
+  if (progress?.recommendations_stale) return { label: 'View Recommendation Status', to: '/student/results' }
   if (progress?.recommendations_locked === false && progress?.all_required_completed) {
     return { label: 'View Final Results', to: '/student/results' }
   }

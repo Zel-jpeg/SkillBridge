@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../DataSection'
-import { XIcon } from '../Icons'
+import { GridIcon, ListIcon, XIcon } from '../Icons'
 import { confirmationText, downloadStudentTemplate, editReviewRow, parseStudentFile, resultText, statusLabel } from '../../utils/studentEnrollmentImport'
 
 const columns = [['school_id', 'Student ID'], ['first_name', 'First name'], ['last_name', 'Last name'],
@@ -10,11 +10,15 @@ const columns = [['school_id', 'Student ID'], ['first_name', 'First name'], ['la
 const emptyStudent = { school_id: '', name: '', first_name: '', last_name: '', email: '', course: 'BSIT', year_level: '' }
 const counts = { total: 'Total parsed', ready: 'Ready to enroll', existing_students: 'Existing students',
   already_enrolled: 'Already enrolled', unsupported: 'Unsupported', duplicate: 'Duplicate', invalid: 'Invalid', conflict: 'Conflict' }
+const PAGE_SIZE = 25
 
 export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled }) {
   const dialog = useRef(null)
   const reviewDialog = useRef(null)
+  const dialogToast = useRef(null)
+  const reviewDialogToast = useRef(null)
   const fileRef = useRef(null)
+  const toastTimer = useRef(null)
   const { data: batchesData } = useApi('/api/instructor/batches/')
   const batches = Array.isArray(batchesData) ? batchesData.filter(batch => batch.status === 'active') : []
   const [target, setTarget] = useState(String(batchId ?? ''))
@@ -27,6 +31,10 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   const [tab, setTab] = useState('excel')
   const [manual, setManual] = useState(emptyStudent)
   const [filter, setFilter] = useState('all')
+  const [view, setView] = useState('list')
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [dirty, setDirty] = useState(false)
+  const [toast, setToast] = useState('')
   const [page, setPage] = useState(0)
   const [verified, setVerified] = useState(false)
   const [spreadsheetReview, setSpreadsheetReview] = useState(false)
@@ -34,6 +42,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   useEffect(() => {
     dialog.current.showModal()
+    return () => window.clearTimeout(toastTimer.current)
   }, [])
 
   const selectedBatch = batches.find(b => String(b.id) === target)
@@ -41,7 +50,28 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     filter === 'all' || (filter === 'needs_review' ? ['invalid', 'duplicate', 'conflict'].includes(row.status)
       : filter === 'ready' ? ['ready', 'existing_student'].includes(row.status) : row.status === filter)), [rows, filter])
 
-  function invalidateReview() { setReview(null); setVerified(false) }
+  function invalidateReview() { setReview(null); setVerified(false); setDirty(false) }
+
+  function showReviewToast(message) {
+    window.clearTimeout(toastTimer.current)
+    setToast(message)
+    window.requestAnimationFrame(() => {
+      const element = reviewDialog.current?.open ? reviewDialogToast.current : dialogToast.current
+      if (!element) return
+      if (typeof element.showPopover === 'function') {
+        if (!element.matches(':popover-open')) element.showPopover()
+      } else {
+        element.dataset.visible = 'true'
+      }
+    })
+    toastTimer.current = window.setTimeout(() => {
+      for (const element of [dialogToast.current, reviewDialogToast.current]) {
+        if (element?.matches?.(':popover-open')) element.hidePopover()
+        if (element) delete element.dataset.visible
+      }
+      setToast('')
+    }, 4000)
+  }
 
   function openSpreadsheetReview() {
     dialog.current.close()
@@ -56,11 +86,13 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     setSpreadsheetReview(false)
   }
 
-  async function preview(nextRows = rows) {
-    setBusy(true); setError(''); invalidateReview()
+  async function preview(nextRows = rows, { preserveVerification = false, successMessage = '' } = {}) {
+    setBusy(true); setError('')
+    if (!preserveVerification) setVerified(false)
     try {
       const { data } = await api.post(`/api/instructor/batches/${target}/enroll/preview/`, { students: nextRows })
-      setRows(data.rows); setReview(data); setResult(null); setPage(0)
+      setRows(data.rows); setReview(data); setResult(null); setPage(0); setEditingIndex(null); setDirty(false)
+      if (successMessage) showReviewToast(successMessage)
       return true
     } catch (err) { setError(err.response?.data?.error || 'Preview failed. No enrollment was confirmed.') }
     finally { setBusy(false) }
@@ -80,13 +112,15 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   }
 
   async function confirm() {
-    if (!review || !verified || busy) return
+    if (!review || !verified || dirty || busy) return
     setBusy(true); setError('')
     try {
       const { data } = await api.post(`/api/instructor/batches/${target}/enroll/`, { students: rows, review_token: review.review_token })
       setResult(data); setRows(data.rows); setReview(null); setFilter('all'); setPage(0)
       invalidateCache('/api/admin/users/')
       invalidateCache('/api/instructor/batches/')
+      const enrolled = data.summary?.enrolled ?? 0
+      showReviewToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
       onEnrolled?.(data)
     } catch (err) {
       invalidateReview()
@@ -96,7 +130,22 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
 
   function edit(index, field, value) {
     setRows(current => current.map((row, i) => i === index ? editReviewRow(row, field, value) : row))
-    invalidateReview()
+    setDirty(true)
+  }
+
+  async function finishEditing() {
+    if (!dirty) {
+      setEditingIndex(null)
+      return
+    }
+    await preview(rows, { preserveVerification: true, successMessage: 'Student details updated successfully.' })
+  }
+
+  function removeRow(index) {
+    setRows(current => current.filter((_, i) => i !== index))
+    setDirty(true)
+    setPage(0)
+    setEditingIndex(null)
   }
 
   const reviewContent = rows.length > 0 && <section aria-label="Student review" className="enrollment-review">
@@ -105,29 +154,73 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
         {(review || result) && <div className="enrollment-counts" aria-label="Import counts">
           {Object.entries(counts).map(([key, label]) => <span key={key}><strong>{(review || result).summary[key]}</strong> {label}</span>)}
         </div>}
-        {!review && !result && <p role="status" className="enrollment-caption">Changes need validation. Review again to update statuses and counts.</p>}
-        <label className="enrollment-field enrollment-filter">Show rows
-          <select value={filter} onChange={e => { setFilter(e.target.value); setPage(0) }}>
-            <option value="all">All rows</option><option value="needs_review">Needs review</option>
-            {['ready', 'existing_student', 'already_enrolled', 'unsupported', 'duplicate', 'invalid', 'conflict'].map(status =>
-              <option key={status} value={status}>{statusLabel(status)}</option>)}
-          </select>
-        </label>
-        <div className="enrollment-table-scroll" tabIndex={0} role="region" aria-label="Scrollable student review table">
-          <table><thead><tr><th scope="col">Source row</th>{columns.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}<th scope="col">Email source</th><th scope="col">Validation status</th><th scope="col">Warning or error</th><th scope="col">Action</th></tr></thead>
-            <tbody>{visible.slice(page * 25, (page + 1) * 25).map(({ row, index }) => <tr key={index}>
-              <td>{row.worksheet || 'File'}<br />{row.source_row}</td>
-              {columns.map(([field, label]) => <td key={field}>{result ? row[field] : <input aria-label={`${label} row ${row.source_row}`} value={row[field] || ''} disabled={busy} onChange={e => edit(index, field, e.target.value)} />}</td>)}
-              <td>{row.email_source}</td><td><span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span></td>
-              <td>{row.issues?.join(' ')}{result && <span>{row.notification_status?.replaceAll('_', ' ')}</span>}</td>
-              <td>{!result && <button type="button" disabled={busy} aria-label={`Remove row ${row.source_row}`} onClick={() => { setRows(current => current.filter((_, i) => i !== index)); invalidateReview(); setPage(0) }}>Remove</button>}</td>
-            </tr>)}</tbody></table>
+        {dirty && !result && <p role="status" className="enrollment-caption">Changes need validation. Select Done on the edited row or Apply changes below.</p>}
+        <div className="enrollment-review-toolbar">
+          <label className="enrollment-field enrollment-filter">Show rows
+            <select value={filter} onChange={e => { setFilter(e.target.value); setPage(0) }}>
+              <option value="all">All rows</option><option value="needs_review">Needs review</option>
+              {['ready', 'existing_student', 'already_enrolled', 'unsupported', 'duplicate', 'invalid', 'conflict'].map(status =>
+                <option key={status} value={status}>{statusLabel(status)}</option>)}
+            </select>
+          </label>
+          <div className="enrollment-view-toggle" aria-label="Review view">
+            {[{ value: 'cards', label: 'Show cards', Icon: GridIcon }, { value: 'list', label: 'Show list', Icon: ListIcon }].map(option =>
+              <button type="button" key={option.value} aria-label={option.label} title={option.label}
+                aria-pressed={view === option.value} onClick={() => { setView(option.value); setEditingIndex(null) }}>
+                <option.Icon size={15} />
+              </button>)}
+          </div>
         </div>
-        <div className="enrollment-pagination"><span>{visible.length} matching rows</span><button type="button" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</button><span>Page {page + 1}</span><button type="button" disabled={(page + 1) * 25 >= visible.length} onClick={() => setPage(p => p + 1)}>Next</button></div>
+        <div className={`enrollment-record-list view-${view}`} role="list" aria-label="Student review records">
+          {visible.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(({ row, index }) => <article
+            className={`enrollment-record ${editingIndex === index ? 'is-editing' : ''}`} role="listitem" key={`${row.worksheet || 'file'}-${row.source_row}-${index}`}
+            title={row.worksheet ? `Worksheet: ${row.worksheet}` : undefined}>
+            <div className="enrollment-list-summary">
+              <strong>Row {row.source_row}</strong>
+              <div className="enrollment-list-identity"><strong>{row.name || 'Name missing'}</strong><span>{row.school_id || 'Student ID missing'}</span></div>
+              <span>{row.course || '—'}{row.year_level ? ` · Year ${row.year_level}` : ''}</span>
+              <span className="enrollment-list-email" title={row.email || undefined}>{row.email || 'Email missing'}</span>
+              <span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span>
+              <button type="button" className="enrollment-button" aria-expanded={editingIndex === index} disabled={busy}
+                onClick={() => editingIndex === index && !result ? finishEditing() : setEditingIndex(current => current === index ? null : index)}>
+                {editingIndex === index ? (result ? 'Hide' : busy ? 'Saving…' : 'Done') : result ? 'Details' : 'Edit'}
+              </button>
+              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={busy}
+                aria-label={`Remove row ${row.source_row}`} onClick={() => removeRow(index)}>Remove</button>}
+            </div>
+            <div className="enrollment-record-header">
+              <div><strong>Row {row.source_row}</strong><span>{row.school_id || 'Student ID missing'}</span></div>
+              <span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span>
+              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={busy}
+                aria-label={`Remove row ${row.source_row}`} onClick={() => removeRow(index)}>Remove</button>}
+            </div>
+            <div className="enrollment-record-grid">
+              {columns.map(([field, label]) => <label className={`enrollment-record-field field-${field.replace('_', '-')} ${['name', 'email'].includes(field) ? 'enrollment-record-field-wide' : ''}`} key={field}>
+                <span>{label}</span>
+                {result ? <output>{row[field] || '—'}</output> : <input aria-label={`${label} row ${row.source_row}`}
+                  value={row[field] || ''} disabled={busy} onChange={e => edit(index, field, e.target.value)} />}
+              </label>)}
+            </div>
+            <div className="enrollment-record-meta">
+              <span>Email source: <strong>{row.email_source || '—'}</strong></span>
+              {row.issues?.length > 0 && <p>{row.issues.join(' ')}</p>}
+              {result?.rows && row.notification_status && <p>Notification: {row.notification_status.replaceAll('_', ' ')}</p>}
+            </div>
+          </article>)}
+        </div>
+        <div className="enrollment-pagination"><span>{visible.length} matching rows</span>{visible.length > PAGE_SIZE && <nav aria-label="Student review pages">
+          <button type="button" className="enrollment-button" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</button>
+          <span>Page {page + 1}</span>
+          <button type="button" className="enrollment-button" disabled={(page + 1) * PAGE_SIZE >= visible.length} onClick={() => setPage(p => p + 1)}>Next</button>
+        </nav>}</div>
       </section>
 
   return <><dialog ref={dialog} className="enrollment-dialog" aria-labelledby="enrollment-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
+    <div ref={dialogToast} popover="manual" className="enrollment-toast" role="status">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      {toast}
+    </div>
     <header className="enrollment-header">
       <div>
         <h2 id="enrollment-title">Enroll students</h2>
@@ -158,7 +251,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
       {!result && (tab === 'excel' ? <>
         <div className="enrollment-template-card">
           <div><strong>Need a template?</strong><p>Student Number, Last Name, First Name, Program, YearLevel</p></div>
-          <button type="button" disabled={busy} onClick={() => downloadStudentTemplate()}>Download enrollment template</button>
+          <button type="button" className="enrollment-button enrollment-button-blue" disabled={busy} onClick={() => downloadStudentTemplate()}>Download enrollment template</button>
         </div>
         <div className="enrollment-drop" role="button" tabIndex={0} aria-label="Choose or drop a student list"
           onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); readFile(e.dataTransfer.files[0]) }}
@@ -200,17 +293,21 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     </div>
 
     {!fileRows ? <footer className="enrollment-footer">
-      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in the table.</p><button type="button" onClick={onClose}>Done</button></> : <>
+      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
         {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" disabled={busy || !selectedBatch} onClick={() => preview()}>Review again</button><button type="button" className="enrollment-primary" disabled={busy || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
       </>}
     </footer> : <footer className="enrollment-footer enrollment-actions">
-      <button type="button" disabled={busy} onClick={onClose}>Close</button>
-      <button type="button" disabled={busy} onClick={openSpreadsheetReview}>Continue review</button>
+      <button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>
+      <button type="button" className="enrollment-primary" disabled={busy} onClick={openSpreadsheetReview}>Continue review</button>
     </footer>}
   </dialog>
   <dialog ref={reviewDialog} className="enrollment-dialog enrollment-review-dialog" aria-labelledby="enrollment-review-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
+    <div ref={reviewDialogToast} popover="manual" className="enrollment-toast" role="status">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      {toast}
+    </div>
     <header className="enrollment-header">
       <div><h2 id="enrollment-review-title">{result ? 'Enrollment results' : 'Review students'}</h2>
         <p>{selectedBatch?.name || 'Selected batch'} — {selectedBatch?.instructor_name || 'Instructor unassigned'}</p></div>
@@ -222,9 +319,9 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
       {spreadsheetReview && reviewContent}
     </div>
     <footer className="enrollment-footer">
-      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in the table.</p><button type="button" onClick={onClose}>Done</button></> : <>
+      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
         {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" disabled={busy || !selectedBatch} onClick={() => preview()}>Review again</button><button type="button" className="enrollment-primary" disabled={busy || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
       </>}
     </footer>
   </dialog></>

@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 
 from .models import Batch, BatchEnrollment, User
+from .name_formatting import format_person_name
 
 logger = logging.getLogger(__name__)
 MAX_ROWS = 1000
@@ -38,9 +39,7 @@ def generate_dnsc_email(first_name, last_name):
     return f'{last}.{first}@dnsc.edu.ph' if first and last else ''
 
 
-def format_student_name(value):
-    """Capitalize words separated by spaces, without title-casing hyphen parts."""
-    return ' '.join(part[:1].upper() + part[1:].lower() for part in str(value).split())
+format_student_name = format_person_name
 
 
 def normalize_program(value):
@@ -205,10 +204,17 @@ def confirm_rows(items, batch, notify):
                     student = User.objects.create_user(email=row['email'], name=row['name'], role='student',
                                                        school_id=row['school_id'], course=row['course'], is_approved=True)
                 else:
+                    first_enrollment = (not student.is_approved and not student.school_id
+                                        and not BatchEnrollment.objects.filter(student=student).exists())
                     student.is_approved = True
+                    update_fields = ['is_approved']
+                    if first_enrollment:
+                        student.name = row['name']
+                        update_fields.append('name')
                     student.school_id = student.school_id or row['school_id']
                     student.course = student.course or row['course']
-                    student.save(update_fields=['is_approved', 'school_id', 'course'])
+                    update_fields.extend(['school_id', 'course'])
+                    student.save(update_fields=update_fields)
                 enrollment, created = BatchEnrollment.objects.get_or_create(batch=locked_batch, student=student)
                 row.update(status='enrolled' if created else 'already_enrolled', id=student.pk, enrollment_id=enrollment.pk)
                 if created:

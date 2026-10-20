@@ -31,6 +31,38 @@ export function getInitials(name = '') {
     .toUpperCase() || '??'
 }
 
+/**
+ * Keep all given names in a greeting without guessing where a multiword
+ * surname begins. DNSC addresses encode them as lastname.firstname, so the
+ * reviewed display-name prefix can be matched to the email's given-name part.
+ */
+export function givenNamesForGreeting(name = '', email = '') {
+  const words = String(name).trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return 'Student'
+
+  const local = String(email).trim().toLowerCase().split('@')[0]
+  const separator = local.indexOf('.')
+  if (separator < 1 || separator === local.length - 1) return words[0]
+
+  const normalize = value => String(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[‐‑‒–—―]/g, '-')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const expected = normalize(local.slice(separator + 1))
+  let candidate = ''
+  for (let index = 0; index < words.length - 1; index += 1) {
+    candidate += normalize(words[index])
+    if (candidate === expected) return words.slice(0, index + 1).join(' ')
+    if (!expected.startsWith(candidate)) break
+  }
+  return words[0]
+}
+
 // ── Score / color helpers ─────────────────────────────────────────
 
 /**

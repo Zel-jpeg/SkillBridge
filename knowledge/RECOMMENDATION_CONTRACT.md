@@ -1,5 +1,10 @@
 # Recommendation contract and local verification
 
+20 October2026:[saved-ranking provenance](RECOMMENDATION_FRESHNESS.md) locks
+rankings whose catalog/model/pin inputs changed or whose legacy provenance is
+unknown. Approval rejects them until an explicit admin refresh. Migration0020
+adds one profile field; score history and placement snapshots remain.
+
 The ranking remains 60% category cosine similarity, 25% TF-IDF text similarity
 and 15% location similarity. Student and requirement vectors use the same category
 ID order. Location falls linearly to zero at 80 km; missing or invalid coordinates

@@ -1,5 +1,6 @@
 import csv
 import io
+from .recommendation_freshness import input_fingerprint
 
 from django.urls import reverse
 from zoneinfo import ZoneInfo
@@ -234,6 +235,7 @@ class ManagementStep4Tests(APITestCase):
                                              source_assessment_ids=[assessment.id])
         CombinedCompetencyProfile.objects.create(student=self.student, batch=self.batch, is_finalized=True,
                                                  included_assessment_ids=[assessment.id],
+                                                 ranking_input_fingerprint=input_fingerprint(self.student),
                                                  orientation_summary='Ready for database work')
         company = Company.objects.create(name='Sample Employer', added_by=self.admin)
         first = Position.objects.create(company=company, title='Database Intern')

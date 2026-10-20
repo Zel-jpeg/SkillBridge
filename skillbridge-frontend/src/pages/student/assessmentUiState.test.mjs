@@ -2,6 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { assessmentAction, dashboardAssessmentAction } from './assessmentUiState.js'
 
+test('stale recommendations link to refresh guidance without asking students to retake completed work', () => {
+  assert.deepEqual(dashboardAssessmentAction({ recommendations_stale: true, recommendations_locked: true,
+    all_required_completed: true, remaining_required_count: 0 }),
+  { label: 'View Recommendation Status', to: '/student/results' })
+})
+
 const available = { availability_status: 'available' }
 
 test('assessment cards map every attempt and availability state to a safe action', () => {

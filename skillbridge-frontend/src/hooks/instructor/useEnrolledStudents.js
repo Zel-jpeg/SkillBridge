@@ -330,11 +330,10 @@ export function useEnrolledStudents() {
     if (st) showToast(attempt.retake_allowed ? `Retake revoked for ${st.name}.` : `Retake approved for ${st.name}.`)
   }
 
-  function handleEnroll(result) {
+  function handleEnroll() {
     invalidateCache('/api/instructor/batches/')
     invalidateCache('/api/instructor/students/recommendations/')
     refreshSelectedRoster()
-    showToast(`${result.summary.enrolled} students enrolled. See notification results in the review.`)
     setPage(1)
   }
 

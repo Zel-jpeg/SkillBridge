@@ -13,6 +13,7 @@ from .models import (
     StudentResponse,
 )
 from .recommendation_nlp import TEXT_GENERATION_VERSION, generate_competency_insights
+from .recommendation_freshness import input_fingerprint, recommendations_stale
 
 
 def eligible_evidence(student, batch):
@@ -37,7 +38,7 @@ def eligible_evidence(student, batch):
     return included_ids, [score for score in scores if score.assessment_id in scored_ids]
 
 
-def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids=None):
+def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids=None, catalog=None):
     progress = progress or required_progress(student, batch)
     if not (progress['has_required_assessments'] and progress['all_required_completed']):
         return False
@@ -48,7 +49,7 @@ def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids
         return False
     if source_ids is None:
         source_ids, _ = eligible_evidence(student, batch)
-    return profile.included_assessment_ids == source_ids
+    return profile.included_assessment_ids == source_ids and not recommendations_stale(profile, student, catalog)
 
 
 def recalculate_combined(student, batch):
@@ -56,6 +57,9 @@ def recalculate_combined(student, batch):
     from .scoring import generate_combined_recommendations
     from .change_events import combined_changed
 
+    # Capture before reading categories/candidates. A concurrent catalog change
+    # must not give a ranking generated from older inputs a newer provenance.
+    ranking_fingerprint = input_fingerprint(student)
     progress = required_progress(student, batch)
     included_ids, assessment_scores = eligible_evidence(student, batch)
     grouped = defaultdict(lambda: {'raw': 0, 'max': 0, 'source_ids': set(), 'category': None})
@@ -97,6 +101,7 @@ def recalculate_combined(student, batch):
                 **({'text_generation_version': TEXT_GENERATION_VERSION} if ready else {}),
                 'active_model': requested_model,
                 'model_used': '',
+                'ranking_input_fingerprint': '',
             },
         )
 
@@ -113,7 +118,11 @@ def recalculate_combined(student, batch):
     profile.finalized_at = timezone.now()
     # A configured model is not evidence it produced a recommendation result.
     profile.model_used = recommendations[0]['model_used'] if recommendations else ''
-    profile.save(update_fields=['is_finalized', 'finalized_at', 'model_used', 'generated_at'])
+    profile.ranking_input_fingerprint = ranking_fingerprint
+    profile.save(update_fields=['is_finalized', 'finalized_at', 'model_used', 'ranking_input_fingerprint', 'generated_at'])
+    if recommendations_stale(profile, student):
+        Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
+        recommendations = []
     combined_changed(student, batch)
     return profile, progress, recommendations
 

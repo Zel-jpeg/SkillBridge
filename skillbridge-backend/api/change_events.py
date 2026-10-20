@@ -33,7 +33,7 @@ TOPICS = {
     'attempt': ['assessments', 'students', 'results', 'placements'],
     'catalog': ['catalog', 'results', 'students', 'placements'],
     'taxonomy': ['taxonomy', 'catalog', 'assessments', 'results', 'students', 'placements'],
-    'configuration': ['configuration'],
+    'configuration': ['configuration', 'results', 'students', 'placements'],
     'recommendations': ['results', 'students', 'placements'],
     'placement': ['placements', 'students', 'results', 'capacity'],
     'users': ['users', 'students', 'batches'],
@@ -107,8 +107,7 @@ def audience(kind, request, kwargs, response=None):
     recipients = admins | owners | students | people
     if kind in ('catalog', 'taxonomy', 'recommendations', 'configuration'):
         recipients.update(User.objects.filter(is_active=True, role__in=['admin', 'instructor']).values_list('id', flat=True))
-        if kind != 'configuration':
-            recipients.update(BatchEnrollment.objects.filter(student__is_active=True, student__is_approved=True).values_list('student_id', flat=True))
+        recipients.update(BatchEnrollment.objects.filter(student__is_active=True, student__is_approved=True).values_list('student_id', flat=True))
     if kind == 'placement':
         # All staff can see shared capacity; unrelated staff get only that topic.
         recipients.update(User.objects.filter(is_active=True, role__in=['admin', 'instructor']).values_list('id', flat=True))
@@ -200,7 +199,7 @@ def notify_changes(kind):
                 if extra:
                     for user_id in _safe_audience('taxonomy', request, {}):
                         current = after.setdefault(user_id, {'topics': []})
-                        current['topics'] = sorted(set(current['topics']) | extra)
+                        current['topics'] = sorted(set(current['topics']) | set(TOPICS['taxonomy']))
                         # New shared categories affect any authorized preview.
                         current.pop('student_ids', None)
                         current.pop('batch_ids', None)

@@ -4,6 +4,7 @@ from threading import Barrier, Event
 from time import monotonic, sleep
 from unittest import skipUnless
 from unittest.mock import patch
+from .recommendation_freshness import input_fingerprint
 from django.db import connection, close_old_connections
 from django.test import TransactionTestCase
 from django.urls import reverse
@@ -31,7 +32,8 @@ class ConcurrentWorkflowTests(TransactionTestCase):
             StudentResponse.objects.create(student=student, assessment=self.assessment, submitted_at=timezone.now(), status='submitted')
             SkillScore.objects.create(student=student, assessment=self.assessment, skill_category=self.category, raw_score=1, max_score=1, percentage=100)
             CombinedCategoryScore.objects.create(student=student, batch=self.batch, skill_category=self.category, raw_score=1, max_score=1, percentage=100, source_assessment_ids=[self.assessment.id])
-            CombinedCompetencyProfile.objects.create(student=student, batch=self.batch, is_finalized=True, included_assessment_ids=[self.assessment.id])
+            CombinedCompetencyProfile.objects.create(student=student, batch=self.batch, is_finalized=True,
+                included_assessment_ids=[self.assessment.id], ranking_input_fingerprint=input_fingerprint(student))
         self.recs = [Recommendation.objects.create(student=student, batch=self.batch, position=self.position, match_score=70 + i) for i, student in enumerate(self.students)]
 
     def new_assessment(self):

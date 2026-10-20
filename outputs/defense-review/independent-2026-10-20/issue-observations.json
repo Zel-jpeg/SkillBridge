@@ -1,0 +1,30 @@
+{
+  "malformed_category_name": [
+    {
+      "name_json_type": "NoneType",
+      "http": 500
+    },
+    {
+      "name_json_type": "list",
+      "http": 500
+    },
+    {
+      "name_json_type": "int",
+      "http": 500
+    },
+    {
+      "name_json_type": "dict",
+      "http": 500
+    }
+  ],
+  "stale_recommendations": {
+    "position_edit_http": 200,
+    "student_get_http": 200,
+    "locked_after_edit": false,
+    "score_before_and_after_edit": 92.5,
+    "approval_http": 201,
+    "assignment_snapshot": 92.5,
+    "score_after_explicit_recalculation": 32.5,
+    "nlp": "deterministic mock isolates category change; no provider/model load"
+  }
+}

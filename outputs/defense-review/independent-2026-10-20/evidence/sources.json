@@ -1,0 +1,85 @@
+[
+  {
+    "file": "figure-1-company-position.png",
+    "source": "skillbridge-frontend/tests/artifacts/company-collection/desktop-position-expanded-map-collapsed.png",
+    "source_sha256": "1258d1309b449ea27d55613279916ab08b3c243d9aef0ec9262af4fda314ca74",
+    "crop_pixels": [
+      270,
+      250,
+      835,
+      700
+    ],
+    "source_capture_date": "2026-10-17",
+    "scope": "Mocked local UI with synthetic catalog"
+  },
+  {
+    "file": "figure-2-assessment-authoring.png",
+    "source": "work/defense_audit/v01-artifacts/instructor-upload.png",
+    "source_sha256": "86db19584375fc4c033c99cd5d60370b916f31b1bf7d40c0f295728c4d445307",
+    "crop_pixels": [
+      260,
+      1010,
+      1100,
+      1570
+    ],
+    "source_capture_date": "2026-10-18",
+    "scope": "Local synthetic authoring UI"
+  },
+  {
+    "file": "figure-4-ranked-suggestion.png",
+    "source": "work/defense_audit/v01-artifacts/admin-placements.png",
+    "source_sha256": "ca21ff8965612e29ab997ab52e60e6a7bad337be904387bcb5365dd210007113",
+    "crop_pixels": [
+      270,
+      400,
+      1265,
+      650
+    ],
+    "source_capture_date": "2026-10-18",
+    "scope": "Local React/API synthetic student/company"
+  },
+  {
+    "file": "figure-5-generated-report.png",
+    "source": "tmp/pdfs/review_2026_10_20/report-output-example.png",
+    "source_sha256": "d60c1274c8026b9d695d6e1d037d81d094b9b44ee2804b6723ae572e8ab89047",
+    "crop_pixels": [
+      0,
+      0,
+      1500,
+      700
+    ],
+    "source_capture_date": "2026-10-18",
+    "scope": "Rendered saved synthetic company-placement PDF; detail crop"
+  },
+  {
+    "file": "figure-3-nlp-comparison-code.png",
+    "type": "source excerpt, not an IDE screenshot",
+    "capture_date": "2026-10-20",
+    "sources": [
+      {
+        "path": "skillbridge-backend/api/recommendation_nlp.py",
+        "ranges": [
+          [
+            20,
+            33
+          ]
+        ],
+        "sha256": "32d52d7d8718384b1d7360b55f412af03fce54259aaa87f9c4ffdc29584dba6e"
+      },
+      {
+        "path": "skillbridge-backend/api/nlp_evaluation.py",
+        "ranges": [
+          [
+            193,
+            197
+          ],
+          [
+            203,
+            206
+          ]
+        ],
+        "sha256": "50736e6b982c05dfe90b13629790cf6a933f4938d7f1ab171525b3476134fc02"
+      }
+    ]
+  }
+]

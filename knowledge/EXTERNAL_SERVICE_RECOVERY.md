@@ -10,6 +10,16 @@ unmounted components ignore late results. Invalid response/cache shapes are not
 used. A failed geocode shows a default Panabo **view**, with explicit guidance;
 it never creates a saved pin or distance evidence. Zero coordinates remain valid.
 
+Student setup and profile address dropdowns group API-returned Davao provinces
+first, followed by all other provinces in alphabetical order. No province is
+automatically selected; API names and codes are preserved. Company address
+dropdowns retain their alphabetical list. Boarding students provide both boarding
+and permanent home addresses, but the profile saves one `pinLat`/`pinLng` pair.
+The map's “View boarding house” and “View home address” buttons only recenter the
+view; clicking or dragging sets the single pin. Students should pin where they
+will stay during OJT. Company distances and location similarity use that saved
+pin, and staff previews show one student marker alongside company markers.
+
 Profile, setup, results, dashboard, staff location previews and all five company
 overview/view/edit maps share the bounded Leaflet loader. Script/CSS denial,
 invalid library or timeout rejects cleanly and

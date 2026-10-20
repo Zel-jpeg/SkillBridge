@@ -1,5 +1,12 @@
 # Question assistance and generated evidence text
 
+20 October: [position-tag relevance fix](POSITION_TAG_RELEVANCE.md) recognizes
+network-role variants and excludes generic Tools products from requirement-based
+position suggestions. Category-editor vocabulary and original matching remain.
+Expanded [existing-file vocabulary](NLP_SUGGESTION_VOCABULARY.md) is restored with
+that fix. [General source/compatibility proposal](POSITION_SUGGESTION_DESIGN.md)
+explains the remaining title-versus-database precedence; it is not implemented.
+
 Suggestions are advisory. Staff may accept, dismiss or manually replace a proposed
 category. Both category and tag suggestion routes require an authenticated
 instructor or admin. They never save question text, taxonomy, scores or placements.

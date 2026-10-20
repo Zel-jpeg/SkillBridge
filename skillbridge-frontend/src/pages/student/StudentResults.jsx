@@ -239,8 +239,10 @@ export default function StudentResults() {
             : resultsError ? <><h1 className="text-xl font-bold text-gray-900 dark:text-white">Final results unavailable</h1><p role="alert" className="mt-2 text-sm text-gray-600 dark:text-gray-300">{resultsError === 'not_enrolled' ? 'You are not enrolled in an active batch.' : 'We could not load your results. Please try again.'}</p></>
             : <>
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Final results</p>
-                <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Final Skill Profile Locked</h1>
-                <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{resultData?.has_required_assessments
+                <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{resultData?.recommendations_stale ? 'Recommendations need refreshing' : 'Final Skill Profile Locked'}</h1>
+                <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{resultData?.recommendations_stale
+                  ? 'Matching inputs have changed or these saved results need verification. Your assessment scores are preserved. Ask your administrator to re-run recommendations.'
+                  : resultData?.has_required_assessments
                   ? `Complete your remaining ${resultData.remaining_required_count} required assessment${resultData.remaining_required_count === 1 ? '' : 's'} to generate your combined competency profile and OJT placement recommendations.`
                   : 'No required assessments are currently published. Your final skill profile will be available after required work is assigned and completed.'}</p>
                 <p className="mt-4 text-sm font-semibold text-gray-800 dark:text-gray-200">{resultData?.completed_required_count || 0} of {resultData?.total_required_count || 0} required assessments completed</p>

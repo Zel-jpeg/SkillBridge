@@ -18,7 +18,7 @@ MAP = """window.__markers=[]; window.L={
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     try:
-        for scenario in ['ranked', 'locked', 'empty', 'error', 'malformed']:
+        for scenario in ['ranked', 'locked', 'stale', 'empty', 'error', 'malformed']:
             context = browser.new_context(viewport={'width': 1280, 'height': 900})
             user = {'id': 1, 'name': 'Synthetic Student', 'role': 'student', 'is_approved': True,
                     'course': 'BSIT', 'school_id': 'SYNTH-1', 'address': {'pinLat': 7, 'pinLng': 125}}
@@ -29,7 +29,8 @@ with sync_playwright() as p:
                          lat=95, lng=125, tags=[], slots=0),
                     dict(id=2, position_id=1, company='Synthetic Higher', position='Intern A', match_score=70.02,
                          lat=7, lng=125, tags=[], slots=1)]
-            result = {'recommendations_locked': scenario == 'locked', 'combined_category_scores': [],
+            result = {'recommendations_locked': scenario in ['locked', 'stale'],
+                      'recommendations_stale': scenario == 'stale', 'combined_category_scores': [],
                       'recommendations': rows if scenario == 'ranked' else [], 'model_used': 'simple_fallback',
                       'included_assessments': [], 'has_required_assessments': False}
             failed = [scenario in ['error', 'malformed']]
@@ -68,6 +69,12 @@ with sync_playwright() as p:
                 expect(page.get_by_text('No required assessments are currently published.', exact=False)).to_be_visible()
                 assert page.evaluate('window.__markers.length') == 0
                 checks.append('No required assessments has explicit locked state and no map/results')
+            elif scenario == 'stale':
+                expect(page.get_by_role('heading', name='Recommendations need refreshing')).to_be_visible()
+                expect(page.get_by_text('Your assessment scores are preserved.', exact=False)).to_be_visible()
+                expect(page.get_by_text('Ask your administrator to re-run recommendations.', exact=False)).to_be_visible()
+                assert page.evaluate('window.__markers.length') == 0
+                checks.append('Stale saved rankings show refresh guidance without displaying old scores or map results')
             elif scenario in ['error', 'malformed']:
                 expect(page.get_by_role('alert')).to_contain_text('Could not load this section')
                 failed[0] = False

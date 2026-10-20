@@ -109,7 +109,17 @@ class ChangeEventTests(TestCase):
             }, format='json')
         self.assertEqual(result.status_code, 201)
         payload = ChangeEvent.objects.get(recipient=self.other).payload
-        self.assertEqual(payload, {'topics': ['taxonomy']})
+        # A new global vector category also changes saved-ranking provenance.
+        # Refresh matching views without exposing the unrelated draft's IDs.
+        self.assertEqual(payload, {'topics': ['assessments', 'catalog', 'placements', 'results', 'students', 'taxonomy']})
+
+    def test_configuration_change_invalidates_results_for_enrolled_students(self):
+        recipients = audience('configuration', self.request(self.admin), {})
+        for student in (self.student, self.foreign):
+            self.assertIn(student.id, recipients)
+            self.assertIn('results', recipients[student.id]['topics'])
+            self.assertIn('placements', recipients[student.id]['topics'])
+            self.assertNotIn('assessment_ids', recipients[student.id])
 
     def test_shared_catalog_ignores_unrelated_client_supplied_scope_fields(self):
         request = self.request(self.admin)

@@ -507,9 +507,8 @@ def suggest_category(question_text, categories):
     category_names = [cat.name for cat in categories]
     
     # ── DOMAIN KNOWLEDGE BASE ─────────────────────────────────────────────────
-    # To make TF-IDF act like a "Semantic NLP", we inject a massive list of 
-    # predefined keywords for common IT categories. Even if the user doesn't 
-    # provide a description, TF-IDF will have a huge vocabulary to match against!
+    # Preserve existing category keyword sets. Broader authoring vocabulary is
+    # advisory only; it does not change answer grading or recommendation scoring.
     DOMAIN_KNOWLEDGE = {
         "database": "sql query relational nosql primary key foreign key join index table dbms mongodb mysql postgres oracle data",
         "database management": "sql query relational nosql primary key foreign key join index table dbms mongodb mysql postgres oracle data",
@@ -527,8 +526,11 @@ def suggest_category(question_text, categories):
     
     # Extract names + descriptions + domain knowledge to give TF-IDF maximum vocabulary
     category_docs = []
+    from .skill_taxonomy import SKILL_TAGS, suggestion_category
     for cat in categories:
         builtin_keywords = DOMAIN_KNOWLEDGE.get(cat.name.lower(), "")
+        if not builtin_keywords:
+            builtin_keywords = ' '.join(SKILL_TAGS.get(suggestion_category(cat.name), []))
         category_docs.append(f"{cat.name} {cat.description} {builtin_keywords}")
 
     # -- Option A: Simple Keyword Matching (Exact Substring) --

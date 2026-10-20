@@ -46,6 +46,20 @@ class AuthenticationContractTests(APITestCase):
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.data['error'], 'admin_password_required')
 
+    def test_google_profile_never_overwrites_reviewed_student_name(self):
+        self.student.name = 'David Rey Bali-os'
+        self.student.save(update_fields=['name'])
+        identity = {'email': self.student.email, 'name': 'davidrey bali-os',
+                    'picture': 'https://example.com/synthetic-photo.png', 'email_verified': True}
+        self.assertEqual(self.google(self.student, identity=identity).status_code, 200)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.name, 'David Rey Bali-os')
+        self.assertEqual(self.student.photo_url, identity['picture'])
+
+        self.assertEqual(self.google(self.student, route='register_role', identity=identity, role='student').status_code, 200)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.name, 'David Rey Bali-os')
+
     def test_verified_institutional_identity_required_for_login_and_registration(self):
         for route in ['google_login', 'register_role']:
             for identity in [[], {'email': None}, {'email': self.student.email, 'email_verified': False},

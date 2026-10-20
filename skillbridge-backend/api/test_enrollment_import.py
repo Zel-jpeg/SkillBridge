@@ -79,6 +79,16 @@ class EnrollmentImportTests(TestCase):
         existing.refresh_from_db()
         self.assertEqual(existing.name, 'Existing McNAME')
 
+    def test_first_enrollment_replaces_unapproved_registration_name(self):
+        existing = self.student(email='bali-os.davidrey@dnsc.edu.ph', name='davidrey bali-os',
+                                school_id='', is_approved=False)
+        preview = self.preview([{**self.row, 'First Name': 'DAVID REY', 'Last Name': 'BALI-OS'}])
+        self.assertEqual(preview.data['rows'][0]['status'], 'existing_student')
+        self.confirm(preview)
+        existing.refresh_from_db()
+        self.assertEqual(existing.name, 'David Rey Bali-os')
+        self.assertEqual(existing.school_id, '2026-01982')
+
     def test_aliases_preserve_text_and_reject_numbers_and_conflicting_aliases(self):
         for alias in ('Student Number', 'Student ID', 'student_id', 'studentId', 'school_id'):
             row = normalize_row({alias: '0001-00002', 'name': 'Synthetic Person', 'email': 'person@dnsc.edu.ph', 'course': 'BSIS'}, 0)
@@ -212,7 +222,7 @@ console.log(JSON.stringify(parseWorkbook(book)));
 
     @patch('api.views.send_instructor_email', return_value=True)
     def test_existing_student_empty_id_backfilled_only(self, mail):
-        student = self.student(school_id='')
+        student = self.student(school_id='', is_approved=True)
         with self.captureOnCommitCallbacks(execute=True):
             self.confirm()
         student.refresh_from_db()

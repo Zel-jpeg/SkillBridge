@@ -1,0 +1,117 @@
+{
+  "review_date": "2026-10-20",
+  "git_base": "effb2a8 plus existing working-tree changes",
+  "initial_inventory": {
+    "files": 311,
+    "lines": 45417
+  },
+  "closing_inventory": {
+    "files": 311,
+    "lines": 45448
+  },
+  "late_external_changes": [
+    "skillbridge-backend/api/suggestion_catalog.py",
+    "skillbridge-backend/api/test_suggestion_catalog.py",
+    "skillbridge-frontend/src/components/admin/SuggestionCatalogDialog.jsx",
+    "skillbridge-frontend/tests/nlp_previews_playwright.py"
+  ],
+  "changes_after_closing_inventory": [],
+  "frontend": {
+    "tests": 122,
+    "passed": 122,
+    "failed": 0,
+    "skipped": 0,
+    "lint": "passed without diagnostics, repeated after late changes",
+    "build": "passed, repeated after late changes"
+  },
+  "backend_standard_sqlite": {
+    "discovered": 316,
+    "failures": 54,
+    "errors": 10,
+    "skipped": 16,
+    "issue": "throttle cache shared between tests"
+  },
+  "backend_isolated_sqlite": {
+    "discovered": 316,
+    "passed": 300,
+    "skipped": 16
+  },
+  "backend_isolated_postgres": {
+    "discovered": 316,
+    "passed": 316,
+    "skipped": 0,
+    "seconds": 91.879,
+    "database": "disposable test_skillbridge_independent_20261020 on loopback",
+    "scope": "earlier working-tree run; before late catalog edits"
+  },
+  "browser": {
+    "recommendation_groups": 5,
+    "catalog_preview_groups": 10,
+    "page_errors": 0,
+    "scope": "synthetic local fixtures; remote requests blocked"
+  },
+  "late_catalog_followup": {
+    "backend_discovered": 11,
+    "passed": 9,
+    "postgres_only_skips": 2,
+    "browser_groups_repeated": 10,
+    "page_errors": 0,
+    "full_postgres_suite_repeated": false
+  },
+  "django_check": "passed",
+  "migration_drift": "no changes detected",
+  "strict_model": {
+    "requested": "spacy_md",
+    "actual": "spacy_md",
+    "fallback": null,
+    "load_and_one_text_seconds": 19.672,
+    "performance_benchmark": false
+  },
+  "issue_probes": {
+    "malformed_category_name": [
+      {
+        "name_json_type": "NoneType",
+        "http": 500
+      },
+      {
+        "name_json_type": "list",
+        "http": 500
+      },
+      {
+        "name_json_type": "int",
+        "http": 500
+      },
+      {
+        "name_json_type": "dict",
+        "http": 500
+      }
+    ],
+    "stale_recommendations": {
+      "position_edit_http": 200,
+      "student_get_http": 200,
+      "locked_after_edit": false,
+      "score_before_and_after_edit": 92.5,
+      "approval_http": 201,
+      "assignment_snapshot": 92.5,
+      "score_after_explicit_recalculation": 32.5,
+      "nlp": "deterministic mock isolates category change; no provider/model load"
+    }
+  },
+  "pdf": {
+    "pages": 7,
+    "source": "user supplied institutional progress report format",
+    "visual_check": "All seven final objective-report page PNGs inspected"
+  },
+  "application_edits_by_review": false,
+  "production_operations_by_review": false,
+  "raw_evidence": "tmp/pdfs/review_2026_10_20 (ignored local logs)",
+  "report_revision": {
+    "date": "2026-10-20",
+    "accomplishments": "organized under the five study objectives; IAMS is supporting enrollment work",
+    "evidence": "five captioned figures showing local UI, source excerpts and generated output",
+    "figure_sources": "evidence/sources.json",
+    "screenshots": "archived synthetic local demonstrations from October 17-18; no live personal data",
+    "application_behavior_changed": false,
+    "new_application_tests_run": false
+  }
+}

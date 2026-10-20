@@ -6,6 +6,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / 'skillbridge-frontend/tests/artifacts/enrollment'
+FRONTEND_PORT = int(os.environ.get('ENROLLMENT_FRONTEND_PORT', '5174'))
+API_PORT = int(os.environ.get('ENROLLMENT_API_PORT', '8017'))
+if len(sys.argv) >= 3:
+    FRONTEND_PORT, API_PORT = map(int, sys.argv[1:3])
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(ROOT / 'skillbridge-backend'))
 os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
@@ -15,7 +19,10 @@ from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(ARTIFACTS / f'browser-{os.getpid()}.sqlite3')
 settings.SECRET_KEY = 'synthetic-browser-test-key-not-for-production'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
-settings.CORS_ALLOWED_ORIGINS = ['http://127.0.0.1:5174', 'http://localhost:5174']
+settings.CORS_ALLOWED_ORIGINS = [
+    f'http://127.0.0.1:{FRONTEND_PORT}',
+    f'http://localhost:{FRONTEND_PORT}',
+]
 settings.DEBUG = False
 import django
 django.setup()
@@ -29,11 +36,20 @@ teacher = User.objects.create_user('test.teacher@dnsc.edu.ph', name='Synthetic I
 admin = User.objects.create_user('test.admin@dnsc.edu.ph', name='Synthetic Admin', role='admin', is_approved=True)
 batch = Batch.objects.create(name='TEST ONLY — IAMS Review', instructor=teacher)
 existing = User.objects.create_user('existing.synthetic@dnsc.edu.ph', name='Synthetic Existing', role='student', school_id='2099-00006', course='BSIT')
-already = User.objects.create_user('already.synthetic@dnsc.edu.ph', name='Synthetic Already', role='student', school_id='2099-00007', course='BSIT')
+already = User.objects.create_user(
+    'already.synthetic@dnsc.edu.ph', name='Synthetic Already', role='student',
+    school_id='2099-00007', course='BSIT', is_approved=True,
+)
 BatchEnrollment.objects.create(batch=batch, student=already)
+greeting_student = User.objects.create_user(
+    'synthetic-greeting.davidrey@dnsc.edu.ph', name='David Rey Synthetic-greeting', role='student',
+    school_id='2099-00999', course='BSIT', is_approved=True,
+)
+BatchEnrollment.objects.create(batch=batch, student=greeting_student)
 # All notification delivery is mocked, including the real browser workflow.
 views.send_instructor_email = lambda *args, **kwargs: True
 (ARTIFACTS / 'auth.json').write_text(json.dumps({
-    'instructor': str(AccessToken.for_user(teacher)), 'admin': str(AccessToken.for_user(admin)), 'batch_id': batch.pk,
+    'instructor': str(AccessToken.for_user(teacher)), 'admin': str(AccessToken.for_user(admin)),
+    'student': str(AccessToken.for_user(greeting_student)), 'batch_id': batch.pk,
 }))
-call_command('runserver', '127.0.0.1:8017', use_reloader=False, verbosity=0)
+call_command('runserver', f'127.0.0.1:{API_PORT}', use_reloader=False, verbosity=0)

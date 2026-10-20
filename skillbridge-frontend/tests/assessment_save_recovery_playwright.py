@@ -24,6 +24,9 @@ with sync_playwright() as p:
         if url.hostname not in ['localhost', '127.0.0.1']: return route.abort()
         if not url.path.startswith('/api/'): return route.continue_()
         if url.path.endswith('/events/'): return route.fulfill(status=204)
+        # This existing advisory POST is a read, not an assessment mutation.
+        if url.path == '/api/categories/suggest/' and method == 'POST':
+            return route.fulfill(json={'suggested_category': None})
         if method != 'GET':
             writes.append((method, url.path, route.request.post_data_json))
         if url.path == '/api/instructor/assessments/':

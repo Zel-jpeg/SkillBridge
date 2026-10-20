@@ -310,14 +310,8 @@ export default function StudentSetup() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shrink-0">
-            <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
-              <path d="M3 18 Q3 10 13 10 Q23 10 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M7 18 L7 14M13 18 L13 12M19 18 L19 14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <circle cx="7" cy="8" r="2.5" fill="white" opacity="0.85"/>
-              <circle cx="19" cy="8" r="2.5" fill="white" opacity="0.85"/>
-            </svg>
-          </div>
+          <img src="/SB-logov1.png" alt="SkillBridge" width={40} height={40}
+            className="w-10 h-10 rounded-xl object-contain shrink-0" />
           <div>
             <p className="font-bold text-gray-900">Set up your profile</p>
             <p className="text-xs text-gray-500">Step {step} of {TOTAL_STEPS}</p>
@@ -406,13 +400,13 @@ export default function StudentSetup() {
             {formData.stayingAt === 'boarding' && (
               <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <p className="text-sm font-medium text-gray-700 mb-3">Boarding house address</p>
-                <AddressDropdowns onChange={handleBoardingAddressChange} error={errors.boardingAddress} />
+                <AddressDropdowns prioritizeDavao onChange={handleBoardingAddressChange} error={errors.boardingAddress} />
               </div>
             )}
 
             <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-100">
               <p className="text-sm font-medium text-gray-700 mb-3">Permanent home address</p>
-              <AddressDropdowns onChange={handleHomeAddressChange} error={errors.homeAddress} />
+              <AddressDropdowns prioritizeDavao onChange={handleHomeAddressChange} error={errors.homeAddress} />
             </div>
 
             <div className="mb-2">
@@ -435,7 +429,7 @@ export default function StudentSetup() {
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">Pin your location</h2>
             <p className="text-sm text-gray-500 mb-3">
-              Drop a pin on your exact location so we can show how far each company is from you.
+              Pin the one place where you will stay during OJT. We use this location to show company distances.
             </p>
 
             {/* Address toggle — only shown when stayingAt is 'boarding' */}
@@ -448,7 +442,7 @@ export default function StudentSetup() {
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  📍 Boarding house
+                  View boarding house
                 </button>
                 <button
                   onClick={() => setPinAddressType('home')}
@@ -457,7 +451,7 @@ export default function StudentSetup() {
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  🏠 Home address
+                  View home address
                 </button>
               </div>
             )}
@@ -504,7 +498,7 @@ export default function StudentSetup() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" className="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
               <p className="text-xs text-blue-700 leading-relaxed">
                 {formData.stayingAt === 'boarding'
-                  ? 'Use the toggle above to navigate to either address, then tap the map to place your pin on your actual OJT location.'
+                  ? 'Both addresses are saved, but only one map pin is saved. These buttons only move the map view. Pin your boarding house if you will stay there during OJT. Tapping elsewhere moves the same pin.'
                   : 'This pin is used in your Results page to calculate how far each company is from you — so you can find nearby internships.'}
               </p>
             </div>

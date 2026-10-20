@@ -1,3 +1,4 @@
+from .name_formatting import format_person_name
 from django.db.models.functions import TruncDate
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
@@ -30,6 +31,7 @@ from .models import (
     RecommendationConfiguration,
 )
 from .change_events import category_created, notify_changes
+from .recommendation_freshness import catalog_fingerprint, recommendations_stale
 from .serializers import UserSerializer
 from .admin_accounts import instructor_payload
 from .catalog_validation import company_fields, position_data, invalid, tags_value
@@ -306,6 +308,7 @@ def bulk_management_states(students, batch):
             'raw_score': score.raw_score, 'max_score': score.max_score,
             'percentage': score.percentage, 'source_assessment_ids': score.source_assessment_ids,
         })
+    catalog = catalog_fingerprint() if profiles else None
     result = {}
     for student in students:
         completed = sum(bool((r := response_map.get((student.id, assessment_id))) and
@@ -320,7 +323,7 @@ def bulk_management_states(students, batch):
                       r.submitted_at and not r.is_flagged and (student.id, a.id) in valid_score_ids]
         source_ids.sort()
         profile = profiles.get(student.id)
-        unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids)
+        unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids, catalog=catalog)
         individual = []
         for assessment in assessments:
             response = response_map.get((student.id, assessment.id))
@@ -616,6 +619,16 @@ def _verified_google_identity(data):
     return {'email': email, 'name': name, 'picture': photo}, None
 
 
+def _update_google_profile(user, provider_name, photo_url):
+    """Keep reviewed student names authoritative while refreshing Google photos."""
+    user.photo_url = photo_url or ''
+    update_fields = ['photo_url']
+    if user.role != 'student' or not (user.name or '').strip():
+        user.name = format_person_name(provider_name) if user.role == 'student' else provider_name
+        update_fields.append('name')
+    user.save(update_fields=update_fields)
+
+
 # ── POST /api/auth/google/ ────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -649,9 +662,7 @@ def google_login(request):
         if not has_enrollment:
             return Response({'error': 'student_not_enrolled'}, status=status.HTTP_403_FORBIDDEN)
 
-    user.name = name
-    user.photo_url = photo_url or ''
-    user.save(update_fields=['name', 'photo_url'])
+    _update_google_profile(user, name, photo_url)
     refresh = RefreshToken.for_user(user)
     return Response({
         'access':  str(refresh.access_token),
@@ -676,9 +687,7 @@ def register_role(request):
     if existing:
         if not existing.is_active:
             return Response({'error': 'account_disabled'}, status=403)
-        existing.name = name or existing.name
-        existing.photo_url = photo_url or ''
-        existing.save(update_fields=['name', 'photo_url'])
+        _update_google_profile(existing, name or existing.name, photo_url)
         return Response({
             'ok': True,
             'already_exists': True,
@@ -689,7 +698,7 @@ def register_role(request):
 
     user = User.objects.create(
         email=email,
-        name=name or email.split('@')[0],
+        name=format_person_name(name or email.split('@')[0]) if role == 'student' else name or email.split('@')[0],
         role=role,
         photo_url=photo_url,
         is_approved=False,
@@ -725,12 +734,13 @@ def student_profile(request):
         with transaction.atomic():
             user = User.objects.select_for_update().get(pk=user.pk)
             changes = profile_data(request.data, user)
+            enrollment = current_enrollment(user)
+            refresh_combined = bool(changes and enrollment and combined_is_unlocked(user, enrollment.batch))
             for field, value in changes.items():
                 setattr(user, field, value)
             if changes:
                 user.save(update_fields=list(changes))
-                enrollment = current_enrollment(user)
-                if enrollment and combined_is_unlocked(user, enrollment.batch):
+                if refresh_combined:
                     recalculate_combined(user, enrollment.batch)
     except IntegrityError:
         # A concurrent request may claim a school ID after pre-validation.
@@ -824,16 +834,14 @@ def categories(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    name = request.data.get('name', '').strip()
-    if not name:
-        return Response({'error': 'name is required'}, status=400)
+    name, description, tags = _skill_data(request.data)
 
     cat, created = SkillCategory.objects.get_or_create(
         name__iexact=name,
         defaults={
             'name': name,
-            'description': request.data.get('description', ''),
-            'tags': normalize_tags(request.data.get('tags')),
+            'description': description,
+            'tags': tags,
             'created_by': request.user,
         }
     )
@@ -2596,9 +2604,10 @@ def instructor_companies(request):
             'status': e.batch.status
         }
     student_ids = list(student_batch_info.keys())
+    catalog = catalog_fingerprint()
     unlocked_batches = {
         e.student_id: e.batch_id for e in enrollments
-        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch)
+        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch, catalog=catalog)
     }
 
     # Bulk-load all recommendations for those students
@@ -2838,6 +2847,7 @@ def student_combined_results(request):
         'included_assessments': [{'id': aid, 'title': titles.get(aid, '')} for aid in included_ids] if unlocked else [],
         'is_finalized': unlocked,
         'recommendations_locked': not unlocked,
+        'recommendations_stale': recommendations_stale(profile, user),
         'recommendations': [serialize_recommendation(rec) for rec in recommendations],
         'active_model': profile.active_model if unlocked else RecommendationConfiguration.get_active().active_model,
         'model_used': profile.model_used if unlocked else None,
@@ -3590,6 +3600,8 @@ def admin_position_detail(request, position_id):
 
 # ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
 def _skill_data(data):
+    if not isinstance(data, dict):
+        invalid('name', 'Skill details must be an object.')
     name = _question_category_name(data.get('name', ''))
     if not name:
         invalid('name', 'Name is required.')
@@ -3695,10 +3707,11 @@ def admin_reports(request):
 
     # Final batch category totals only; stopped/partial assessment scores stay
     # available in assessment detail but do not enter the competency report.
+    catalog = catalog_fingerprint()
     unlocked_pairs = {
         (profile.student_id, profile.batch_id)
         for profile in CombinedCompetencyProfile.objects.filter(is_finalized=True).select_related('student', 'batch')
-        if combined_is_unlocked(profile.student, profile.batch, profile=profile)
+        if combined_is_unlocked(profile.student, profile.batch, profile=profile, catalog=catalog)
     }
     category_groups = {}
     for score in CombinedCategoryScore.objects.select_related('skill_category'):
@@ -3996,9 +4009,10 @@ def placement_suggestions(request):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
     for enrollment in scoped_enrollments.order_by('student_id', '-enrolled_at', '-id'):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
+    catalog = catalog_fingerprint()
     unlocked_pairs = {
         (student_id, batch.id) for student_id, batch in batch_by_student.items()
-        if combined_is_unlocked(User.objects.get(id=student_id), batch)
+        if combined_is_unlocked(User.objects.get(id=student_id), batch, catalog=catalog)
     }
 
     companies = Company.objects.prefetch_related('positions').order_by('name', 'id')

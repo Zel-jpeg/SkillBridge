@@ -506,6 +506,7 @@ export default function StudentProfile() {
                 )}
               </div>
               <AddressDropdowns
+                prioritizeDavao
                 onChange={addr => { setBoardingAddr(addr); setErrors(prev => ({ ...prev, boardingAddress: '' })); setSaved(false) }}
                 error={errors.boardingAddress}
               />
@@ -525,6 +526,7 @@ export default function StudentProfile() {
               )}
             </div>
             <AddressDropdowns
+              prioritizeDavao
               onChange={addr => { setHomeAddr(addr); setErrors(prev => ({ ...prev, homeAddress: '' })); setSaved(false) }}
               error={errors.homeAddress}
             />
@@ -557,7 +559,7 @@ export default function StudentProfile() {
                       ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                 >
-                  📍 Boarding house
+                  View boarding house
                 </button>
                 <button
                   onClick={() => setPinAddrType('home')}
@@ -566,7 +568,7 @@ export default function StudentProfile() {
                       ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                 >
-                  🏠 Home address
+                  View home address
                 </button>
               </div>
             )}
@@ -610,7 +612,7 @@ export default function StudentProfile() {
               </svg>
               <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
                 {hasBoardingAddr
-                  ? 'Use the toggle above to navigate to either address, then tap the map to place your pin. This is used in your Results page to show how far each company is from you.'
+                  ? 'Both addresses are saved, but only one map pin is saved. These buttons only move the map view. Pin where you will stay during OJT to calculate company distances. Tapping elsewhere moves the same pin.'
                   : 'This pin is used in your Results page to calculate how far each company is from you — so you can find nearby internships.'}
               </p>
             </div>

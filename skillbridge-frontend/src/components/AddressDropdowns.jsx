@@ -37,7 +37,7 @@ function addressRows(value) {
   return value.map(row => ({ ...row, code: String(row.code) }))
 }
 
-export default function AddressDropdowns({ label = '', onChange, error }) {
+export default function AddressDropdowns({ label = '', onChange, error, prioritizeDavao = false }) {
 
   const [provinces, setProvinces]   = useState([])
   const [cities,    setCities]      = useState([])
@@ -122,6 +122,10 @@ export default function AddressDropdowns({ label = '', onChange, error }) {
     onChange({ province: selected.province, city: selected.city, barangay: name })
   }
 
+  // Keep API names/codes intact and never choose an address for the student.
+  const davaoProvinces = prioritizeDavao ? provinces.filter(p => /^Davao\s/i.test(p.name)) : []
+  const otherProvinces = prioritizeDavao ? provinces.filter(p => !/^Davao\s/i.test(p.name)) : provinces
+
   return (
     <div className="flex flex-col gap-3">
       {fetchError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -146,12 +150,22 @@ export default function AddressDropdowns({ label = '', onChange, error }) {
             <option value="">
               {loading.provinces ? 'Loading provinces…' : 'Select province'}
             </option>
-            {provinces.map(p => (
+            {davaoProvinces.length > 0 ? <>
+              <optgroup label="Davao provinces — near DNSC">
+                {davaoProvinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+              </optgroup>
+              <optgroup label="Other provinces">
+                {otherProvinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+              </optgroup>
+            </> : otherProvinces.map(p => (
               <option key={p.code} value={p.code}>{p.name}</option>
             ))}
           </select>
           <Chevron />
         </div>
+        {davaoProvinces.length > 0 && (
+          <p className="mt-1.5 text-xs text-green-700">Davao provinces are listed first. You can still choose any province.</p>
+        )}
       </div>
 
       {/* CITY / MUNICIPALITY */}

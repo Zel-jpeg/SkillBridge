@@ -63,6 +63,9 @@ Public routes, instructor pending, student setup and assessment taking remain
 outside these layouts. Unknown routes retain the login redirect. The legacy
 `/student/assessment` redirect remains.
 
+Student setup uses `/SB-logov1.png` in its header, matching the login screens,
+authenticated shell and focused student header.
+
 The shell owns viewport background, minimum height, sidebar offset and one main
 landmark. Migrated pages keep their original centered `max-w-*` containers,
 headings, loading/error states, content, tables, filters and dialogs. Their content

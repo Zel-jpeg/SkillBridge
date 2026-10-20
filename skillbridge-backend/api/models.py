@@ -297,6 +297,7 @@ class CombinedCompetencyProfile(models.Model):
     text_generation_version = models.CharField(max_length=80, blank=True, default='')
     active_model = models.CharField(max_length=40, blank=True, default='')
     model_used = models.CharField(max_length=40, blank=True, default='')
+    ranking_input_fingerprint = models.CharField(max_length=64, blank=True, default='')
     generated_at = models.DateTimeField(auto_now=True)
     finalized_at = models.DateTimeField(null=True, blank=True)
 

@@ -21,6 +21,7 @@ import { SkillTagBadge } from '../../components/SkillTagBadge'
 import { useApi } from '../../hooks/useApi'
 import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
+import { givenNamesForGreeting } from '../../utils/formatters'
 import { dashboardAssessmentAction } from './assessmentUiState'
 
 // Read the user object saved by the login response
@@ -231,8 +232,9 @@ export default function StudentDashboard() {
 
 
   // ── Derived display values (safe fallbacks if API is slow/offline) ──
-  const rawFirst        = (student?.name || getCachedUser()?.name || 'Student').split(' ')[0]
-  const firstName       = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1)
+  const cachedUser      = getCachedUser()
+  const displayName     = student?.name || cachedUser?.name || 'Student'
+  const givenNames      = givenNamesForGreeting(displayName, student?.email || cachedUser?.email)
   const displayCourse   = student?.course   ?? ''
   const displayId       = student?.school_id ?? ''
   const attempts = assessmentList?.assessments || []
@@ -361,8 +363,9 @@ export default function StudentDashboard() {
           {/* ── GREETING ─────────────────────────────────────── */}
           <DataSection url="/api/students/me/" layout="panel" count={1} className="sb-greeting sm:col-span-2"><div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                {greeting}, {firstName} 👋
+              <h1 className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                <span>{greeting}, {givenNames}</span>
+                <span aria-hidden="true">👋</span>
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {displayCourse} · {displayId} · Skill Assessment Portal
@@ -610,7 +613,9 @@ export default function StudentDashboard() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400 dark:text-gray-600 text-center max-w-xs">
-                  Complete all required assessments to unlock the nearby companies map.
+                  {resultData?.recommendations_stale
+                    ? 'Matching inputs have changed. Ask your administrator to re-run recommendations to refresh this map.'
+                    : 'Complete all required assessments to unlock the nearby companies map.'}
                 </p>
               </div>
             )}
