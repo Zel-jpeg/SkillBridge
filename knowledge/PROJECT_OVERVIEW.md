@@ -159,14 +159,23 @@ and fallback when explaining results.
   question denominators, atomic answer validation, empty submissions and the
   historical-data boundary.
 
+- [Background recommendation proposal](ASSESSMENT_BACKGROUND_RECOMMENDATIONS_PROPOSAL.md):
+  Prompt score visibility, queued recommendation states, Railway Hobby worker/cost
+  assumptions and 100–150-question concurrency verification; not yet implemented.
+
 - [Assessment result presentation](ASSESSMENT_RESULT_PRESENTATION.md): Exact
   highest-score ties, shared student/staff summaries, category-based guidance,
-  export consistency and the preserved NLP boundary.
+  bounded single-column student skill cards, export consistency and the preserved
+  NLP boundary.
 
 - [Collection UI skill](../.agents/skills/skillbridge-collection-ui/SKILL.md) and
   [reference](../.agents/skills/skillbridge-collection-ui/references/COLLECTION_UI_REFERENCE.md): Instructor-inspired
   search/filter toolbars, table and card views, pagination, visual conventions
   and acceptance guidance for future collection screens.
+
+- [Student company browsing](STUDENT_COMPANY_BROWSING.md): Compact recommendation
+  cards grouped by company, positions ranked within company details, suggested
+  position wording and prominent coordinator decision guidance.
 
 - [Admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md): Paginated card/list
   views, protected management drafts, lazy modal sections and synthetic UI checks.

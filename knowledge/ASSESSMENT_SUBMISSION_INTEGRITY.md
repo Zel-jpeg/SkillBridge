@@ -62,3 +62,24 @@ history snapshots preserve late-review evidence. The browser keeps local answers
 when a write cannot be confirmed and offers explicit recovery without claiming
 success. Browser evidence uses an isolated SQLite API and blocked remote requests;
 it does not establish PostgreSQL concurrency behavior.
+
+## Slow submission acknowledgements
+
+The assessment submit request allows 120 seconds for grading and recommendation
+generation, including first-use NLP model loading. Other API requests retain the
+shared 30-second timeout. A client timeout does not roll back a server save.
+After a failed submit or integrity-stop request, the frontend reads the assessment
+list directly and checks the same assessment and exact attempt start identity
+(including fractional seconds). A confirmed submitted attempt opens its results;
+a confirmed stopped attempt shows its recorded stop. This avoids retrying a saved
+submission or presenting a finalized-attempt conflict as an unreachable server.
+Unconfirmed saves retain local answers. Recovery also clears stale local markers
+for finalized attempts without posting another stop. Active-attempt focus,
+fullscreen and visibility rules remain in force.
+
+`tests/assessment_submission_timeout_playwright.py` passed all six cases with
+zero page errors on 20 October 2026. It exercises synthetic API
+responses in headless Chrome: a 31-second successful response, a saved write with
+an actual browser timeout, a stop conflict for a submitted attempt, an unsaved
+write, a stale finalized marker and a different retake identity. This browser
+coverage does not measure live model loading or operate the real database.

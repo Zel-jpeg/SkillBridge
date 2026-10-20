@@ -86,6 +86,34 @@ class RecommendationContractTests(APITestCase):
         self.assertEqual(rows[0]['location_score_component'], 50)
         self.assertEqual(rows[0]['match_score'], 68.5)
 
+    def test_student_company_identity_and_detail_precision_preserve_position_scores(self):
+        second = Position.objects.create(company=self.company, title='Second scored role')
+        same_name = Company.objects.create(name=self.company.name)
+        third = Position.objects.create(company=same_name, title='Different company role')
+        for position in (second, third):
+            PositionRequirement.objects.create(position=position, skill_category=self.category, required_percentage=50)
+        unscored = Position.objects.create(company=self.company, title='No requirements yet')
+        self.rank()
+        Recommendation.objects.filter(student=self.student, position=self.position).update(match_score=73.44)
+        Recommendation.objects.filter(student=self.student, position=second).update(match_score=0)
+        self.client.force_authenticate(self.student)
+        result = self.client.get(reverse('student_combined_results'))
+        self.assertEqual(result.status_code, 200)
+        by_position = {row['position_id']: row for row in result.data['recommendations']}
+        self.assertEqual(len(by_position), 3)  # API retains individual position records.
+        self.assertEqual(by_position[self.position.id]['company_id'], self.company.id)
+        self.assertEqual(by_position[second.id]['company_id'], self.company.id)
+        self.assertEqual(by_position[third.id]['company_id'], same_name.id)
+        self.assertEqual(by_position[self.position.id]['match_score'], 73.44)
+        catalog = self.client.get(reverse('student_companies'))
+        self.assertEqual(catalog.status_code, 200)
+        company = next(row for row in catalog.data if row['id'] == self.company.id)
+        scores = {row['id']: row['match_score'] for row in company['positions']}
+        self.assertEqual(scores, {self.position.id: 73.44, second.id: 0, unscored.id: None})
+        for staff in (self.owner, self.admin):
+            self.client.force_authenticate(staff)
+            self.assertEqual(self.client.get(reverse('student_companies')).status_code, 403)
+
     def test_tied_api_order_uses_position_identity_not_recommendation_creation_order(self):
         second = Position.objects.create(company=self.company, title='Second intern', slots_available=1)
         PositionRequirement.objects.create(position=second, skill_category=self.category, required_percentage=50)

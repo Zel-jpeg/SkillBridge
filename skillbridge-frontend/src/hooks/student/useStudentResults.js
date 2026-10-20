@@ -14,7 +14,7 @@ import { scorePercentage } from '../../utils/assessmentSummary'
 
 const RESULTS_URL = '/api/student/results/combined/'
 
-import { validPin, haversineKm, enrichRecommendation, sortRecommendations } from '../../utils/recommendationResults'
+import { validPin, haversineKm, enrichRecommendation, sortRecommendations, groupRecommendationsByCompany } from '../../utils/recommendationResults'
 
 // ── Color helpers (shared between Results and Dashboard) ──────────────────────
 export function matchColor(pct) {
@@ -65,7 +65,8 @@ export function useStudentResults() {
   }, [data, studentPin])
 
   const recommendations = useMemo(() => sortRecommendations(enrichedRecs, sortMode), [enrichedRecs, sortMode])
-  const topMatches = useMemo(() => sortRecommendations(enrichedRecs).slice(0, 3), [enrichedRecs])
+  const recommendedCompanies = useMemo(() => groupRecommendationsByCompany(enrichedRecs, sortMode), [enrichedRecs, sortMode])
+  const topMatches = useMemo(() => groupRecommendationsByCompany(enrichedRecs).slice(0, 3), [enrichedRecs])
 
   return {
     skillScores, overallScore,
@@ -73,7 +74,7 @@ export function useStudentResults() {
     resultData: data,
     recommendationsLocked: data?.recommendations_locked !== false,
     placement: data?.placement ?? null,
-    recommendations, topMatches,
+    recommendations, recommendedCompanies, topMatches,
     loading, error,
     sortMode, setSortMode,
     hasPin, studentPin, haversineKm,

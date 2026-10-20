@@ -25,6 +25,8 @@ import { remainingAttemptSeconds } from '../../utils/assessmentClock'
 import { attemptStorageKey } from '../../utils/attemptStorage'
 
 const WARN_AT_SECS = 5 * 60
+// Grading and first-use recommendation model loading can exceed the shared 30s timeout.
+const SUBMISSION_TIMEOUT_MS = 120000
 
 const STOP_REASON_TEXT = {
   window_lost_focus: 'The assessment window lost focus.',
@@ -187,7 +189,7 @@ function AssessmentStopped({ reason, assessmentId, saving = false, saveError = f
         <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-1">Your assessment was stopped</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 leading-relaxed">{reason || 'An assessment integrity rule was triggered.'}</p>
         <div className="mt-5 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 space-y-2">
-          <p>{saving ? 'Saving your completed answers…' : saveError ? 'The attempt is stopped locally, but the server could not be reached yet.' : 'Your completed answers were recorded.'}</p>
+          <p>{saving ? 'Saving your completed answers…' : saveError ? 'Saving could not be confirmed. Your completed answers are kept on this device.' : 'Your completed answers were recorded.'}</p>
           {saveError && error && <p role="alert">{error}</p>}
           <p>You must contact your instructor, OJT coordinator, or administrator to request a retake.</p>
         </div>
@@ -344,9 +346,11 @@ export default function StudentAssessment() {
 
   function clearAttemptStorage(id) {
     if (!id) return
-    localStorage.removeItem(attemptKey('answers', id))
-    localStorage.removeItem(attemptKey('timer', id))
-    localStorage.removeItem(attemptKey('integrity_active', id))
+    try {
+      localStorage.removeItem(attemptKey('answers', id))
+      localStorage.removeItem(attemptKey('timer', id))
+      localStorage.removeItem(attemptKey('integrity_active', id))
+    } catch { /* browser cleanup must not undo a confirmed server save */ }
   }
 
   function updateCachedAttemptStatus(status) {
@@ -359,6 +363,46 @@ export default function StudentAssessment() {
         attempt_status: status,
       }))
     } catch { /* localStorage may be unavailable */ }
+  }
+
+  async function finishRecordedAttempt(record) {
+    const id = assessmentIdRef.current
+    finalizingRef.current = true
+    integrityArmedRef.current = false
+    setStarted(false)
+    clearAttemptStorage(id)
+    for (const url of [
+      '/api/student/results/', '/api/student/results/combined/', '/api/assessments/',
+      `/api/student/results/?assessment_id=${id}`, `/api/student/results/review/?assessment_id=${id}`,
+      '/api/assessments/active/', '/api/students/me/',
+    ]) invalidateCache(url)
+    const stopped = record.attempt_status === 'stopped'
+    updateCachedAttemptStatus(stopped ? 'stopped' : 'submitted')
+    await leaveFullscreen()
+    if (stopped) {
+      setSubmitting(false)
+      setStoppedAttempt({
+        reasonDisplay: record.stopped_reason_display || record.message,
+        reviewRequired: record.review_required || record.stopped_reason === 'attempt_expired',
+        saving: false,
+        saveError: false,
+      })
+    } else {
+      navigate(`/student/assessments/${id}/results`, { replace: true })
+    }
+  }
+
+  async function reconcileFinalizedAttempt() {
+    try {
+      // Read directly: the cached list may predate a write whose response timed out.
+      const { data } = await api.get('/api/assessments/')
+      const record = data.assessments?.find(item => String(item.id) === String(assessmentIdRef.current))
+      const normalize = value => typeof value === 'string' ? value.replace(/Z$/, '+00:00') : null
+      if (!record?.submitted_at || !['submitted', 'stopped'].includes(record.attempt_status) ||
+          !attemptIdentityRef.current || normalize(record.started_at) !== normalize(attemptIdentityRef.current)) return false
+      await finishRecordedAttempt(record)
+      return true
+    } catch { return false /* retain local answers if verification is unavailable */ }
   }
 
   async function handleAgreementStart() {
@@ -474,6 +518,7 @@ export default function StudentAssessment() {
         saveError: false,
       })
     } catch (err) {
+      if (await reconcileFinalizedAttempt()) return
       finalizingRef.current = false
       setStoppedAttempt({
         reason,
@@ -490,7 +535,7 @@ export default function StudentAssessment() {
   // the durable local marker finalizes it on the next visit.
   useEffect(() => {
     if (!activeInfo?.id || started || stoppedAttempt) return
-    if (activeInfo.attempt_status === 'stopped') {
+    if (['submitted', 'stopped'].includes(activeInfo.attempt_status)) {
       clearAttemptStorage(activeInfo.id)
       return
     }
@@ -616,47 +661,25 @@ export default function StudentAssessment() {
 
     const answersArray = answersArrayFrom()
 
+    let result
     try {
-      const result = await api.post(`/api/assessments/${assessmentId}/submit/`, {
+      result = await api.post(`/api/assessments/${assessmentId}/submit/`, {
         answers:     answersArray,
         response_id: responseId,
         attempt_started_at: attemptIdentityRef.current,
-      })
-
-      // Cleanup local storage
-      clearAttemptStorage(assessmentId)
-
-      // Invalidate results cache so the next page fetches fresh data from DB
-      invalidateCache('/api/student/results/')
-      invalidateCache('/api/student/results/combined/')
-      invalidateCache('/api/assessments/')
-      invalidateCache(`/api/student/results/?assessment_id=${assessmentId}`)
-      invalidateCache(`/api/student/results/review/?assessment_id=${assessmentId}`)
-      invalidateCache('/api/assessments/active/')
-      invalidateCache('/api/students/me/')
-
-      // Update cached user so dashboard shows "submitted" instantly
-      const cached = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
-      if (cached) localStorage.setItem('sb-user', JSON.stringify({ ...cached, has_submitted: true, retake_allowed: false }))
-
-      await leaveFullscreen()
-
-      if (result.data.review_required) {
-        setStarted(false)
-        setSubmitting(false)
-        updateCachedAttemptStatus('stopped')
-        setStoppedAttempt({ reasonDisplay: result.data.message, reviewRequired: true, saving: false, saveError: false })
-        return
-      }
-
-      navigate(`/student/assessments/${assessmentId}/results`, { replace: true })
+      }, { timeout: SUBMISSION_TIMEOUT_MS })
     } catch (err) {
+      // A timeout does not roll back the server transaction. Verify before
+      // re-arming integrity monitoring or offering another submission.
+      if (await reconcileFinalizedAttempt()) return
       finalizingRef.current = false
       integrityArmedRef.current = true
       setSubmitting(false)
       const msg = err.response?.data?.error || err.response?.data?.answers || 'Submission could not be confirmed. Your answers are kept on this device. Check the assessment list before retrying.'
       alert(msg)
+      return
     }
+    await finishRecordedAttempt(result.data)
   }
 
   // ── Render guards ──────────────────────────────────────────────

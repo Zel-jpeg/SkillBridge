@@ -16,12 +16,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
 import CompanyImage from '../../components/CompanyImage'
-import { SkillTagBadge } from '../../components/SkillTagBadge'
+import SkillCategoryList from '../../components/SkillCategoryList'
 import { useApi } from '../../hooks/useApi'
-import { useStudentResults, matchColor, matchBadge, BAR_COLORS } from '../../hooks/student/useStudentResults'
+import { useStudentResults, matchColor } from '../../hooks/student/useStudentResults'
 import CompetencyInsights, { HighestScoringAreas } from '../../components/CompetencyInsights'
-import { categoryPercentage } from '../../utils/assessmentSummary'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
+import PlacementGuidance from '../../components/placements/PlacementGuidance'
+import StudentCompanyDetails from '../../components/StudentCompanyDetails'
+import { sortCompanyPositions } from '../../utils/recommendationResults'
 
 
 
@@ -153,7 +155,7 @@ function ResultsMap({ companies, studentPin }) {
             <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
             <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
           </div>`)
-      mk._freshnessKey = `company:${co.id ?? idx}`
+      mk._freshnessKey = co.companyKey ?? `company:${co.id ?? idx}`
       if (openMarker.current === mk._freshnessKey) mk.openPopup()
       allMarkers.push(mk)
     })
@@ -205,7 +207,8 @@ export default function StudentResults() {
   const {
     skillScores,
     placement,
-    recommendations: sorted,
+    recommendations,
+    recommendedCompanies: sorted,
     loading: resultsLoading,
     error: resultsError,
     resultData,
@@ -218,6 +221,7 @@ export default function StudentResults() {
 
   // ── All companies tab ───────────────────────────────────────────
   const [companyTab, setCompanyTab] = useState('recommended') // 'recommended' | 'all'
+  const [companySelection, setCompanySelection] = useState(null)
   const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked || companyTab !== 'all' })
   const allCompanies = allCompaniesRaw ?? []
 
@@ -326,36 +330,14 @@ export default function StudentResults() {
           </div>
 
           {/* Skill Assessment Profile — ~35% width on desktop, sticky */}
-          <div className="w-full lg:w-[35%] shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm lg:sticky lg:top-6 h-fit">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Skill assessment profile</p>
+          <div className="sb-student-skill-card w-full lg:w-[35%] shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm lg:sticky lg:top-6">
+            <p className="shrink-0 text-sm font-semibold text-gray-900 dark:text-white mb-4">Skill assessment profile</p>
             {resultsLoading && !skillScores.length ? (
               <div className="flex flex-col gap-3">
                 {[1,2,3].map(i => <div key={i} className="h-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />)}
               </div>
-            ) : skillScores.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No skill data yet.</p>
-            ) : (
-              <div className="flex flex-col gap-3.5">
-                {skillScores.map((s, i) => (
-                  <div key={s.label}>
-                    <div className="flex justify-between items-end mb-1">
-                      <span className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-6 mr-2 wrap-break-word min-w-0">{s.label}</span>
-                      <span className="text-sm font-bold shrink-0 text-gray-900 dark:text-white">{categoryPercentage(s.pct)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {s.tag && <SkillTagBadge tag={s.tag} />}
-                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]} transition-all duration-700 ease-out`}
-                          style={{ width: animated ? `${s.pct ?? 0}%` : '0%' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+            ) : <SkillCategoryList scores={skillScores} animated={animated} />}
+            <div className="mt-5 max-h-32 shrink-0 overflow-y-auto border-t border-gray-200 pt-4 dark:border-gray-700" role="region" aria-label="Highest scoring areas" tabIndex={0}>
               <HighestScoringAreas scores={resultData.combined_category_scores} audience="student" />
             </div>
           </div>
@@ -368,6 +350,8 @@ export default function StudentResults() {
         {/* ── COMPANY MATCHES — full width below ── */}
         <div className="flex flex-col gap-5">
 
+          <PlacementGuidance />
+
           {/* Tab bar: Recommended vs All Companies */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -378,6 +362,7 @@ export default function StudentResults() {
                 ].map(({ key, label }) => (
                   <button
                     key={key}
+                    aria-pressed={companyTab === key}
                     onClick={() => setCompanyTab(key)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap
                       ${companyTab === key
@@ -390,16 +375,17 @@ export default function StudentResults() {
                       <span className="ml-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{sorted.length}</span>
                     )}
                     {key === 'all' && allCompanies.length > 0 && (
-                      <span className="ml-1.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{allCompanies.reduce((n, c) => n + c.positions.length, 0)}</span>
+                      <span className="ml-1.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{allCompanies.length}</span>
                     )}
                   </button>
                 ))}
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
                 {companyTab === 'recommended'
-                  ? (resultsLoading && !sorted.length ? 'Loading…' : `${sorted.length} position${sorted.length !== 1 ? 's' : ''} matched to your skills`)
+                  ? (resultsLoading && !sorted.length ? 'Loading…' : `${sorted.length} compan${sorted.length === 1 ? 'y' : 'ies'} · ${recommendations.length} suggested position${recommendations.length !== 1 ? 's' : ''}`)
                   : (allCompLoading ? 'Loading…' : `${allCompanies.length} partner compan${allCompanies.length !== 1 ? 'ies' : 'y'} · ${allCompanies.reduce((n, c) => n + c.positions.length, 0)} position${allCompanies.reduce((n, c) => n + c.positions.length, 0) !== 1 ? 's' : ''}`)}
               </p>
+              {companyTab === 'recommended' && sorted.length > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sortMode === 'distance' ? 'Companies ordered by distance from your location.' : 'Companies ranked by their best position match.'}</p>}
             </div>
 
             {/* Sort toggle — only for recommended tab */}
@@ -412,6 +398,7 @@ export default function StudentResults() {
               ].map(({ key, label, disabled }) => (
                 <button
                   key={key}
+                  aria-pressed={sortMode === key}
                   onClick={() => !disabled && setSortMode(key)}
                   disabled={disabled}
                   title={disabled ? 'Pin your location first' : undefined}
@@ -431,14 +418,14 @@ export default function StudentResults() {
           </div>
 
           {/* Sort explanation banners */}
-          {sortMode === 'combined' && (
+          {companyTab === 'recommended' && sortMode === 'combined' && (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
               <p className="text-xs text-blue-700 dark:text-blue-300">Hybrid match = 60% Category fit + 25% NLP fit + 15% Location fit</p>
             </div>
           )}
 
-          {!hasPin && sortMode === 'match' && (
+          {companyTab === 'recommended' && !hasPin && sortMode === 'match' && (
             <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 📍 Pin your location to unlock <strong>Nearest</strong> and <strong>Combined</strong> sorting.
@@ -466,7 +453,7 @@ export default function StudentResults() {
                 </div>
               )}
               {allCompanies.map(co => (
-                <div key={co.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+                <article key={co.id} className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-within:ring-2 focus-within:ring-green-500 transition-all">
                   <div className="flex items-start gap-3 mb-3">
                     <CompanyImage name={co.name} imageUrl={co.image_url} className="w-9 h-9 rounded-xl" />
                     <div className="flex-1 min-w-0">
@@ -475,30 +462,28 @@ export default function StudentResults() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {co.positions.map(pos => (
+                    {sortCompanyPositions(co.positions).map(pos => (
                       <div key={pos.id} className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3 py-2">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{pos.title}</p>
-                          <div className="flex gap-1.5 mt-1 flex-wrap">
-                            {pos.tags.slice(0, 4).map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{t}</span>
-                            ))}
-                          </div>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{pos.slots} listed slot{pos.slots !== 1 ? 's' : ''}</p>
                         </div>
                         <div className="shrink-0 text-right">
-                          {pos.match_score > 0 ? (
+                          {pos.match_score != null ? (
                             <>
-                              <p className={`text-sm font-bold ${matchColor(pos.match_score)}`}>{Math.round(pos.match_score)}%</p>
+                              <p className={`text-sm font-bold ${matchColor(pos.match_score)}`}>{pos.match_score}%</p>
                               <p className="text-[10px] text-gray-400 dark:text-gray-500">match</p>
                             </>
                           ) : (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">{pos.slots} slot{pos.slots !== 1 ? 's' : ''}</p>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">No match score</p>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                  <button type="button" onClick={() => setCompanySelection({ companyId: co.id })} aria-label={`View company details for ${co.name}`} aria-haspopup="dialog"
+                    className="mt-3 min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View company details <span aria-hidden="true">→</span></button>
+                </article>
               ))}
 </DataSection>            </div>
           )}
@@ -507,21 +492,21 @@ export default function StudentResults() {
           {companyTab === 'recommended' && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {sorted.length === 0 && !resultsLoading && (
-              <div className="col-span-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
+              <div className="col-span-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No eligible company positions are currently available.</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You can still browse partner companies.</p>
                 <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all companies →</button>
               </div>
             )}
             {sorted.map((r, idx) => (
-              <div key={r.id}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-shadow">
+              <article key={r.companyKey}
+                className="relative flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 sm:p-5 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-within:ring-2 focus-within:ring-green-500 transition-all">
 
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
 
                     {/* Rank badge */}
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5
+                    <div aria-label={`Company rank ${idx + 1}`} className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5
                       ${idx === 0 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' :
                         idx === 1 ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
                         idx === 2 ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300' :
@@ -530,18 +515,19 @@ export default function StudentResults() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2"><CompanyImage name={r.company} imageUrl={r.company_image_url} className="w-9 h-9 rounded-lg" /><p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{r.company}</p></div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{r.position}</p>
+                      <div className="flex items-center gap-2"><CompanyImage name={r.company} imageUrl={r.company_image_url} className="w-9 h-9 rounded-lg" /><p className="text-sm font-semibold text-gray-900 dark:text-white wrap-anywhere">{r.company}</p></div>
+                      <p className="mt-2 text-[10px] font-semibold text-green-700 dark:text-green-400">Top suggested position</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300">{r.position}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{r.address}</p>
                     </div>
                   </div>
 
                   {/* Score column */}
-                  <div className="text-right shrink-0">
+                  <div className="relative z-10 max-w-24 text-right shrink-0">
                     {sortMode === 'combined' ? (
                       <>
                         <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{r.combined}%</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500"><ScoreLabel label="Hybrid match" /></p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label="Best position match" /></p>
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
                       <>
@@ -551,20 +537,24 @@ export default function StudentResults() {
                     ) : (
                       <>
                         <p className={`text-lg font-bold ${matchColor(r.match)}`}>{r.match}%</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500"><ScoreLabel label="Hybrid match" /></p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label="Best position match" /></p>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* Tags + distance + slots */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  {r.tags.map(tag => (
-                    <span key={tag} className={`text-xs px-2.5 py-1 rounded-full font-medium ${matchBadge(r.match)}`}>
+                {/* A small skills preview; full requirements live in company details. */}
+                <div className="flex items-center gap-1.5 mt-4 flex-wrap">
+                  {r.tags.slice(0, 3).map(tag => (
+                    <span key={tag} className="max-w-full text-xs px-2.5 py-1 rounded-lg wrap-anywhere bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                       {tag}
                     </span>
                   ))}
+                  {r.tags.length > 3 && <span className="text-xs text-gray-500 dark:text-gray-400">+{r.tags.length - 3} more</span>}
+                </div>
 
+                <div className="flex items-center gap-2 mt-4 flex-wrap">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{r.suggestedPositionCount} suggested position{r.suggestedPositionCount !== 1 ? 's' : ''}</span>
                   {r.distKm != null && sortMode !== 'distance' && (
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${distBadgeColor(r.distKm)}`}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -573,7 +563,7 @@ export default function StudentResults() {
                   )}
 
                   <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                    {r.slots} slot{r.slots !== 1 ? 's' : ''}
+                    Top role: {r.slots} slot{r.slots !== 1 ? 's' : ''}
                   </span>
                 </div>
 
@@ -592,7 +582,7 @@ export default function StudentResults() {
 
                 {/* Sub-scores if combined */}
                 {sortMode === 'combined' && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="relative z-10 mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label="Category fit" /> {Math.round(r.category_score_component ?? 0)}%</span>
                     <span>· <ScoreLabel label="NLP fit" /> {Math.round(r.nlp_score_component ?? 0)}%</span>
                     <span>· <ScoreLabel label="Location fit" /> {Math.round(r.location_score_component ?? 0)}%</span>
@@ -600,7 +590,11 @@ export default function StudentResults() {
                     <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
                   </div>
                 )}
-              </div>
+                <div className="mt-auto pt-3">
+                  <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View company details for ${r.company}, ${r.position}`} aria-haspopup="dialog"
+                    className="min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View company details <span aria-hidden="true">→</span></button>
+                </div>
+              </article>
             ))}
           </div>
           )}
@@ -608,11 +602,7 @@ export default function StudentResults() {
 
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <p className="text-xs text-gray-400 dark:text-gray-600 text-center py-6 mt-8 border-t border-gray-200 dark:border-gray-800">
-          Final placement decisions are made by your OJT coordinator. This list is for reference only.
-        </p>
-      </div>
+      {companySelection && <StudentCompanyDetails {...companySelection} onClose={() => setCompanySelection(null)} />}
 
     </div>
   )

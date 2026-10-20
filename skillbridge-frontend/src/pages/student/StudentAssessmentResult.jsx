@@ -1,5 +1,5 @@
 import CompetencyInsights from '../../components/CompetencyInsights'
-import { categoryPercentage } from '../../utils/assessmentSummary'
+import SkillCategoryList from '../../components/SkillCategoryList'
 import DataSection from '../../components/DataSection'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
@@ -83,12 +83,9 @@ export default function StudentAssessmentResult() {
           </div>
         </>}
       </div></DataSection>
-      {data?.assessment && !loading && !error && <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6" aria-labelledby="category-scores-title">
-        <h2 id="category-scores-title" className="text-lg font-bold text-gray-900 dark:text-white">Category scores</h2>
-        {scores.length ? <div className="mt-4 space-y-4">{scores.map(row => <div key={row.category}>
-          <div className="flex justify-between gap-2 text-sm text-gray-800 dark:text-gray-200"><span>{row.category}</span><strong>{row.raw_score}/{row.max_score} · {categoryPercentage(row.percentage)}</strong></div>
-          <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div className="h-full bg-green-600" style={{ width: `${Math.min(100, Math.max(0, row.percentage))}%` }} /></div>
-        </div>)}</div> : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No scored answers were recorded.</p>}
+      {data?.assessment && !loading && !error && <section className="sb-student-skill-card mt-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6" aria-labelledby="category-scores-title">
+        <h2 id="category-scores-title" className="mb-4 shrink-0 text-lg font-bold text-gray-900 dark:text-white">Category scores</h2>
+        {scores.length ? <SkillCategoryList scores={scores} showRaw showTags={false} colorful={false} /> : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No scored answers were recorded.</p>}
       </section>}
 {data?.assessment && !loading && !error && !stopped && <div className="mt-6"><CompetencyInsights scores={scores} scope="individual" audience="student" /></div>}
 <DataSection urls={data?.assessment && reviewUrl ? [reviewUrl] : []} layout="table" label="Loading submitted answers">

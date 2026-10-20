@@ -164,6 +164,7 @@ def serialize_recommendation(recommendation):
         'position_id': position.id,
         'position': position.title,
         'company': company.name,
+        'company_id': company.id,
         **image_fields(company, 'company_'),
         'slots': position.slots_available,
         'match_score': recommendation.match_score,
@@ -2979,7 +2980,7 @@ def student_companies(request):
                 'id':          p.id,
                 'title':       p.title,
                 'slots':       p.slots_available,
-                'match_score': round(user_recs[p.id], 1) if p.id in user_recs else None,
+                'match_score': user_recs.get(p.id),
                 'tags': [
                     req.skill_category.name
                     for req in p.requirements.all()

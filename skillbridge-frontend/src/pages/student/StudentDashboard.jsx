@@ -2,7 +2,6 @@ import { escapeHtml } from '../../utils/escapeHtml'
 import { loadLeaflet } from '../../utils/externalServices'
 import MapStatus from '../../components/MapStatus'
 import { HighestScoringAreas } from '../../components/CompetencyInsights'
-import { categoryPercentage } from '../../utils/assessmentSummary'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentDashboard.jsx
 //
@@ -17,9 +16,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import CompanyImage from '../../components/CompanyImage'
-import { SkillTagBadge } from '../../components/SkillTagBadge'
+import StudentCompanyDetails from '../../components/StudentCompanyDetails'
+import SkillCategoryList from '../../components/SkillCategoryList'
 import { useApi } from '../../hooks/useApi'
-import { useStudentResults, BAR_COLORS } from '../../hooks/student/useStudentResults'
+import { useStudentResults } from '../../hooks/student/useStudentResults'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import { givenNamesForGreeting } from '../../utils/formatters'
 import { dashboardAssessmentAction } from './assessmentUiState'
@@ -165,7 +165,7 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
               ${distTxt ? '· ' + distTxt : ''}
             </div>
           </div>`)
-      mk._freshnessKey = `company:${co.id ?? idx}`
+      mk._freshnessKey = co.companyKey ?? `company:${co.id ?? idx}`
       if (openMarker.current === mk._freshnessKey) mk.openPopup()
       allMarkers.push(mk)
     })
@@ -223,6 +223,7 @@ function DashboardSkeleton() {
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════
 export default function StudentDashboard() {
+  const [companySelection, setCompanySelection] = useState(null)
   const navigate = useNavigate()
 
   // Each initial data section has its own skeleton; cached data remains
@@ -249,7 +250,7 @@ export default function StudentDashboard() {
     skillScores,
     overallScore,
     topMatches,
-    recommendations: allRecs,
+    recommendedCompanies: allRecs,
     resultData,
     recommendationsLocked,
     studentPin,
@@ -427,16 +428,19 @@ export default function StudentDashboard() {
 
           {/* ── TOP MATCHES ──────────────────────────────────── */}
           <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top matches</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Top companies for you</p>
+            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Based on each company's best position match</p>
             {hasTakenAssessment ? (
               <div className="flex flex-col gap-2">
                 {topMatches.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No eligible company positions are currently available.</p>}
                 {topMatches.map((m, idx) => (
-                  <div key={m.id ?? idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
+                  <button type="button" key={m.companyKey} onClick={() => setCompanySelection(m.company_id != null ? { companyId: m.company_id } : { positionId: m.position_id })}
+                    aria-label={`View company details for ${m.company}, ${m.position}`} aria-haspopup="dialog"
+                    className="flex items-center justify-between border border-transparent bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 text-left hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-all">
                     <CompanyImage name={m.company} imageUrl={m.company_image_url} className="w-8 h-8 rounded-lg mr-2" />
                     <div className="min-w-0 mr-2">
                       <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{m.company}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.position}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">#{idx + 1} · {m.position}</p>
                     </div>
                     <span className={`text-xs font-semibold shrink-0 ${
                       m.match >= 80 ? 'text-green-600 dark:text-green-400'
@@ -444,7 +448,7 @@ export default function StudentDashboard() {
                       : 'text-gray-500'}`}>
                       {m.match}%
                     </span>
-                  </div>
+                  </button>
                 ))}
                 <button
                   onClick={() => navigate('/student/results')}
@@ -471,8 +475,8 @@ export default function StudentDashboard() {
 
           {/* ── SKILL PROFILE ────────────────────────────────── */}
           {/* Spans 2 rows on desktop via grid-area "skills" */}
-          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-skills sm:col-span-2"><div className={`sb-skills ${tile} p-5 sm:col-span-2`}>
-            <div className="flex items-center justify-between mb-4">
+          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-skills relative min-h-0 sm:col-span-2"><div className={`sb-student-skill-card ${tile} p-5`}>
+            <div className="flex shrink-0 items-center justify-between mb-4">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill profile</p>
               {hasTakenAssessment && (
                 <span className="text-xs text-gray-400 dark:text-gray-500">Combined result</span>
@@ -480,38 +484,19 @@ export default function StudentDashboard() {
             </div>
             {hasTakenAssessment ? (
               <>
-                <div className="flex items-center gap-3 mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-xl border border-green-100 dark:border-green-900">
+                <div className="flex max-h-40 shrink-0 items-start gap-3 mb-4 overflow-y-auto p-3 bg-green-50 dark:bg-green-950 rounded-xl border border-green-100 dark:border-green-900" role="region" aria-label="Skill profile summary" tabIndex={0}>
                   <div className="w-9 h-9 rounded-full bg-green-600 flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-white">{overallScore}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold text-green-800 dark:text-green-200">Overall skill score</p>
                     <HighestScoringAreas scores={skillScores.map(score => ({ category: score.label, percentage: score.pct, max_score: score.maxScore }))} audience="student" />
                   </div>
                 </div>
-                {/* 2-column bar grid on desktop */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-3">
-                  {skillScores.map((s, i) => (
-                    <div key={s.label}>
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-tight mr-2">{s.label}</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0">{categoryPercentage(s.pct)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {s.tag && <SkillTagBadge tag={s.tag} />}
-                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
-                            style={{ width: `${s.pct ?? 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <SkillCategoryList scores={skillScores} />
               </>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-3">
                 {['Web Dev', 'Networking', 'Database', 'Design'].map(label => (
                   <div key={label}>
                     <div className="flex justify-between mb-1">
@@ -629,9 +614,11 @@ export default function StudentDashboard() {
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Nearest to you</p>
                 <div className="flex flex-col gap-1.5">
                   {nearestThree.map(c => (
-                    <div key={c.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2">
+                    <button type="button" key={c.companyKey} onClick={() => setCompanySelection(c.company_id != null ? { companyId: c.company_id } : { positionId: c.position_id })}
+                      aria-label={`View nearby company details for ${c.company}, ${c.position}`} aria-haspopup="dialog"
+                      className="flex items-center justify-between border border-transparent bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2 text-left hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-all">
                       <div className="min-w-0 mr-2">
-                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{c.name}</p>
+                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{c.company}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.position}</p>
                       </div>
                       <div className="flex items-center gap-2.5 shrink-0">
@@ -643,7 +630,7 @@ export default function StudentDashboard() {
                           {c.match}%
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                   <button
                     onClick={() => navigate('/student/results')}
@@ -749,6 +736,7 @@ export default function StudentDashboard() {
 
         </div>
       </section>
+      {companySelection && hasTakenAssessment && <StudentCompanyDetails {...companySelection} onClose={() => setCompanySelection(null)} />}
     </div>
   )
 }

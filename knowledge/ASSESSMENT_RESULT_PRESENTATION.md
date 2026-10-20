@@ -39,6 +39,33 @@ The documented `frontend-design` skill was unavailable in `.agents/skills/` and
 the local skill/plugin locations. Design follows the collection-UI reference
 and current SkillBridge components.
 
+## Student skill-category cards (20 October 2026)
+
+The dashboard, final combined results and individual assessment results use a
+shared [SkillCategoryList](../skillbridge-frontend/src/components/SkillCategoryList.jsx).
+Categories stack in one column at every viewport width. Adding categories does
+not increase card height: the category region scrolls independently, supports
+keyboard focus/scrolling and wraps long names. Percentage precision, qualitative
+tags, bar colors and individual assessment raw/max scores are preserved.
+
+The dashboard skill card fills its existing two-row desktop grid area without
+contributing category-list height to the grid's row sizing. Below 1024px it uses
+a 28rem card, as do the final-results and individual-results category cards at
+all widths. Headings stay outside the scrolling list. Highest-score summaries
+are separately bounded/scrollable so a large tie list also cannot enlarge a card;
+all tied names remain accessible. Staff details and exports retain their existing
+layouts and scoring/interpretation logic.
+
+[Synthetic browser checks](../skillbridge-frontend/tests/student_skill_profile_playwright.py)
+compare four categories with 30 categories and 30 tied leaders on all three
+student views at 1440, 1024, 768, 375 and 320px. The checks cover stable card
+height, one-column geometry, keyboard scrolling to the last category, long names
+and no horizontal overflow; 320px uses dark mode. API/map responses are mocked
+and other external requests are blocked. Artifacts are saved under ignored
+`tests/artifacts/student-skill-profile/`. These checks do not verify live services.
+All 15 view/width combinations passed with no browser page errors. Desktop and
+phone screenshots were reviewed; frontend lint/build and whitespace checks passed.
+
 The [summary helper](../skillbridge-frontend/src/utils/assessmentSummary.js) and
 [insights component](../skillbridge-frontend/src/components/CompetencyInsights.jsx)
 serve student final results, the dashboard highest-score summary, individual

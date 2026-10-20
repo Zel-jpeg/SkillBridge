@@ -29,3 +29,26 @@ export function sortRecommendations(rows, mode = 'match') {
     return right.match_score - left.match_score || (left.position_id ?? left.id) - (right.position_id ?? right.id)
   })
 }
+
+// Each company is represented by its best individual position, never an average.
+export function groupRecommendationsByCompany(rows, mode = 'match') {
+  const companies = new Map()
+  for (const row of sortRecommendations(rows)) {
+    // Older cached responses lack company_id. Keep them separate until refresh
+    // rather than accidentally combining unrelated companies with the same name.
+    const companyKey = row.company_id != null ? `company:${row.company_id}` : `position:${row.position_id ?? row.id}`
+    const company = companies.get(companyKey)
+    if (company) company.suggestedPositionCount += 1
+    else companies.set(companyKey, { ...row, companyKey, suggestedPositionCount: 1 })
+  }
+  return sortRecommendations([...companies.values()], mode)
+}
+
+export function sortCompanyPositions(positions) {
+  return [...positions].sort((left, right) => {
+    const leftScored = Number.isFinite(left.match_score)
+    const rightScored = Number.isFinite(right.match_score)
+    return Number(rightScored) - Number(leftScored) ||
+      (leftScored && rightScored ? right.match_score - left.match_score : 0) || left.id - right.id
+  })
+}
