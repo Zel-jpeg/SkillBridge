@@ -12,6 +12,7 @@ import { useState }     from 'react'
 import { useNavigate }  from 'react-router-dom'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import ConfirmModal from '../../components/admin/ConfirmModal'
+import { questionHasContent } from '../../utils/authoringDraft'
 import {
   useInstructorUpload,
   formatDraftAge,
@@ -49,13 +50,13 @@ function PreviewTable({ rows }) {
             {rows.map((r, i) => (
               <tr key={i} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 ${i % 2 !== 0 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}>
                 <td className="px-3 py-2 text-gray-400 dark:text-gray-600">{i + 1}</td>
-                <td className="px-3 py-2 text-gray-900 dark:text-white max-w-[200px] truncate">{r.question}</td>
+                <td className="px-3 py-2 text-gray-900 dark:text-white max-w-50 truncate">{r.question}</td>
                 <td className="px-3 py-2">
                   <span className={`font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[r.type]}`}>
                     {TYPE_LABELS[r.type]}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-green-700 dark:text-green-300 font-semibold max-w-[120px] truncate">
+                <td className="px-3 py-2 text-green-700 dark:text-green-300 font-semibold max-w-30 truncate">
                   {r.type === 'identification'
                     ? r.identAnswer
                     : r.type === 'truefalse'
@@ -132,6 +133,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
     // Derived
     countPerCat, totalTagged, totalAnswered, countByType,
   } = useInstructorUpload()
+  const recoveredQuestionCount = draftBanner?.questions.filter(questionHasContent).length || 0
 
   // ── Published success screen ──────────────────────────────────
   if (published) {
@@ -181,11 +183,11 @@ export default function InstructorUpload({ role = 'instructor' }) {
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Unsaved draft found</p>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Unfinished assessment found</p>
                 <p className="text-xs text-amber-600 dark:text-amber-500 truncate">
-                  Saved {formatDraftAge(draftBanner.savedAt)}
+                  Saved on this device {formatDraftAge(draftBanner.savedAt)}
                   {draftBanner.title ? ` · "${draftBanner.title}"` : ''}
-                  {draftBanner.questions?.length ? ` · ${draftBanner.questions.length} question${draftBanner.questions.length > 1 ? 's' : ''}` : ''}
+                  {recoveredQuestionCount > 0 && ` · ${recoveredQuestionCount} question${recoveredQuestionCount === 1 ? '' : 's'} with content`}
                 </p>
               </div>
             </div>
@@ -214,7 +216,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
             {lastSaved && (
               <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                Saved {formatDraftAge(lastSaved)}
+                Saved on this device {formatDraftAge(lastSaved)}
               </span>
             )}
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${totalTagged === questions.length && questions.length > 0 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>

@@ -13,7 +13,7 @@ the only execution tracker.
 | Enrollment | StudentEnrollmentModal → preview/token → transactional per-row enrollment and truthful notification queue results | Existing synthetic import tests pass. Re-preview protects uncertain confirmations. Official IAMS compatibility blocked on sample; 11 synthetic enrollment browser cases passed; official compatibility remains unverified. |
 | Batches | Staff batch screens → instructor-owned/admin batch endpoints | Existing ownership/archive and management tests pass; typed names, atomic archive/recalculation and two browser recovery cases verified. Selected-batch unenrollment preserves other memberships and score history; two browser cases verify failed-confirmation retention and explicit selected-batch retry/reload. |
 | Authoring | InstructorUpload and question editors → create/add/PATCH → whole-payload type validation + atomic nested writes | Invalid later questions create nothing. Failure replacing choices preserves old question/key; failures creating/appending roll back new rows. Published question edits/additions require usable classification/key. Composite metadata/question saves are atomic and return canonical IDs; two browser recovery cases passed. Parent-row locks coordinate edits with attempt starts; dedicated race coverage remains V04. |
-| Authoring drafts | Builder → account/role-scoped local key | Own draft restores; another account/legacy unowned draft is ignored. Invalid saved draft shapes are ignored. Old unowned keys are retained without being displayed. |
+| Authoring drafts | Builder → account/role-scoped local key | Only authored changes create local recovery drafts; automatic categories, initial batch/order and blank question do not. Recovery pauses writes until Restore/Discard. Edits flush on navigation/page hide; successful server save and Create another clear pending recovery. Storage failures do not report success. Own draft restores; another account/legacy unowned draft is ignored. Invalid saved draft shapes are ignored. Old unowned keys are retained without being displayed. |
 | Assessment attempts | StudentAssessment → start/submit/stop/retake | A01/A02 authoritative denominators, attempt identity and server expiry; A06 preserves draft/timer through renewal. PostgreSQL races and synthetic browser evidence retained. |
 | Catalog | Company/position forms → shared input validation → atomic company/requirement changes | A03 validation/capacity/permissions/history protection; failed drafts/delete confirmations retained. |
 | Recommendations | Student results → batch-scoped combined API → exact deterministic ranking | N01/N02 fallback/gates/empty/locked tested. Malformed result envelope is rejected before cache/React and retry recovers. |
@@ -21,6 +21,14 @@ the only execution tracker.
 | Placements | Action/manual dialogs → locked capacity/evidence checks and snapshots → refresh | Existing API tests pass. Hook separates confirmed mutation from failed refresh; two browser cases verify retained remarks, one pending write, safe errors and explicit refresh after a committed write followed by failed GET. |
 | Reports | Generate/download → scoped snapshot endpoints → PDF/XLSX/CSV | Existing report filters/authorization tests pass; P03 capacity and company-area labels verified. Two combined taxonomy/report browser cases verify retained state, safe failures and retry/download. Report data reconciliation remains V02. |
 | External address/map services | AddressDropdowns/geocoder/Leaflet loaders | External failure work is E02; corrupt address cache/provider row shapes verified in the profile browser fixture. Broader provider failure coverage remains E02. |
+
+Assessment draft follow-up (21 October 2026): six draft helper tests and 14
+synthetic Chrome workflow checks passed across instructor/admin creation,
+including untouched visits, legacy empty saves, pending recovery protection,
+restore/discard, immediate refresh/navigation, reverting edits, storage failure,
+successful server-save cleanup, Create another, settings-only drafts and imported
+questions. Browser API calls were intercepted; no live database was used. Frontend
+lint and production build passed. Recovery remains local to this browser/device.
 
 ## Changes verified so far
 

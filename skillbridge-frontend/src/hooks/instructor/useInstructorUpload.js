@@ -15,7 +15,7 @@ import { useToast } from '../../context/ToastContext'
 import { useState, useRef, useEffect } from 'react'
 import api from '../../api/axios'
 import { useApi } from '../useApi'
-import { authoringDraftKey, readAuthoringDraft } from '../../utils/authoringDraft'
+import { authoringDraftKey, readAuthoringDraft, authoringDraftSignature, isRecoverableAuthoringDraft, writeAuthoringDraft } from '../../utils/authoringDraft'
 import { requestErrorMessage } from '../../api/requestErrors'
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
@@ -28,10 +28,6 @@ export const QUESTION_TYPES = [
 ]
 
 // ── Draft persistence helpers ─────────────────────────────────────
-function saveDraft(data, key) {
-  if (!key || key !== authoringDraftKey()) return
-  try { localStorage.setItem(key, JSON.stringify({ ...data, savedAt: Date.now() })) } catch { /* Storage may be disabled. */ }
-}
 function clearDraft(key) {
   if (!key) return
   try { localStorage.removeItem(key) } catch { /* Storage may be disabled. */ }
@@ -225,6 +221,9 @@ export function useInstructorUpload() {
   const [displayOrder, setDisplayOrder] = useState('0')
   const [availableAt, setAvailableAt] = useState('')
   const [dueAt, setDueAt] = useState('')
+  const pristineDraft = useRef({ title: '', duration: '', selectedBatchId,
+    publicationStatus: 'draft', isRequired: true, includeInCompetency: true,
+    displayOrder: '0', availableAt: '', dueAt: '', categories: [], questions: [makeQuestion(0)] })
   const restoredOrder = useRef(null)
   const orderSeededForBatch = useRef(null)
   const { data: existingAssessments } = useApi('/api/instructor/assessments/')
@@ -239,7 +238,9 @@ export function useInstructorUpload() {
       return
     }
     const orders = existingAssessments.filter(a => a.batch_id === selectedBatchId).map(a => Number(a.display_order) || 0)
-    setDisplayOrder(String(Math.max(0, ...orders) + 1))
+    const nextOrder = String(Math.max(0, ...orders) + 1)
+    setDisplayOrder(nextOrder)
+    pristineDraft.current.displayOrder = nextOrder
     orderSeededForBatch.current = selectedBatchId
   }, [selectedBatchId, existingAssessments])
 
@@ -254,7 +255,9 @@ export function useInstructorUpload() {
   useEffect(() => {
     if (categoriesSeeded.current || categories.length || !Array.isArray(sharedCategories) || !sharedCategories.length) return
     categoriesSeeded.current = true
-    setCategories(sharedCategories.map(c => makeCategory(c.id, c.name)))
+    const defaults = sharedCategories.map(c => makeCategory(c.id, c.name))
+    pristineDraft.current.categories = defaults
+    setCategories(defaults)
     const maxId = Math.max(...sharedCategories.map(c => c.id))
     _cid = Math.max(_cid, maxId + 1)
   }, [sharedCategories, categories.length])
@@ -302,47 +305,74 @@ export function useInstructorUpload() {
   const [publishError, setPublishError] = useState('')
 
   // Draft
-  const [draftBanner, setDraftBanner] = useState(() => {
-    const d = readAuthoringDraft(draftKey)
-    return d && (d.title || d.categories?.length || d.questions?.some(q => q.text)) ? d : null
-  })
+  const [pendingDraft, setDraftBanner] = useState(() => readAuthoringDraft(draftKey))
+  const draftBanner = isRecoverableAuthoringDraft(pendingDraft, sharedCategories) ? pendingDraft : null
   const [lastSaved, setLastSaved] = useState(null)
   const saveTimer = useRef(null)
+  const pendingSave = useRef(null)
 
   // Auto-save draft, debounced 1s
   useEffect(() => {
-    if (published) return
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      saveDraft({ title, duration, categories, questions, selectedBatchId,
-        publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt }, draftKey)
-      setLastSaved(Date.now())
-    }, 1000)
+    pendingSave.current = null
+    if (published || draftBanner) return
+    const data = { title, duration, categories, questions, selectedBatchId,
+      publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt }
+    if (authoringDraftSignature(data) === authoringDraftSignature(pristineDraft.current)) {
+      // Do not remove an unclassified legacy save until shared categories arrive.
+      if (!pendingDraft || Array.isArray(sharedCategories)) clearDraft(draftKey)
+      setLastSaved(null)
+      return
+    }
+    const save = () => {
+      const savedAt = writeAuthoringDraft(draftKey, data)
+      setLastSaved(savedAt)
+      if (savedAt) pendingSave.current = null
+    }
+    pendingSave.current = () => writeAuthoringDraft(draftKey, data)
+    saveTimer.current = setTimeout(save, 1000)
     return () => clearTimeout(saveTimer.current)
   }, [title, duration, categories, questions, selectedBatchId, publicationStatus,
-    isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published, draftKey])
+    isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published, draftKey,
+    draftBanner, pendingDraft, sharedCategories])
+
+  useEffect(() => {
+    const flush = () => {
+      clearTimeout(saveTimer.current)
+      if (pendingSave.current?.()) pendingSave.current = null
+    }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onVisibility)
+      flush()
+    }
+  }, [])
 
   // ── Draft actions ─────────────────────────────────────────────
   function handleRestoreDraft() {
     if (!draftBanner) return
-    if (draftBanner.title)               setTitle(draftBanner.title)
-    if (draftBanner.duration)            setDuration(String(draftBanner.duration))
+    setTitle(draftBanner.title || '')
+    setDuration(String(draftBanner.duration || ''))
+    setSelectedBatchId(draftBanner.selectedBatchId || null)
     if (draftBanner.selectedBatchId) {
       restoredOrder.current = { batchId: draftBanner.selectedBatchId, order: String(draftBanner.displayOrder ?? 0) }
       setSelectedBatchId(draftBanner.selectedBatchId)
     }
-    if (draftBanner.publicationStatus) setPublicationStatus(draftBanner.publicationStatus)
-    if (typeof draftBanner.isRequired === 'boolean') setIsRequired(draftBanner.isRequired)
-    if (typeof draftBanner.includeInCompetency === 'boolean') setIncludeInCompetency(draftBanner.includeInCompetency)
-    if (draftBanner.displayOrder != null) setDisplayOrder(String(draftBanner.displayOrder))
+    setPublicationStatus(draftBanner.publicationStatus || 'draft')
+    setIsRequired(draftBanner.isRequired ?? true)
+    setIncludeInCompetency(draftBanner.includeInCompetency ?? true)
+    setDisplayOrder(String(draftBanner.displayOrder ?? 0))
     setAvailableAt(draftBanner.availableAt || '')
     setDueAt(draftBanner.dueAt || '')
-    if (draftBanner.categories?.length) {
+    if (draftBanner.categories) {
       categoriesSeeded.current = true
       setCategories(draftBanner.categories)
       _cid = Math.max(_cid, ...draftBanner.categories.map(c => c.id + 1))
     }
-    if (draftBanner.questions?.length) {
+    if (draftBanner.questions) {
       setQuestions(draftBanner.questions)
       _qid = Math.max(_qid, ...draftBanner.questions.map(q => q.id + 1))
     }
@@ -350,7 +380,10 @@ export function useInstructorUpload() {
   }
 
   function handleDiscardDraft() {
+    clearTimeout(saveTimer.current)
+    pendingSave.current = null
     clearDraft(draftKey)
+    setLastSaved(null)
     setDraftBanner(null)
   }
 
@@ -717,7 +750,11 @@ export function useInstructorUpload() {
 
     try {
       const res = await api.post('/api/instructor/assessments/', payload)
+      clearTimeout(saveTimer.current)
+      pendingSave.current = null
       clearDraft(draftKey)
+      setDraftBanner(null)
+      setLastSaved(null)
       setPublished(true)
       setPublishedId(res.data.id)
       showToast(publicationStatus === 'published' ? 'Assessment published successfully.' : 'Assessment draft saved successfully.')
@@ -732,10 +769,16 @@ export function useInstructorUpload() {
   }
 
   function resetForm() {
+    clearTimeout(saveTimer.current)
+    pendingSave.current = null
+    clearDraft(draftKey)
+    setDraftBanner(null); setLastSaved(null)
+    orderSeededForBatch.current = null; restoredOrder.current = null
+    pristineDraft.current = { ...pristineDraft.current, selectedBatchId: null, displayOrder: '0' }
     setTitle(''); setDuration(''); setSelectedBatchId(null)
     setPublicationStatus('draft'); setIsRequired(true); setIncludeInCompetency(true)
     setDisplayOrder('0'); setAvailableAt(''); setDueAt('')
-    setCategories([]); setCatInput('')
+    setCategories(pristineDraft.current.categories); setCatInput('')
     setQuestions([makeQuestion(nextQid(), 'mcq')]); setQuestionMode('manual')
     setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(null); setXlsxImported(false)
     setTxtRows([]); setTxtErrors([]); setTxtFileName(null); setTxtImported(false)
