@@ -411,6 +411,8 @@ class OJTPlacement(models.Model):
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default=STATUS_SUGGESTED,
     )
+    # Only the current unapproved allocation is flagged; legacy records stay false.
+    is_active_suggestion = models.BooleanField(default=False)
     remarks = models.TextField(blank=True, default='')
     assigned_by = models.ForeignKey(
         User,
@@ -454,6 +456,10 @@ class OJTPlacement(models.Model):
                 condition=models.Q(status='approved'),
                 name='unique_approved_placement_per_student',
             ),
+            models.UniqueConstraint(fields=['student'], condition=models.Q(is_active_suggestion=True),
+                                    name='unique_active_suggestion_student'),
+            models.CheckConstraint(condition=models.Q(is_active_suggestion=False) | models.Q(status='suggested'),
+                                   name='active_suggestion_is_suggested'),
         ]
         indexes = [
             models.Index(fields=['position', 'status'], name='ojt_pos_status_idx'),

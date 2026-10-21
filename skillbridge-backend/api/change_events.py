@@ -189,7 +189,7 @@ def notify_changes(kind):
             finally:
                 _operation.reset(marker)
                 _taxonomy_created.reset(taxonomy_marker)
-            if 200 <= response.status_code < 300:
+            if 200 <= response.status_code < 300 and not getattr(response, 'skip_change_event', False):
                 after = _safe_audience(kind, request, kwargs, response)
                 for user_id, old in before.items():
                     current = after.setdefault(user_id, old)

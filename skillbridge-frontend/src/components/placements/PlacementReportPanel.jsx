@@ -138,8 +138,8 @@ export default function PlacementReportPanel({ companies, positions, placements,
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Date from</span><input type="date" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className={inputClass} /></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Date to</span><input type="date" value={dateTo} onChange={event => setDateTo(event.target.value)} className={inputClass} /></label>
         <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-end gap-2">
-          <button type="button" onClick={() => download('pdf')} disabled={Boolean(downloading)} className="flex-1 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold disabled:opacity-50">{downloading === 'pdf' ? 'Preparing PDF…' : 'Download PDF'}</button>
-          <button type="button" onClick={() => download('xlsx')} disabled={Boolean(downloading)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50">{downloading === 'xlsx' ? 'Preparing XLSX…' : 'Download XLSX'}</button>
+          <button type="button" onClick={() => download('pdf')} disabled={Boolean(downloading)} className="pl-button pl-primary flex-1">{downloading === 'pdf' ? 'Preparing PDF…' : 'Download PDF'}</button>
+          <button type="button" onClick={() => download('xlsx')} disabled={Boolean(downloading)} className="pl-button flex-1">{downloading === 'xlsx' ? 'Preparing XLSX…' : 'Download XLSX'}</button>
         </div>
       </div>
     </section>

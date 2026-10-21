@@ -36,6 +36,12 @@ export function validateApiResponse(response) {
     valid = object(data) && Array.isArray(data.companies) && Array.isArray(data.eligible_students) &&
       data.companies.every(company => object(company) && Array.isArray(company.positions) &&
         company.positions.every(position => object(position) && Array.isArray(position.suggested_students)))
+  } else if (path === '/api/placements/draft/') {
+    valid = object(data) && Number.isSafeInteger(data.revision) && data.revision >= 0 &&
+      typeof data.generated === 'boolean' && typeof data.stale === 'boolean' &&
+      object(data.proposed_counts) && Array.isArray(data.students) &&
+      data.students.every(row => object(row) && object(row.student) && id(row.student.id) &&
+        object(row.batch) && typeof row.status === 'string' && Array.isArray(row.alternatives))
   } else if (method === 'get' && path === '/api/placements/') {
     valid = object(data) && Array.isArray(data.placements)
   } else if (method === 'get' && path === '/api/placements/reports/') {

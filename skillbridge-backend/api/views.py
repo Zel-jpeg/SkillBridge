@@ -1,4 +1,5 @@
 from .name_formatting import format_person_name
+from .placement_drafts import placement_catalog_lock, placement_write_lock
 from django.db.models.functions import TruncDate
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
@@ -160,6 +161,8 @@ def serialize_recommendation(recommendation):
     position = recommendation.position
     company = position.company
     coordinates = valid_coordinates(company.location_lat, company.location_lng)
+    requirements = (position.requirements.all() if 'requirements' in getattr(position, '_prefetched_objects_cache', {})
+                    else position.requirements.select_related('skill_category').all())
     return {
         'id': recommendation.id,
         'position_id': position.id,
@@ -178,7 +181,7 @@ def serialize_recommendation(recommendation):
         'lng': coordinates[1] if coordinates else None,
         'address': company_address_text(company.address),
         'tags': list(dict.fromkeys(
-            [req.skill_category.name for req in position.requirements.select_related('skill_category').all()]
+            [req.skill_category.name for req in requirements]
             + list(position.tags or [])
         )),
     }
@@ -3493,6 +3496,7 @@ def admin_companies(request):
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
+@placement_catalog_lock
 def admin_company_detail(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3501,6 +3505,8 @@ def admin_company_detail(request, company_id):
             with transaction.atomic():
                 company = Company.objects.select_for_update().get(id=company_id)
                 old_key = company.image_key
+                # Unapproved system suggestions are replaceable, not history.
+                OJTPlacement.objects.filter(company=company, is_active_suggestion=True).delete()
                 company.delete()
                 transaction.on_commit(lambda: cleanup_image(old_key), robust=True)
         except Company.DoesNotExist:
@@ -3615,6 +3621,7 @@ def admin_rerun_recommendations(request):
 @api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
+@placement_catalog_lock
 def admin_position_detail(request, position_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
@@ -3624,6 +3631,7 @@ def admin_position_detail(request, position_id):
         with transaction.atomic():
             position = Position.objects.select_for_update().get(id=position_id)
             if request.method == 'DELETE':
+                OJTPlacement.objects.filter(position=position, is_active_suggestion=True).delete()
                 position.delete()
                 return Response(status=204)
             if 'slots_available' in values:
@@ -3956,7 +3964,7 @@ def _visible_placements_by_student(student_ids):
 
     latest = {}
     placements = _placement_select_related(
-        OJTPlacement.objects.filter(student_id__in=student_ids)
+        OJTPlacement.objects.filter(student_id__in=student_ids, is_active_suggestion=False)
     ).order_by('student_id', '-updated_at', '-id')
     for placement in placements:
         latest.setdefault(placement.student_id, placement)
@@ -4203,9 +4211,15 @@ def placement_suggestions(request):
             'batch': {'id': batch.id, 'name': batch.name} if batch else None,
         })
 
+    current_approvals = _placement_select_related(OJTPlacement.objects.filter(status='approved'))
+    if request.user.role == 'instructor':
+        current_approvals = current_approvals.filter(batch__instructor=request.user)
+    if batch_id:
+        current_approvals = current_approvals.filter(batch_id=batch_id)
     return Response({
         'companies': output,
         'eligible_students': eligible_students,
+        'approved_placements': [_serialize_placement(item) for item in current_approvals],
         'include_history': include_history,
         'include_placed': include_placed,
     })
@@ -4214,6 +4228,7 @@ def placement_suggestions(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('placement')
+@placement_write_lock
 def placement_approve(request):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -4288,6 +4303,7 @@ def placement_approve(request):
             placement.copy_recommendation_snapshot(recommendation)
             placement.batch = recommendation.batch
             placement.status = OJTPlacement.STATUS_APPROVED
+            placement.is_active_suggestion = False
             placement.assigned_by = placement.assigned_by or request.user
             placement.approved_by = request.user
             placement.approved_at = timezone.now()
@@ -4402,6 +4418,7 @@ def _change_placement_status(request, new_status):
                 }, status=409)
 
             placement.status = new_status
+            placement.is_active_suggestion = False
             placement.remarks = remarks
             now = timezone.now()
             if new_status == OJTPlacement.STATUS_REMOVED:
@@ -4423,6 +4440,7 @@ def _change_placement_status(request, new_status):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('placement')
+@placement_write_lock
 def placement_remove(request):
     return _change_placement_status(request, OJTPlacement.STATUS_REMOVED)
 
@@ -4430,6 +4448,7 @@ def placement_remove(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('placement')
+@placement_write_lock
 def placement_reject(request):
     return _change_placement_status(request, OJTPlacement.STATUS_REJECTED)
 
@@ -4437,6 +4456,7 @@ def placement_reject(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('placement')
+@placement_write_lock
 def placement_manual_assign(request):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -4531,7 +4551,7 @@ def placement_history(request):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    placements = _placement_select_related(OJTPlacement.objects.all())
+    placements = _placement_select_related(OJTPlacement.objects.filter(is_active_suggestion=False))
     if request.user.role == 'instructor':
         placements = placements.filter(
             batch__instructor=request.user,
@@ -4556,6 +4576,12 @@ def placement_history(request):
         if value:
             placements = placements.filter(**{field_name: value})
 
+    search = str(request.query_params.get('q', '')).strip()
+    if search:
+        placements = placements.filter(
+            Q(student__name__icontains=search) | Q(student__school_id__icontains=search) |
+            Q(company__name__icontains=search) | Q(position__title__icontains=search) |
+            Q(remarks__icontains=search) | Q(batch__name__icontains=search))
     try:
         limit = min(max(int(request.query_params.get('limit', 200)), 1), 500)
         offset = max(int(request.query_params.get('offset', 0)), 0)
@@ -4683,7 +4709,7 @@ PLACEMENT_REPORT_TYPES = {
 
 
 def _placement_report_queryset(user):
-    placements = _placement_select_related(OJTPlacement.objects.all())
+    placements = _placement_select_related(OJTPlacement.objects.filter(is_active_suggestion=False))
     if user.role == 'instructor':
         placements = placements.filter(
             batch__instructor=user,

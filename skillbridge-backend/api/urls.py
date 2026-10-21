@@ -1,4 +1,5 @@
 from django.urls import path
+from .placement_drafts import placement_draft
 from .admin_accounts import admin_account_detail
 from .analytics import management_analytics
 from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
@@ -94,6 +95,7 @@ urlpatterns = [
     path('placements/suggestions/',   views.placement_suggestions,   name='placement_suggestions'),
     path('placements/reports/',       views.placement_reports,       name='placement_reports'),
     path('placements/',               views.placement_history,       name='placement_history'),
+    path('placements/draft/',         placement_draft, name='placement_draft'),
     path('placements/approve/',       views.placement_approve,       name='placement_approve'),
     path('placements/remove/',        views.placement_remove,        name='placement_remove'),
     path('placements/reject/',        views.placement_reject,        name='placement_reject'),

@@ -59,6 +59,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Shared placement suggestions](PLACEMENT_DRAFT_IMPLEMENTATION.md): Company-first
+  staff workflow, shared provisional allocation using existing tables, capacity,
+  permissions and rollout.
+
 - [Staff analytics implementation](ANALYTICS_IMPLEMENTATION.md): Role-specific
   linked dashboard cards, scoped Reports & Analytics, chart drill-downs, snapshot
   exports, recorded activity/history limits and local verification.

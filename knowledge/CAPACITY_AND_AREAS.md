@@ -40,3 +40,11 @@ No live placements, imports, messages or Supabase records were changed.
 
 Evidence: `work/defense_audit/p03-{before,postgres,browser-restart,lint,build}.txt`
 and `skillbridge-frontend/tests/artifacts/capacity-areas/`.
+
+## Shared suggested placements
+
+Staff placement pages also show active suggested seats and provisional availability.
+Only flagged active suggestions reduce provisional headroom; official remaining
+capacity and report totals still subtract approved placements only. Alternatives
+reserve nothing. These suggestions reuse `OJTPlacement`; no separate draft tables
+are added. See [the implementation contract](PLACEMENT_DRAFT_IMPLEMENTATION.md).
