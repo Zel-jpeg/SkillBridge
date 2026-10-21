@@ -1,0 +1,14 @@
+{
+  "pdf": "C:\\Users\\acer\\Downloads\\capstone\\SkillBridge\\output\\pdf\\SkillBridge_Progress_Report_2026-10-20_Reference_Style.pdf",
+  "pages": 7,
+  "page_size_points": [
+    612,
+    936
+  ],
+  "figures": 5,
+  "all_figure_and_readme_links_resolve": true,
+  "objective_and_ui_refinement_content_checked": true,
+  "visual_review": "All seven final rendered pages inspected; no clipping, overlap or orphaned figures observed.",
+  "application_tests": "Not rerun: document-only revision. Later local verification is attributed to project records.",
+  "sha256": "4f2efc66553ef1195ea6113c2a227d98bc878661558abe8d904d1b12b0a4f03b"
+}

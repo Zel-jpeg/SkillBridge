@@ -1,0 +1,15 @@
+{
+  "pdf": "output\\pdf\\SkillBridge_Progress_Report_Screenshot_Ready.pdf",
+  "sha256": "b249a3521ce80f6389a06acaf714f34c6c550ae063edf91a76e946d6e7a85f9f",
+  "pages": 14,
+  "evidence_pages": "5-12",
+  "blank_insertion_areas": 11,
+  "captioned_figure_groups": 8,
+  "old_sample_evidence_images_removed": true,
+  "original_gantt_preserved": true,
+  "all_fourteen_pages_visually_inspected": true,
+  "all_file_links_checked": true,
+  "corrected_defense_dates_and_not_started_statuses_retained": true,
+  "placeholder_type": "Printable image-insertion layout areas, not interactive PDF upload fields",
+  "application_checks": "Not rerun for document layout changes."
+}

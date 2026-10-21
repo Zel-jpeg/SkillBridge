@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-20",
+  "git_head": "6b301ea5f68de73d7d4f7b44b7305f30b244e507",
+  "source_files": 345,
+  "source_lines": 48080,
+  "source_hashes_unchanged_at_close": true,
+  "frontend": {
+    "lint": "passed",
+    "build": "passed",
+    "modules": 996,
+    "unit_tests": {
+      "passed": 135,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "backend": {
+    "runner": "verify_review.py sqlite api (cache isolated between tests)",
+    "discovered": 347,
+    "passed": 335,
+    "skipped": 12,
+    "failed": 0,
+    "focused_tests": 79,
+    "focused_is_subset_of_broad": true
+  },
+  "not_run": [
+    "PostgreSQL concurrency and cross-process transport",
+    "fresh browser checks",
+    "model accuracy/effectiveness experiment",
+    "hosted acceptance"
+  ],
+  "application_code_changes": false,
+  "pdf_status": "On hold pending user revised Gantt chart; prior PDF retained",
+  "draft": "outputs\\defense-review\\independent-2026-10-20\\PROGRESS_REPORT_PENDING_GANTT.md"
+}

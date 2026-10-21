@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '../../api/axios'
+import { NLP_COMPARISON_TIMEOUT_MS, nlpComparisonErrorMessage } from '../../api/nlpComparison'
 import { GeneratedText } from '../NlpTextPreview'
 import TaxonomyQuality, { TaxonomyWarnings } from './TaxonomyQuality'
 import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
@@ -21,11 +22,11 @@ export default function NlpModelComparison() {
     setResult(null)
     const revision = freshness.begin()
     try {
-      const { data } = await api.post('/api/admin/nlp-model-comparison/', { mode }, { timeout: 120000 })
+      const { data } = await api.post('/api/admin/nlp-model-comparison/', { mode }, { timeout: NLP_COMPARISON_TIMEOUT_MS })
       setResult(data)
       freshness.complete(revision)
     } catch (err) {
-      setError(err.response?.data?.error || 'Comparison could not finish. Check the backend connection and try again.')
+      setError(nlpComparisonErrorMessage(err))
     } finally { setBusy(false) }
   }
   const positionName = id => {
@@ -53,7 +54,7 @@ export default function NlpModelComparison() {
     <p className="text-xs text-gray-500 dark:text-gray-400">Comparison does not save recommendation scores or change the active model. Use Save Model and the separate Re-run Recommendations action above when needed.</p>
     <TaxonomyQuality />
     <div aria-live="polite" aria-busy={busy}>
-      {busy && <p className="text-sm text-violet-600 dark:text-violet-300">Loading local models and evaluating cases. The first run can take longer.</p>}
+      {busy && <p className="text-sm text-violet-600 dark:text-violet-300">Loading local models and evaluating cases. The first run can take several minutes; this page waits up to five minutes.</p>}
       {error && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{error}</p>}
       {result && freshness.stale && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">Inputs may have changed since this comparison. Use Run comparison to regenerate; saved recommendations are unchanged by this preview.</p>}
       {result && <div className="space-y-3">

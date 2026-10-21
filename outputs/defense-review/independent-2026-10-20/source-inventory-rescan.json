@@ -1,0 +1,4733 @@
+{
+  "date": "2026-10-20",
+  "git_base": "6b301ea5f68de73d7d4f7b44b7305f30b244e507",
+  "scope": "Application/test source inventory and Python syntax scan; compared with prior independent review. Manual follow-up scope recorded in LATEST_RESCAN.md. No secrets, dependency trees or generated artifacts inventoried.",
+  "summary": {
+    "application or configuration": {
+      "files": 207,
+      "lines": 32343
+    },
+    "migration": {
+      "files": 22,
+      "lines": 957
+    },
+    "test or browser fixture": {
+      "files": 116,
+      "lines": 14780
+    }
+  },
+  "files": [
+    {
+      "path": ".gitignore",
+      "kind": "application or configuration",
+      "lines": 14,
+      "sha256": "76a6d581df43cdd0e0e7fde617637e7e60e8d5e00e202c25613da52d317f67a3",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/api/__init__.py",
+      "kind": "application or configuration",
+      "lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/api/admin.py",
+      "kind": "application or configuration",
+      "lines": 3,
+      "sha256": "a7ac68a753eeb831b6530bf71bf6917e577139f0734d17cc6a8666391564ab25",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/api/admin_accounts.py",
+      "kind": "application or configuration",
+      "lines": 70,
+      "sha256": "8c562e84c663fe99b00fcafc48c71e48122b56a851c40d408831b02b7fcf468a",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "instructor_payload",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 21,
+          "name": "admin_account_detail",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/analytics.py",
+      "kind": "application or configuration",
+      "lines": 303,
+      "sha256": "4a9eb442089831ecd86351ef7348e319669cc143ae25494fba5efb0613239570",
+      "definitions": [
+        {
+          "line": 20,
+          "name": "positive_id",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 29,
+          "name": "area_of",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 36,
+          "name": "rate",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 40,
+          "name": "analytics_payload",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 302,
+          "name": "management_analytics",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/apps.py",
+      "kind": "application or configuration",
+      "lines": 5,
+      "sha256": "bb5d0baf0443700b3dcf42a9acf33dc84f2ffaae80f28d9f002f45e47884e958",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "ApiConfig",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/assessment_authoring.py",
+      "kind": "application or configuration",
+      "lines": 89,
+      "sha256": "748defb8a6a8f1421361c36c944bbec3b928c1f33aedf57b2e39f9ec534a4505",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "AuthoringConflict",
+          "type": "ClassDef"
+        },
+        {
+          "line": 14,
+          "name": "question_state",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 21,
+          "name": "authoring_questions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 29,
+          "name": "prepare_changes",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 70,
+          "name": "apply_changes",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/assessment_layout.py",
+      "kind": "application or configuration",
+      "lines": 87,
+      "sha256": "946e5c7736df394da59913ae84de711bdafc33936ee7ce05af6701d46f1cd962",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "build_question_layout",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 29,
+          "name": "ordered_questions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 56,
+          "name": "ordered_choices",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/assessment_presentation.py",
+      "kind": "application or configuration",
+      "lines": 78,
+      "sha256": "dc73c5c4bc2f84fdf0406455cf641125081c506c29e55ab9cc6f17253af60f95",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "score_percentage",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 18,
+          "name": "category_percentage",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 28,
+          "name": "assessment_summary",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 76,
+          "name": "development_text",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/assessment_progress.py",
+      "kind": "application or configuration",
+      "lines": 70,
+      "sha256": "27ea69eec5dd135ac3d8282ddf75defc84e2cc1a3596af5bb17b7e7d51163d82",
+      "definitions": [
+        {
+          "line": 11,
+          "name": "current_enrollment",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 16,
+          "name": "assessment_availability",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 29,
+          "name": "required_progress",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 55,
+          "name": "attempt_action",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/attempt_timing.py",
+      "kind": "application or configuration",
+      "lines": 46,
+      "sha256": "1595232dc75e97c26ead0a45895b3cbdc32d035c79a699e8c1694fbedd1bf5ea",
+      "definitions": [
+        {
+          "line": 10,
+          "name": "attempt_identity",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 15,
+          "name": "check_attempt_identity",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 22,
+          "name": "timing",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 37,
+          "name": "mark_expired_for_review",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/authentication.py",
+      "kind": "application or configuration",
+      "lines": 14,
+      "sha256": "72e16e5db71b977ab36dc713f924f3132e866536cdf5234b1b3aa48b2625f218",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "AccountJWTAuthentication",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/backends.py",
+      "kind": "application or configuration",
+      "lines": 14,
+      "sha256": "d404c35d6fc68e7ea7cf61133e91db24ccdab0bc1b5bb894d0e3f57a9f144e6b",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "EmailBackend",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/catalog_validation.py",
+      "kind": "application or configuration",
+      "lines": 82,
+      "sha256": "432a411ad65024bb3c299f5845ea6436dfbfc369cab95eefbaa7dc5890b7f1ef",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "invalid",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 16,
+          "name": "nonempty_text",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 22,
+          "name": "slots_value",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 30,
+          "name": "tags_value",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 38,
+          "name": "requirements_value",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 63,
+          "name": "position_data",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 78,
+          "name": "company_fields",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/change_events.py",
+      "kind": "application or configuration",
+      "lines": 223,
+      "sha256": "5263ee7b4a7b17e4a9b3a6e5bf5b6d38a5b0eca1a91b5357bff86b5f1e09cfb8",
+      "definitions": [
+        {
+          "line": 23,
+          "name": "category_created",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 44,
+          "name": "_id",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 51,
+          "name": "audience",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 151,
+          "name": "publish_changes",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 166,
+          "name": "_safe_audience",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 174,
+          "name": "notify_changes",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 212,
+          "name": "combined_changed",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/combined_competency.py",
+      "kind": "application or configuration",
+      "lines": 158,
+      "sha256": "dec1f50eb5d213459f1ce603381088fe4062711f41d3ae821e9a56c2bc22cf7e",
+      "definitions": [
+        {
+          "line": 19,
+          "name": "eligible_evidence",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 41,
+          "name": "combined_is_unlocked",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 55,
+          "name": "recalculate_combined",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 130,
+          "name": "ensure_combined",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 143,
+          "name": "recalculate_enrolled_students",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 148,
+          "name": "serialize_combined_scores",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/company_images.py",
+      "kind": "application or configuration",
+      "lines": 234,
+      "sha256": "606b7fa95a518aa5d10521e370354baf6b8051ae3122f541df302a0e136b1be3",
+      "definitions": [
+        {
+          "line": 29,
+          "name": "ImageValidationError",
+          "type": "ClassDef"
+        },
+        {
+          "line": 36,
+          "name": "ImageStorageError",
+          "type": "ClassDef"
+        },
+        {
+          "line": 43,
+          "name": "convert_company_image",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 87,
+          "name": "company_data",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 140,
+          "name": "owned_key",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 144,
+          "name": "company_image_url",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 151,
+          "name": "image_fields",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 156,
+          "name": "_storage_request",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 182,
+          "name": "upload_image",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 188,
+          "name": "cleanup_image",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 201,
+          "name": "CompanyImageChange",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/csv_safety.py",
+      "kind": "application or configuration",
+      "lines": 20,
+      "sha256": "3149f92320c5a3778970d0bbabffacfc17413f327a8165cbb78b17f2b485e6e2",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "safe_csv_cell",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 15,
+          "name": "SafeCSVWriter",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/email_service.py",
+      "kind": "application or configuration",
+      "lines": 66,
+      "sha256": "1e01f08e286dc356cc2f7a7c868d86210c36cdb257e6b2a59b76209777afd2cd",
+      "definitions": [
+        {
+          "line": 17,
+          "name": "deliver_email",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 44,
+          "name": "queue_email",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/enrollment_import.py",
+      "kind": "application or configuration",
+      "lines": 235,
+      "sha256": "be5f7f2c24d68d4045c8a8e816ff5d5502b6d7e31ec5a95423850ce8138c37d6",
+      "definitions": [
+        {
+          "line": 24,
+          "name": "key",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 28,
+          "name": "email_component",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 37,
+          "name": "generate_dnsc_email",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 45,
+          "name": "normalize_program",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 53,
+          "name": "normalize_row",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 104,
+          "name": "match_row",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 127,
+          "name": "review_rows",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 151,
+          "name": "summary",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 160,
+          "name": "digest",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 164,
+          "name": "review_token",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 168,
+          "name": "verify_token",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 178,
+          "name": "confirm_rows",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/evaluation_views.py",
+      "kind": "application or configuration",
+      "lines": 27,
+      "sha256": "781f4aa6d1d8b293eda86884d74d16db3f5cc778deab7877631a05ee98f8745c",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "admin_nlp_model_comparison",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/health.py",
+      "kind": "application or configuration",
+      "lines": 28,
+      "sha256": "92d1a5cb3fe33aee316a0c49be1fa7766259315f94b14376706f7f6f7795d223",
+      "definitions": [
+        {
+          "line": 15,
+          "name": "health",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/logging_filters.py",
+      "kind": "application or configuration",
+      "lines": 14,
+      "sha256": "b6d429f7a0d022586102728643e77fb54e3832dfab3094191c0911aa5e8cdaf6",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "RedactCredentials",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/management/commands/prune_change_events.py",
+      "kind": "application or configuration",
+      "lines": 14,
+      "sha256": "d1d30bdf5af0b75292b0aeaeae586a8c4f7b52e55cf8fde354359a709d94dc5a",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "Command",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/management_access.py",
+      "kind": "application or configuration",
+      "lines": 47,
+      "sha256": "ff3231a3da6bc827a07e55b8dbd73ce8d8d3cd87a3561970c8c08212a98b411f",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "require_manager",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 12,
+          "name": "managed_batches",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 17,
+          "name": "managed_assessments",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 23,
+          "name": "selected_instructor",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 32,
+          "name": "batch_payload",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 40,
+          "name": "record_action",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 45,
+          "name": "assessment_state",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/management_views.py",
+      "kind": "application or configuration",
+      "lines": 68,
+      "sha256": "85468e78ef4a33c6b08638eee063db31d4996153443fd7a2be683d178449a626",
+      "definitions": [
+        {
+          "line": 13,
+          "name": "admin_batch_instructors",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 24,
+          "name": "admin_batch_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 51,
+          "name": "admin_management_actions",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0001_initial.py",
+      "kind": "migration",
+      "lines": 214,
+      "sha256": "820c016673eaab15545afb0d6a9ebd7fc5021d51787984b6ccc3b2163934ccdd",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0002_remove_user_employee_id_user_school_id.py",
+      "kind": "migration",
+      "lines": 22,
+      "sha256": "b70bf20bbb6a5eaebf4d5546df14163ea0e9450505393be59c8cf146cb3e4e36",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0003_responseanswer_text_answer_and_more.py",
+      "kind": "migration",
+      "lines": 39,
+      "sha256": "d2092ee98f148694b64671feb5d70535256b811f158826aaf92269c24b6e1ab2",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0004_alter_recommendation_unique_together.py",
+      "kind": "migration",
+      "lines": 17,
+      "sha256": "6c7959d2f5c7dcb23493bbe139dd874289ab023f84f8bfa6105038c6c38f873d",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0005_studentresponse_question_layout.py",
+      "kind": "migration",
+      "lines": 18,
+      "sha256": "8ac56e5fb176fdaa40598f1ae01a1b651224b301d5458369fc584b5d0c454bfd",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0006_studentresponse_integrity_fields.py",
+      "kind": "migration",
+      "lines": 60,
+      "sha256": "2b173ddb5f275ed6e7d3e84c1540a06e9b7a246919ed0a90d630728c522ceb44",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "mark_existing_submissions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 9,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0007_hybrid_recommendation.py",
+      "kind": "migration",
+      "lines": 59,
+      "sha256": "7d7a25e0bdefb95cb06b7b38d42ec590ebc4e79c5abfb91385960a56dd87ccb7",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0008_student_competency_profile.py",
+      "kind": "migration",
+      "lines": 32,
+      "sha256": "453a8fda6b09d1aed0abf0eb33ede11f839d9c015cf81b6314a5d4be33023c5a",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0009_add_ojt_placement.py",
+      "kind": "migration",
+      "lines": 47,
+      "sha256": "5a177dece6469d3d3060f829666736b47fce7bed4fd6905bed4b38c9042dbb1a",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0010_multiple_assessment_foundation.py",
+      "kind": "migration",
+      "lines": 25,
+      "sha256": "f4bb8e89c68e8529697e9d9a451617cfd62617c7ea3bb5d1f739f3737926698f",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "migrate_publication_state",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 9,
+          "name": "reverse_publication_state",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 14,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0011_alter_recommendation_unique_together_and_more.py",
+      "kind": "migration",
+      "lines": 96,
+      "sha256": "7b754e321a67a2540ba6ecd47f5808c889a03d5ea84d4973a7d3200adeb0bf8f",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0012_user_unique_populated_school_id_and_more.py",
+      "kind": "migration",
+      "lines": 23,
+      "sha256": "d46c5bccf57a62cfd172b662b51c7161de6fae66cdf9842865ded42f8357844a",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0013_changeevent.py",
+      "kind": "migration",
+      "lines": 17,
+      "sha256": "1986a0dc868193fd3f3323c90375a379743db8532a99db0ae4203d6f3cda76b5",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0014_company_image_key.py",
+      "kind": "migration",
+      "lines": 9,
+      "sha256": "11ab593a56c56b51bd419f21be27b1f05b185b1c6f7ded35ef30f53c30276d3d",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0015_user_department.py",
+      "kind": "migration",
+      "lines": 7,
+      "sha256": "55f9d21b93d8ec318e45537433bcaca6d71249130ea055c7daa3544c3654a13b",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0016_reviewed_position_inputs.py",
+      "kind": "migration",
+      "lines": 45,
+      "sha256": "d0d99dcf37393cfb04a66f61f3a8e74b293f666655d29cc1e374f457eed0e9cc",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0017_reviewed_question_skills.py",
+      "kind": "migration",
+      "lines": 28,
+      "sha256": "38271856df6d37edb2842bac45cadc86cd6a929229ef3ddef4fe9497dcf51408",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0018_suggestion_catalog.py",
+      "kind": "migration",
+      "lines": 80,
+      "sha256": "8b9405a4e81c12b6e10bda1267c7f2b8989856dd505e238c4fb7e568e12d9a60",
+      "definitions": [
+        {
+          "line": 10,
+          "name": "seed_catalog",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 23,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0019_remove_nlp_experiment.py",
+      "kind": "migration",
+      "lines": 73,
+      "sha256": "27820dfc6e2c64df496f234d2a0a37dab724dc0a44c3ff0f5741f4768ac44624",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0020_combined_ranking_input_fingerprint.py",
+      "kind": "migration",
+      "lines": 10,
+      "sha256": "4a384797098443e605f364ea6468bb194052c5806fed6a7834ddb5ee2e2d074f",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/0021_batch_created_by_managementaction.py",
+      "kind": "migration",
+      "lines": 36,
+      "sha256": "705cae350803cd084117116931598ff4f9b94bfec2ce93c062c2dfe87bbf725b",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "Migration",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/migrations/__init__.py",
+      "kind": "migration",
+      "lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/api/models.py",
+      "kind": "application or configuration",
+      "lines": 538,
+      "sha256": "91fbe8fd02a383c533657e7d587775acec25bc04a1b18e8368a1af6cf76a83e0",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "UserManager",
+          "type": "ClassDef"
+        },
+        {
+          "line": 25,
+          "name": "User",
+          "type": "ClassDef"
+        },
+        {
+          "line": 74,
+          "name": "Batch",
+          "type": "ClassDef"
+        },
+        {
+          "line": 89,
+          "name": "BatchEnrollment",
+          "type": "ClassDef"
+        },
+        {
+          "line": 99,
+          "name": "SkillCategory",
+          "type": "ClassDef"
+        },
+        {
+          "line": 111,
+          "name": "Assessment",
+          "type": "ClassDef"
+        },
+        {
+          "line": 146,
+          "name": "Question",
+          "type": "ClassDef"
+        },
+        {
+          "line": 167,
+          "name": "AnswerChoice",
+          "type": "ClassDef"
+        },
+        {
+          "line": 177,
+          "name": "StudentResponse",
+          "type": "ClassDef"
+        },
+        {
+          "line": 209,
+          "name": "ResponseAnswer",
+          "type": "ClassDef"
+        },
+        {
+          "line": 217,
+          "name": "SkillScore",
+          "type": "ClassDef"
+        },
+        {
+          "line": 229,
+          "name": "AssessmentAttemptHistory",
+          "type": "ClassDef"
+        },
+        {
+          "line": 251,
+          "name": "StudentCompetencyProfile",
+          "type": "ClassDef"
+        },
+        {
+          "line": 270,
+          "name": "CombinedCategoryScore",
+          "type": "ClassDef"
+        },
+        {
+          "line": 286,
+          "name": "CombinedCompetencyProfile",
+          "type": "ClassDef"
+        },
+        {
+          "line": 310,
+          "name": "Company",
+          "type": "ClassDef"
+        },
+        {
+          "line": 324,
+          "name": "Position",
+          "type": "ClassDef"
+        },
+        {
+          "line": 335,
+          "name": "PositionRequirement",
+          "type": "ClassDef"
+        },
+        {
+          "line": 345,
+          "name": "Recommendation",
+          "type": "ClassDef"
+        },
+        {
+          "line": 367,
+          "name": "OJTPlacement",
+          "type": "ClassDef"
+        },
+        {
+          "line": 493,
+          "name": "RecommendationConfiguration",
+          "type": "ClassDef"
+        },
+        {
+          "line": 515,
+          "name": "ChangeEvent",
+          "type": "ClassDef"
+        },
+        {
+          "line": 526,
+          "name": "ManagementAction",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/name_formatting.py",
+      "kind": "application or configuration",
+      "lines": 6,
+      "sha256": "bd274762acaccc7701a949ef2b6b8c92f5ea272cc0630e6f3705dac7974210c9",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "format_person_name",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/nlp_diagnostic_views.py",
+      "kind": "application or configuration",
+      "lines": 64,
+      "sha256": "86c20629e1dc15780a3b1b52ad9412cbfd1eb62f2e9f262de3a20262245070a2",
+      "definitions": [
+        {
+          "line": 15,
+          "name": "taxonomy_quality",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 23,
+          "name": "student_nlp_text",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 57,
+          "name": "position_nlp_text",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/nlp_evaluation.py",
+      "kind": "application or configuration",
+      "lines": 222,
+      "sha256": "50736e6b982c05dfe90b13629790cf6a933f4938d7f1ab171525b3476134fc02",
+      "definitions": [
+        {
+          "line": 33,
+          "name": "DatasetError",
+          "type": "ClassDef"
+        },
+        {
+          "line": 37,
+          "name": "Items",
+          "type": "ClassDef"
+        },
+        {
+          "line": 42,
+          "name": "prepared_data",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 89,
+          "name": "real_data",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 131,
+          "name": "text_similarity",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 137,
+          "name": "ranking_metrics",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 157,
+          "name": "ranking_diagnostics",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 167,
+          "name": "run_comparison",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/parsers.py",
+      "kind": "application or configuration",
+      "lines": 11,
+      "sha256": "297e9326b1d9834637eb897ea6c536f9f7333331c63b6f9f292715ffccaf5207",
+      "definitions": [
+        {
+          "line": 6,
+          "name": "ObjectJSONParser",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/profile_validation.py",
+      "kind": "application or configuration",
+      "lines": 68,
+      "sha256": "dda9144f82dd5438d2cfab8f82c0810fe445f4a0060d4f57c1b0f95deb503eaf",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "invalid",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 13,
+          "name": "text",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 19,
+          "name": "profile_data",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/recommendation_freshness.py",
+      "kind": "application or configuration",
+      "lines": 40,
+      "sha256": "86189b4290fb5c3dccb99d6171957cbc556ad7fbefabcabf44081d087f6e41ff",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "_digest",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 13,
+          "name": "catalog_fingerprint",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 32,
+          "name": "input_fingerprint",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 37,
+          "name": "recommendations_stale",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/recommendation_nlp.py",
+      "kind": "application or configuration",
+      "lines": 499,
+      "sha256": "bc8b9e1e5aff4c2ae84ab380f0b858981a6302b07cc068c823c5456e52736f8d",
+      "definitions": [
+        {
+          "line": 58,
+          "name": "normalize_tags",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 78,
+          "name": "suggest_skill_tags",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 89,
+          "name": "suggest_position_tags",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 123,
+          "name": "competency_label",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 135,
+          "name": "score_weight",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 147,
+          "name": "_selected_tags",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 154,
+          "name": "_evidence_parts",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 181,
+          "name": "build_student_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 191,
+          "name": "_category_terms",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 197,
+          "name": "generate_competency_insights",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 285,
+          "name": "build_position_description",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 302,
+          "name": "_simple_preprocess",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 314,
+          "name": "_load_model",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 336,
+          "name": "clear_preprocessing_cache",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 341,
+          "name": "_spacy_texts",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 377,
+          "name": "preprocess_texts",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 411,
+          "name": "model_status",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 429,
+          "name": "valid_coordinates",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 443,
+          "name": "company_address_text",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 453,
+          "name": "extract_coordinates",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 472,
+          "name": "haversine_distance_km",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 486,
+          "name": "location_similarity",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/request_validation.py",
+      "kind": "application or configuration",
+      "lines": 47,
+      "sha256": "f2b2069e11e38af41135278a3edd82cd502daadce02e2e585b6a576f44085e92",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "parse_boolean",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 16,
+          "name": "parse_choice_flags",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 31,
+          "name": "parse_question_fields",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/scoring.py",
+      "kind": "application or configuration",
+      "lines": 585,
+      "sha256": "d07fd0d08ae8992f8237fb9193cfd1c460d0bd34f2105a1f10652c661a141173",
+      "definitions": [
+        {
+          "line": 57,
+          "name": "validate_submission_answers",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 99,
+          "name": "score_submission",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 188,
+          "name": "build_skill_vector",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 263,
+          "name": "generate_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 291,
+          "name": "update_assessment_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 306,
+          "name": "generate_combined_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 312,
+          "name": "_rank_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 434,
+          "name": "suggest_category",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/serializers.py",
+      "kind": "application or configuration",
+      "lines": 18,
+      "sha256": "f4c0851f349bfe6baa1095a6f6c371c3a1f4d791b3eb74be7ad3cfc6b891c3fa",
+      "definitions": [
+        {
+          "line": 4,
+          "name": "UserSerializer",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/skill_taxonomy.py",
+      "kind": "application or configuration",
+      "lines": 226,
+      "sha256": "031707b48cfa2c2fa4f43c011c77401f63278f53635efa1799d2d0900e3bb5f1",
+      "definitions": [
+        {
+          "line": 170,
+          "name": "key",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 174,
+          "name": "canonical_category",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 179,
+          "name": "suggestion_category",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 185,
+          "name": "is_generic_tag",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 189,
+          "name": "taxonomy_diagnostics",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/sse.py",
+      "kind": "application or configuration",
+      "lines": 120,
+      "sha256": "9ed58b208ebaf5aa27e773572351af3e8d452a060be4500ec7267b9b80f0a5b1",
+      "definitions": [
+        {
+          "line": 22,
+          "name": "_get_user_from_token",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 41,
+          "name": "pending_events",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 46,
+          "name": "_message",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 50,
+          "name": "_event_stream",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 93,
+          "name": "_events",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 111,
+          "name": "admin_events",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 115,
+          "name": "instructor_events",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 119,
+          "name": "student_events",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_access_security.py",
+      "kind": "test or browser fixture",
+      "lines": 266,
+      "sha256": "e935e1210850241c5472d160e8d3264619d3aabb9d1f5b0811d6453154f9003b",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "AccessSecurityTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_admin_account_recovery.py",
+      "kind": "test or browser fixture",
+      "lines": 72,
+      "sha256": "1ab3e27ca824c388a92927f01485da041f728c97f5162c1fb504b5b1c150166e",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "AdminAccountRecoveryTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_admin_management.py",
+      "kind": "test or browser fixture",
+      "lines": 243,
+      "sha256": "e5365b897635c83d8e14580fecb0dbe7957a43482889949eeecacdb106629d6f",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "AdminManagementTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_analytics.py",
+      "kind": "test or browser fixture",
+      "lines": 188,
+      "sha256": "0fbd51590f1173233a09ce2b4f1e1312365cef47bc0f5d359dc2210d9580fb90",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "AnalyticsTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_assessment_presentation.py",
+      "kind": "test or browser fixture",
+      "lines": 22,
+      "sha256": "e90410cc8b8a4a4c0cb6e957718072237b1f06efaa96af875f82fc199f7c8bc3",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "AssessmentPresentationTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_assisted_recovery.py",
+      "kind": "test or browser fixture",
+      "lines": 46,
+      "sha256": "071c6bcef09cb353fc81c926c496b9815b2ee0526470739d9c6bb91d741cdcc6",
+      "definitions": [
+        {
+          "line": 11,
+          "name": "AssistedAdminRecoveryTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_attempt_timing.py",
+      "kind": "test or browser fixture",
+      "lines": 175,
+      "sha256": "f4c48393e068a93702719f369f5502b7cb2cc98badbf0980f4dee7351015f921",
+      "definitions": [
+        {
+          "line": 17,
+          "name": "AttemptTimingTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 129,
+          "name": "AttemptFinalizationConcurrencyTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_auth_contract.py",
+      "kind": "test or browser fixture",
+      "lines": 122,
+      "sha256": "4632b3e8ef72b12eaa40f8c973bfc2db3c2cdb0136e1abafd73638734ee7a114",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "AuthenticationContractTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_auth_deadlines.py",
+      "kind": "test or browser fixture",
+      "lines": 62,
+      "sha256": "663adecdfd47091e59a0249667867471c81e82eef2e272a9d2a85f00bac19d46",
+      "definitions": [
+        {
+          "line": 10,
+          "name": "GoogleDeadlineTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 36,
+          "name": "GoogleAccessTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_authoring_recovery.py",
+      "kind": "test or browser fixture",
+      "lines": 101,
+      "sha256": "470d4138ba2a4eee59c92c9006f5cf1da21bd9f1b8b5bf23ff89b6f6595f1850",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "AuthoringRecoveryTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_batch_taxonomy_recovery.py",
+      "kind": "test or browser fixture",
+      "lines": 71,
+      "sha256": "a6940fbc1ce77ba1d8696d9ead3918292a73f0ff736bc5531d537c18a256a158",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "BatchTaxonomyRecoveryTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_capacity_areas.py",
+      "kind": "test or browser fixture",
+      "lines": 83,
+      "sha256": "71206dcde262117588e85904ecc6832d601c4a016b3126b6e84b04d5a0ea9c25",
+      "definitions": [
+        {
+          "line": 11,
+          "name": "CapacityAreaTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_catalog_validation.py",
+      "kind": "test or browser fixture",
+      "lines": 113,
+      "sha256": "00b73b9b89e4b292a94f2e3967834848de09e14921c43c0994ec4b5150fe8e41",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "CatalogValidationTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_change_events.py",
+      "kind": "test or browser fixture",
+      "lines": 257,
+      "sha256": "25bd7f00e25c54c4b502b55bebc45482fb690c48d81f2defbadd266d6f56b388",
+      "definitions": [
+        {
+          "line": 23,
+          "name": "ChangeEventTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 188,
+          "name": "PostgreSQLTransportTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 241,
+          "name": "ActualCommitTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_combined_competency.py",
+      "kind": "test or browser fixture",
+      "lines": 380,
+      "sha256": "d4635c72a92924f965791602d02368d06b51b7cd46db1c5af614142ce499de94",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "CombinedCompetencyTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_company_images.py",
+      "kind": "test or browser fixture",
+      "lines": 473,
+      "sha256": "293521ff500ac20b6391cc874d86b0fd2b529a91ee417651495f8341e2afff47",
+      "definitions": [
+        {
+          "line": 27,
+          "name": "fixture",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 35,
+          "name": "ConversionTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 140,
+          "name": "CompanyImageAPITests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 404,
+          "name": "ImagePayloadTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 442,
+          "name": "ConcurrentCompanyImageTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_concurrent_workflows.py",
+      "kind": "test or browser fixture",
+      "lines": 162,
+      "sha256": "75e117809b020dda47ba7f2028d0d415abad590193b89b2fd3e11bfd5607801c",
+      "definitions": [
+        {
+          "line": 19,
+          "name": "ConcurrentWorkflowTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_enrollment_import.py",
+      "kind": "test or browser fixture",
+      "lines": 349,
+      "sha256": "8dfa2539a5c54257adcba179c7add43b6de8996e5065db5dc5c0b5bb40b119a0",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "EnrollmentImportTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 309,
+          "name": "EmailServiceTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_external_failures.py",
+      "kind": "test or browser fixture",
+      "lines": 55,
+      "sha256": "2afe85546e8688f7b7bc09f47601f8f882476301e8fbc7b4b9dc9cc7e4386ed7",
+      "definitions": [
+        {
+          "line": 13,
+          "name": "ExternalProviderTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_health.py",
+      "kind": "test or browser fixture",
+      "lines": 33,
+      "sha256": "5da04973f21ae9bd303b3202093c13ea5a25efa55f4021ddfd9dd798bec125d8",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "ReadinessTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_management_step4.py",
+      "kind": "test or browser fixture",
+      "lines": 311,
+      "sha256": "779b2fbf5406a1829a22145e89bc6e7da1c7859fa294cb07755710723b95d993",
+      "definitions": [
+        {
+          "line": 14,
+          "name": "ManagementStep4Tests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_multiple_assessments.py",
+      "kind": "test or browser fixture",
+      "lines": 287,
+      "sha256": "8183cb79216820e80774840fd27907c3aec848cbd162f1904b150848f6485d39",
+      "definitions": [
+        {
+          "line": 9,
+          "name": "MultipleAssessmentFoundationTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_nlp_diagnostics.py",
+      "kind": "test or browser fixture",
+      "lines": 172,
+      "sha256": "bff02ccff4578298efbe1cee61621d622cd8b33cacf965f44b0ac953cf5875b8",
+      "definitions": [
+        {
+          "line": 21,
+          "name": "TaxonomyTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 82,
+          "name": "TextPreviewAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_nlp_evaluation.py",
+      "kind": "test or browser fixture",
+      "lines": 155,
+      "sha256": "7f304d921fa364a1e9060cc1f0a70f1e9364271fd6ac133f0b0189be8b63370a",
+      "definitions": [
+        {
+          "line": 18,
+          "name": "fake_preprocess",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 23,
+          "name": "EvaluationMetricTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 74,
+          "name": "EvaluationAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_nlp_runtime.py",
+      "kind": "test or browser fixture",
+      "lines": 140,
+      "sha256": "32e3a755b2ff66bd18207e707b0b42bbc8dac996cf47a45bf5781cf909e91d0d",
+      "definitions": [
+        {
+          "line": 14,
+          "name": "PreprocessingReuseTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 67,
+          "name": "PreprocessorFailureTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 92,
+          "name": "RuntimeRankingFallbackTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_position_tag_relevance.py",
+      "kind": "test or browser fixture",
+      "lines": 91,
+      "sha256": "98c7baf7e49fd6041e550339bcaa0ba086652a1fb2e7e8862866d928f0dcefb2",
+      "definitions": [
+        {
+          "line": 13,
+          "name": "PositionTagRelevanceTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 60,
+          "name": "PositionTagRelevanceAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_profile_recovery.py",
+      "kind": "test or browser fixture",
+      "lines": 67,
+      "sha256": "0c10526e5846d9b65c450bfd79e544f1501f21ab480280f67148fcc9e8c1ce5b",
+      "definitions": [
+        {
+          "line": 8,
+          "name": "ProfileRecoveryTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_question_assistance.py",
+      "kind": "test or browser fixture",
+      "lines": 111,
+      "sha256": "d28da6cf2e59d900dd3d5390f4dfb8aa173ae90f560869d998f16385667f27d2",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "AssistanceTextTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 46,
+          "name": "AssistanceAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_recommendation_contract.py",
+      "kind": "test or browser fixture",
+      "lines": 185,
+      "sha256": "9180bb1eb8aeacc867d26843f9a46e0cee789bb39a1a5791f68d5ee6404dc2e3",
+      "definitions": [
+        {
+          "line": 17,
+          "name": "LocationContractTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 36,
+          "name": "RecommendationContractTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_recommendation_freshness.py",
+      "kind": "test or browser fixture",
+      "lines": 180,
+      "sha256": "1f0219abafd2fb628718a17f8ffc342d7c6ea414832ce28f340c2eff0b95fcb0",
+      "definitions": [
+        {
+          "line": 15,
+          "name": "RecommendationFreshnessTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 152,
+          "name": "SharedCategoryValidationTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_report_reconciliation.py",
+      "kind": "test or browser fixture",
+      "lines": 119,
+      "sha256": "de88463c38181aded6d27fb11c15a0496397a8077fd73f6b71d90c180bb94152",
+      "definitions": [
+        {
+          "line": 10,
+          "name": "ReportReconciliationTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_session_renewal.py",
+      "kind": "test or browser fixture",
+      "lines": 84,
+      "sha256": "097148d94c088542cb110dfb85c4f86862e4333656cf2bd80b7c031d1d4ff476",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "SessionRenewalTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_submission_integrity.py",
+      "kind": "test or browser fixture",
+      "lines": 172,
+      "sha256": "2c7e2d1da9032e3dea753aed2994b3935f53d696b90498873c187212123c31af",
+      "definitions": [
+        {
+          "line": 14,
+          "name": "SubmissionIntegrityTests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/test_suggestion_vocabulary.py",
+      "kind": "test or browser fixture",
+      "lines": 147,
+      "sha256": "628db915827eefc0a8b1b6f58365fcb72b2c60e83307700d3637e9fec1151dea",
+      "definitions": [
+        {
+          "line": 20,
+          "name": "SuggestionVocabularyTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 113,
+          "name": "SuggestionVocabularyAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/tests.py",
+      "kind": "test or browser fixture",
+      "lines": 920,
+      "sha256": "48d9319a095398dece1019fd0f34262adcfd9bf46d3f7ac80bd1aa3a5e39bff9",
+      "definitions": [
+        {
+          "line": 31,
+          "name": "AssessmentRandomizationTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 341,
+          "name": "HybridRecommendationTests",
+          "type": "ClassDef"
+        },
+        {
+          "line": 448,
+          "name": "OJTPlacementAPITests",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/api/urls.py",
+      "kind": "application or configuration",
+      "lines": 111,
+      "sha256": "240e4800f748f8e74b04c091e396a4d973d5e04524010a5461b1c90bf979b526",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/api/views.py",
+      "kind": "application or configuration",
+      "lines": 4898,
+      "sha256": "49610767b25c9c6a23b54e21f3c15f3ba2b03bdecfb21abc163a8461c59d22bf",
+      "definitions": [
+        {
+          "line": 63,
+          "name": "serialize_attempt_integrity",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 87,
+          "name": "_parse_assessment_datetime",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 98,
+          "name": "_question_category_name",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 108,
+          "name": "_question_error",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 131,
+          "name": "_stored_question_error",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 148,
+          "name": "get_qualitative_tag",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 158,
+          "name": "serialize_recommendation",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 187,
+          "name": "serialize_competency_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 200,
+          "name": "serialize_combined_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 217,
+          "name": "serialize_student_assessment_results",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 266,
+          "name": "management_combined_state",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 279,
+          "name": "bulk_management_states",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 355,
+          "name": "admin_current_management_states",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 372,
+          "name": "current_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 393,
+          "name": "latest_competency_profiles",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 405,
+          "name": "LoginRateThrottle",
+          "type": "ClassDef"
+        },
+        {
+          "line": 413,
+          "name": "get_instructor_email_html",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 454,
+          "name": "get_student_enrollment_email_html",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 494,
+          "name": "send_instructor_email",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 506,
+          "name": "login",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 552,
+          "name": "refresh",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 581,
+          "name": "me",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 585,
+          "name": "_google_userinfo",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 598,
+          "name": "_verified_google_identity",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 624,
+          "name": "_update_google_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 638,
+          "name": "google_login",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 679,
+          "name": "register_role",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 729,
+          "name": "student_profile",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 758,
+          "name": "student_me",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 828,
+          "name": "categories",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 859,
+          "name": "suggest_category_view",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 884,
+          "name": "suggest_tags_view",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 909,
+          "name": "_nlp_config_payload",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 928,
+          "name": "admin_nlp_configuration",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 955,
+          "name": "instructor_batches",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 977,
+          "name": "_enrollment_request",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1019,
+          "name": "instructor_batch_enroll_preview",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1027,
+          "name": "instructor_batch_enroll",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1036,
+          "name": "instructor_batch_archive",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1057,
+          "name": "instructor_batch_unarchive",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1078,
+          "name": "instructor_student_retake",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1124,
+          "name": "instructor_student_remove",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1154,
+          "name": "instructor_batch_students",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1269,
+          "name": "management_assessment_reports",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1459,
+          "name": "instructor_assessments",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1659,
+          "name": "instructor_assessment_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1785,
+          "name": "instructor_assessment_questions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1828,
+          "name": "instructor_assessment_add_questions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 1961,
+          "name": "instructor_question_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2103,
+          "name": "_student_assessment",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2127,
+          "name": "assessment_list",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2182,
+          "name": "assessment_active",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2236,
+          "name": "assessment_start",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2365,
+          "name": "assessment_submit",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2428,
+          "name": "assessment_stop",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2519,
+          "name": "instructor_student_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2638,
+          "name": "instructor_companies",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2735,
+          "name": "instructor_company_edit",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2790,
+          "name": "student_results",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2873,
+          "name": "student_combined_results",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2914,
+          "name": "student_results_review",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 2997,
+          "name": "student_companies",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3060,
+          "name": "admin_student_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3154,
+          "name": "admin_stats",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3213,
+          "name": "admin_users",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3315,
+          "name": "admin_instructors",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3389,
+          "name": "admin_approve_instructor",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3432,
+          "name": "admin_companies",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3496,
+          "name": "admin_company_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3542,
+          "name": "admin_company_positions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3561,
+          "name": "_rerun_recommendations_for_all_students",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3582,
+          "name": "admin_rerun_recommendations",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3618,
+          "name": "admin_position_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3653,
+          "name": "_skill_data",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3668,
+          "name": "admin_skills",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3696,
+          "name": "admin_skill_detail",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3733,
+          "name": "admin_reports",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3841,
+          "name": "_placement_batch",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3852,
+          "name": "_serialize_placement",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3909,
+          "name": "_serialize_placement_visibility",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3943,
+          "name": "_approved_student_placement",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3952,
+          "name": "_visible_placements_by_student",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3980,
+          "name": "_placement_area",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3991,
+          "name": "_placement_select_related",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 3998,
+          "name": "_positive_int",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4010,
+          "name": "_query_flag",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4014,
+          "name": "_can_manage_placement_student",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4024,
+          "name": "placement_suggestions",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4217,
+          "name": "placement_approve",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4309,
+          "name": "_change_placement_status",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4426,
+          "name": "placement_remove",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4433,
+          "name": "placement_reject",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4440,
+          "name": "placement_manual_assign",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4530,
+          "name": "placement_history",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4578,
+          "name": "placement_analytics",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4685,
+          "name": "_placement_report_queryset",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4694,
+          "name": "_company_address_text",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4712,
+          "name": "_serialize_placement_report_record",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 4730,
+          "name": "placement_reports",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/core/__init__.py",
+      "kind": "application or configuration",
+      "lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/asgi.py",
+      "kind": "application or configuration",
+      "lines": 16,
+      "sha256": "9d146b4275d108f948accc2ac015a456d540b48f8a95d9a81a72741f851784f6",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/settings.py",
+      "kind": "application or configuration",
+      "lines": 226,
+      "sha256": "dd4f951ffb13dc822f962be7b68eb983fff2ac3e25766eb795b64b5141a648fd",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/sse_postgres_test_settings.py",
+      "kind": "application or configuration",
+      "lines": 18,
+      "sha256": "789aadba44d4b9b93f86157220216ba20b6c6990fd7e530a59f7df83c0fe1361",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/test_settings.py",
+      "kind": "test or browser fixture",
+      "lines": 14,
+      "sha256": "264eb04eb2ecdbba8ebbc2fa323325bd1616ee036a8163aa8b116fca1be9fa97",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/urls.py",
+      "kind": "application or configuration",
+      "lines": 23,
+      "sha256": "c220e789da21060663fd51eedc9cbba25b66ea9ee02e294e5ac128296efe2ba8",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/core/wsgi.py",
+      "kind": "application or configuration",
+      "lines": 16,
+      "sha256": "bdbf6d0eadac1d166647d6319e2a135220733d81539d669dd75117b5f673b42f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/manage.py",
+      "kind": "application or configuration",
+      "lines": 22,
+      "sha256": "676a52170cb487187ba149800e0574fe52a57ddba5e243ddd3ef09fb3a3e8f4b",
+      "definitions": [
+        {
+          "line": 7,
+          "name": "main",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-backend/Procfile",
+      "kind": "application or configuration",
+      "lines": 1,
+      "sha256": "05b95ed794aba1c3d4cc2abefb5eaa33fbe74750b52a513b179e50254e6e4b75",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/requirements-nlp-spacy.txt",
+      "kind": "application or configuration",
+      "lines": 4,
+      "sha256": "e60e556aba24b883b4eabac5807d0eea9cf3cf6127b1195d8bcec6fc59a7027c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/requirements.txt",
+      "kind": "application or configuration",
+      "lines": 31,
+      "sha256": "73e1af23dc2d7c3dd59837b227897bdc43d1f596db61047e3d9be67b3d6dc8c1",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-backend/scripts/prepare_nlp_dataset.py",
+      "kind": "application or configuration",
+      "lines": 77,
+      "sha256": "419e3e47e6e770471955ffd6488e258edfb0172d95e8b4d99f56347a25b9771f",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "export",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/eslint.config.js",
+      "kind": "application or configuration",
+      "lines": 34,
+      "sha256": "6a0197d7c33a0a32ae23149ef7d6ce22bfbd443547ba840e1fae060bb41b063f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/package.json",
+      "kind": "application or configuration",
+      "lines": 38,
+      "sha256": "3a2d154465483688793b3e0e89b35ab37e03c2e17150632d31b0b644b90e1c8b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/authDestination.js",
+      "kind": "application or configuration",
+      "lines": 10,
+      "sha256": "229c157d1e10759a854fcdb0ff7625360c974bb4ed4c3656bc6c3bdc09703b87",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/authHeaders.js",
+      "kind": "application or configuration",
+      "lines": 3,
+      "sha256": "2035231ac0911b865b812548f4799d33a424f65a27b15b93bffe671f4db520d2",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/authHeaders.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 12,
+      "sha256": "4d26aea27636f642b61e8aeef7bd01b99eb532f6a4f371622e542608fa9f6ddb",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/axios.js",
+      "kind": "application or configuration",
+      "lines": 64,
+      "sha256": "5d9b24153044c1affbca115c55cf4248a424bdb2a36f1fa43369563525f7907c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/cacheStore.js",
+      "kind": "application or configuration",
+      "lines": 211,
+      "sha256": "1d1f7fc4525bdec83e22d8ac5650a764a6e3b2795d1c7987aa6d0110a60bceba",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/cacheStore.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 184,
+      "sha256": "0b5f58beea6f51b24f421ab3158c8f94d3f8a216fe8023c5c57da3baca20f974",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/eventStream.js",
+      "kind": "application or configuration",
+      "lines": 105,
+      "sha256": "e4d47d14232334388fd5cbcfc21db000eee687a507e12e234e5817017f7e0310",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/eventStream.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 130,
+      "sha256": "83e4792f8206358704367d3062c61704da36f90d78b011420e86190e9814c9c7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/logout.js",
+      "kind": "application or configuration",
+      "lines": 17,
+      "sha256": "8ca487c65245c8426a270da47a7a9e035a1612829b4ad5b547aadb2eaf39170e",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/prefetch.js",
+      "kind": "application or configuration",
+      "lines": 117,
+      "sha256": "9193a2dc33fca237dba09332e6ea6ed9e3d60e8bb0997ad69c678b9f420d71fd",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/preparationQueue.js",
+      "kind": "application or configuration",
+      "lines": 88,
+      "sha256": "a702ea37954950ec9ce8ab0e851a6037c2a2bca144b3a239d451462e0a789448",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/preparationQueue.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 151,
+      "sha256": "c6960cecb231b886b44e600ca4eb47f7668a48b274ce83734ab34e4688de9b7f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/queryInvalidation.js",
+      "kind": "application or configuration",
+      "lines": 41,
+      "sha256": "5cc0ffee69fbaea5f0b611ada22f2a69d6bd8ec5c1b5255dfc9e6abf0ecd8029",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/queryInvalidation.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 78,
+      "sha256": "ac1b8cd478ab48a527d5c1f1077366cad1b0dbdbdaf083ba6063971bdf1717b0",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/queryRefresh.js",
+      "kind": "application or configuration",
+      "lines": 18,
+      "sha256": "e6320bfebaa5aaf597053c85418ac57331dbe140cbeaf6bd1a7645f777fdfc27",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/queryRefresh.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 43,
+      "sha256": "cf337a1845988d0a256460a71bbb2567295acb9e1a94718f564e946376158efa",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/queryStore.js",
+      "kind": "application or configuration",
+      "lines": 16,
+      "sha256": "88a91a65f82764b5d1c8016cfb8b1bc45368bdd215a05ac0dd7608509db4a8ae",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/requestErrors.js",
+      "kind": "application or configuration",
+      "lines": 41,
+      "sha256": "e54c4937c62a10218e7612645b0543aac09c43a299909f9c8768767439fdf28f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/responseContract.js",
+      "kind": "application or configuration",
+      "lines": 75,
+      "sha256": "a8fdfacb39bc1d64db44b56fe56a72fa1165eaddf0b2cf73072889edc0bab241",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/responseContract.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 49,
+      "sha256": "551245e57717abb9cb948070b163bbaebc353e429790399243389c3f6780aa96",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/sessionRenewal.js",
+      "kind": "application or configuration",
+      "lines": 51,
+      "sha256": "284b6da5dbbe1c847e32ca58ac315fcff543f7b685b21f94988422cacc041064",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/api/sessionRenewal.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 76,
+      "sha256": "4f830b89705669a1fd40408267a57967b328c7537dd05846be9d043d9fd1163c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/App.css",
+      "kind": "application or configuration",
+      "lines": 184,
+      "sha256": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/App.jsx",
+      "kind": "application or configuration",
+      "lines": 122,
+      "sha256": "35ee49fe324c06b98bcca9be111316b5c99dc3184d8d3f5d9c4d57e14007d5fb",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/AddressDropdowns.jsx",
+      "kind": "application or configuration",
+      "lines": 244,
+      "sha256": "3cfe8d04b38b33f569e7a6a60b38befc87df4769dba2a6000fd5e15ed599b9bd",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/AddInstructorModal.jsx",
+      "kind": "application or configuration",
+      "lines": 176,
+      "sha256": "bc4a6c9cf25b695e7a5ad682e9494001ad68ea840433be601b564a7fa4e1a0b3",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/AssessmentManagementDialog.jsx",
+      "kind": "application or configuration",
+      "lines": 164,
+      "sha256": "704696219d4b7b3638d5f1421b63e5412f4d1d581c12c776bd4f978ba4723bf6",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/AssessmentPresentation.jsx",
+      "kind": "application or configuration",
+      "lines": 53,
+      "sha256": "59b3fffb577407a64c4572f85f01e4ef32e3dbba6c188984518b0dc4980ab651",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/CompanyCollectionCard.jsx",
+      "kind": "application or configuration",
+      "lines": 53,
+      "sha256": "8a086a9384a318e30531d608959ff701325bd210b738cc22675babfa15687217",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/ConfirmModal.jsx",
+      "kind": "application or configuration",
+      "lines": 34,
+      "sha256": "6947c4dcdf9466b8edd470fae517f47f3701fdf9dcd0181dbeb9f56ff7aa1404",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/NlpModelComparison.jsx",
+      "kind": "application or configuration",
+      "lines": 101,
+      "sha256": "a022db3b29a69a34a9509c7b341a83696c2749c27773567b544ec8c7696a42e7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/PendingDetailModal.jsx",
+      "kind": "application or configuration",
+      "lines": 95,
+      "sha256": "ad20fb9e981ec490b9f70a3cac264fcf46d4ef83bfa24724e0de66a35cd0eb45",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/TaxonomyQuality.jsx",
+      "kind": "application or configuration",
+      "lines": 37,
+      "sha256": "b6fd6273e9cf73eb32cb05a0cfac37c32981f658875c3cff55a79569804552e7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/admin/UserDetailModal.jsx",
+      "kind": "application or configuration",
+      "lines": 36,
+      "sha256": "0fc7a22638df517d4a7d20ee3140013eea43d7ff5dfa52f0b805de8e51979917",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/analytics/ActivityDateFilter.jsx",
+      "kind": "application or configuration",
+      "lines": 27,
+      "sha256": "f7180a96704d620732bf579031af0639faf67adfcd1a92fa0d63443641b905a3",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/analytics/AnalyticsCharts.css",
+      "kind": "application or configuration",
+      "lines": 3,
+      "sha256": "763ff610d55aa97fbcd8d89af3e262183839845c133669c405f7c168e40ae2c1",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/analytics/AnalyticsCharts.jsx",
+      "kind": "application or configuration",
+      "lines": 119,
+      "sha256": "17ce4b5a06a87711cef3876fd65c55e07ea8fbd61f9269fc80de84bea6ba0882",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/analytics/AnalyticsRecordTable.jsx",
+      "kind": "application or configuration",
+      "lines": 49,
+      "sha256": "1b7894f25a42eaa79079fff9fb68883fff9dde44a1f50cbea86d1fb4ff4efb49",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/analytics/reportTableStyles.js",
+      "kind": "application or configuration",
+      "lines": 8,
+      "sha256": "95d9ae8a99618a0140a39d5a18a6cdef480ded2e6267ffbbb191de9e1714854c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/assessment/AssessmentAuthoringDialog.jsx",
+      "kind": "application or configuration",
+      "lines": 71,
+      "sha256": "5fb43ae12b2bf44ad7814fdfd55fa0073a6cb79b37a44682f60ad51571612875",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/assessment/EditableQuestionCard.jsx",
+      "kind": "application or configuration",
+      "lines": 280,
+      "sha256": "60efa5101e97ed7b97041574a36144d17fac5ee2c7691032f0a35dd8efbc5e7c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/AssessmentReportPanel.jsx",
+      "kind": "application or configuration",
+      "lines": 90,
+      "sha256": "8192eb7fe55e1311029c737a34cc7cb733f53def5ac535f00004c0ed83c27381",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/AssessmentStudentDetail.jsx",
+      "kind": "application or configuration",
+      "lines": 181,
+      "sha256": "5815aaffb594c03945e6217ea4e5926039bf079ecd95e66ffce2b9e6c34acc60",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/Avatar.jsx",
+      "kind": "application or configuration",
+      "lines": 26,
+      "sha256": "c555bb7023803cbff03534e405237dc1628cd4ff01f5da9a0cdedc657f3cef8e",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/companyEdit.css",
+      "kind": "application or configuration",
+      "lines": 48,
+      "sha256": "42a4d4bda26ba0de93227736a757def38ada647a49943e7b12f3016f3360b23c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/CompanyEditDialog.jsx",
+      "kind": "application or configuration",
+      "lines": 36,
+      "sha256": "8c31c8bd6094134f55fff5ced868fafca9970302422f1479498e478ef4f129bd",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/CompanyImage.jsx",
+      "kind": "application or configuration",
+      "lines": 11,
+      "sha256": "a732e901f8bf4824a8f4c9cc44e2d33f0f3a653a19ceb812cc2ab6978449bd47",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/CompanyImageInput.jsx",
+      "kind": "application or configuration",
+      "lines": 115,
+      "sha256": "c06eb907bccfa644087f5f295968a1f1564abd384b77aba97ec1ef13e1756f04",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/CompetencyInsights.jsx",
+      "kind": "application or configuration",
+      "lines": 46,
+      "sha256": "dbebc0590998dc52ff1425d95a59894ae83fffd1ec0f6d351a2f1d328c75c109",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/dashboard/DashboardHighlights.jsx",
+      "kind": "application or configuration",
+      "lines": 54,
+      "sha256": "27796ceb25441554eb83d9b360322324a805b035759f17d9b35a966d7ec8e044",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/dashboard/DashboardOverview.jsx",
+      "kind": "application or configuration",
+      "lines": 22,
+      "sha256": "f917eee4e14ba888ce7e20ce80bd6fbaa298e3344be2d1d2e8e8a05e3c30ba66",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/dashboard/DashboardSummary.jsx",
+      "kind": "application or configuration",
+      "lines": 18,
+      "sha256": "8e11ccb7daee73cb9e5b317a36d66e4223efe35c9d12e5980ebd518124d2df3e",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/DataSection.jsx",
+      "kind": "application or configuration",
+      "lines": 41,
+      "sha256": "7e2f491100e55d5cef87ebc99a83b9a3a78fc56455dcb3de7170cbe1ee8fd2bf",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/DialogShell.jsx",
+      "kind": "application or configuration",
+      "lines": 96,
+      "sha256": "ad94bc2b4a98136c33091b5a7e4813a4f0947ca0c5b9315c47fc47d246b54056",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/EmptyState.jsx",
+      "kind": "application or configuration",
+      "lines": 33,
+      "sha256": "3125a524bf826081da1836a84a54ed3970fbcced2237a39c6354edb16f3c9327",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/enrollment/StudentEnrollmentModal.jsx",
+      "kind": "application or configuration",
+      "lines": 300,
+      "sha256": "075610e1f2a88a5eda40041b57d4321b3f86d9a84d1675341fb26ac1608940fa",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/ErrorBoundary.jsx",
+      "kind": "application or configuration",
+      "lines": 76,
+      "sha256": "61b76ffb42a1db4a9e7750414030dcb4402c4eea1582db3d2e2be2bbb866d470",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/Icons.jsx",
+      "kind": "application or configuration",
+      "lines": 217,
+      "sha256": "51ee48883214da93cc9188d91b42d57aa351d37f5dd722849573815e66a5f0f3",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/instructor/AssessmentSettings.jsx",
+      "kind": "application or configuration",
+      "lines": 32,
+      "sha256": "5aa2cb6c9b0ca49a44f5f867cf9ae25eb80bf079477533f1b1966fb21371a98d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/instructor/EnrollModal.jsx",
+      "kind": "application or configuration",
+      "lines": 1,
+      "sha256": "f4d17fa5078bb91ae1815184861bf0c4648108675262de169735cddda333c5a1",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/instructor/SkillLeaderboardModal.jsx",
+      "kind": "application or configuration",
+      "lines": 293,
+      "sha256": "24263e97f7096131f745a83566e349883125e1ac86102303b403e4884fbe222a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/instructor/StudentModal.jsx",
+      "kind": "application or configuration",
+      "lines": 5,
+      "sha256": "fd324c75f3bbfb7b93c3fe4f70b9b62e43dc55fbc72e6c75d48444f6cce1e21a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/layout/AuthenticatedShell.jsx",
+      "kind": "application or configuration",
+      "lines": 101,
+      "sha256": "96f74f774b0d46a03fced3c17fb47bed00762d4ee00e89e7e5e09e8e6756c41a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/layout/FocusedStudentHeader.jsx",
+      "kind": "application or configuration",
+      "lines": 20,
+      "sha256": "beeb37e9b26a2e6ec8dfba8876f0754f49c222618dbd59df443353bf94bf6199",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/layout/ModalLayer.jsx",
+      "kind": "application or configuration",
+      "lines": 48,
+      "sha256": "65e498fa43157b0a2ee062f0d8e7d0ac36058bbc7444ceb0811d6f71a1e11c61",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/layout/ProfileMenu.jsx",
+      "kind": "application or configuration",
+      "lines": 75,
+      "sha256": "8d0fb8387cabaa46189e870d7b7ad9e43929604d857d790753c6d5cadc2de87d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/MapStatus.jsx",
+      "kind": "application or configuration",
+      "lines": 9,
+      "sha256": "3f8fa9e835d1d8a0639a472b7d06842e25818eebb107925effb6b766b71d921d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/NlpTextPreview.jsx",
+      "kind": "application or configuration",
+      "lines": 62,
+      "sha256": "b964674a2ead98039244cb1859f3b06a8823217bc7aefd6a7b384b9a525949a8",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/PageHeader.jsx",
+      "kind": "application or configuration",
+      "lines": 27,
+      "sha256": "7899ff866ca05310f7dfafed1658affc2276709bd0eb6499c756a47c4e997ce8",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/Pagination.jsx",
+      "kind": "application or configuration",
+      "lines": 70,
+      "sha256": "d5f35889672ead77db31b9530ea4c771421aa0ccb975ca5c53f04d6e32c7fb9b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/placements/PlacementGuidance.jsx",
+      "kind": "application or configuration",
+      "lines": 11,
+      "sha256": "1820d6f4df49dedfeb87317ce8ab399824e42b8ba2366e5d8e25091b3b28ca34",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/placements/PlacementReportPanel.jsx",
+      "kind": "application or configuration",
+      "lines": 147,
+      "sha256": "db2ebd7cea0ad4f82d266459bbb995c252d3337a5e1d5aca76799a33991c0844",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/placements/PlacementStatusCard.jsx",
+      "kind": "application or configuration",
+      "lines": 101,
+      "sha256": "a03837c89d5026ef78b1eec323048df566b405b99dc5c9100a763a6ebdef1357",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/ScoreLabel.jsx",
+      "kind": "application or configuration",
+      "lines": 73,
+      "sha256": "a26b1c6dc14d3878ddb74e3e0779173dcd71685c18e2a8a902db0b3d1bba26de",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/SearchBar.jsx",
+      "kind": "application or configuration",
+      "lines": 34,
+      "sha256": "40ec62aedb168b06412a3bcf34637cb4482caf58f9ced189cf659b53144e7ef4",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/skillCategoryList.css",
+      "kind": "application or configuration",
+      "lines": 8,
+      "sha256": "f036f35dd9da593f2fcd9fdcf93e7d6d335218422eb9b622be7f7181f2325e36",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/SkillCategoryList.jsx",
+      "kind": "application or configuration",
+      "lines": 32,
+      "sha256": "7f1a6b0ed1445577bffd831268a3ff054eae2b4d7b4ec868837eb6ae5d266e79",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/SkillTagBadge.jsx",
+      "kind": "application or configuration",
+      "lines": 137,
+      "sha256": "baa51513934574d6a2bdb47589ce985ba17e0222314fd7aebb6dbcc097dce1aa",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/StatCard.jsx",
+      "kind": "application or configuration",
+      "lines": 42,
+      "sha256": "3d5b752c905272963e1595940fa5912be381bfc512f9921bc1bd927a74d6d882",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/StatusBadge.jsx",
+      "kind": "application or configuration",
+      "lines": 68,
+      "sha256": "99dcab2a3e345a3a2c6b2326d3653aa0157f98aec572e5c244a001fffb96ecae",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/studentCompanyDetails.css",
+      "kind": "application or configuration",
+      "lines": 4,
+      "sha256": "6e429f338115d0bba2d68d03b9d6e2f70a519d588c0999ede976e32a1a75ea90",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/StudentCompanyDetails.jsx",
+      "kind": "application or configuration",
+      "lines": 66,
+      "sha256": "03b76906be567b65d9c6afad0a4f28c0fb08dacad34f720eaea8ca54dbda8722",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/studentDetail.css",
+      "kind": "application or configuration",
+      "lines": 74,
+      "sha256": "cfc3a5521b17ce77a30000934c7427aa1685ad2fb89cf54b96b6caee0ea208c5",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/StudentDetailModal.jsx",
+      "kind": "application or configuration",
+      "lines": 26,
+      "sha256": "65f3a6e99cdd87cee66a31523846d091d9e70ddf78be6caca4dec0e26bc3ba20",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/components/StudentLocationSection.jsx",
+      "kind": "application or configuration",
+      "lines": 271,
+      "sha256": "288470ed4bec35850b3eab3090b7bd740b75edd35babe7b2f1cf71cdaafff70a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/context/SessionContext.jsx",
+      "kind": "application or configuration",
+      "lines": 140,
+      "sha256": "fe19d45109fec5c543697c9fd3d1cb727862d88399498c92479eed4d5313586d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/context/ToastContext.jsx",
+      "kind": "application or configuration",
+      "lines": 137,
+      "sha256": "b2d3854929d3dd7d69e381078ad4d5e037a339364d3c90ee286d0abaab077744",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/admin/useAdminAssessments.js",
+      "kind": "application or configuration",
+      "lines": 18,
+      "sha256": "c9bb74cef09026b519c1a597e244cc7a4ceb5821de956f30a08a902534ac91a2",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/admin/useAdminCompanies.js",
+      "kind": "application or configuration",
+      "lines": 276,
+      "sha256": "c3f665bd2d26b4336faf9ae6b080c9e01658d542521d4a7fb1ba7910ae6d6426",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/admin/useAdminDashboard.js",
+      "kind": "application or configuration",
+      "lines": 68,
+      "sha256": "b743e1ab093e2963856518bc8b52f72ec1adf6d9b34832f522d4cdecdbfc5c7b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/admin/useAdminSkills.js",
+      "kind": "application or configuration",
+      "lines": 102,
+      "sha256": "1c5e57e859454fa629cbac496c39b2685f8151000e5feab40561cc4d229f6e1a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/admin/useAdminUsers.js",
+      "kind": "application or configuration",
+      "lines": 407,
+      "sha256": "35a71e079d4f51d0f48934ddedcf4ea431864ea2aedeb7ff3bbb58a8b01e19f9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useAssessmentUpload.js",
+      "kind": "application or configuration",
+      "lines": 256,
+      "sha256": "86b17594d6ba698adb6fb7112b2b669e5951669148e0b0eb97079281680e76dc",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useEnrolledStudents.js",
+      "kind": "application or configuration",
+      "lines": 379,
+      "sha256": "8d77adfbad76df0dd0d736ce4bb74812fd77806f3ecff8245cf775c300d74f13",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useInstructorAssessments.js",
+      "kind": "application or configuration",
+      "lines": 441,
+      "sha256": "7d293c799577a2d0363320a74f2f23872f0a6bc0cfbaf2ca7c193abc8c9470ec",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useInstructorCompanies.js",
+      "kind": "application or configuration",
+      "lines": 100,
+      "sha256": "47787085f390bf77eae9d7b33c36909f787597fb295a617717c7e1dbaa7d88ea",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useInstructorDashboard.js",
+      "kind": "application or configuration",
+      "lines": 139,
+      "sha256": "5baffef0f99a3c7531e14062b637ba610a6a8539af0875336a4e1df92db17ed1",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/instructor/useInstructorUpload.js",
+      "kind": "application or configuration",
+      "lines": 793,
+      "sha256": "46423a14b184d2a8c58c704d3576973656b985a8f70bdba6da9f0a5223eb7b6f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/student/useStudentProfile.js",
+      "kind": "application or configuration",
+      "lines": 166,
+      "sha256": "c6170966cbf359f5040088748dd6e9278f8e1eddb62afaf3c940b71e02c689f2",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/student/useStudentResults.js",
+      "kind": "application or configuration",
+      "lines": 82,
+      "sha256": "7fcddfd7973c602884f6215b72ad444bf76f800f8d592a49399cf5b1872ef688",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/useAnalyticsData.js",
+      "kind": "application or configuration",
+      "lines": 30,
+      "sha256": "e75eb4d4b47d6da915a888dd9da52282ca1a8e231825fb553e747bc3a6b65f41",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/useAnalyticsRecords.js",
+      "kind": "application or configuration",
+      "lines": 28,
+      "sha256": "66172f75cf209f95fb64d11fb60124fdded0399f588390f28f6c2fba266c2237",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/useApi.js",
+      "kind": "application or configuration",
+      "lines": 249,
+      "sha256": "e2fd8c175454d6b752a3173391d4d386e0ffa53009f50dfd2e56b758c9ec494f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/usePlacements.js",
+      "kind": "application or configuration",
+      "lines": 134,
+      "sha256": "630162c4a90e7167662f0d8bc604e87514e80bfe1e2357e99e9334a3cb235b1b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/useSnapshotFreshness.js",
+      "kind": "application or configuration",
+      "lines": 39,
+      "sha256": "ec59b5f5aebdee06771af1e312f0b33cf2c6e41912f7b4cbe6aadd28cc818093",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/hooks/useSSE.js",
+      "kind": "application or configuration",
+      "lines": 45,
+      "sha256": "7f2fa77f2a0ac692456ac02afafef30938f0e84abeedafd5883bd7a381d31c1f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/index.css",
+      "kind": "application or configuration",
+      "lines": 305,
+      "sha256": "fdf44809d898e35c1e9c19355949aa65ccc0dffab7e3437904d74b01e2f0b3f4",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/main.jsx",
+      "kind": "application or configuration",
+      "lines": 28,
+      "sha256": "642744ce445fc8d89e440de1a3f0298972e50b983e2d9096b3187b64f873419c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/navigation/navigation.js",
+      "kind": "application or configuration",
+      "lines": 71,
+      "sha256": "acec60d734fd30fa77e8bfdfab9586f88990475e250881f9812439620a94875b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/navigation/navigation.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 79,
+      "sha256": "840743d8298a537da813a76d2f7355a1b61694c09fe0ecc0cd68ba7b7325dd37",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminAssessments.jsx",
+      "kind": "application or configuration",
+      "lines": 97,
+      "sha256": "5b7199d12ca10064e2b164a0b151f28f7b3dad79e0a755fa523b9b1aef542381",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminBatches.jsx",
+      "kind": "application or configuration",
+      "lines": 165,
+      "sha256": "18de35712dfdd57a42bf479f6cdddcf3e1a6792199fe32fffb598fc158e3d83c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminCompanies.jsx",
+      "kind": "application or configuration",
+      "lines": 1120,
+      "sha256": "f1ee06f381adf23cbe5d0e67b77addddb8458f2ee0131dd15520cef68adc8f75",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminDashboard.jsx",
+      "kind": "application or configuration",
+      "lines": 253,
+      "sha256": "5a094b41a3827dcea9fc32d75b460586b9532cdcf4382d7afa82697821774b55",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminPlacements.jsx",
+      "kind": "application or configuration",
+      "lines": 5,
+      "sha256": "fc3a742903f7c48de4cc007e3f9535e4f1484cea83fc75a7bf3639791f922168",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminRecommendationTools.jsx",
+      "kind": "application or configuration",
+      "lines": 95,
+      "sha256": "a7f9d876c405662eaff276f304d12edd6d35bd982e1536c527b19b114699020c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminReports.jsx",
+      "kind": "application or configuration",
+      "lines": 3,
+      "sha256": "4121338308834db65e60a96297cd073dcf9e89e3dc208b895a2eee7f9c0b522a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminSkills.jsx",
+      "kind": "application or configuration",
+      "lines": 248,
+      "sha256": "8c07b05ef8d8fcca40515af0a63aef071b7a39ae12a51cb08314bc158fd84f74",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/admin/AdminUsers.jsx",
+      "kind": "application or configuration",
+      "lines": 344,
+      "sha256": "780a4693751d059e01eb15c6a22516772579335b3cba3ff234814e4a023ca443",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/auth/AdminLogin.jsx",
+      "kind": "application or configuration",
+      "lines": 231,
+      "sha256": "dc59313b4ef43a02c67e474944e4aab3d9b78ffa0b2a5e6592768c91f48d6dc7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/auth/LoginPage.jsx",
+      "kind": "application or configuration",
+      "lines": 176,
+      "sha256": "ae74cf905b8a3b2a3d32dbf4d22306cf3c704a4c85333637f8a4aced56ce339f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/EnrolledStudents.jsx",
+      "kind": "application or configuration",
+      "lines": 395,
+      "sha256": "6a5fe049981efad3849245868f97253afeb131a1b9a85b50536d083e542c5976",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/InstructorAssessments.jsx",
+      "kind": "application or configuration",
+      "lines": 650,
+      "sha256": "66bb72bbd0cbfd2150d1eef9a4d906112cd8025761925e4153c442e5b7163240",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/InstructorCompanies.jsx",
+      "kind": "application or configuration",
+      "lines": 801,
+      "sha256": "51166b5abae2315ccfde108e4dea059f3b0b90d125b3b7288b9d4a0d4db903c4",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/InstructorDashboard.jsx",
+      "kind": "application or configuration",
+      "lines": 330,
+      "sha256": "36d0781562e2ad7f5b6c6e68352334f32db10e9b5f6d9940f3254b3ce296f6c9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/InstructorPending.jsx",
+      "kind": "application or configuration",
+      "lines": 104,
+      "sha256": "7bfab262c3544f4c1af4ec33d3f1600258745cd5d8c29c727363a0d7672ec86b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/instructor/InstructorUpload.jsx",
+      "kind": "application or configuration",
+      "lines": 886,
+      "sha256": "22fb8264e3638c811e9a4dbe6c5d1de523892955f0ff8ceffde5c432f72f3dd5",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/placements/PlacementsPage.jsx",
+      "kind": "application or configuration",
+      "lines": 373,
+      "sha256": "1426079a87842c6627d790fa01be2c17458f0143cb7cbe05eba601d4f82e8d07",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/reports/ReportsAnalytics.jsx",
+      "kind": "application or configuration",
+      "lines": 248,
+      "sha256": "cc65ae6f211a6103dcce7513fcda93dae5ee7595fde3cb1716ecb55fc4dbde58",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/assessmentUiState.js",
+      "kind": "application or configuration",
+      "lines": 29,
+      "sha256": "1ffc85aed01f88391432cc87625f8e978a9f95579e96b01b5c7d175445e8f46b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/assessmentUiState.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 32,
+      "sha256": "f0ee51447798ce163a14875f920ee67aed7eb23fbc11b5db58da2ec72220076d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentAssessment.jsx",
+      "kind": "application or configuration",
+      "lines": 1084,
+      "sha256": "cdc38cec89b6ffa082c03de355e37dd4e238be257f30774beab8585de6eba516",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentAssessmentResult.jsx",
+      "kind": "application or configuration",
+      "lines": 97,
+      "sha256": "4ce397bb8c35acc2204d249df4b528097c5691aa576c09bffb59699b51ab571d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentAssessments.jsx",
+      "kind": "application or configuration",
+      "lines": 112,
+      "sha256": "ca372904cb7ce36eeb0e63233d7d8698aeb9bc80d93a2868db870146726e6b7f",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentDashboard.jsx",
+      "kind": "application or configuration",
+      "lines": 742,
+      "sha256": "c5e16feec0cfc0e1307f6c801549d22ef63cc687242ee12c692855028542156a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentProfile.jsx",
+      "kind": "application or configuration",
+      "lines": 698,
+      "sha256": "55b18c0a7f014bf454ff28248e4b53da82d596868948bf0e5c67c0d08aaf91fa",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentResults.jsx",
+      "kind": "application or configuration",
+      "lines": 609,
+      "sha256": "edc241bf405432603ca9e782bbc1408d04c147651218e3ec68fc5610cc6c8aaf",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/pages/student/StudentSetup.jsx",
+      "kind": "application or configuration",
+      "lines": 594,
+      "sha256": "c9d8c95e90af1be278bc220af1fe0c4408275d6d99a7aadfe59c5d82f70b61f0",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/router/preloadPage.js",
+      "kind": "application or configuration",
+      "lines": 20,
+      "sha256": "a9665fce3424f8a2f80d9e97c114bec4b83a31a3f70cd7f947f0abddfd8b83df",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/router/PrivateRoute.jsx",
+      "kind": "application or configuration",
+      "lines": 54,
+      "sha256": "d21c0ef38ba6552a20eb5acd7dbceb2703227049027a89de81728b47670a89e2",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/accountCollection.js",
+      "kind": "application or configuration",
+      "lines": 12,
+      "sha256": "811e9f6c323f6619067f5add6ab7da1e50d6d1ecf8bdf6891dce0e0786fd9dee",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/accountCollection.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 16,
+      "sha256": "91cb2a32f1dab700300e2569f26889f5d416947642b43e8e914baf7cc2d26716",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/adminAssessmentState.js",
+      "kind": "application or configuration",
+      "lines": 53,
+      "sha256": "25f73bf94ee364b85521f94aafce9fb3a2f81d5a63bce489d678ef97170f781a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/adminAssessmentState.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 58,
+      "sha256": "dbd28a8075f4e29930cfb7a737127d25a92b5c55e40a446263382c887842f628",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/analytics.js",
+      "kind": "application or configuration",
+      "lines": 93,
+      "sha256": "0baf297da8f443b438756b83aa1ce4598a4030d5ec38a8ba5146caf25f8757c9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/analytics.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 48,
+      "sha256": "a07a6ea48ec5f669eef465ab114830cfda2c1b2778ad815dc7c882f9b30f01e6",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentClock.js",
+      "kind": "application or configuration",
+      "lines": 5,
+      "sha256": "95e22e64d629f31ea9b8601bd3212b022fe0755ef0522af52875e7fa62292654",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentClock.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 12,
+      "sha256": "95846a95ea1383b46548a6af725796a6037daff6dd3e94fcbfdd8145b95b78e7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentDates.js",
+      "kind": "application or configuration",
+      "lines": 15,
+      "sha256": "c744fb6dd14b3467c2b99a255df86f8ae227cdd4ed0ab65589d6c9681df185fc",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentManagement.js",
+      "kind": "application or configuration",
+      "lines": 20,
+      "sha256": "b2f6d9f9fd96b2fd3d70fdde14d2922ba976ecf37b96582a6e308ad8043d76ed",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentManagement.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 28,
+      "sha256": "d1e4af94489a7e102103f6cbc9737b63e6b989918be417b35389eaa8fe4106bf",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentReportPdf.js",
+      "kind": "application or configuration",
+      "lines": 135,
+      "sha256": "83b09cd9b7869cdf6631faafd8fe54901721ea632332e44e75ef184b8ce90a34",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentReportPdf.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 40,
+      "sha256": "f4f04ada269fb7275f10da84632c014e02d03d9a221c1b43b27ea74bbcc8cbd9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentSummary.js",
+      "kind": "application or configuration",
+      "lines": 45,
+      "sha256": "e4eb55a8d0d8fe2d5f1b52d0e109e5d1d8609d0cf7e0ae08cb0c4294a7a00ec2",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/assessmentSummary.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 52,
+      "sha256": "4c6aa4cfcbcee55fb4edcc5f74728e48cd7b084c1133d000e7c10dbc6a2c9ebc",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/attemptStorage.js",
+      "kind": "application or configuration",
+      "lines": 3,
+      "sha256": "58a4a3a58b1cb00a2d0ee7dbc44d179ab70153786eb025739c9e58a04bcefa10",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/attemptStorage.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 9,
+      "sha256": "0df11bb8cc8a67e2211cd72d33a2342b34ad6a440bee6dadd97c1a3d14e04c91",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/authoringDraft.js",
+      "kind": "application or configuration",
+      "lines": 23,
+      "sha256": "78d5bae551f44dc0664b46596c71d587f7a3cca2b32a9b2c4073e7ffafca0380",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/authoringDraft.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 25,
+      "sha256": "890fe449c0ddf5554d13c609f2b19e364582b996fdaac503793829cbf0e1655d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/companyCollection.js",
+      "kind": "application or configuration",
+      "lines": 21,
+      "sha256": "95b5486d7c53f9ef9daec04574d27081282a6e1e15c4dc17a9752b346a42a83c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/companyCollection.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 32,
+      "sha256": "13105c2da8aa6c3241330431ab87a990fcf49786c28433996ea330683baad2ab",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/companyImages.js",
+      "kind": "application or configuration",
+      "lines": 19,
+      "sha256": "8cf4e364bc1a54c5770941c18c43d918404e1073214db6236bac21c3d739c902",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/companyImages.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 26,
+      "sha256": "c062500d81c8ecc5aaab83cde4eb19262a05de08732d1681fa73efee38a24c4b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/dashboardStudents.js",
+      "kind": "application or configuration",
+      "lines": 56,
+      "sha256": "f9b0eb703ccb1d92d6d6d567af78562a6f18b2fa77c5f20d8e94de7cc35f11cb",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/dashboardStudents.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 53,
+      "sha256": "b4b25820e0f964528e0d73b2de4f11a47ca3a3b8a3b9e52fa1d7574ab2a45dd6",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/escapeHtml.js",
+      "kind": "application or configuration",
+      "lines": 7,
+      "sha256": "9e54cf27a58b50de4654ca06c03945e2509059324ff0ff2e2a2a443a7b8571e7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/escapeHtml.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 9,
+      "sha256": "e777a43ca45a72f5efbf8dc889f87ad4e4c6d23cfe142403bd015cd86e3d2db7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/externalServices.js",
+      "kind": "application or configuration",
+      "lines": 74,
+      "sha256": "c0db76d2cdb38fbd46c4bfb3b248747e80ca4ada373309fac1e4b3676a421643",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/externalServices.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 96,
+      "sha256": "ecacf5e2208001846f969f0e33bef2ea88c6dba8929c0254198f64ebc5ae6f78",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/formatters.js",
+      "kind": "application or configuration",
+      "lines": 153,
+      "sha256": "b23770df7dcdbf8c88dfdae68fc5be42e807ca4edd381da9a7ce641a43777785",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/formatters.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 21,
+      "sha256": "f8808389fcad98b63ea42ad9ed8dd965818ff633582b827e3cada117878bdc89",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/managementStudent.js",
+      "kind": "application or configuration",
+      "lines": 46,
+      "sha256": "3ccbdd2714aaec9afddd5cd539e94651b9ad1519bd40c557e890382a64c402e3",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/placementReports.js",
+      "kind": "application or configuration",
+      "lines": 412,
+      "sha256": "ccbf31ed4a5a4dbcfd4b369b93e1c373ce1bfabfd0dd448408a4a7628046302c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/recommendationResults.js",
+      "kind": "application or configuration",
+      "lines": 54,
+      "sha256": "d296c75760d909559bb363ad3a41ab46b3f42a99255d65c5b5f0a11ef7759833",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/recommendationResults.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 64,
+      "sha256": "9262ac006a00ae7d24159e68a604940af71bc163492baff518428406e5b2956b",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/studentDetail.js",
+      "kind": "application or configuration",
+      "lines": 44,
+      "sha256": "94a0308f443f9c9a71436d85d1dfaceef816c0f4878a8454d4fab02855bbac0e",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/studentDetail.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 54,
+      "sha256": "ea9eda63c382e831c3b3bc1f0c10bdacfadb1bba1ad748415ef622da8e3ed3e6",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/studentEnrollmentImport.js",
+      "kind": "application or configuration",
+      "lines": 97,
+      "sha256": "99f2b8533037a5bd22abbf0b264045a8f785fcedc2e3a9e6e33079755ab20e18",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/src/utils/studentEnrollmentImport.test.mjs",
+      "kind": "test or browser fixture",
+      "lines": 98,
+      "sha256": "f41dbb4b2fdcb7bf8af2fc6c8a76a578db17d7cbdbaa56f119ccb5aa0978e024",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/admin_account_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 90,
+      "sha256": "65315883fe5372cf5450f2d3ba0e35d17dc5488dfc1614b38a500c0cf9bd88a5",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/admin_assessments_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 406,
+      "sha256": "6fd5ca68678bf1d0ad8ab454fb9e98cd372aed1e0b0138e43f062fffe59fdeae",
+      "definitions": [
+        {
+          "line": 24,
+          "name": "assessment",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 39,
+          "name": "Fixture",
+          "type": "ClassDef"
+        },
+        {
+          "line": 142,
+          "name": "details",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 146,
+          "name": "tab",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 150,
+          "name": "geometry",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/admin_management_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 321,
+      "sha256": "835378f0ade8c2e6edef8468f684f6618b108ca401083d8c5119dbd4077f5bf5",
+      "definitions": [
+        {
+          "line": 23,
+          "name": "api_request",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 29,
+          "name": "geometry",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 34,
+          "name": "open_authoring",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 46,
+          "name": "run_checks",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 277,
+          "name": "session",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 303,
+          "name": "inspect",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/admin_management_server.py",
+      "kind": "test or browser fixture",
+      "lines": 63,
+      "sha256": "016f9f3c5e2e0bff5e10c81328a8f71bbd413a9d69a2f070481c0069dd56bfb1",
+      "definitions": [
+        {
+          "line": 54,
+          "name": "identity",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/analytics_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 324,
+      "sha256": "531bec91226bb8b93310b61cfc2d593d861edd5d0c2fd1c3b8f56a38407c6d16",
+      "definitions": [
+        {
+          "line": 21,
+          "name": "geometry",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 37,
+          "name": "fixture",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/analytics_server.py",
+      "kind": "test or browser fixture",
+      "lines": 91,
+      "sha256": "b6ada9941c054525a0f444d96f63d0fa5d300cba6f9de66acebef90cfb54642f",
+      "definitions": [
+        {
+          "line": 83,
+          "name": "identity",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/assessment_save_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 82,
+      "sha256": "5681c085052cf5bba31698e286cf8c6e8a0d6c371ba30f9b6cfaed5e5f7cc625",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/assessment_submission_timeout_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 151,
+      "sha256": "dd766e685617b274be87257f0b3921d7e9df382d457d3637c133d8762f03fffa",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/attempt_timing_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 88,
+      "sha256": "462aeb554a165c5cb19fb6aec3c4e469b16af0ca9648274b52e792fd7e535f9d",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/attempt_timing_server.py",
+      "kind": "test or browser fixture",
+      "lines": 47,
+      "sha256": "2a2e46340b2e4ce676b49321bab0a6a21e59741d4dafed05537333177b4461c9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/auth_contract_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 71,
+      "sha256": "35b5b9efb9c4f0b25ea8c33a3f92846c1b871bad5351b4342b2cd24a297ebb55",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/batch_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 85,
+      "sha256": "6d13b808e0e4528cf73c94962759f1bda63e1174c009e8e00835ec5911d439f7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/capacity_areas_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 67,
+      "sha256": "8734e3cb3b739bb295541dccd145bc1736eb6f9273c701054ba89734c2072117",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/catalog_validation_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 103,
+      "sha256": "c39b4555edb829a38107549836cc9c589c9519c254bc2ba8624e332fc725bd6c",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/company_collection_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 376,
+      "sha256": "e62c3050604a05d50b650d613afb43e2abf3ca10e1daa0b9bdc9843a47c99b4c",
+      "definitions": [
+        {
+          "line": 47,
+          "name": "records",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 60,
+          "name": "Fixture",
+          "type": "ClassDef"
+        },
+        {
+          "line": 176,
+          "name": "company",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 180,
+          "name": "position",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 184,
+          "name": "modal",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/company_map_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 94,
+      "sha256": "c9a746a5ec40515f666223dbf86b4ea38a3c34172e37a40767e57b122d42f021",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/dashboard_highlights_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 251,
+      "sha256": "3dbffe394c01e013ec9910ad74bbf1f5e0c010e3ee6f919621de1a60b3114312",
+      "definitions": [
+        {
+          "line": 17,
+          "name": "student",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 36,
+          "name": "Fixture",
+          "type": "ClassDef"
+        },
+        {
+          "line": 113,
+          "name": "dialog",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 117,
+          "name": "geometry",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/enrollment_fixture.mjs",
+      "kind": "test or browser fixture",
+      "lines": 23,
+      "sha256": "98280d079c36cc7c42027ec49b0114126b2e8d88bbaf043d5a338c3fb30fa9ea",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/enrollment_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 206,
+      "sha256": "d68694ff76fa6eab4cc285e6da644847abe020339bd3d195af29c5cb2fb3b65d",
+      "definitions": [
+        {
+          "line": 20,
+          "name": "geometry",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 28,
+          "name": "open_dialog",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/enrollment_server.py",
+      "kind": "test or browser fixture",
+      "lines": 55,
+      "sha256": "dfb9a665c88efb0b940b6dc11b62420891bf7c2f8ede76272d75476aa6810aa0",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/external_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 122,
+      "sha256": "ba4b8a6c678adc04dfc287056d3807cd2ad336588d5752e8283372c37cf7f639",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/freshness_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 242,
+      "sha256": "7dd368aaedd7f65c4043b1854835a53d4431c7b19ca00fac9f7c2f6bf642fc85",
+      "definitions": [
+        {
+          "line": 20,
+          "name": "session",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 61,
+          "name": "go",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 67,
+          "name": "mutate",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 74,
+          "name": "record",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/freshness_server.py",
+      "kind": "test or browser fixture",
+      "lines": 63,
+      "sha256": "e458f53cd3a9dc8e985e991d6883df10a5ade9d4faf8281bfd9437d0437639e7",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/map_markup_security_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 55,
+      "sha256": "4940e8ed4cdfe57153e976341ae78e79e4fe7568efd6b450cf0e570974f112a8",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/navigation_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 215,
+      "sha256": "a1e19f9396b610cd3281214760257dee5115b7f85c3db168cd562d151c3a7dc6",
+      "definitions": [
+        {
+          "line": 22,
+          "name": "payload",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 42,
+          "name": "user",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 47,
+          "name": "run_case",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 194,
+          "name": "main",
+          "type": "AsyncFunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/navigation_states_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 323,
+      "sha256": "223f22d33e994b7b0c15074b42e0ee0f5831ff3daf49b47063952ff7fcc54524",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "Fixture",
+          "type": "ClassDef"
+        },
+        {
+          "line": 70,
+          "name": "settled",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 75,
+          "name": "route_coverage",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 105,
+          "name": "loading_lifecycle",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 173,
+          "name": "hidden_logout",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 196,
+          "name": "positive_initial_lists",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 231,
+          "name": "forms_and_account_switch",
+          "type": "AsyncFunctionDef"
+        },
+        {
+          "line": 307,
+          "name": "main",
+          "type": "AsyncFunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/nlp_model_reporting_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 45,
+      "sha256": "5fab5e8279d406500706c17c29945661829bd02884dd491d6d7a2889493b6020",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/placement_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 75,
+      "sha256": "3c53db25bafaf3df55f41a4c1bfa61afed53de91ab74d175aaaa7d4da0e1e3c9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/position_tag_relevance_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 152,
+      "sha256": "440c8f9779a8d6cfdd9ee4ea7d07195559d8a799ac6ae9b1bb487f081c50f431",
+      "definitions": [
+        {
+          "line": 53,
+          "name": "db",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 56,
+          "name": "QuietHandler",
+          "type": "ClassDef"
+        },
+        {
+          "line": 64,
+          "name": "browser_context",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/profile_draft_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 116,
+      "sha256": "a1aa26c48691e853d7df398cf2a90421c613601688298254b9d1e2042c9750d5",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/profile_images_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 250,
+      "sha256": "2b2ec5069192432f6e9c071af71f8f9ea67beaef2b2ed296fcd07ac70abd8310",
+      "definitions": [
+        {
+          "line": 33,
+          "name": "checked",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 38,
+          "name": "session",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 81,
+          "name": "navigate",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 86,
+          "name": "loaded_image",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/profile_images_server.py",
+      "kind": "test or browser fixture",
+      "lines": 123,
+      "sha256": "c2401ec0ee4a08053ae2f3efde362bb6bb6748d5ec7ccd169d631b72c3bbb1d9",
+      "definitions": [
+        {
+          "line": 70,
+          "name": "storage",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 85,
+          "name": "google",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 95,
+          "name": "controls",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 99,
+          "name": "branding",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 104,
+          "name": "provider_photo",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/question_assistance_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 76,
+      "sha256": "38e84889292b8b575c509f3b43d3a66444d6e9343522774f6f6bedf24db25218",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/recommendation_contract_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 94,
+      "sha256": "e0596f3e9e1e65edf8b1dd1abbf072e7a8753f381f860d5cc5d7733a886a5884",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/recommendation_freshness_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 164,
+      "sha256": "53e56a6310f39b2793265697a6c02f768b15ee74015006b3c161e36482e88aff",
+      "definitions": [
+        {
+          "line": 62,
+          "name": "QuietHandler",
+          "type": "ClassDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/recovery_help_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 52,
+      "sha256": "4a65b166ecd11f7f42d5b8a1ba4ccbcacb1cb43bbc4287b4f98c0365d4fabd90",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/report_exports_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 94,
+      "sha256": "3048728eefcc27f6d6d8b0d2f1d1b21eebf95b4a97636aa9e00a01f2f6f1d123",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/run_admin_management.py",
+      "kind": "test or browser fixture",
+      "lines": 66,
+      "sha256": "b3c3a3b94457b8d164cf97d04f348bc80dd47296559098a1300b133e863b8c48",
+      "definitions": [
+        {
+          "line": 16,
+          "name": "unused_port",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 22,
+          "name": "ready",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/session_renewal_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 144,
+      "sha256": "90454eb767ec4bf3f8d44c7262ec36e32cefff6afa5f8bff05eb5f1ae61a357d",
+      "definitions": [
+        {
+          "line": 31,
+          "name": "FixtureServer",
+          "type": "ClassDef"
+        },
+        {
+          "line": 33,
+          "name": "QuietHandler",
+          "type": "ClassDef"
+        },
+        {
+          "line": 43,
+          "name": "session",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/student-modal/data.mjs",
+      "kind": "test or browser fixture",
+      "lines": 53,
+      "sha256": "6e70c95163cd1a21b41ffa1107db2c3f08970c60e986f8ddf38205df8682b5cf",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/student-modal/fixture.jsx",
+      "kind": "test or browser fixture",
+      "lines": 30,
+      "sha256": "ee023965585a3c33235f578d2b3cf022e802962aae062fd5796d28a0aedbcd13",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/student-modal/index.html",
+      "kind": "test or browser fixture",
+      "lines": 1,
+      "sha256": "1ed863926a11f561ff7374bb2ae2100b5c4659980311f0beb7a27c43276d8741",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/student_company_details_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 221,
+      "sha256": "12b5115756c2eac59815bb8f8f974850b173f0bfed5986e08a3fd21e0f1a6ce6",
+      "definitions": [
+        {
+          "line": 63,
+          "name": "fits",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/student_dashboard_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 54,
+      "sha256": "38aac7ccbe55443b15802c857e2e46f57b8b768c94a48fe180b9983a95f67881",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/student_modal_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 326,
+      "sha256": "f7457300c7f317eb5eb508598c45e09e86177ef71b4ab9cefb4571ed9a3a051c",
+      "definitions": [
+        {
+          "line": 17,
+          "name": "record",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 20,
+          "name": "select_tab",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 23,
+          "name": "geometry",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 39,
+          "name": "screenshot",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 42,
+          "name": "fixture",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/student_skill_profile_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 116,
+      "sha256": "062f7a61bd04ce622daa6e0216b89154cf28a4f33776c4347766b50c1aa9308c",
+      "definitions": [
+        {
+          "line": 22,
+          "name": "categories",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 35,
+          "name": "combined",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/suggestion_vocabulary_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 159,
+      "sha256": "9287e57b54ac53053778cf882fa55f29a33dd8400060677a32953a2ab6bedcc2",
+      "definitions": [
+        {
+          "line": 51,
+          "name": "db",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 54,
+          "name": "QuietHandler",
+          "type": "ClassDef"
+        },
+        {
+          "line": 62,
+          "name": "browser_context",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/taxonomy_reports_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 105,
+      "sha256": "6bf9a2696525277e9cdf724edb8936ef55594ee1d6300c84cd54551b288f8700",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/toast/index.html",
+      "kind": "test or browser fixture",
+      "lines": 1,
+      "sha256": "1920285721b9fee7f764b4d5f46837a16011820280bf4bf5f9f8997c774bc1ff",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/toast/main.jsx",
+      "kind": "test or browser fixture",
+      "lines": 30,
+      "sha256": "80d4accb20b381e5cc478a43f2e6c01f696a187a3bbc7c10e248cc6808b0fef9",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/tests/toast_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 147,
+      "sha256": "41872b5010e9ce2ac3583e9f95544efae07bd668c0fe82ffbc154a82cb104a0d",
+      "definitions": [
+        {
+          "line": 12,
+          "name": "load",
+          "type": "FunctionDef"
+        },
+        {
+          "line": 17,
+          "name": "remaining",
+          "type": "FunctionDef"
+        }
+      ]
+    },
+    {
+      "path": "skillbridge-frontend/tests/unenrollment_recovery_playwright.py",
+      "kind": "test or browser fixture",
+      "lines": 69,
+      "sha256": "abf7498c618ca4bd306cd202424d977263d24bbe1f4b3655d458352f45693a8a",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/vercel.json",
+      "kind": "application or configuration",
+      "lines": 21,
+      "sha256": "e35dc1d91cd859fdd73aeb15538c9b65820a4fe04f0f142dd0956ada8ab0a0ad",
+      "definitions": []
+    },
+    {
+      "path": "skillbridge-frontend/vite.config.js",
+      "kind": "application or configuration",
+      "lines": 11,
+      "sha256": "a94e5bf60ce35a1fca619754958da246f7779858b60d2b54fbf490f5c4672daa",
+      "definitions": []
+    }
+  ]
+}

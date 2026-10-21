@@ -1,5 +1,24 @@
 # Local NLP runtime and fallback verification
 
+## Comparison request timeout (21 October 2026)
+
+A database-free prepared comparison in the normal Windows environment completed
+all three models in 137.06 seconds. spaCy Small/Medium finished preprocessing by
+14.63 seconds; Stanza loaded by 24.48 seconds and finished preprocessing at
+136.96 seconds. These are one-run diagnostic timings, not performance acceptance
+measurements. The previous browser limit of 120 seconds abandoned the response
+before completion and displayed a misleading backend-connection error.
+
+The comparison request now waits up to 300 seconds, with loading text explaining
+the wait. Axios timeout errors explicitly identify the five-minute limit and
+warn that server evaluation may still be running; network failures and HTTP
+errors retain separate safe messages. No retry is automatic. Comparison still
+does not save recommendations or select a model. Local model resources can
+differ from the sandbox environment, where this probe completed with Stanza
+unavailable rather than evaluating it.
+
+## Earlier model and fallback verification
+
 The existing `RecommendationConfiguration` default remains `spacy_md`. The
 continuous system checklist does not change the active production selection or
 the research evaluation plan. A local, database-free probe loaded the actual

@@ -1,0 +1,18 @@
+{
+  "pages": 9,
+  "portrait_pages": 8,
+  "landscape_chart_pages": 1,
+  "pdf_sha256": "a96bde1815318968b97c84979809146cf4aeec155f48b2ae12de58d02d7a596a",
+  "gantt_copy_unchanged": true,
+  "all_nine_rendered_pages_visually_checked": true,
+  "numbered_objective_labels_removed": true,
+  "future_phase_status": "Not yet started for deployment, formal UAT/evaluation and maintenance",
+  "review_target": "October 26-31, 2026; appointment unconfirmed",
+  "revision_target": "November 1-7, 2026",
+  "informal_defense": "November 11-13, 2026",
+  "formal_defense": "November 16-17, 2026",
+  "evidence": "Five archived sample figures retained and explicitly marked for replacement. Separate guide recommends eight current localhost figure groups and actual outputs.",
+  "capture_guide_file_links_checked": true,
+  "date_basis": "Approximate months read from team Gantt; revised defense dates supplied directly by user",
+  "application_checks": "Not rerun for document-only revision."
+}
