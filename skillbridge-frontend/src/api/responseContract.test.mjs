@@ -3,6 +3,15 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('shared draft envelopes are validated before rendering or confirming a save', () => {
+  const data = { revision: 0, generated: false, stale: false, proposed_counts: {}, students: [] }
+  for (const method of ['get', 'post']) {
+    const config = { url: '/api/placements/draft/', method }
+    assert.equal(validateApiResponse({ data, config, status: 200 }).data, data)
+    assert.throws(() => validateApiResponse({ data: { ...data, students: {} }, config, status: 200 }), { code: 'ERR_BAD_RESPONSE' })
+  }
+})
+
 test('admin ownership choices, action history and batch mutation envelopes reject malformed data', () => {
   const cases = [
     ['/api/admin/batch-instructors/', 'get', {}, [{ id: 2, name: 'Synthetic Instructor' }]],

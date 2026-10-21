@@ -347,3 +347,19 @@ isolated verification setup and directly relevant documentation changed.
 | `skillbridge-frontend/tests/freshness_playwright.py` | Real stream/browser convergence, draft/attempt/snapshot and cleanup checks |
 | `knowledge/PROJECT_OVERVIEW.md` | Replace outdated admin/instructor-only/count freshness description |
 | `knowledge/LIVE_DATA_FRESHNESS.md` | Audit, coverage map, transport rationale, behavior/configuration, verification limits and per-file reasons |
+
+## Shared suggested placements
+
+`/api/placements/draft/` subscribes to placement/capacity and the membership,
+assessment, result, catalog, taxonomy and configuration inputs used for freshness.
+Events trigger a read; a mounted, visible placement workspace automatically
+reconciles changed inputs through an idempotent sync POST. GETs remain read-only
+and approval stays manual. Shared
+capacity events from another instructor also refresh aggregate suggested counts.
+Preview itself publishes no mutation event. See
+[the placement draft contract](PLACEMENT_DRAFT_IMPLEMENTATION.md).
+
+Automatic placement sync no-ops publish no event. Valid coordinator choices and
+approved placements survive refresh; invalid coordinator choices require review.
+Failure is shown with explicit retry rather than a write retry loop. No allocation
+worker runs while the placement page is closed.

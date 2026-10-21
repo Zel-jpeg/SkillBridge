@@ -8,14 +8,15 @@ const paths = {
   results: [/^\/api\/student\/(results\/(?:combined\/|review\/)?|companies\/)$/, /^\/api\/admin\/(reports|students\/recommendations|stats)\/$/, /^\/api\/instructor\/(students\/recommendations|companies)\/$/, /^\/api\/nlp\/students\/\d+\/text\/$/],
   catalog: [/^\/api\/(?:admin|instructor|student)\/companies\/$/, /^\/api\/nlp\/positions\/\d+\/text\/$/, /^\/api\/admin\/(stats|reports)\/$/],
   taxonomy: [/^\/api\/(categories|admin\/skills)\/$/, /^\/api\/nlp\/(students|positions)\/\d+\/text\/$/],
-  placements: [/^\/api\/placements\/(?:suggestions\/)?$/, /^\/api\/admin\/(placement-analytics|reports|stats|users)\/$/, /^\/api\/students\/me\/$/],
-  capacity: [/^\/api\/placements\/suggestions\/$/, /^\/api\/admin\/placement-analytics\/$/],
+  placements: [/^\/api\/placements\/(?:(?:suggestions|draft)\/)?$/, /^\/api\/admin\/(placement-analytics|reports|stats|users)\/$/, /^\/api\/students\/me\/$/],
+  capacity: [/^\/api\/placements\/(?:suggestions|draft)\/$/, /^\/api\/admin\/placement-analytics\/$/],
   configuration: [/^\/api\/admin\/nlp-configuration\/$/],
 }
 
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
+  if (path === '/api/placements/draft/' && change.topics?.some(topic => ['students', 'batches', 'assessments', 'results', 'catalog', 'taxonomy', 'configuration'].includes(topic))) return true
   // Analytics includes shared capacity as well as scoped cohort data. A foreign
   // placement may consume a visible seat, so do not prune it by cohort IDs.
   if (path === '/api/management/analytics/') return Boolean(change.resync || change.urls?.some(url => new URL(url, parsed.origin).pathname === path) || change.topics?.some(topic => Object.hasOwn(paths, topic)))

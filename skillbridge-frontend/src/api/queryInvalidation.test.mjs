@@ -10,6 +10,14 @@ test('shared analytics refreshes for capacity consumption in another batch and r
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 import { createCacheStore } from './cacheStore.js'
 
+test('shared draft observes all cohort inputs and shared capacity without regenerating it', () => {
+  for (const topic of ['placements', 'capacity', 'students', 'batches', 'assessments', 'results', 'catalog', 'taxonomy', 'configuration']) {
+    assert.equal(queryAffected('/api/placements/draft/', { topics: [topic], batch_ids: [999] }), true, topic)
+  }
+  assert.equal(queryAffected('/api/placements/draft/', { resync: true }), true)
+  assert.equal(queryAffected('/api/placements/draft/', { topics: ['unknown'] }), false)
+})
+
 test('batch ownership changes refresh rosters, authoring and selected audit pages; account changes refresh owner choices', () => {
   const change = { topics: ['batches', 'students', 'assessments', 'management'], batch_ids: [3] }
   for (const url of ['/api/instructor/batches/', '/api/instructor/batches/3/students/', '/api/instructor/assessments/',

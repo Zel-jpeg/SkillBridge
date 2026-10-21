@@ -1,8 +1,14 @@
 # Placement UI/UX review and proposed plan
 
-21 October 2026. Review only; the placement UI and business rules have not been
-changed. The user prefers company-first placement because there are many students.
-Recommendations below are design proposals, not authorization to implement them.
+21 October 2026. The user subsequently authorized implementation on branch
+`update-placement-ui-ux`. The user later selected zero new tables, reuse of existing placement/audit tables
+and removal of pinning, then automatic reconciliation on the visible placement
+page with preserved coordinator choices and no generation panel. The original
+review and design rationale below are
+retained as historical context; see the current
+[implementation contract](PLACEMENT_DRAFT_IMPLEMENTATION.md) for shipped behavior
+and verification. The user prefers company-first placement because there are many
+students.
 
 ## Recommendation
 
