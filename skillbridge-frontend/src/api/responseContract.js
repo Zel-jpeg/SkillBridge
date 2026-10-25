@@ -59,6 +59,16 @@ export function validateApiResponse(response) {
     valid = object(data) && Array.isArray(data.questions) && data.questions.every(question => object(question) && id(question.id) && Array.isArray(question.choices))
   } else if (method === 'post' && path === '/api/instructor/assessments/') {
     valid = object(data) && id(data.id)
+  } else if (method === 'post' && /^\/api\/instructor\/assessments\/\d+\/(archive|restore)\/$/.test(path)) {
+    valid = object(data) && id(data.id) && typeof data.is_archived === 'boolean' &&
+      (data.is_archived ? typeof data.archived_at === 'string' && Number.isFinite(Date.parse(data.archived_at)) : data.archived_at === null)
+  } else if (method === 'post' && /^\/api\/instructor\/assessments\/\d+\/duplicate\/$/.test(path)) {
+    valid = object(data) && id(data.id) && typeof data.title === 'string' && ['draft', 'published', 'closed'].includes(data.publication_status)
+  } else if ((method === 'get' && /^\/api\/assessments\/\d+\/timing\/$/.test(path)) ||
+             (method === 'post' && /^\/api\/instructor\/assessments\/\d+\/students\/\d+\/extra-time\/$/.test(path))) {
+    valid = object(data) && Number.isFinite(data.remaining_seconds) && data.remaining_seconds >= 0 &&
+      typeof data.deadline_at === 'string' && Number.isFinite(Date.parse(data.deadline_at)) &&
+      (method !== 'get' || ['in_progress', 'submitted', 'stopped'].includes(data.status))
   } else if (method === 'post' && (path === '/api/admin/companies/' || /^\/api\/admin\/companies\/\d+\/positions\/$/.test(path))) {
     valid = object(data) && id(data.id)
   } else if (method === 'post' && path === '/api/admin/instructors/') {

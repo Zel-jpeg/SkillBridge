@@ -130,7 +130,20 @@ class Assessment(models.Model):
     display_order = models.PositiveIntegerField(default=0)
     available_at = models.DateTimeField(null=True, blank=True)
     due_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='archived_assessments')
     created_at       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=models.Q(archived_at__isnull=True) | models.Q(publication_status__in=['draft', 'closed']),
+            name='assessment_archive_nonpublished',
+        )]
+
+    @property
+    def is_archived(self):
+        return self.archived_at is not None
 
     def __str__(self):
         return self.title
@@ -187,6 +200,10 @@ class StudentResponse(models.Model):
     student         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='responses')
     assessment      = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='responses')
     started_at      = models.DateTimeField(null=True, blank=True)   # set on first question load (timer anti-cheat)
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    due_at_snapshot = models.DateTimeField(null=True, blank=True)
+    extra_time_seconds = models.PositiveIntegerField(default=0)
     submitted_at    = models.DateTimeField(null=True, blank=True)   # set on submit (null = in progress)
     retake_allowed  = models.BooleanField(default=False)
     question_layout = models.JSONField(default=dict, blank=True)
@@ -233,6 +250,10 @@ class AssessmentAttemptHistory(models.Model):
     attempt_number = models.PositiveIntegerField()
     status = models.CharField(max_length=20)
     started_at = models.DateTimeField(null=True, blank=True)
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    due_at_snapshot = models.DateTimeField(null=True, blank=True)
+    extra_time_seconds = models.PositiveIntegerField(default=0)
     submitted_at = models.DateTimeField(null=True, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
     stopped_reason = models.CharField(max_length=50, blank=True, default='')

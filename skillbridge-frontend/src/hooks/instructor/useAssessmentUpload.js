@@ -6,12 +6,11 @@ import { useToast } from '../../context/ToastContext'
 //
 // Questions can be appended only before an attempt. Existing scores are preserved.
 //
-// API: POST /api/instructor/assessments/:id/questions/add/
+// Imports are staged through onImport; the assessment editor owns persistence.
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import api from '../../api/axios'
 import { parseTextFileContent } from './useInstructorUpload'
-import { invalidateCache } from '../useApi'
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
 
@@ -50,7 +49,7 @@ function rowsToPayload(rows) {
   })
 }
 
-export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
+export function useAssessmentUpload({ assessmentId, onImport }) {
   const { showToast } = useToast()
   // ── Tab ───────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState('excel')  // 'excel' | 'text'
@@ -73,9 +72,13 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const submitPending = useRef(false)
+  const parseGeneration = useRef(0)
+  useEffect(() => () => { parseGeneration.current += 1 }, [assessmentId])
 
   // ── Excel parsing (mirrors useInstructorUpload.parseExcelQuestions) ────────
   async function parseExcelQuestions(file) {
+    const generation = ++parseGeneration.current
+    setTxtLoading(false)
     setXlsxLoading(true)
     setXlsxRows([])
     setXlsxErrors([])
@@ -83,6 +86,7 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
     try {
       const XLSX = await import('xlsx')
       const wb  = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      if (generation !== parseGeneration.current) return
       const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
       const rows = []
       const errs = []
@@ -140,23 +144,27 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
         return r
       }))
 
+      if (generation !== parseGeneration.current) return
       setXlsxRows(rowsWithSuggestions)
       setXlsxErrors(errs)
     } catch {
-      setXlsxErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .xlsx or .csv file.'] }])
+      if (generation === parseGeneration.current) setXlsxErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .xlsx or .csv file.'] }])
     } finally {
-      setXlsxLoading(false)
+      if (generation === parseGeneration.current) setXlsxLoading(false)
     }
   }
 
   // ── Text file parsing (delegates to shared parser) ────────────────────────
   async function parseTxtFile(file) {
+    const generation = ++parseGeneration.current
+    setXlsxLoading(false)
     setTxtLoading(true)
     setTxtRows([])
     setTxtErrors([])
     setTxtFileName(file.name)
     try {
       const content = await file.text()
+      if (generation !== parseGeneration.current) return
       const { rows, errs } = parseTextFileContent(content)
       const rowsWithSuggestions = await Promise.all(rows.map(async (r) => {
         try {
@@ -168,40 +176,26 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
         return r
       }))
 
+      if (generation !== parseGeneration.current) return
       setTxtRows(rowsWithSuggestions)
       setTxtErrors(errs)
     } catch {
-      setTxtErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .txt file.'] }])
+      if (generation === parseGeneration.current) setTxtErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .txt file.'] }])
     } finally {
-      setTxtLoading(false)
+      if (generation === parseGeneration.current) setTxtLoading(false)
     }
   }
 
   // ── Submit parsed rows to the backend ─────────────────────────────────────
   const handleSubmit = useCallback(async () => {
     const rows = tab === 'excel' ? xlsxRows : txtRows
-    if (!rows.length || !assessmentId || submitPending.current) return
+    if (!rows.length || !assessmentId || submitPending.current || xlsxLoading || txtLoading) return
     submitPending.current = true
 
     setSubmitting(true)
     setSubmitError('')
     try {
-      if (onImport) {
-        await onImport(rowsToPayload(rows))
-        reset()
-        return
-      }
-      const res = await api.post(
-        `/api/instructor/assessments/${assessmentId}/questions/add/`,
-        {
-          questions:         rowsToPayload(rows),
-        }
-      )
-      // Invalidate cache so the list and questions drawer both refresh
-      invalidateCache('/api/instructor/assessments/')
-      invalidateCache(`/api/instructor/assessments/${assessmentId}/questions/`)
-      showToast('Questions added successfully.')
-      onSuccess?.(res.data)
+      await onImport(rowsToPayload(rows))
       reset()
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.detail || 'Upload failed. Please try again.'
@@ -211,10 +205,12 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
       submitPending.current = false
       setSubmitting(false)
     }
-  }, [tab, xlsxRows, txtRows, assessmentId, onSuccess, onImport, showToast])
+  }, [tab, xlsxRows, txtRows, assessmentId, onImport, showToast, xlsxLoading, txtLoading])
 
   // ── Reset all state ───────────────────────────────────────────────────────
   function reset() {
+    parseGeneration.current += 1
+    setXlsxLoading(false); setTxtLoading(false)
     setTab('excel')
     setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(null)
     setTxtRows([]);  setTxtErrors([]);  setTxtFileName(null)
@@ -239,7 +235,11 @@ export function useAssessmentUpload({ assessmentId, onSuccess, onImport }) {
 
   return {
     // Tab
-    tab, setTab,
+    tab, setTab: value => {
+      parseGeneration.current += 1
+      setXlsxLoading(false); setTxtLoading(false)
+      setTab(value)
+    },
     // Excel
     xlsxRef, xlsxRows, xlsxErrors, xlsxFileName, xlsxLoading, parseExcelQuestions,
     // Text

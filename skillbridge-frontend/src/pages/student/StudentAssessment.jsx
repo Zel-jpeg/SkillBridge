@@ -24,6 +24,7 @@ import api from '../../api/axios'
 import { requestErrorMessage } from '../../api/requestErrors'
 import { useApi, invalidateCache, fetchWithDedup } from '../../hooks/useApi'
 import { remainingAttemptSeconds } from '../../utils/assessmentClock'
+import { manilaDateTime } from '../../utils/assessmentDates'
 import { attemptStorageKey } from '../../utils/attemptStorage'
 
 const WARN_AT_SECS = 5 * 60
@@ -139,6 +140,7 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
                 <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Assessment integrity agreement</p>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-1">Read and confirm before starting</h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{assessment?.title} · {assessment?.duration_minutes} minutes</p>
+                {assessment?.due_at && <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">Submission deadline: {manilaDateTime(assessment.due_at)} · Manila. Starting near the deadline gives less than the full time limit.</p>}
               </div>
             </div>
           </div>
@@ -317,6 +319,7 @@ export default function StudentAssessment() {
     } catch { return {} }
   })
   const [timeLeft, setTimeLeft] = useState(initialSecs)
+  const [attemptCutoff, setAttemptCutoff] = useState(null)
 
   const [current,      setCurrent]      = useState(0)
   const [showConfirm,  setShowConfirm]  = useState(false)
@@ -330,6 +333,7 @@ export default function StudentAssessment() {
   const responseIdRef = useRef(null)
   const attemptIdentityRef = useRef(null)
   const deadlineRef = useRef(0)
+  const timingSyncRef = useRef(null)
   const autoSubmitAttemptedRef = useRef(false)
   const integrityArmedRef = useRef(false)
   const finalizingRef = useRef(false)
@@ -437,6 +441,7 @@ export default function StudentAssessment() {
       setInitialSecs(secs)
       const timer = Math.max(0, res.data.remaining_seconds ?? 0)
       deadlineRef.current = performance.now() + timer * 1000
+      setAttemptCutoff(res.data.deadline_at || null)
       autoSubmitAttemptedRef.current = false
       localStorage.setItem(attemptKey('integrity_active', id), JSON.stringify({
         response_id: res.data.response_id,
@@ -618,9 +623,38 @@ export default function StudentAssessment() {
     }
   }, [started, submitting, stoppedAttempt]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Read-only synchronization applies explicit staff extensions without
+  // restarting an attempt, resetting integrity, or replacing local answers.
+  useEffect(() => {
+    if (!started || submitting) return
+    let active = true
+    let pending = null
+    const controller = new AbortController()
+    const synchronize = () => {
+      if (pending) return pending
+      pending = api.get(`/api/assessments/${assessmentIdRef.current}/timing/`, {
+        params: { attempt_started_at: attemptIdentityRef.current }, signal: controller.signal, timeout: 5000,
+      }).then(({ data }) => {
+        if (!active || data.status !== 'in_progress') return null
+        const remaining = Math.max(0, data.remaining_seconds)
+        deadlineRef.current = performance.now() + remaining * 1000
+        setTimeLeft(Math.ceil(remaining)); setAttemptCutoff(data.deadline_at)
+        return remaining
+      }).catch(() => null).finally(() => { pending = null })
+      return pending
+    }
+    timingSyncRef.current = synchronize
+    const interval = setInterval(synchronize, 15000)
+    return () => {
+      active = false; controller.abort(); clearInterval(interval)
+      if (timingSyncRef.current === synchronize) timingSyncRef.current = null
+    }
+  }, [started, submitting])
+
   // ── Countdown timer ────────────────────────────────────────────
   useEffect(() => {
     if (!started || submitting) return
+    let active = true
     const tick = () => {
       const next = remainingAttemptSeconds(deadlineRef.current, performance.now())
       setTimeLeft(next)
@@ -630,16 +664,23 @@ export default function StudentAssessment() {
       }
       if (next <= 0 && !autoSubmitAttemptedRef.current) {
         autoSubmitAttemptedRef.current = true
-        handleSubmit()
+        // Check once at the old cutoff so an extension granted just before it
+        // cannot be missed between regular timing reads.
+        Promise.resolve(timingSyncRef.current?.()).then(remaining => {
+          if (!active) return
+          if (remaining > 0) autoSubmitAttemptedRef.current = false
+          else if (!finalizingRef.current) handleSubmit({ automatic: true })
+        })
       }
     }
     const interval = setInterval(tick, 1000)
     tick()
-    return () => clearInterval(interval)
+    return () => { active = false; clearInterval(interval) }
   }, [started, submitting]) // eslint-disable-line
 
   // ── Answer selection ───────────────────────────────────────────
   function selectChoice(questionId, choiceId) {
+    if (finalizingRef.current || remainingAttemptSeconds(deadlineRef.current, performance.now()) <= 0) return
     const updated = { ...answers, [questionId]: { selected_choice_id: choiceId, text_answer: '' } }
     answersRef.current = updated
     setAnswers(updated)
@@ -647,6 +688,7 @@ export default function StudentAssessment() {
   }
 
   function setIdentificationText(questionId, text) {
+    if (finalizingRef.current || remainingAttemptSeconds(deadlineRef.current, performance.now()) <= 0) return
     setIdentText(prev => ({ ...prev, [questionId]: text }))
     const updated = { ...answers, [questionId]: { selected_choice_id: null, text_answer: text } }
     answersRef.current = updated
@@ -655,7 +697,8 @@ export default function StudentAssessment() {
   }
 
   // ── Submit ─────────────────────────────────────────────────────
-  async function handleSubmit() {
+  async function handleSubmit(options = {}) {
+    const automatic = options?.automatic === true
     if (finalizingRef.current) return
     finalizingRef.current = true
     integrityArmedRef.current = false
@@ -671,8 +714,18 @@ export default function StudentAssessment() {
         answers:     answersArray,
         response_id: responseId,
         attempt_started_at: attemptIdentityRef.current,
+        auto_submit: automatic,
       }, { timeout: SUBMISSION_TIMEOUT_MS })
     } catch (err) {
+      const remaining = err.response?.data
+      if (automatic && remaining?.code === 'attempt_time_remaining' && remaining.attempt_started_at === attemptIdentityRef.current && Number.isFinite(remaining.remaining_seconds) && remaining.remaining_seconds > 0) {
+        deadlineRef.current = performance.now() + remaining.remaining_seconds * 1000
+        setTimeLeft(Math.ceil(remaining.remaining_seconds)); setAttemptCutoff(remaining.deadline_at)
+        autoSubmitAttemptedRef.current = false
+        finalizingRef.current = false; integrityArmedRef.current = true; setSubmitting(false)
+        showToast('Your attempt still has time remaining. The countdown has been updated.')
+        return
+      }
       // A timeout does not roll back the server transaction. Verify before
       // re-arming integrity monitoring or offering another submission.
       if (await reconcileFinalizedAttempt()) return
@@ -775,7 +828,7 @@ export default function StudentAssessment() {
 
         {/* Centre: Timer */}
         {started && (
-          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono font-bold text-sm transition-colors ${timerPillClass} ${isCritical ? 'animate-pulse' : ''}`}>
+          <div role="timer" aria-label="Time remaining" aria-live="off" className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono font-bold text-sm transition-colors ${timerPillClass} ${isCritical ? 'animate-pulse' : ''}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2"/>
               <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
@@ -791,6 +844,7 @@ export default function StudentAssessment() {
         </span>
       </div>
 
+      {started && attemptCutoff && <p className="px-4 py-1 text-center text-xs text-gray-500 dark:text-gray-400">Attempt ends {manilaDateTime(attemptCutoff)} · Manila</p>}
       {/* Progress bar */}
       <div className="h-1 bg-gray-100 dark:bg-gray-800">
         <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${progressPct}%` }} />
@@ -823,6 +877,7 @@ export default function StudentAssessment() {
                       return (
                         <button
                           key={choice.id}
+                          disabled={timeLeft <= 0}
                           onClick={() => selectChoice(question.id, choice.id)}
                           className={`w-full text-left px-4 sm:px-5 py-3.5 sm:py-4 rounded-xl border text-sm transition-all active:scale-[0.99]
                             ${selected
@@ -849,6 +904,7 @@ export default function StudentAssessment() {
                     </label>
                     <input
                       type="text"
+                      disabled={timeLeft <= 0}
                       value={identText[question.id] ?? answers[question.id]?.text_answer ?? ''}
                       onChange={e => setIdentificationText(question.id, e.target.value)}
                       placeholder="Your answer…"

@@ -50,8 +50,8 @@ try:
         processes.append((process, port))
     for process, port in processes:
         ready(process, port)
-    script = 'analytics_playwright.py' if ANALYTICS else 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
-    args = [arg for arg in sys.argv[1:] if arg not in ('--oversight', '--analytics')]
+    script = 'assessment_policy_playwright.py' if '--policy' in sys.argv else 'assessment_archives_playwright.py' if '--archives' in sys.argv else 'analytics_playwright.py' if ANALYTICS else 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
+    args = [arg for arg in sys.argv[1:] if arg not in ('--oversight', '--analytics', '--archives', '--policy')]
     result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script), *args], cwd=ROOT, env=env)
     raise SystemExit(result.returncode)
 finally:

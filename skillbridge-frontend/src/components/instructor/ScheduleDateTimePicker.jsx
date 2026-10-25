@@ -21,13 +21,14 @@ function subscribeCompact(listener) {
 }
 const pickerSurface = 'overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 text-gray-800 shadow-xl outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
 
-export default function ScheduleDateTimePicker({ label, value, onChange, error }) {
+export default function ScheduleDateTimePicker({ label, value, onChange, error, disabled = false }) {
   const id = useId()
   const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false)
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(null)
   const [time, setTime] = useState(new Time(9))
   function changeOpen(next) {
+    if (disabled && next) return
     if (next) {
       const current = parseScheduleValue(value)
       setDate(current ? toCalendarDate(current) : null)
@@ -63,7 +64,7 @@ export default function ScheduleDateTimePicker({ label, value, onChange, error }
   return <I18nProvider locale="en-PH"><div className="min-w-0 space-y-1.5">
     <span id={id} className="block text-xs font-medium text-gray-600 dark:text-gray-300">{label}</span>
     <DialogTrigger isOpen={open} onOpenChange={changeOpen}>
-      <Button aria-label={`${label}: ${scheduleLabel(value)}`} aria-describedby={error ? `${id}-error` : undefined} aria-invalid={!!error} className={`flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 text-left text-xs outline-none transition-colors hover:border-green-400 focus-visible:ring-2 focus-visible:ring-green-600 dark:bg-gray-800 ${error ? 'border-rose-500' : 'border-gray-200 dark:border-gray-700'}`}>
+      <Button isDisabled={disabled} aria-label={`${label}: ${scheduleLabel(value)}`} aria-describedby={error ? `${id}-error` : undefined} aria-invalid={!!error} className={`flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 text-left text-xs outline-none transition-colors hover:border-green-400 focus-visible:ring-2 focus-visible:ring-green-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-800 ${error ? 'border-rose-500' : 'border-gray-200 dark:border-gray-700'}`}>
         <span aria-hidden="true" className="shrink-0 text-gray-400"><CalendarIcon size={15} /></span><span className={`min-w-0 flex-1 truncate ${value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{scheduleLabel(value)}</span><span aria-hidden="true" className="shrink-0 text-gray-400"><ChevronDown size={13} open={open} /></span>
       </Button>
       {compact ? <ModalOverlay isDismissable className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-3"><Modal className={`max-h-[calc(100dvh-24px)] w-[304px] max-w-full ${pickerSurface}`}>{content}</Modal></ModalOverlay> : <Popover placement="bottom start" offset={6} containerPadding={12} className={`z-[100] max-h-[calc(100dvh-24px)] w-[min(304px,calc(100vw-24px))] ${pickerSurface}`}>{content}</Popover>}

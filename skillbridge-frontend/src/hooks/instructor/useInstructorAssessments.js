@@ -26,8 +26,9 @@ import api from '../../api/axios'
 import { requestErrorMessage } from '../../api/requestErrors'
 import { useApi, invalidateCache, fetchWithDedup } from '../useApi'
 import { useSSE } from '../useSSE'
-import { manilaApiDate, toManilaInput } from '../../utils/assessmentDates'
+import { toManilaInput } from '../../utils/assessmentDates'
 import { filterAssessments } from '../../utils/assessmentManagement'
+import { assessmentDatePayload } from '../../utils/assessmentPolicy'
 
 
 // ── Default choices for each question type ────────────────────────────────────
@@ -123,7 +124,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   const { data: assessmentsRaw, loading: loadingList } = useApi('/api/instructor/assessments/')
   const { data: batchesRaw }                           = useApi('/api/instructor/batches/')
 
-  const assessments = useMemo(() => Array.isArray(assessmentsRaw) ? assessmentsRaw : [], [assessmentsRaw])
+  const assessments = useMemo(() => Array.isArray(assessmentsRaw) ? assessmentsRaw.filter(a => !a.is_archived) : [], [assessmentsRaw])
   const batchOptions = useMemo(() => Array.isArray(batchesRaw) ? batchesRaw : [], [batchesRaw])
 
   // ── Summary stats ─────────────────────────────────────────────────────────
@@ -214,6 +215,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   // overwrite the metadata or question drafts already being edited.
   const openAssessment = useCallback(async (a) => {
     setSelected(a)
+    setSaveError('')
     setEditTitle(a.title || '')
     setEditDuration(String(a.duration_minutes ?? 60))
     setEditSettings({ batch_id: a.batch_id ?? '', publication_status: a.publication_status, is_required: a.is_required,
@@ -249,7 +251,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   // General-purpose: merges `updates` into the matching question
   const updateQuestion = useCallback((tempId, updates) => {
     setEditedQuestions(prev => prev.map(q =>
-      q._tempId === tempId ? { ...q, ...updates, _dirty: true } : q
+      q._tempId === tempId ? { ...q, ...updates, _dirty: q._dirty || Object.keys(updates).some(key => !key.startsWith('_')) } : q
     ))
   }, [])
 
@@ -354,8 +356,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
         is_required: editSettings.is_required,
         include_in_competency: editSettings.include_in_competency,
         display_order: Number(editSettings.display_order),
-        available_at: manilaApiDate(editSettings.available_at),
-        due_at: manilaApiDate(editSettings.due_at),
+        ...assessmentDatePayload(selected, editSettings),
       })
 
       // 7 ── Invalidate list cache + re-fetch so question/submission counts refresh on next visit
@@ -403,6 +404,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     editSettings.available_at !== toManilaInput(selected.available_at) || editSettings.due_at !== toManilaInput(selected.due_at)))
   return {
     dirty,
+    liveAssessment: selected ? assessmentsRaw?.find(a => a.id === selected.id) || selected : null,
     importQuestions: rows => setEditedQuestions(previous => [...previous, ...rows.map(row => normalizeQuestion({
       ...row, category: categories.find(category => category.name.toLowerCase() === row.category.toLowerCase()) || { id: `import:${row.category}`, name: row.category },
       choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,

@@ -1,5 +1,11 @@
 # Accepted questionnaire import format
 
+25 October follow-up: instructor and admin existing-assessment imports now append
+to the local authoring draft and persist only through the confirmed assessment
+save. Cancel/discard and failed-save recovery preserve the expected draft boundary.
+Canceled asynchronous parses cannot populate a later import panel. Existing
+archived assessments are read-only. See [assessment archives](ASSESSMENT_ARCHIVES.md).
+
 20 October admin authoring follow-up: the shared parsers load the installed `xlsx`
 package on demand instead of injecting a CDN script. Formats below are unchanged.
 Admin authoring stages parsed questions locally and saves them with the other

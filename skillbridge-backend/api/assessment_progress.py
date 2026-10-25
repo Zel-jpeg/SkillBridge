@@ -15,6 +15,8 @@ def current_enrollment(student):
 
 def assessment_availability(assessment, now=None):
     now = now or timezone.now()
+    if assessment.is_archived:
+        return 'archived'
     if assessment.batch_id is None or assessment.batch.status != 'active':
         return 'batch_inactive'
     if assessment.publication_status != Assessment.PUBLICATION_PUBLISHED:

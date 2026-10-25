@@ -10,6 +10,8 @@ export const DESTINATION_QUERIES = {
   '/student/profile': ['/api/students/me/'],
   '/instructor/students': ['/api/instructor/batches/'],
   '/instructor/assessments': ['/api/instructor/assessments/', '/api/instructor/batches/'],
+  '/instructor/assessments/archives': ['/api/instructor/assessments/'],
+  '/admin/assessments/archives': ['/api/instructor/assessments/'],
   '/instructor/companies': ['/api/instructor/companies/'],
   '/admin/assessments': ['/api/instructor/assessments/'],
   '/admin/batches': ['/api/instructor/batches/'],

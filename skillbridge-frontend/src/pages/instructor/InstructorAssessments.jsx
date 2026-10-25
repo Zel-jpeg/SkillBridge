@@ -27,6 +27,10 @@ import { useAssessmentUpload }           from '../../hooks/instructor/useAssessm
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import AssessmentLibrary from '../../components/instructor/AssessmentLibrary'
 import AssessmentTitleEditor from '../../components/instructor/AssessmentTitleEditor'
+import AssessmentArchiveAction from '../../components/assessment/AssessmentArchiveAction'
+import AssessmentDuplicateAction from '../../components/assessment/AssessmentDuplicateAction'
+import AssessmentPolicyNotice from '../../components/assessment/AssessmentPolicyNotice'
+import { assessmentChangeImpact } from '../../utils/assessmentPolicy'
 import { ChevronDown, LockIcon } from '../../components/Icons'
 
 /* eslint-disable react-hooks/refs -- The upload hook returns refs alongside ordinary state and callbacks. */
@@ -132,17 +136,24 @@ export default function InstructorAssessments() {
     showSaveConfirm, setShowSaveConfirm,
     confirmRemoveQuestion, setConfirmRemoveQuestion,
     confirmRemoveQuestionAction,
-    saving, saveAllChanges, saveError,
+    saving, saveAllChanges, saveError, dirty, importQuestions, liveAssessment,
 
   } = useInstructorAssessments()
 
   // ── Upload sub-modal (existing bulk file upload) ──────────────────────────
   const [showUpload, setShowUpload] = useState(false)
+  const [discard, setDiscard] = useState(false)
+  function requestClose() {
+    if (saving) return
+    if (dirty) setDiscard(true)
+    else closeAssessment()
+  }
+  function closeUpload() { setShowUpload(false); upload.reset() }
   const upload = useAssessmentUpload({
     assessmentId: selected?.id,
-    onSuccess: (result) => {
+    onImport: (rows) => {
+      importQuestions(rows)
       setShowUpload(false)
-      if (selected) openAssessment({ ...selected, question_count: result.total })
     },
   })
 
@@ -167,8 +178,8 @@ export default function InstructorAssessments() {
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
                 <div className="col-span-2 min-w-0 sm:col-span-1"><AssessmentTitleEditor value={editTitle} onChange={setEditTitle} disabled={saving} /></div>
                 <div className="col-start-2 row-start-2 flex shrink-0 items-center gap-2 sm:row-start-1">
-                  <button type="button" aria-label="Upload questions" onClick={() => { setShowUpload(true); upload.reset() }} disabled={selected.questions_locked} className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 transition-colors enabled:hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:enabled:hover:bg-gray-700"><UploadIcon /><span className="hidden sm:inline">Upload questions</span><span className="sm:hidden">Upload</span></button>
-                  <button type="button" onClick={closeAssessment} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 dark:hover:text-gray-200" title="Close without saving"><CloseIcon /></button>
+
+                  <button type="button" onClick={requestClose} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 dark:hover:text-gray-200" title="Close without saving"><CloseIcon /></button>
                 </div>
                 <div className="col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-2 self-center text-xs sm:col-span-2">
                   {selected.batch_name && <span className="max-w-full break-words rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{selected.batch_name}</span>}
@@ -176,11 +187,14 @@ export default function InstructorAssessments() {
                 </div>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Assessment settings and questions">
+            <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Assessment settings and questions"><fieldset disabled={saving || liveAssessment?.is_archived} className="min-w-0">
               <div className="space-y-4 bg-white px-5 pb-4 dark:bg-gray-900">
-                <AssessmentSettings variant="modal" value={editSettings} onChange={setEditSettings} duration={editDuration} onDurationChange={setEditDuration} />
-                {selected.questions_locked && <div role="note" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><span aria-hidden="true" className="mt-0.5 shrink-0"><LockIcon size={16} /></span><p><strong className="font-semibold">Question editing is locked</strong><span className="mx-2 hidden text-amber-300 sm:inline" aria-hidden="true">|</span><span className="block sm:inline">An attempt already exists. Settings remain editable; attempts and scores are preserved.</span></p></div>}
+                <div className="flex flex-wrap items-start gap-3"><AssessmentDuplicateAction assessment={liveAssessment || selected} role="instructor" disabled={dirty || saving} onSuccess={closeAssessment} /><AssessmentArchiveAction assessment={liveAssessment || selected} disabled={dirty || saving} onSuccess={closeAssessment} /></div>
+                <AssessmentSettings assessment={liveAssessment || selected} variant="modal" value={editSettings} onChange={setEditSettings} duration={editDuration} onDurationChange={setEditDuration} />
+                <AssessmentPolicyNotice assessment={liveAssessment || selected} value={editSettings} />
+                {liveAssessment?.questions_locked && <div role="note" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><span aria-hidden="true" className="mt-0.5 shrink-0"><LockIcon size={16} /></span><p><strong className="font-semibold">Question editing is locked</strong><span className="mx-2 hidden text-amber-300 sm:inline" aria-hidden="true">|</span><span className="block sm:inline">An attempt already exists. Allowed settings remain editable; attempts and scores are preserved.</span></p></div>}
               </div>
+              {liveAssessment?.questions_locked && <p className="px-5 pb-3 text-xs text-gray-500 dark:text-gray-400">Import questions is unavailable after a student attempt exists.</p>}
               {!loadingQuestions && visibleQuestions.length > 0 && <div className="flex flex-wrap items-center gap-2 border-y border-gray-100 bg-white px-5 py-3 dark:border-gray-800 dark:bg-gray-900">
                 <h3 className="mr-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Questions <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">{visibleQuestions.length}</span></h3>
                 {questionStats.mcq > 0 && <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">{questionStats.mcq} MCQ</span>}
@@ -203,22 +217,23 @@ export default function InstructorAssessments() {
                     </div>
                   )}
 
-                  {selected.questions_locked ? visibleQuestions.map((q, i) => <div key={q.id || q._tempId} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><strong>{i + 1}. {q.question_text}</strong><p className="text-xs">{q.category?.name || 'Uncategorized'} · {q.question_type}</p><p className="mt-1 text-xs">Grading answer: {q.question_type === 'identification' ? q.identAnswer : q.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></div>) : visibleQuestions.map((q, i) => (
+                  {liveAssessment?.questions_locked ? visibleQuestions.map((q, i) => <div key={q.id || q._tempId} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><strong>{i + 1}. {q.question_text}</strong><p className="text-xs">{q.category?.name || 'Uncategorized'} · {q.question_type}</p><p className="mt-1 text-xs">Grading answer: {q.question_type === 'identification' ? q.identAnswer : q.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></div>) : visibleQuestions.map((q, i) => (
                     <EditableQuestionCard
                       key={q._tempId}
                       q={q}
                       index={i}
                       categories={categories}
-                      onUpdate={selected.questions_locked ? () => {} : updateQuestion}
-                      onChangeType={selected.questions_locked ? () => {} : changeQuestionType}
-                      onUpdateChoice={selected.questions_locked ? () => {} : updateChoice}
-                      onSetCorrect={selected.questions_locked ? () => {} : setCorrectChoice}
-                      onRemove={selected.questions_locked ? () => {} : removeQuestion}
+                      onUpdate={liveAssessment?.questions_locked ? () => {} : updateQuestion}
+                      onChangeType={liveAssessment?.questions_locked ? () => {} : changeQuestionType}
+                      onUpdateChoice={liveAssessment?.questions_locked ? () => {} : updateChoice}
+                      onSetCorrect={liveAssessment?.questions_locked ? () => {} : setCorrectChoice}
+                      onRemove={liveAssessment?.questions_locked ? () => {} : removeQuestion}
                     />
                   ))}
 
+                  {!liveAssessment?.questions_locked && <button type="button" aria-label="Import questions" disabled={saving || loadingQuestions} onClick={() => { setShowUpload(true); upload.reset() }} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><UploadIcon />Import questions</button>}
                   {/* Add question buttons */}
-                  {!selected.questions_locked && <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
+                  {!liveAssessment?.questions_locked && <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
                     {[
                       { type: 'mcq',            label: '+ Add Multiple Choice' },
                       { type: 'truefalse',       label: '+ Add True / False'   },
@@ -237,7 +252,7 @@ export default function InstructorAssessments() {
               )}
             </div>
 
-            </div>
+            </fieldset></div>
 
             {saveError && <p role="alert" className="px-5 py-2 text-sm text-rose-700 dark:text-rose-300">{saveError}</p>}
             {/* ── Footer ───────────────────────────────────────────────── */}
@@ -246,7 +261,7 @@ export default function InstructorAssessments() {
                 Changes are not saved until you click "Save All Changes".
               </p>
               <button
-                onClick={closeAssessment}
+                onClick={requestClose}
                 className="px-5 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
               >
                 Cancel
@@ -264,36 +279,11 @@ export default function InstructorAssessments() {
         </div>
       )}
 
-      {/* ── Save confirmation dialog (z-60, above main modal) ──────────────── */}
-      {showSaveConfirm && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/50 rounded-2xl flex items-center justify-center mb-4 text-amber-500">
-              <WarnIcon />
-            </div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Save all changes?</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
-              This will update the assessment metadata, edited questions, and any new or deleted questions.
-              Existing attempts and scores stay intact. Publication, required status, and competency inclusion can lock or recalculate final recommendations. The server determines the final state.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowSaveConfirm(false)}
-                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveAllChanges}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
-              >
-                {saving ? 'Saving…' : 'Confirm Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showSaveConfirm && <ConfirmModal tone="confirm" title="Save all changes?" confirmLabel="Confirm Save"
+        message={'Settings and question changes save together. Individual results and placement history are preserved. ' + assessmentChangeImpact(liveAssessment || selected, editSettings).join(' ')}
+        onCancel={() => setShowSaveConfirm(false)} onConfirm={saveAllChanges} />}
+
+      {discard && <ConfirmModal title="Discard unsaved changes?" message="Your unsaved settings, question edits and imports will be discarded." confirmLabel="Discard changes" onCancel={() => setDiscard(false)} onConfirm={() => { setDiscard(false); closeAssessment() }} />}
 
       {/* ── Question Delete Confirmation ── */}
       {confirmRemoveQuestion && (
@@ -309,18 +299,18 @@ export default function InstructorAssessments() {
       {/* ── Upload Questions sub-modal (z-70, topmost) ─────────────────────── */}
       {showUpload && selected && (
         <>
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-70" onClick={() => setShowUpload(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-70" onClick={closeUpload} />
           <div className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-560px max-h-[90dvh] bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl z-80 flex flex-col overflow-hidden border-0 sm:border border-gray-100 dark:border-gray-800">
 
             {/* Upload modal header */}
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 shrink-0">
               <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Upload Questions</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Import questions</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-360px">
-                  Appending to: {selected.title}
+                  Adding to draft: {selected.title}
                 </p>
               </div>
-              <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <button onClick={closeUpload} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <CloseIcon />
               </button>
             </div>
@@ -329,7 +319,7 @@ export default function InstructorAssessments() {
             <div className="mx-6 mt-4 flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 shrink-0">
               <span className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><WarnIcon /></span>
               <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                New questions can be appended only before any student attempt. Existing submissions and scores are never cleared.
+                Imported questions append to this draft. Existing questions and unsaved edits are kept. Nothing is saved until you confirm Save All Changes. Imports are locked after a student attempt.
               </p>
             </div>
 
@@ -401,19 +391,19 @@ export default function InstructorAssessments() {
 
             {/* Upload footer */}
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 shrink-0">
-              <button onClick={() => setShowUpload(false)}
+              <button onClick={closeUpload}
                 className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors">
                 Cancel
               </button>
               <button
                 onClick={upload.handleSubmit}
-                disabled={upload.activeRows.length === 0 || upload.submitting}
+                disabled={upload.activeRows.length === 0 || upload.submitting || upload.activeLoading}
                 className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
               >
                 {upload.submitting
                   ? 'Adding…'
                   : upload.activeRows.length > 0
-                  ? `Add ${upload.activeRows.length} question${upload.activeRows.length > 1 ? 's' : ''}`
+                  ? `Add ${upload.activeRows.length} question${upload.activeRows.length > 1 ? 's' : ''} to draft`
                   : 'Add Questions'}
               </button>
             </div>

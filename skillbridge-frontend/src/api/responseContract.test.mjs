@@ -3,6 +3,17 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('archive and restore require a confirmed lifecycle state before publishing success', () => {
+  for (const action of ['archive', 'restore']) {
+    const config = { url: `/api/instructor/assessments/3/${action}/`, method: 'post' }
+    const data = { id: 3, is_archived: action === 'archive', archived_at: action === 'archive' ? '2026-10-25T03:00:00Z' : null }
+    assert.equal(validateApiResponse({ data, config, status: 200 }).data, data)
+    for (const invalid of [{ id: 3 }, { ...data, is_archived: 'true' }, { id: 3, is_archived: true, archived_at: 'invalid' }]) {
+      assert.throws(() => validateApiResponse({ data: invalid, config, status: 200 }), { code: 'ERR_BAD_RESPONSE' })
+    }
+  }
+})
+
 test('shared draft envelopes are validated before rendering or confirming a save', () => {
   const data = { revision: 0, generated: false, stale: false, proposed_counts: {}, students: [] }
   for (const method of ['get', 'post']) {

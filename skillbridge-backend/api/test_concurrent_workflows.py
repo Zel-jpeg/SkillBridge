@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Event
 from time import monotonic, sleep
+from uuid import uuid4
 from unittest import skipUnless
 from unittest.mock import patch
 from .recommendation_freshness import input_fingerprint
@@ -70,6 +71,77 @@ class ConcurrentWorkflowTests(TransactionTestCase):
         self.assertEqual(placement.batch_id, self.batch.pk)
         self.assertEqual(placement.match_score_at_assignment, Recommendation.objects.get(pk=placement.recommendation_id).match_score)
         self.assertEqual(self.position.ojt_placements.filter(status='approved').count(), 1)
+
+    def test_archive_and_republish_serialize_without_exposing_an_archived_published_assessment(self):
+        self.assessment.publication_status = 'closed'
+        self.assessment.save()
+        barrier = Barrier(2)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            archive = pool.submit(self.request, self.owner.pk, 'post', reverse('assessment_archive', args=[self.assessment.pk]), barrier=barrier)
+            publish = pool.submit(self.request, self.admin.pk, 'patch', reverse('instructor_assessment_detail', args=[self.assessment.pk]),
+                                  {'publication_status': 'published'}, barrier=barrier)
+            outcomes = [archive.result(timeout=20), publish.result(timeout=20)]
+        self.assertEqual(sorted(result[0] for result in outcomes), [200, 409])
+        self.assessment.refresh_from_db()
+        self.assertFalse(self.assessment.is_archived and self.assessment.publication_status == 'published')
+
+    def test_duplicate_archive_commits_one_audit_and_preserves_saved_evidence(self):
+        from .models import ManagementAction
+        self.assessment.publication_status = 'closed'
+        self.assessment.save()
+        before = list(SkillScore.objects.values('id', 'raw_score', 'max_score', 'percentage'))
+        barrier = Barrier(2)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(self.request, self.owner.pk, 'post', reverse('assessment_archive', args=[self.assessment.pk]),
+                                   barrier=barrier) for _ in range(2)]
+            outcomes = [future.result(timeout=20) for future in futures]
+        self.assertEqual([result[0] for result in outcomes], [200, 200])
+        self.assertEqual(ManagementAction.objects.filter(action='assessment.archive').count(), 1)
+        self.assertEqual(list(SkillScore.objects.values('id', 'raw_score', 'max_score', 'percentage')), before)
+
+    def test_archived_assessment_never_delivers_a_new_attempt(self):
+        assessment, _ = self.new_assessment()
+        assessment.publication_status = 'closed'
+        assessment.save()
+        self.assertEqual(self.request(self.owner.pk, 'post', reverse('assessment_archive', args=[assessment.pk]))[0], 200)
+        self.assertEqual(self.request(self.students[0].pk, 'post', reverse('assessment_start', args=[assessment.pk]))[0], 409)
+        self.assertFalse(StudentResponse.objects.filter(assessment=assessment).exists())
+
+    def test_extra_time_and_submit_serialize_without_modifying_a_finalized_attempt(self):
+        from .models import ManagementAction
+        assessment, _ = self.new_assessment()
+        student = self.students[0]
+        started = self.request(student.pk, 'post', reverse('assessment_start', args=[assessment.pk]))
+        self.assertEqual(started[0], 200)
+        identity = started[1]['attempt_started_at']
+        barrier = Barrier(2)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            extension = pool.submit(self.request, self.owner.pk, 'post', reverse('assessment_extra_time', args=[assessment.pk, student.pk]),
+                {'minutes': 10, 'reason': 'Synthetic concurrent extension', 'request_id': str(uuid4()), 'attempt_started_at': identity}, barrier=barrier)
+            submit = pool.submit(self.request, student.pk, 'post', reverse('assessment_submit', args=[assessment.pk]),
+                {'answers': [], 'attempt_started_at': identity}, barrier=barrier)
+            extension_result, submit_result = extension.result(timeout=30), submit.result(timeout=30)
+        self.assertEqual(submit_result[0], 200)
+        self.assertIn(extension_result[0], [200, 409])
+        response = StudentResponse.objects.get(student=student, assessment=assessment)
+        self.assertEqual(response.status, 'submitted')
+        self.assertEqual(response.extra_time_seconds, 600 if extension_result[0] == 200 else 0)
+        self.assertEqual(ManagementAction.objects.filter(action='attempt.extra_time').count(), 1 if extension_result[0] == 200 else 0)
+
+    def test_duplicate_request_id_creates_one_copy_with_independent_keys(self):
+        from .models import ManagementAction
+        nonce = str(uuid4())
+        barrier = Barrier(2)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(self.request, self.owner.pk, 'post', reverse('assessment_duplicate', args=[self.assessment.pk]),
+                       {'request_id': nonce}, barrier=barrier) for _ in range(2)]
+            results = [future.result(timeout=20) for future in futures]
+        self.assertEqual(sorted(result[0] for result in results), [200, 201])
+        self.assertEqual(len({result[1]['id'] for result in results}), 1)
+        copy = Assessment.objects.get(pk=results[0][1]['id'])
+        self.assertFalse(copy.is_required); self.assertFalse(copy.include_in_competency)
+        self.assertNotEqual(copy.questions.get().pk, self.question.pk)
+        self.assertEqual(ManagementAction.objects.filter(action='assessment.duplicate').count(), 1)
 
     def test_simultaneous_same_approval_is_idempotent(self):
         barrier = Barrier(2)
