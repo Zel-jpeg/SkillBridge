@@ -147,7 +147,7 @@ with sync_playwright() as p:
         assert not active_suggestions().filter(student=fixture.student_one).exists()
         page.get_by_role('button', name='Approved (1)', exact=True).click()
         expect(page.locator('.pl-candidate-row').filter(has_text=fixture.student_one.name)).to_have_count(1)
-        checks.append('Coordinator approval converts a draft seat exactly once and approved roster is separate')
+        checks.append('Coordinator approval converts a draft slot exactly once and approved roster is separate')
         assert_button_feedback(page, page.get_by_role('button', name='Back to companies', exact=False))
         page.get_by_role('button', name='Back to companies', exact=False).click()
         page.get_by_label('Search', exact=True).fill(manual_student.name)

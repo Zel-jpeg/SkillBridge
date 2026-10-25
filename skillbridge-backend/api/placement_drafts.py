@@ -288,7 +288,7 @@ def placement_draft(request):
                 return Response({'error': 'Current recommendation unavailable.'}, status=409)
             held = active_suggestions().filter(position_id=row['position_id']).exclude(student_id=student_id).count()
             if held >= ctx['capacities'].get(row['position_id'], 0):
-                return Response({'error': 'All suggested seats for this position are already proposed. Review the shared suggestions first.'}, status=409)
+                return Response({'error': 'All suggested slots for this position are already proposed. Review the shared suggestions first.'}, status=409)
             state.manual_choices[str(student_id)] = {'batch_id': row['batch_id'], 'position_id': row['position_id']}
             replace_suggestions(calculate(ctx, state), request.user)
             save_revision(state, request.user, 'choose', ctx['signature'])
@@ -320,7 +320,7 @@ def placement_write_lock(view):
                     approved = OJTPlacement.objects.filter(student_id=sid, status='approved').exists()
                     held = active_suggestions().filter(position_id=pid).exclude(student_id=sid).count()
                     if own and not approved and (not fresh or (held and held >= before['capacities'].get(pid, 0))):
-                        return Response({'error': 'This seat is committed in the shared suggestions or the suggestions need updating. Review the proposed allocations first.'}, status=409)
+                        return Response({'error': 'This slot is committed in the shared suggestions or the suggestions need updating. Review the proposed allocations first.'}, status=409)
             response = view(request, *args, **kwargs)
             if response.status_code < 300 and state.revision and not response.data.get('idempotent'):
                 record = response.data.get('placement', {})

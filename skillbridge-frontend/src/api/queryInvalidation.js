@@ -18,7 +18,7 @@ export function queryAffected(url, change) {
   const path = parsed.pathname
   if (path === '/api/placements/draft/' && change.topics?.some(topic => ['students', 'batches', 'assessments', 'results', 'catalog', 'taxonomy', 'configuration'].includes(topic))) return true
   // Analytics includes shared capacity as well as scoped cohort data. A foreign
-  // placement may consume a visible seat, so do not prune it by cohort IDs.
+  // placement may consume a visible slot, so do not prune it by cohort IDs.
   if (path === '/api/management/analytics/') return Boolean(change.resync || change.urls?.some(url => new URL(url, parsed.origin).pathname === path) || change.topics?.some(topic => Object.hasOwn(paths, topic)))
   // Never subscribe attempt POSTs or generated snapshots to background GETs.
   if (change.resync) return Object.values(paths).flat().some(pattern => pattern.test(path))

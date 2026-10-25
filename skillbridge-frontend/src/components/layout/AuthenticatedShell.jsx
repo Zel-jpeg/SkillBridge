@@ -5,6 +5,8 @@ import { useSession } from '../../context/SessionContext'
 import { ROLE_METADATA, ROLE_NAVIGATION, activeNavigationPath, readSidebarPreference, persistSidebarPreference } from '../../navigation/navigation'
 import { BriefcaseIcon, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon, XIcon } from '../Icons'
 import ProfileMenu from './ProfileMenu'
+import NotificationMenu from './NotificationMenu'
+import StudentNotificationMenu from './StudentNotificationMenu'
 import ModalLayer from './ModalLayer'
 import { promoteDestination } from '../../api/prefetch.js'
 
@@ -49,17 +51,21 @@ function ShellChrome({ role, children }) {
   // Key open UI to the current history entry so back/forward and direct navigation close it.
   const [drawerKey, setDrawerKey] = useState(null)
   const [profileKey, setProfileKey] = useState(null)
+  const [notificationKey, setNotificationKey] = useState(null)
   const [previousLocationKey, setPreviousLocationKey] = useState(location.key)
   if (previousLocationKey !== location.key) {
     setPreviousLocationKey(location.key)
     setDrawerKey(null)
     setProfileKey(null)
+    setNotificationKey(null)
   }
   const drawerOpen = !expired && drawerKey === location.key
   const profileOpen = !expired && profileKey === location.key
+  const notificationOpen = !expired && notificationKey === location.key
   const menuTrigger = useRef(null)
   const closeDrawer = useCallback(() => setDrawerKey(null), [])
   const closeProfile = useCallback(() => setProfileKey(null), [])
+  const closeNotifications = useCallback(() => setNotificationKey(null), [])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)')
@@ -83,8 +89,13 @@ function ShellChrome({ role, children }) {
     </aside>
     <div className="sb-workspace">
       <header className="sb-top-header">
-        <div className="sb-header-start"><button ref={menuTrigger} type="button" aria-label="Open navigation menu" aria-expanded={drawerOpen} aria-controls="sb-mobile-navigation" onClick={() => { closeProfile(); setDrawerKey(location.key) }} className="sb-menu-trigger"><MenuIcon /></button><span className="sb-header-role">{ROLE_METADATA[role].label} workspace</span></div>
-        <ProfileMenu key={role} role={role} open={profileOpen} onClose={closeProfile} onToggle={() => { closeDrawer(); setProfileKey(profileOpen ? null : location.key) }} />
+        <div className="sb-header-start"><button ref={menuTrigger} type="button" aria-label="Open navigation menu" aria-expanded={drawerOpen} aria-controls="sb-mobile-navigation" onClick={() => { closeProfile(); closeNotifications(); setDrawerKey(location.key) }} className="sb-menu-trigger"><MenuIcon /></button><span className="sb-header-role">{ROLE_METADATA[role].label} workspace</span></div>
+        <div className="sb-header-actions">
+          {role === 'student'
+            ? <StudentNotificationMenu open={notificationOpen} onClose={closeNotifications} onToggle={() => { closeDrawer(); closeProfile(); setNotificationKey(notificationOpen ? null : location.key) }} />
+            : <NotificationMenu role={role} open={notificationOpen} onClose={closeNotifications} onToggle={() => { closeDrawer(); closeProfile(); setNotificationKey(notificationOpen ? null : location.key) }} />}
+          <ProfileMenu key={role} role={role} open={profileOpen} onClose={closeProfile} onToggle={() => { closeDrawer(); closeNotifications(); setProfileKey(profileOpen ? null : location.key) }} />
+        </div>
       </header>
       <main id="sb-main" tabIndex={-1} className="sb-main">{children}</main>
     </div>

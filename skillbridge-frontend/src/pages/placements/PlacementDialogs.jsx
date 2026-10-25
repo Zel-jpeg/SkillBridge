@@ -13,8 +13,8 @@ export function ActionModal({ action, busy, onClose, onSubmit }) {
   const pending = useRef(false)
   if (!action) return null
   const labels = {
-    approve: ['Approve placement?', 'Confirm this student for the position. One seat will become approved.', 'Approve student', 'pl-primary'],
-    remove: ['Remove approved placement?', 'This releases the approved seat and keeps the decision in history.', 'Remove placement', 'pl-danger-solid'],
+    approve: ['Approve placement?', 'Confirm this student for the position. One slot will become approved.', 'Approve student', 'pl-primary'],
+    remove: ['Remove approved placement?', 'This releases the approved slot and keeps the decision in history.', 'Remove placement', 'pl-danger-solid'],
     reject: ['Decline this suggestion?', 'Only this student-position suggestion is declined. Other alternatives remain available.', 'Decline suggestion', 'pl-danger-solid'],
   }
   const [title, description, button, buttonClass] = labels[action.type]
@@ -83,7 +83,7 @@ export function ManualAssignmentModal({ students, positions, approvedByStudent, 
     <ModalShell onClose={onClose}>
       <form onSubmit={submit} className="p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white pr-10">Manual placement assignment</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Choose a student and position. This action approves a placement directly; existing approvals and shared suggested seats still apply.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Choose a student and position. This action approves a placement directly; existing approvals and shared suggested slots still apply.</p>
         <div className="grid md:grid-cols-2 gap-4 mt-5">
           <div>
             <label htmlFor="placement-student-search" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">Find student</label>
@@ -93,7 +93,7 @@ export function ManualAssignmentModal({ students, positions, approvedByStudent, 
               {!filteredStudents.length && <p className="p-4 text-xs text-center text-gray-400">No students found.</p>}
             </div>
           </div>
-          {initialPositionId ? <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-4"><p className="text-xs text-gray-500">Position to approve</p><h3 className="text-sm font-semibold mt-2">{selectedPosition?.title}</h3><p className="text-xs mt-1">{selectedPosition?.company_name}</p><p className="text-xs text-gray-500 mt-2">{selectedPosition?.remaining_slots} of {selectedPosition?.slots_available} seats not yet approved</p></div> : <div>
+          {initialPositionId ? <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-4"><p className="text-xs text-gray-500">Position to approve</p><h3 className="text-sm font-semibold mt-2">{selectedPosition?.title}</h3><p className="text-xs mt-1">{selectedPosition?.company_name}</p><p className="text-xs text-gray-500 mt-2">{selectedPosition?.remaining_slots} of {selectedPosition?.slots_available} slots not yet approved</p></div> : <div>
             <label htmlFor="placement-position-search" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">Find company position</label>
             <input id="placement-position-search" value={positionSearch} onChange={event => setPositionSearch(event.target.value)} placeholder="Company or position title" className={inputClass} />
             <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">

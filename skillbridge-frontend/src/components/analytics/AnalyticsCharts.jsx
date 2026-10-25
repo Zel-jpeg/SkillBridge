@@ -76,9 +76,9 @@ export function StackedBars({ rows, segments, denominator, onSelect, unit = 'stu
         </ResponsiveContainer>
       </div>
       <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Counts are {unit}. Select a colored section to view records. Zero counts are available in the list below.</p>
-      <RecordExplorer label={unit === 'seats' ? 'View seat counts and capacity records' : undefined}>{rows.map(row => <div key={row.id}>
+      <RecordExplorer label={unit === 'slots' ? 'View slot counts and capacity records' : undefined}>{rows.map(row => <div key={row.id}>
         <p className="break-words text-xs font-semibold text-gray-800 dark:text-gray-100">{row.name}</p>
-        <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{row.occupied != null ? `${row.total} configured seats${row.occupied > row.total ? ' · over configured capacity' : ''}` : row.sample != null ? `${row.sample} students with results · ${row.missing} missing or locked` : `${denominator(row)} students assigned`}</p>
+        <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{row.occupied != null ? `${row.total} configured slots${row.occupied > row.total ? ' · over configured capacity' : ''}` : row.sample != null ? `${row.sample} students with results · ${row.missing} missing or locked` : `${denominator(row)} students assigned`}</p>
         <div className="mt-2 flex flex-wrap gap-2">{series.map(segment => <button key={segment.key} type="button" aria-label={`${row.name} · ${segment.label}: ${row[segment.key]}`} onClick={() => onSelect(row, segment.key)} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-green-950 ${focus}`}><span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: segment.fill }} />{segment.label}: <strong className="tabular-nums">{row[segment.key]}</strong></button>)}</div>
       </div>)}</RecordExplorer>
     </> : <p className="py-6 text-xs text-gray-500 dark:text-gray-400">No eligible results in this scope.</p>}
@@ -87,12 +87,12 @@ export function StackedBars({ rows, segments, denominator, onSelect, unit = 'stu
 
 export function PlacementDonut({ summary, onSelect }) {
   const entries = [
-    { key: 'approved', name: 'Approved in cohort', value: summary.approved, fill: '#16a34a' },
+    { key: 'approved', name: 'Approved in selected batches', value: summary.approved, fill: '#16a34a' },
     { key: 'approved_other_batch', name: 'Approved in another batch', value: summary.approved_other_batch, fill: '#3b82f6' },
     { key: 'unplaced', name: 'Unplaced', value: summary.unplaced, fill: '#f59e0b' },
   ]
   return <div className="flex flex-wrap items-center gap-6 py-2">
-    <div className="relative h-44 w-44 shrink-0" role="img" aria-label={`${summary.approved} approved in cohort, ${summary.approved_other_batch} approved in another batch, ${summary.unplaced} unplaced`}>
+    <div className="relative h-44 w-44 shrink-0" role="img" aria-label={`${summary.approved} approved in selected batches, ${summary.approved_other_batch} approved in another batch, ${summary.unplaced} unplaced`}>
       {summary.students ? <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 176, height: 176 }}><PieChart accessibilityLayer><Tooltip content={<ChartTooltip />} /><Pie data={entries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={84} stroke="none" paddingAngle={2} isAnimationActive={false} onClick={entry => onSelect(entry.key)} className="cursor-pointer" /></PieChart></ResponsiveContainer> : <div className="h-full w-full rounded-full border-[22px] border-gray-200 dark:border-gray-700" />}
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><strong className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">{summary.placement_rate == null ? '—' : `${summary.placement_rate}%`}</strong><span className="mt-1 text-xs text-gray-500 dark:text-gray-400">approved</span></div>
     </div>

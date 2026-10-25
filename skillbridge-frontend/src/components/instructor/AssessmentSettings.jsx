@@ -7,6 +7,17 @@ const ScheduleDateTimePicker = lazy(() => import('./ScheduleDateTimePicker'))
 
 const control = 'w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
 
+function AssessmentSchedule({ value, field, errors, locks }) {
+  return <section aria-label="Assessment schedule" className="space-y-2">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-gray-100 pb-2.5 dark:border-gray-800"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Schedule</h3><p className="text-xs text-gray-500 dark:text-gray-400">Asia/Manila · UTC+08</p></div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {[['available_at', 'Available at'], ['due_at', 'Due at']].map(([key, title]) => <Suspense key={key} fallback={<div className="min-w-0 space-y-1.5 text-xs text-gray-500"><span>{title}</span><div role="status" className={`${control} flex h-10 items-center`}>Loading calendar…</div></div>}><ScheduleDateTimePicker disabled={key === 'available_at' ? locks.opening : locks.deadline} label={title} value={value[key]} onChange={next => field(key, next)} error={errors[key] || (key === 'due_at' && value.available_at && value.due_at && value.due_at <= value.available_at ? 'Due date must be after the available date.' : undefined)} /></Suspense>)}
+    </div>
+    {locks.attempted && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{locks.deadline ? 'Opening time is locked. A new deadline cannot be added after an attempt.' : 'Opening time is locked. The deadline can only be extended or removed.'}</p>}
+    <AssessmentTimingGuidance />
+  </section>
+}
+
 export default function AssessmentSettings({ value, onChange, errors = {}, variant = 'default', duration, onDurationChange, assessment = {} }) {
   const field = (key, next) => onChange({ ...value, [key]: next })
   const locks = assessmentLocks(assessment)
@@ -38,14 +49,7 @@ export default function AssessmentSettings({ value, onChange, errors = {}, varia
           <span><span className="font-semibold text-gray-800 dark:text-gray-100">Include in competency profile</span><span className="mt-1 block leading-5 text-gray-500 dark:text-gray-400">Completed results contribute to the combined profile. Excluded results remain visible.</span></span>
         </label>
       </div>
-      <section aria-label="Assessment schedule" className="space-y-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-gray-100 pb-2.5 dark:border-gray-800"><h3 className="text-sm font-semibold text-gray-900 dark:text-white">Schedule</h3><p className="text-xs text-gray-500 dark:text-gray-400">Asia/Manila · UTC+08</p></div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[['available_at', 'Available at'], ['due_at', 'Due at']].map(([key, title]) => <Suspense key={key} fallback={<div className="min-w-0 space-y-1.5 text-xs text-gray-500"><span>{title}</span><div role="status" className={`${modalControl} flex items-center`}>Loading calendar…</div></div>}><ScheduleDateTimePicker disabled={key === 'available_at' ? locks.opening : locks.deadline} label={title} value={value[key]} onChange={next => field(key, next)} error={errors[key] || (key === 'due_at' && value.available_at && value.due_at && value.due_at <= value.available_at ? 'Due date must be after the available date.' : undefined)} /></Suspense>)}
-        </div>
-        {locks.attempted && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{locks.deadline ? 'Opening time is locked. A new deadline cannot be added after an attempt.' : 'Opening time is locked. The deadline can only be extended or removed.'}</p>}
-        <AssessmentTimingGuidance />
-      </section>
+      <AssessmentSchedule value={value} field={field} errors={errors} locks={locks} />
     </div>
   }
   return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -67,12 +71,6 @@ export default function AssessmentSettings({ value, onChange, errors = {}, varia
       <input type="checkbox" className="mt-0.5 accent-green-600" checked={value.include_in_competency} onChange={e => field('include_in_competency', e.target.checked)} />
       <span><strong>Include in competency profile</strong><br />Completed optional assessments can improve the combined profile. Excluded results remain visible.</span>
     </label>
-    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Available at · Asia/Manila
-      <input disabled={locks.opening} className={`${control} mt-1`} type="datetime-local" value={value.available_at} onChange={e => field('available_at', e.target.value)} />
-    </label>
-    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Due at · Asia/Manila
-      <input disabled={locks.deadline} min={locks.attempted ? value.available_at || undefined : undefined} className={`${control} mt-1`} type="datetime-local" value={value.due_at} onChange={e => field('due_at', e.target.value)} />
-      {errors.due_at && <span className="text-red-600">{errors.due_at}</span>}
-    </label>
+    <div className="sm:col-span-2"><AssessmentSchedule value={value} field={field} errors={errors} locks={locks} /></div>
   </div>
 }

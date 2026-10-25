@@ -10,6 +10,255 @@ historical trends limited to evidence actually retained by the application.
 
 ## Delivered
 
+### Placement analysis and simpler terminology — 26 October 2026
+
+Implemented the approved [placement concept, version 2](../outputs/ui-concepts/placement-analytics-2026-10-26/DESIGN_BRIEF.md)
+through shared lazy-loaded `PlacementInsights` for instructor and admin.
+
+- Student placement progress replaces its donut with exact approved/other-batch/
+  unplaced counts and a proportional distribution strip. These actions open the
+  selected students' filtered list on the same page, with the active-filter banner
+  and records-heading focus. Zero-count actions show an empty list.
+- Company comparisons offer Company / Company area switching, paginated native
+  drill-down rows and an honest no-approval empty state. Counts and identities
+  follow the existing authorized company-filtered analytics payload.
+- Shared position slots replaces the large chart and duplicate disclosure with
+  one eight-row paginated table, exact full-list total/occupied/remaining values,
+  company/position identity, company area and a single View capacity records action.
+  Per-row slot counts stay informational. Above-configured occupancy remains
+  explicit, while remaining uses the API's bounded count. Small containers present
+  labeled position cards with the same values; both themes are supported.
+- The existing backend Company area filter is now also visible in the capacity
+  section as a clearable chip. Davao City shows only Davao City company positions
+  and matching full filtered slot totals; it does not filter student residence.
+  Company and position filters compose with it. Clearing the chip clears area and
+  the record selection while keeping the other report-scope filters.
+- Company comparison and shared-slot counts use company/position/area filters.
+  Student progress remains based on the selected batches. Its status drill-downs
+  now read `data.students`, so their filtered records match the displayed status
+  counts even when a company filter would exclude them. Default placement records
+  and company/area drill-downs still use `data.placement_students`. The banner and
+  export metadata explicitly describe this status-scope distinction.
+- Visible generated copy throughout the application uses **slots**, **batch** or
+  **selected students**, replacing seat/cohort wording in staff pages, dashboard
+  descriptions, placement dialogs, summaries, export labels and API error/metadata
+  messages. Existing API field keys (including `cohort_unit`), database schema,
+  URLs, stored batch names and historical records are preserved. User-owned batch
+  names are not rewritten merely because they contain an older term.
+
+This is presentation and record-selection work. No capacity arithmetic, approval
+rules, mutation payloads, ranking, grading or backend authorization changed. Official
+slot occupancy still counts approvals across all batches; provisional suggestions
+remain separate. The concept's illustrative companies and totals are not inserted
+into application data. The new panels preserve independent pagination, scope reset,
+live downward page clamping, loading/errors and last-good report behavior.
+
+Verification: lint/build and all 225 frontend Node tests pass. The expanded
+isolated analytics suite passes 156 browser groups with no page errors, covering
+both roles, Davao/Panabo area filtering, scoped company/area drill-downs, independent
+student-status counts, exact all-batch slot totals, filtered CSV metadata, eight-row
+pagination/live clamps, legacy over-capacity, empty/zero states and six responsive
+sizes in both themes. Desktop/phone screenshots were reviewed. The surrounding
+placement collections and candidate workspace pass 30 and 44 browser groups.
+The latter's test now uses visible Next controls when a page is hidden behind
+pagination ellipses. All browser data is synthetic or from a disposable local
+fixture. Backend analytics/capacity tests pass 13 cases on in-memory SQLite;
+placement draft tests pass 21 cases, with five database-specific cases skipped
+by their existing guards on SQLite. No production database, deployment or physical
+device was used.
+
+### Skills count matrix and company-match filters — 26 October 2026
+
+Implemented the approved [Skills concept](../outputs/ui-concepts/skills-analytics-2026-10-26/DESIGN_BRIEF.md)
+in a shared, lazy-loaded `SkillsInsights` component for both staff roles. One
+category matrix replaces the duplicated chart/count accordion, and a separate
+company-match panel distinguishes recommendation fit from category evidence.
+Other analytics charts retain their existing presentation.
+
+- Matrix rows use the API's Strong/Fair/Needs work student counts with the same
+  80/60 thresholds. Unavailable uses the supplied missing/locked count, remains
+  neutral and informational, and never becomes a zero score. No category mean
+  or recommendation score is recalculated by this presentation.
+- Each scored-band count is a native button, including zero counts. Its arrow
+  selects the existing `skill:<category>:<band>` record filter. Company rows
+  select the existing `band:<name>` groups using each student's best current
+  recommendation. No current recommendation maps to `No current match`; Final
+  results locked maps to `Locked`. Both stay neutral rather than appearing as
+  scored bands or approved placements.
+- Arrow actions switch records to list view, clear local record search/sort,
+  reset record pagination, scroll to/focus the records heading, and expose the
+  category/band or company-match selection in the existing clearable filter
+  banner. The report scope is retained. A zero-count selection opens the empty
+  filtered list; it does not navigate to a different page or create data.
+- View category table opens the existing read-only category aggregate table.
+  The category matrix has independent eight-category pagination, resets when
+  cohort scope changes, and persistently clamps after refreshed results shrink.
+  Company group totals count the full authorized cohort rather than a page slice.
+- Wide layouts use two panels. Below 1200px they stack; matrix containers at
+  520px or below show labeled category cards with the same controls. Both themes,
+  keyboard selection/focus, 44px count controls and reduced motion are supported.
+  Empty cohorts and unavailable final evidence have explicit messages.
+
+API contracts, authorization, final-evidence gates, score history, ranking weights,
+recommendation regeneration and placement approval rules are unchanged. The
+human-readable company-filter labels also appear in snapshot export metadata.
+The concept's sample counts are not inserted into the application.
+
+Verification: frontend lint/build and all 224 Node tests pass. The expanded
+analytics browser suite passes 128 groups with no page errors against a fresh
+disposable SQLite fixture. Every category-band and company-match arrow is checked
+against real isolated API student identities/counts, including zero results,
+forced list view, records-heading focus, pressed state, filter labels and clearing.
+Responsive checks cover 320x568, 375x812, 768x1024, 1024x768, 1440x1000 and 812x375
+in both themes for both roles. Synthetic stress responses cover 19 categories,
+long names, pagination, live shrink/regrowth, all-locked evidence and empty cohorts.
+The full suite also retains its export, report-scope, access-loss, date picker
+and previous collection regression checks. Desktop/phone Skills screenshots were
+reviewed under `skillbridge-frontend/tests/artifacts/analytics/`. No production
+database, hosted deployment or physical device was exercised.
+
+### Collection balance, filter context and activity calendar — 25 October 2026
+
+The student collection now uses fixed responsive columns rather than stretching
+the available cards across the row. Its content container uses one, two, three
+or four columns at 0/500/730/960px; a wide layout retains four columns even when
+only two students match. Cards retain the dashboard/Students visual language,
+with 16px padding and the existing authorized analytics fields. The list keeps
+shared table styling, sorting and key/full columns. Both views still use the
+same eight-student page, and no assessment overall score is fabricated.
+
+The analytics card/list tray now uses compact 28px buttons for mouse pointers,
+retaining 44px controls on coarse-pointer touch devices and 14px shared icons.
+The assessment library's default toggle sizing is unchanged.
+
+Student drill-downs now show an explicit green Active record filter banner with
+the selected batch, assessment/state or other student selection. Batch actions
+explain that all students in that batch are shown; attempt actions explain the
+current assessment status being filtered. The existing full filtered count stays
+visible, including zero results. Clear record selection removes this selection
+while retaining the report scope. Chart actions focus the records heading and
+scroll it into view, respecting reduced motion. Aggregate record views keep their
+active view buttons and existing clear action rather than duplicating their title
+in a student filter banner.
+
+Recorded submission activity reuses `ScheduleDateTimePicker` in its new optional
+date-only mode. The default assessment date/time behavior remains intact. Activity
+dates use the same calendar, green styling, responsive popover/modal and
+Apply/Cancel/Clear actions, with no time field. Picked dates remain `YYYY-MM-DD`
+calendar dates in Manila regardless of the browser timezone. Calendar Apply
+updates the date draft; Apply dates requests the activity range. Missing dates,
+reversed ranges, future end dates and ranges longer than 366 inclusive days keep
+the prior validation. Field groups expose invalid state and error associations.
+Activity-only filtering, last-good report retention, latest-request handling and
+exports preserve their existing contracts. No API or backend behavior changed.
+
+Verification: lint/build and all 224 frontend Node tests pass. The expanded
+analytics browser suite passes 100 groups for both roles, with no page errors.
+It verifies four columns at wide content widths even with only two records,
+compact desktop toggles, responsive cards/list, visible batch/attempt filter
+context, heading focus, zero-result selections, calendar Apply/Cancel/Clear,
+missing/reversed/future/oversized date ranges, exact activity-only requests,
+latest-response handling, exports and access loss. Calendar overlays are checked
+at 320x568, 375x812, 768x1024, 1440x1000 and 812x375 in both themes, in a New York
+browser timezone. Opening a focused field brings an offscreen anchor back into
+view before positioning its popup, including after resize or content updates.
+The existing assessment date/time creation suite also passes all 24 groups,
+including unchanged Manila save payloads. Desktop/phone card, filter-banner and
+calendar screenshots were reviewed. These use synthetic records and disposable
+local fixtures, not production data or physical-device verification.
+
+### Required completion and attempt panels — 25 October 2026
+
+Implemented the approved [two-panel concept](../outputs/ui-concepts/analytics-progress-panels-2026-10-25/DESIGN_BRIEF.md)
+in shared `AssessmentProgressPanels` for instructor and admin. These two panels
+replace their former large chart axes and duplicate count-list disclosures;
+other analytics charts retain Recharts and their existing behavior.
+
+- Required completion uses the API's cohort completion rate and each batch's
+  exact completed/total counts. Tracks use the real count ratio, labels retain
+  the reported rate, and explicit Completed/Remaining cells stay distinct from
+  attempt status. View batch students opens the existing `batch:<id>` selection.
+- Attempt status uses exact per-assessment counts and denominators. Its summary
+  sums submitted and assigned student-assessment assignments across the full
+  analysis scope, including rows on other panel pages. This is not a distinct
+  student count or the cohort's required completion rate. Selecting an assessment
+  changes attempt analysis while retaining cohort completion, as before.
+- Four native status buttons retain submitted, in-progress, not-started and
+  stopped/flagged counts. All remain selectable at zero and open the same
+  `attempt:<id>:<state>` filtered student records. Active selections expose
+  `aria-pressed`; controls have visible focus and at least 44px touch height.
+- Each panel has independent four-row pagination and a bounded scroll area for
+  taller rows, rather than hiding batches/assessments after the first one. Scope
+  changes reset panel pages; background refresh preserves them where valid and
+  persistently clamps shrinking results. Missing rates display an em dash;
+  empty batches/assignments retain explicit zero counts without invented rates.
+- Wide screens place panels side by side; below 1200px they stack. Narrow
+  containers stack count/status tiles, wrap long labels and contain pagination.
+  Light/dark themes and reduced-motion preferences are supported. Shared icons,
+  the current API/cache lifecycle and the existing pagination component are used.
+
+No API fields, database writes, grading, authorization, eligibility, student record
+filters or export calculations changed. The generated concept's example data is
+not inserted into the application. The implementation keeps the user's compact
+12px ordinary text scale rather than the larger raster concept's text sizing.
+
+Verification: lint/build and all 224 frontend Node tests pass. The full isolated
+analytics browser suite passes 78 groups with no page errors, including both roles
+at 320x568, 375x812, 768x1024, 1024x768, 1440x1000 and 812x375 in both themes.
+Coverage includes exact track proportions, batch/zero/nonzero keyboard drill-downs,
+assessment filter boundaries, multiple/empty rows, independent pagination and
+live page clamp/regrowth, alongside the existing analytics/export/access checks.
+Snapshots use a disposable SQLite fixture and synthetic empty-row stress data;
+no production database or physical device was used. Panel captures are under
+`skillbridge-frontend/tests/artifacts/analytics/`.
+
+Reproduce all checks from the repository root:
+
+```powershell
+.\skillbridge-backend\venv\Scripts\python.exe skillbridge-frontend/tests/run_admin_management.py --analytics
+```
+
+Add `--panels-only` for the focused panel checks, including long-label geometry.
+
+### Student cards and list view — 25 October 2026
+
+The shared instructor/admin student records section now offers the same compact
+card/list toggle used elsewhere in SkillBridge, with labeled 44px controls also
+available on phones. List remains the initial view. Cards reuse the student-card
+visual language while rendering analytics snapshot fields directly: identity,
+batch/instructor, required completion, final-evidence availability, OJT placement,
+follow-up reasons and a separately labeled current recommendation. Skill records
+also retain category results; missing values remain explicit and zero stays zero.
+No management-profile score or overall percentage is fabricated from report data.
+
+Both views show the same eight-student page in TanStack's full filtered order.
+Switching views preserves search, selection, sort and page; search/filter/sort
+changes return to page one. Refreshed result shrink persists its page clamp.
+Cards provide a labeled Sort students select; the list keeps sortable headers
+and key/full columns. Aggregate tables retain ten rows per page. Narrow list
+views use contained, keyboard-focusable scrolling; cards form a responsive grid.
+Student names open the existing authorized details dialog with focus return.
+Compact list status cells now also show the actual follow-up reasons.
+
+CSV/PDF downloads still include all filtered records and all original columns,
+using the same sort order in either view. Charts, scope controls, API fields,
+calculation/eligibility rules and backend permissions are unchanged. The wider
+[ImageGen concept](../outputs/ui-concepts/reports-analytics-2026-10-25/DESIGN_BRIEF.md)
+reimagines the whole page as requested; its sample records/charts are illustrative,
+and only the student collection behavior is implemented in this refinement.
+
+Verification: frontend lint and production build pass; all 224 frontend Node
+tests pass. The expanded [isolated analytics browser suite](../skillbridge-frontend/tests/analytics_playwright.py)
+covers both roles with a disposable SQLite fixture, eight-record card/list
+equivalence, page preservation, full sorted CSV exports, detail-dialog focus,
+follow-up filters, missing/locked evidence, explicit zero category scores and
+page clamp/regrowth after background refresh. Its 50 groups include both views
+at 320x568, 375x812, 768x1024, 1024x768, 1440x1000 and 812x375 in light/dark mode,
+plus the existing chart drill-down, scope/access, error recovery and export checks.
+No page errors were recorded. Desktop/phone student-card screenshots were reviewed
+under `skillbridge-frontend/tests/artifacts/analytics/`. Production services,
+physical devices and deployment were not exercised.
+
 ### Header simplification — 20 October 2026
 
 Both dashboards omit the standalone Open Reports & Analytics link below the

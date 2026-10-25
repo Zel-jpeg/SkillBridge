@@ -4,6 +4,10 @@ Updated 2026-10-20. The frontend uses `ToastProvider` and `useToast` from
 [`ToastContext.jsx`](../skillbridge-frontend/src/context/ToastContext.jsx), mounted
 once above the route tree in `main.jsx`. Card styles are in `src/index.css`.
 
+The October 25 [staff notification bell](STAFF_NOTIFICATIONS.md) holds persistent
+current reminders. It replaces the dashboard Needs attention panel; action
+confirmations and errors continue using these toasts.
+
 ## Behavior
 
 - Compact cards appear at the top right, with a status icon, close button and

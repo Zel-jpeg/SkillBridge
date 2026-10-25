@@ -1,5 +1,39 @@
 # Instructor assessment library
 
+25 October analytics reuse: `ScheduleDateTimePicker` also supports an optional
+date-only mode for Reports & Analytics activity ranges. Its assessment default
+still includes time selection and the same Manila save payload; see the
+[analytics refinement](ANALYTICS_IMPLEMENTATION.md).
+
+## New Assessment schedule follow-up — 25 October 2026
+
+Both instructor and admin New Assessment pages now reuse the modal's styled
+Schedule section from
+[AssessmentSettings](../skillbridge-frontend/src/components/instructor/AssessmentSettings.jsx).
+The default and modal layouts share one internal `AssessmentSchedule` renderer,
+including the existing lazy-loaded calendar/time picker, Manila timezone label,
+Apply/Cancel/Clear actions, accessible error associations and timing explanation.
+The other creation controls retain their current layout. Phone/short-height
+screens use the existing compact picker dialog; larger screens use its popover.
+
+Opening/deadline locks and chronological validation still use the existing
+assessment policy. The minute-precision wall-clock state, draft recovery and
+`+08:00` create payload are unchanged. No API, scoring, publication, assignment or
+student timing rules changed. This supersedes the earlier statement that the
+default settings schedule layout remains unchanged.
+
+Verification: frontend lint/build and six focused date/policy tests pass.
+[New Assessment browser checks](../skillbridge-frontend/tests/assessment_create_schedule_playwright.py)
+pass 24 groups across both staff roles at 320x568, 390x844, 768x1024, 1440x1000
+and 1024x600 in light/dark mode. They cover calendar and AM/PM minute selection,
+Apply/Cancel/Clear, invalid date ordering, keyboard/Escape/focus, bounded popup
+geometry, and exact mocked save payloads with the browser in America/New_York.
+Creation requests are intercepted; no real assessment is saved. Phone and desktop
+screenshots are in `tests/artifacts/assessment-create-schedule/` beneath the
+frontend. All 11 existing instructor library/modal browser groups also pass,
+including locked/editable schedules and focus/dirty-draft behavior. Backend/database
+tests are unnecessary for this presentation reuse and were not run.
+
 25 October timing follow-up: [assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md)
 locks duration/opening after the first attempt, permits only deadline extensions
 or removal, explains settings effects and adds safe draft copies. The rule uses

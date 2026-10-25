@@ -29,6 +29,15 @@ test('chart navigation fields never enter API query filters', () => {
   assert.equal(analyticsUrl(new URLSearchParams('tab=skills&group=capacity&batch_id=3&course=BSIT')), '/api/management/analytics/?batch_id=3&course=BSIT')
 })
 
+test('placement status drill-downs keep selected students when company filters exclude them', () => {
+  const scoped = { ...data, placement_students: [] }
+  assert.deepEqual(selectAnalyticsStudents(scoped, 'placements', 'approved').map(row => row.id), [2])
+  assert.deepEqual(selectAnalyticsStudents(scoped, 'placements', 'unplaced').map(row => row.id), [1])
+  assert.deepEqual(selectAnalyticsStudents(scoped, 'placements', 'awaiting').map(row => row.id), [2])
+  assert.equal(selectAnalyticsStudents(scoped, 'placements', '').length, 0)
+  assert.equal(selectAnalyticsStudents(scoped, 'placements', 'company:7').length, 0)
+})
+
 test('snapshot export tables retain all filtered rows, raw zero, missing evidence and metadata', () => {
   const table = analyticsTable(data, 'skills', '', data.students)
   assert.equal(table.rows.length, 2)
