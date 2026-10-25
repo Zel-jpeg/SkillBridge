@@ -21,9 +21,10 @@ with sync_playwright() as p:
     context.add_init_script('for (const [k,v] of Object.entries(' + json.dumps(values) + ')) localStorage.setItem(k,v)')
     def route_request(route):
         url, method = urlparse(route.request.url), route.request.method
-        if url.hostname not in ['localhost', '127.0.0.1']: return route.abort()
-        if not url.path.startswith('/api/'): return route.continue_()
+        if not url.path.startswith('/api/'):
+            return route.continue_() if url.hostname in ['localhost', '127.0.0.1'] else route.abort()
         if url.path.endswith('/events/'): return route.fulfill(status=204)
+        if url.path == '/api/auth/me/': return route.fulfill(json=user)
         # This existing advisory POST is a read, not an assessment mutation.
         if url.path == '/api/categories/suggest/' and method == 'POST':
             return route.fulfill(json={'suggested_category': None})
@@ -47,28 +48,32 @@ with sync_playwright() as p:
         return route.fulfill(json=[])
     context.route('**/*', route_request)
     page = context.new_page()
+    page.set_default_timeout(10000)
     page.on('pageerror', lambda error: errors.append(str(error)))
     try:
         page.goto('http://127.0.0.1:5178/instructor/assessments')
         page.wait_for_load_state('networkidle')
-        page.get_by_role('heading', name='Synthetic assessment', exact=True).click()
+        page.get_by_role('button', name='Open assessment Synthetic assessment', exact=True).click()
         title = page.get_by_placeholder('Assessment title', exact=True)
-        expect(title).to_be_visible()
+        expect(title).to_have_count(0)
+        page.get_by_role('button', name='Edit assessment name', exact=True).click()
+        expect(title).to_be_focused()
         title.fill('Updated complete assessment')
+        page.get_by_role('button', name='Done', exact=True).click()
         page.get_by_text('Original question', exact=True).click()
         question = page.get_by_placeholder('Type the question here...', exact=True)
         question.fill('Updated question retained on failure')
         page.get_by_role('button', name='Save All Changes', exact=True).click()
         page.get_by_role('button', name='Confirm Save', exact=True).evaluate('(b)=>{b.click();b.click()}')
-        expect(page.get_by_role('alert')).to_have_text('Synthetic complete-save validation failed.')
-        expect(title).to_have_value('Updated complete assessment')
+        expect(page.get_by_role('dialog', name='Edit assessment', exact=True).get_by_role('alert')).to_have_text('Synthetic complete-save validation failed.')
+        expect(page.get_by_role('dialog', name='Edit assessment', exact=True).get_by_role('heading', name='Updated complete assessment', exact=True)).to_be_visible()
         expect(question).to_have_value('Updated question retained on failure')
         assert len(writes) == 1
         assert assessment['title'] == 'Synthetic assessment' and questions[0]['question_text'] == 'Original question'
         checks.append('Failed complete save retains title/question draft and performs one PATCH, no separate question writes')
         page.get_by_role('button', name='Save All Changes', exact=True).click()
         page.get_by_role('button', name='Confirm Save', exact=True).click()
-        expect(page.get_by_text('Assessment saved successfully.', exact=True)).to_be_visible()
+        expect(page.get_by_role('status').filter(has_text='Assessment saved successfully.')).to_be_visible()
         expect(page.get_by_text('Updated question retained on failure', exact=True)).to_be_visible()
         assert len(writes) == 2 and all(method == 'PATCH' and path == '/api/instructor/assessments/1/' for method, path, _ in writes)
         assert len(reads) == 1

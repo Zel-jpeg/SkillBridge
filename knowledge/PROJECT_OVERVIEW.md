@@ -199,6 +199,9 @@ and fallback when explaining results.
 
 - [Admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md): Paginated card/list
   views, protected management drafts, lazy modal sections and synthetic UI checks.
+- [Instructor assessment library](ASSESSMENT_LIBRARY_UI.md): Light/dark assessment
+  cards and list, dashboard-style view switch, secondary filters, shared pagination
+  and labeled report controls.
 
 - [Instructor/admin capability review and plan](ROLE_CAPABILITIES_REVIEW_AND_PLAN.md):
   Current UI/API access matrix, missing admin authoring and batch workflows,
