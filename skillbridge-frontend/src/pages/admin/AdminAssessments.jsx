@@ -8,6 +8,8 @@ import { ArchiveIcon, GridIcon, ListIcon, ReportIcon, SearchIcon, WarnIcon } fro
 import { AssessmentIntegrity, AssessmentPagination, AssessmentProgress, AssessmentRetry, AssessmentSkeleton, AssessmentStatus, CategorySummary } from '../../components/admin/AssessmentPresentation'
 import AssessmentManagementDialog from '../../components/admin/AssessmentManagementDialog'
 
+const normalAssessments = data => Array.isArray(data) ? data.filter(a => !a.is_archived) : []
+
 const control = 'min-h-10 min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
 const surface = 'rounded-2xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'
 const statusTabs = [['all', 'All'], ['published', 'Published'], ['draft', 'Drafts'], ['closed', 'Closed']]
@@ -41,7 +43,7 @@ function AssessmentResults({ records, view, onOpen }) {
 
 export default function AdminAssessments() {
   const { data, error, errorStatus } = useAdminAssessments()
-  const assessments = useMemo(() => Array.isArray(data) ? data : [], [data])
+  const assessments = useMemo(() => normalAssessments(data), [data])
   const [state, dispatch] = useReducer(assessmentViewReducer, initialAssessmentView)
   const [selectedId, setSelectedId] = useState(null)
   const [moreFilters, setMoreFilters] = useState(false)
@@ -68,7 +70,7 @@ export default function AdminAssessments() {
   }
 
   return <div className="min-w-0"><section className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment oversight</h1><p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Create assessments and manage publication, completion, and assessment integrity.</p></div><Link to="/admin/assessment/create" className="min-h-11 rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-green-600">New Assessment</Link></header>
+    <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment oversight</h1><p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Create assessments and manage publication, completion, and assessment integrity.</p></div><div className="flex flex-wrap gap-2"><Link to="/admin/assessments/archives" className={`${control} inline-flex items-center`}>Assessment archives</Link><Link to="/admin/assessment/create" className="min-h-11 rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-green-600">New Assessment</Link></div></header>
     {pending ? <AssessmentSkeleton layout="stats" count={5} /> : data != null && !unavailable ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Global assessment totals">{[
       ['Total assessments', counts.all, <ReportIcon size={18} />], ['Published', counts.published, <ListIcon size={18} />], ['Drafts', counts.draft, <ReportIcon size={18} />], ['Closed', counts.closed, <ArchiveIcon size={18} />], ['Stopped / flagged', counts.flagged, <WarnIcon size={18} />],
     ].map(([name, count, icon]) => <div key={name} className={`${surface} flex items-start justify-between gap-2 p-4`}><div><strong className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{count}</strong><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{name}</p></div><span aria-hidden="true" className={`rounded-xl p-2 ${name === 'Published' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-gray-50 text-gray-400 dark:bg-gray-800'}`}>{icon}</span></div>)}</div> : null}
@@ -92,6 +94,6 @@ export default function AdminAssessments() {
       </div>
       {!pending && !unavailable && data != null && <AssessmentPagination total={total} page={page} onPage={value => dispatch({ type: 'page', value })} />}
     </section>
-    <p className="text-xs text-gray-500 dark:text-gray-400">Open an assessment to review settings, student attempts, and authorized answer keys. Summary cards show system-wide totals.</p>
+    <p className="text-xs text-gray-500 dark:text-gray-400">Open an assessment to review settings, student attempts, and authorized answer keys. Summary cards show totals for assessments outside the archive.</p>
   </section>{selectedId != null && <AssessmentManagementDialog key={selectedId} assessment={unavailable ? null : selected} onClose={() => setSelectedId(null)} />}</div>
 }

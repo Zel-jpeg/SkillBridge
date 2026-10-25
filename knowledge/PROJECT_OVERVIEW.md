@@ -59,6 +59,13 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md): Used-content
+  locks, deadline-capped attempt snapshots, audited extra time, safe draft copies
+  and migration 0024.
+
+- [Assessment archives](ASSESSMENT_ARCHIVES.md): Shared instructor/admin archive
+  pages, reversible read-only lifecycle, preserved history and staged question imports.
+
 - [Shared placement suggestions](PLACEMENT_DRAFT_IMPLEMENTATION.md): Company-first
   staff workflow, shared provisional allocation using existing tables, capacity,
   permissions and rollout.

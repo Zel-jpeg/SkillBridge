@@ -1,4 +1,5 @@
 import CompetencyInsights from './CompetencyInsights'
+import GrantExtraTime from './assessment/GrantExtraTime'
 import { categoryPercentage } from '../utils/assessmentSummary'
 import { useId, useRef, useState } from 'react'
 import ConfirmModal from './admin/ConfirmModal'
@@ -87,6 +88,7 @@ function Assessments({ student, state, canRetake, onRetake, archived, retakeAsse
       <ScoreRows scores={result.category_scores} />
       {result.attempt_status === 'submitted' && !result.is_flagged && <div className="mt-4"><CompetencyInsights scores={result.category_scores} scope="individual" /></div>}
       <IntegrityDetail attempt={result} />
+      {canRetake && ['admin', 'instructor'].includes(localStorage.getItem('sb-role')) && !result.is_archived && result.publication_status === 'published' && result.attempt_status === 'in_progress' && result.attempt_timing?.remaining_seconds > 0 && (retakeAssessmentId == null || retakeAssessmentId === result.id) && <GrantExtraTime studentId={student.id} assessment={result} />}
       {assessmentRetakeCandidate(student, result.id) && <div className="mt-3">
         {canRetake && (retakeAssessmentId == null || retakeAssessmentId === result.id) ? <button type="button" className="min-h-11 rounded-lg border border-green-700 px-3 py-2 text-left text-xs font-semibold text-green-800 dark:border-green-500 dark:text-green-300" onClick={() => onRetake(result.id)}>{result.retake_allowed ? 'Revoke retake' : 'Approve retake'} for {result.title}</button>
           : <p className="sb-detail-muted">{result.retake_allowed ? 'Retake approved.' : 'Retake not approved.'} {archived ? 'Archived student records are read-only.' : 'Retake management is unavailable in this view.'}</p>}

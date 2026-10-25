@@ -19,17 +19,40 @@ def check_attempt_identity(response, data):
         raise ValidationError({'error': 'Attempt does not match response_id.', 'code': 'attempt_changed'})
 
 
+def snapshot_timing(response):
+    """Assign once at start/legacy resume; callers hold the attempt's row lock."""
+    if response.started_at is None:
+        return
+    if response.duration_seconds is None or response.expires_at is None:
+        response.duration_seconds = response.assessment.duration_minutes * 60
+        response.due_at_snapshot = response.assessment.due_at
+        duration_end = response.started_at + timezone.timedelta(seconds=response.duration_seconds)
+        response.expires_at = min(duration_end, response.due_at_snapshot) if response.due_at_snapshot else duration_end
+        response.extra_time_seconds = 0
+        response.save(update_fields=['duration_seconds', 'due_at_snapshot', 'expires_at', 'extra_time_seconds'])
+
+
 def timing(response, now=None):
     now = now or timezone.now()
-    deadline = response.started_at + timezone.timedelta(minutes=response.assessment.duration_minutes)
-    # Publication due dates remain access gates. This is the attempt-duration clock.
+    # Legacy finalized rows may have no snapshot. This fallback is read-only;
+    # active rows are snapshotted under lock before delivery/finalization.
+    duration = response.duration_seconds if response.duration_seconds is not None else response.assessment.duration_minutes * 60
+    natural_end = response.started_at + timezone.timedelta(seconds=duration)
+    cutoff = response.due_at_snapshot if response.expires_at is not None else response.assessment.due_at
+    base_end = response.expires_at or (min(natural_end, cutoff) if cutoff else natural_end)
+    deadline = base_end + timezone.timedelta(seconds=response.extra_time_seconds)
     grace_deadline = deadline + timezone.timedelta(seconds=SUBMISSION_GRACE_SECONDS)
+    # The same brief transport allowance covers a deadline-capped auto-submit;
+    # the student countdown still stops at deadline, not at the grace boundary.
     return {
         'attempt_started_at': attempt_identity(response),
         'server_now': now.isoformat(),
         'deadline_at': deadline.isoformat(),
         'grace_deadline_at': grace_deadline.isoformat(),
         'remaining_seconds': max(0, (deadline - now).total_seconds()),
+        'duration_seconds': duration,
+        'extra_time_seconds': response.extra_time_seconds,
+        'due_at_snapshot': cutoff.isoformat() if cutoff else None,
         'review_required': now > grace_deadline,
     }
 

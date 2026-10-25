@@ -126,7 +126,7 @@ with sync_playwright() as p:
                     page.get_by_role('button', name='Yes, submit', exact=True).click()
                 if mode in ['unsaved', 'other_attempt']:
                     expect(page.get_by_role('button', name='Submit', exact=True)).to_be_visible()
-                    assert dialogs
+                    expect(page.get_by_text(re.compile('Your answers are kept on this device'))).to_be_visible()
                     assert page.evaluate("localStorage.getItem('sb_answers_991_1')")
                     assert page.evaluate("localStorage.getItem('sb_integrity_active_991_1')")
                     assert writes == ['start', 'submit']

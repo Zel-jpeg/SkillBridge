@@ -27,6 +27,7 @@ const InstructorUpload = lazy(() => import('./pages/instructor/InstructorUpload'
 const EnrolledStudents = lazy(() => import('./pages/instructor/EnrolledStudents'))
 const InstructorPending = lazy(() => import('./pages/instructor/InstructorPending'))
 const InstructorAssessments = lazy(() => import('./pages/instructor/InstructorAssessments'))
+const AssessmentArchives = lazy(() => import('./pages/assessments/AssessmentArchives'))
 const InstructorCompanies = lazy(() => import('./pages/instructor/InstructorCompanies'))
 const InstructorPlacements = lazy(() => import('./pages/placements/PlacementsPage').then(module => ({ default: module.InstructorPlacements })))
 const ReportsAnalytics = lazy(() => import('./pages/reports/ReportsAnalytics'))
@@ -98,6 +99,7 @@ function App() {
         <Route path="/instructor/reports" element={<Page><ReportsAnalytics role="instructor" /></Page>} />
         <Route path="/instructor/students" element={<Page><EnrolledStudents /></Page>} />
         <Route path="/instructor/assessments" element={<Page><InstructorAssessments /></Page>} />
+        <Route path="/instructor/assessments/archives" element={<Page><AssessmentArchives role="instructor" /></Page>} />
         <Route path="/instructor/assessment/create" element={<Page><InstructorUpload /></Page>} />
         <Route path="/instructor/companies" element={<Page><InstructorCompanies /></Page>} />
         <Route path="/instructor/placements" element={<Page><InstructorPlacements /></Page>} />
@@ -110,6 +112,7 @@ function App() {
         <Route path="/admin/placements" element={<Page><AdminPlacements /></Page>} />
         <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />
         <Route path="/admin/assessments" element={<Page><AdminAssessments /></Page>} />
+        <Route path="/admin/assessments/archives" element={<Page><AssessmentArchives role="admin" /></Page>} />
         <Route path="/admin/assessment/create" element={<Page><InstructorUpload role="admin" /></Page>} />
         <Route path="/admin/batches" element={<Page><AdminBatches /></Page>} />
         <Route path="/admin/reports" element={<Page><AdminReports /></Page>} />

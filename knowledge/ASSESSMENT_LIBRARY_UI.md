@@ -1,5 +1,22 @@
 # Instructor assessment library
 
+25 October timing follow-up: [assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md)
+locks duration/opening after the first attempt, permits only deadline extensions
+or removal, explains settings effects and adds safe draft copies. The rule uses
+any configured duration/deadline; example times are illustrative. Active students
+can receive explicit audited extra time without losing their selected answers.
+
+25 October archive follow-up: [assessment archives](ASSESSMENT_ARCHIVES.md) adds a
+dedicated linked archive page and reversible read-only lifecycle. The current
+library and its totals exclude archived records; historical report selectors retain
+them. Import questions now sits beside manual question additions, stages rows in
+the same draft and saves only through Save All Changes. Closing a dirty editor
+requires discard confirmation. Expanding a question does not mark content dirty.
+
+This supersedes the earlier header description of the immediate Upload questions
+action. Imported questions, metadata and manual edits share the atomic save and
+failed-save recovery behavior in both staff editors.
+
 The October 25, 2026 update implements the approved light/dark design concept on
 the instructor Assessments page. The compact cards/list switch copies the
 instructor dashboard's gray tray, raised active icon, spacing and shared icons.

@@ -199,6 +199,24 @@ class CombinedCompetencyTests(APITestCase):
         self.assertTrue(self.combined().data['recommendations_locked'])
         self.assertEqual(Recommendation.objects.filter(student=self.student, batch=self.batch, is_current=True).count(), 0)
 
+    def test_archiving_closed_evidence_preserves_finalized_scores_recommendations_and_placement(self):
+        required = self.make_assessment('Required evidence', [self.database])
+        historical = self.make_assessment('Closed evidence', [self.network], publication_status='closed')
+        self.saved_score(required, self.database, 8, 10)
+        self.saved_score(historical, self.network, 3, 5)
+        recalculate_combined(self.student, self.batch)
+        self.client.force_authenticate(self.admin)
+        recommendation = Recommendation.objects.filter(student=self.student, batch=self.batch, is_current=True).first()
+        approved = self.client.post(reverse('placement_approve'), {'recommendation_id': recommendation.pk}, format='json')
+        self.assertEqual(approved.status_code, 201)
+        models = (SkillScore, CombinedCategoryScore, CombinedCompetencyProfile, Recommendation, OJTPlacement)
+        before = [list(model.objects.order_by('pk').values()) for model in models]
+        for endpoint in ('assessment_archive', 'assessment_restore'):
+            self.assertEqual(self.client.post(reverse(endpoint, args=[historical.id])).status_code, 200)
+            self.assertFalse(self.combined().data['recommendations_locked'])
+            self.assertEqual([list(model.objects.order_by('pk').values()) for model in models], before)
+            self.client.force_authenticate(self.admin)
+
     def test_stopped_required_attempt_locks_until_successful_retake(self):
         assessment = self.make_assessment('Required', [self.database])
         self.client.force_authenticate(self.student)

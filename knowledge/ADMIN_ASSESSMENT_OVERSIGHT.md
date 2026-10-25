@@ -1,5 +1,15 @@
 # Admin assessment oversight
 
+25 October timing follow-up: [assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md)
+adds shared used-assessment locks, settings-impact review, Duplicate as draft and
+audited Grant extra time in actionable student details. Backend rules apply to
+admins as well as instructors; this supersedes older editable-settings wording.
+
+25 October follow-up: [assessment archives](ASSESSMENT_ARCHIVES.md) adds a dedicated
+archive page linked from oversight, shared archive/restore confirmations, and
+read-only archived details with authorized results and answer keys. Oversight
+library totals exclude archives; report/history reads retain them.
+
 20 October follow-up: [admin management implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md)
 adds the admin creator and shared authoring dialog. Questions offers Edit assessment
 and questions, with atomic draft changes and unchanged attempt locks. Existing

@@ -6,6 +6,8 @@ from .management_views import admin_batch_detail, admin_batch_instructors, admin
 from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
+from .assessment_archives import assessment_archive
+from .assessment_lifecycle import assessment_duplicate, assessment_attempt_timing, assessment_extra_time
 from .sse import admin_events, instructor_events, student_events
 from .health import health
 
@@ -53,6 +55,11 @@ urlpatterns = [
     # ── Instructor — Assessments ──────────────────────────────────────────────
     path('instructor/assessments/',                                   views.instructor_assessments,           name='instructor_assessments'),
     path('instructor/assessments/<int:assessment_id>/',               views.instructor_assessment_detail,     name='instructor_assessment_detail'),
+    path('instructor/assessments/<int:assessment_id>/archive/', assessment_archive, name='assessment_archive'),
+    path('instructor/assessments/<int:assessment_id>/restore/', assessment_archive, {'restore': True}, name='assessment_restore'),
+    path('instructor/assessments/<int:assessment_id>/duplicate/', assessment_duplicate, name='assessment_duplicate'),
+    path('instructor/assessments/<int:assessment_id>/students/<int:student_id>/extra-time/', assessment_extra_time, name='assessment_extra_time'),
+    path('assessments/<int:assessment_id>/timing/', assessment_attempt_timing, name='assessment_attempt_timing'),
     path('instructor/assessments/<int:assessment_id>/questions/',     views.instructor_assessment_questions,  name='instructor_assessment_questions'),
     path('instructor/questions/<int:question_id>/', views.instructor_question_detail, name='instructor_question_detail'),
 

@@ -38,7 +38,7 @@ locking/concurrency requires separate verification and is not inferred from them
 
 ## Attempt duration and retake identity
 
-`/start/` now returns `attempt_started_at`, server time, duration deadline, grace
+`/start/` now returns `attempt_started_at`, server time, effective deadline, grace
 deadline and `remaining_seconds`. Submit and integrity-stop requests must include
 the exact `attempt_started_at` value for the current attempt; the response row ID
 alone is insufficient because approved retakes reuse that row. Missing or stale
@@ -47,21 +47,36 @@ identity with its integrity marker and uses server remaining time plus
 `performance.now()` for the active countdown. Changing the browser wall clock
 does not extend a server deadline.
 
-The accepted local policy (18 October 2026) allows submission through exactly
-30 seconds after the attempt duration ends. A later request saves validated
+The updated local policy (25 October 2026) snapshots the duration and due date at
+start. Answering ends at the earlier of the duration end and that due date, for
+any configured limit and schedule. Explicit audited extra time may extend a
+current unexpired attempt, bounded by the current assessment deadline. Changing
+the assessment deadline does not silently rewrite existing attempt cutoffs.
+Submission is accepted through exactly 30 seconds after the effective cutoff;
+these transport seconds are not shown as answering time. A later request saves validated
 answers and category scores as stopped, flagged review evidence with reason
 `attempt_expired`. The response truthfully reports `review_required: true`; it
 does not count as required completion or unlock combined recommendations. Staff
 can inspect the recorded attempt and grant a retake using the existing workflow.
-No late answer is silently converted into ordinary accepted evidence. Due dates,
-publication and batch availability remain separate existing access gates.
+No late answer is silently converted into ordinary accepted evidence. Existing
+attempt submit/stop requests can cross the assessment due date to preserve that
+transport allowance and late review evidence. New starts remain blocked at/after
+the due date. Publication, archive and batch availability still control access.
 
-Submit/stop use the same row lock. Retrying a stopped attempt does not rescore or
+Submit/stop, start, settings and extra-time writes acquire the assessment lock
+before the response lock. Retrying a stopped attempt does not rescore or
 append integrity events; a submit after finalization returns conflict. Retake
 history snapshots preserve late-review evidence. The browser keeps local answers
 when a write cannot be confirmed and offers explicit recovery without claiming
 success. Browser evidence uses an isolated SQLite API and blocked remote requests;
 it does not establish PostgreSQL concurrency behavior.
+
+Students resynchronize their countdown every 15 seconds and before automatic
+submission. A timer-driven submit also checks canonical server time under lock;
+if a grant has committed meanwhile, it returns `attempt_time_remaining` and the
+client continues with its answers intact. Manual early submission remains valid.
+See [editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md) for migration 0024,
+legacy snapshot limits, API details and PostgreSQL/browser verification.
 
 ## Slow submission acknowledgements
 

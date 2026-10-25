@@ -39,8 +39,9 @@ from .admin_accounts import instructor_payload
 from .catalog_validation import company_fields, position_data, invalid, tags_value
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
-from .attempt_timing import check_attempt_identity, timing, mark_expired_for_review, EXPIRY_REVIEW_REASON, EXPIRY_REVIEW_MESSAGE
+from .attempt_timing import check_attempt_identity, timing, snapshot_timing, mark_expired_for_review, EXPIRY_REVIEW_REASON, EXPIRY_REVIEW_MESSAGE
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
+from .assessment_archives import archive_metadata
 from .combined_competency import (
     combined_is_unlocked, ensure_combined, recalculate_combined,
     recalculate_enrolled_students, serialize_combined_scores,
@@ -82,6 +83,8 @@ def serialize_attempt_integrity(response_obj):
         'stopped_at': response_obj.stopped_at,
         'violation_count': response_obj.violation_count,
         'retake_allowed': response_obj.retake_allowed,
+        'attempt_started_at': response_obj.started_at.isoformat() if response_obj.started_at else None,
+        **({'attempt_timing': timing(response_obj)} if response_obj.started_at and response_obj.expires_at else {}),
     }
 
 
@@ -250,12 +253,16 @@ def serialize_student_assessment_results(student, batch):
     return [{
         'id': assessment.id,
         'title': assessment.title,
+        'batch_id': assessment.batch_id,
         'publication_status': assessment.publication_status,
         'is_required': assessment.is_required,
         'include_in_competency': assessment.include_in_competency,
         'attempt_status': responses[assessment.id].status if assessment.id in responses else None,
         'response_id': responses[assessment.id].id if assessment.id in responses else None,
         'started_at': responses[assessment.id].started_at if assessment.id in responses else None,
+        'attempt_started_at': responses[assessment.id].started_at.isoformat() if assessment.id in responses and responses[assessment.id].started_at else None,
+        'attempt_timing': timing(responses[assessment.id]) if assessment.id in responses and responses[assessment.id].started_at and responses[assessment.id].expires_at else None,
+        'is_archived': assessment.is_archived,
         'submitted_at': responses[assessment.id].submitted_at if assessment.id in responses else None,
         'retake_allowed': responses[assessment.id].retake_allowed if assessment.id in responses else False,
         'is_flagged': responses[assessment.id].is_flagged if assessment.id in responses else False,
@@ -334,12 +341,16 @@ def bulk_management_states(students, batch, include_history=True):
             response = response_map.get((student.id, assessment.id))
             individual.append({
                 'id': assessment.id, 'title': assessment.title,
+                'batch_id': assessment.batch_id,
+                'is_archived': assessment.is_archived,
                 'publication_status': assessment.publication_status,
                 'is_required': assessment.is_required,
                 'include_in_competency': assessment.include_in_competency,
                 'attempt_status': response.status if response else None,
                 'response_id': response.id if response else None,
                 'started_at': response.started_at if response else None,
+                'attempt_started_at': response.started_at.isoformat() if response and response.started_at else None,
+                'attempt_timing': timing(response) if response and response.started_at and response.expires_at else None,
                 'submitted_at': response.submitted_at if response else None,
                 'retake_allowed': response.retake_allowed if response else False,
                 'is_flagged': response.is_flagged if response else False,
@@ -1092,7 +1103,7 @@ def instructor_student_retake(request, student_id):
             assessment_id = int(assessment_id)
         except (TypeError, ValueError):
             return Response({'error': 'Invalid assessment_id'}, status=400)
-    attempts = StudentResponse.objects.select_for_update(of=('self',)).filter(student_id=student_id, submitted_at__isnull=False).select_related('assessment')
+    attempts = StudentResponse.objects.filter(student_id=student_id, submitted_at__isnull=False).select_related('assessment')
     if assessment_id is not None:
         attempts = attempts.filter(assessment_id=assessment_id)
     elif attempts.count() != 1:
@@ -1106,6 +1117,12 @@ def instructor_student_retake(request, student_id):
         return Response({'error': 'Student is not enrolled in the assessment batch'}, status=403)
     if request.user.role == 'instructor' and attempt.assessment.batch.instructor_id != request.user.id:
         return Response({'error': 'Assessment is not in your batch'}, status=403)
+    assessment = Assessment.objects.select_for_update().get(pk=attempt.assessment_id)
+    if assessment.is_archived:
+        return Response({'error': 'Archived assessments are read-only. Restore this assessment before changing retakes.'}, status=409)
+    attempt = attempts.select_for_update(of=('self',)).filter(pk=attempt.pk).first()
+    if attempt is None:
+        return Response({'error': 'The attempt changed. Refresh before updating retake approval.'}, status=409)
     if retake_allowed is not None:
         attempt.retake_allowed = retake_allowed
         attempt.save(update_fields=['retake_allowed'])
@@ -1465,13 +1482,14 @@ def instructor_assessments(request):
 
     if request.method == 'GET':
         assessments = (Assessment.objects.all()
-                       .select_related('batch', 'batch__instructor', 'created_by')
+                       .select_related('batch', 'batch__instructor', 'created_by', 'archived_by')
                        .prefetch_related('questions__skill_category')
                        .annotate(
                            submission_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED), distinct=True),
                            completion_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED, responses__submitted_at__isnull=False, responses__is_flagged=False), distinct=True),
                            flagged_total=Count('responses', filter=Q(responses__is_flagged=True) | Q(responses__status=StudentResponse.STATUS_STOPPED), distinct=True),
                            attempt_total=Count('responses', distinct=True),
+                           unfinished_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_IN_PROGRESS), distinct=True),
                            assigned_total=Count('batch__enrollments', distinct=True),
                        ).order_by('batch__name', 'display_order', 'created_at', 'id'))
         if request.user.role == 'instructor':
@@ -1479,6 +1497,7 @@ def instructor_assessments(request):
 
         return Response([{
             'id':               a.id,
+            **archive_metadata(a),
             'title':            a.title,
             'batch_id':         a.batch_id,
             'batch_name':       a.batch.name if a.batch else None,
@@ -1499,6 +1518,7 @@ def instructor_assessments(request):
             'submission_count': a.submission_total,
             'completion_count': a.completion_total,
             'attempt_count': a.attempt_total,
+            'unfinished_attempt_count': a.unfinished_total,
             'flagged_count': a.flagged_total,
             'assigned_count': a.assigned_total,
             'completion_rate': round(100 * a.completion_total / a.assigned_total, 1) if a.assigned_total else 0,
@@ -1669,10 +1689,14 @@ def instructor_assessment_detail(request, assessment_id):
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
 
+    if assessment.is_archived:
+        return Response({'error': 'Archived assessments are read-only. Restore this assessment before editing.'}, status=409)
+
     old_scoring_state = (
         assessment.publication_status, assessment.is_required, assessment.include_in_competency,
     )
     before = assessment_state(assessment)
+    timing_before = {field: getattr(assessment, field) for field in ('duration_minutes', 'available_at', 'due_at', 'publication_status')}
     if 'batch_id' in request.data and request.data['batch_id'] is not None and (type(request.data['batch_id']) is not int or request.data['batch_id'] <= 0):
         return Response({'error': 'Choose a valid batch.', 'field': 'batch_id'}, status=400)
     if 'batch_id' in request.data and request.data['batch_id'] != assessment.batch_id:
@@ -1735,6 +1759,8 @@ def instructor_assessment_detail(request, assessment_id):
         return Response({'error': 'due_at must follow available_at'}, status=400)
     if not assessment.title:
         return Response({'error': 'Title is required.', 'field': 'title'}, status=400)
+    from .assessment_policy import validate_settings_change
+    validate_settings_change(assessment, timing_before)
     question_plan = None
     if 'question_changes' in request.data:
         from .assessment_authoring import prepare_changes
@@ -1870,6 +1896,9 @@ def instructor_assessment_add_questions(request, assessment_id):
         assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
     except Assessment.DoesNotExist:
         return Response({'error': 'Assessment not found'}, status=404)
+
+    if assessment.is_archived:
+        return Response({'error': 'Archived assessments are read-only. Restore this assessment before editing.'}, status=409)
  
     questions_data    = request.data.get('questions', [])
     try:
@@ -1999,7 +2028,9 @@ def instructor_question_detail(request, question_id):
     except Question.DoesNotExist:
         return Response({'error': 'Question not found'}, status=404)
 
-    Assessment.objects.select_for_update().get(pk=question.assessment_id)
+    locked_assessment = Assessment.objects.select_for_update().get(pk=question.assessment_id)
+    if locked_assessment.is_archived:
+        return Response({'error': 'Archived assessments are read-only. Restore this assessment before editing.'}, status=409)
     question.refresh_from_db()
     if StudentResponse.objects.filter(assessment=question.assessment).exists():
         return Response({'error': 'Question changes are locked after an attempt exists.'}, status=409)
@@ -2103,7 +2134,7 @@ def instructor_question_detail(request, question_id):
 # STUDENT — Assessment Flow
 # ════════════════════════════════════════════════════════════════════════════
 
-def _student_assessment(request, assessment_id, *, require_available=True):
+def _student_assessment(request, assessment_id, *, require_available=True, allow_overdue=False):
     """Check role and enrollment; active attempts also require availability."""
     if request.user.role != 'student':
         return None, Response({'error': 'Students only'}, status=403)
@@ -2120,8 +2151,9 @@ def _student_assessment(request, assessment_id, *, require_available=True):
         return None, Response({'error': 'Assessment not found'}, status=404)
     if assessment.publication_status == Assessment.PUBLICATION_DRAFT and not require_available:
         return None, Response({'error': 'Assessment not found'}, status=404)
-    if require_available and assessment_availability(assessment) != 'available':
-        return None, Response({'error': 'Assessment unavailable', 'availability_status': assessment_availability(assessment)}, status=409)
+    availability = assessment_availability(assessment)
+    if require_available and availability != 'available' and not (allow_overdue and availability == 'overdue'):
+        return None, Response({'error': 'Assessment unavailable', 'availability_status': availability}, status=409)
     return assessment, None
 
 
@@ -2260,6 +2292,8 @@ def assessment_start(request, assessment_id):
         if access_error is not None:
             return access_error
         now = timezone.now()
+        if assessment.due_at and now >= assessment.due_at:
+            return Response({'error': 'The assessment deadline has been reached.'}, status=409)
         response_obj, created = (
             StudentResponse.objects.select_for_update().get_or_create(
                 student=user,
@@ -2283,6 +2317,10 @@ def assessment_start(request, assessment_id):
                 attempt_number=response_obj.prior_attempts.count() + 1,
                 status=response_obj.status,
                 started_at=response_obj.started_at,
+                duration_seconds=response_obj.duration_seconds,
+                expires_at=response_obj.expires_at,
+                due_at_snapshot=response_obj.due_at_snapshot,
+                extra_time_seconds=response_obj.extra_time_seconds,
                 submitted_at=response_obj.submitted_at,
                 stopped_at=response_obj.stopped_at,
                 stopped_reason=response_obj.stopped_reason,
@@ -2308,6 +2346,10 @@ def assessment_start(request, assessment_id):
             SkillScore.objects.filter(student=user, assessment=assessment).delete()
             was_retake = True
             response_obj.started_at = now
+            response_obj.duration_seconds = None
+            response_obj.expires_at = None
+            response_obj.due_at_snapshot = None
+            response_obj.extra_time_seconds = 0
             response_obj.submitted_at = None
             response_obj.retake_allowed = False
             response_obj.question_layout = build_question_layout(assessment)
@@ -2319,7 +2361,7 @@ def assessment_start(request, assessment_id):
             response_obj.violation_events = []
             response_obj.is_flagged = False
             response_obj.save(update_fields=[
-                'started_at', 'submitted_at', 'retake_allowed', 'question_layout',
+                'started_at', 'duration_seconds', 'expires_at', 'due_at_snapshot', 'extra_time_seconds', 'submitted_at', 'retake_allowed', 'question_layout',
                 'status', 'stopped_reason', 'stopped_reason_display', 'stopped_at',
                 'violation_count', 'violation_events', 'is_flagged',
             ])
@@ -2333,6 +2375,9 @@ def assessment_start(request, assessment_id):
                 update_fields.append('question_layout')
             if update_fields:
                 response_obj.save(update_fields=update_fields)
+
+        response_obj.assessment = assessment
+        snapshot_timing(response_obj)
 
     if was_retake:
         recalculate_combined(user, assessment.batch)
@@ -2354,7 +2399,7 @@ def assessment_start(request, assessment_id):
     return Response({
         'response_id':    response_obj.id,
         'started_at':     response_obj.started_at,
-        'time_limit_sec': assessment.duration_minutes * 60,
+        'time_limit_sec': response_obj.duration_seconds,
         'questions':      q_list,
         'status':         response_obj.status,
         **timing(response_obj),
@@ -2373,7 +2418,7 @@ def assessment_submit(request, assessment_id):
     from .scoring import score_submission, update_assessment_profile
 
     user = request.user
-    assessment, access_error = _student_assessment(request, assessment_id)
+    assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
     if access_error is not None:
         return access_error
 
@@ -2385,6 +2430,10 @@ def assessment_submit(request, assessment_id):
     # The row lock makes normal submit and integrity stop mutually exclusive.
     # Whichever request finalizes the attempt first wins.
     with transaction.atomic():
+        Assessment.objects.select_for_update().get(pk=assessment.id)
+        assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
+        if access_error is not None:
+            return access_error
         try:
             response_obj = StudentResponse.objects.select_for_update().get(
                 student=user,
@@ -2393,12 +2442,18 @@ def assessment_submit(request, assessment_id):
         except StudentResponse.DoesNotExist:
             return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
 
+        response_obj.assessment = assessment
         check_attempt_identity(response_obj, request.data)
         if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
             return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
 
+        snapshot_timing(response_obj)
         now = timezone.now()
-        review_required = timing(response_obj, now)['review_required']
+        current_timing = timing(response_obj, now)
+        if request.data.get('auto_submit') is True and current_timing['remaining_seconds'] > 0:
+            return Response({'error': 'This attempt still has time remaining.', 'code': 'attempt_time_remaining',
+                             'status': response_obj.status, **current_timing}, status=409)
+        review_required = current_timing['review_required']
         score_results = score_submission(response_obj, answers_data, categories)
         if review_required:
             mark_expired_for_review(response_obj, now)
@@ -2433,7 +2488,7 @@ def assessment_stop(request, assessment_id):
     from .scoring import score_submission
 
     user = request.user
-    assessment, access_error = _student_assessment(request, assessment_id)
+    assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
     if access_error is not None:
         return access_error
 
@@ -2452,6 +2507,10 @@ def assessment_stop(request, assessment_id):
     categories = list(SkillCategory.objects.all())
 
     with transaction.atomic():
+        Assessment.objects.select_for_update().get(pk=assessment.id)
+        assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
+        if access_error is not None:
+            return access_error
         try:
             response_obj = StudentResponse.objects.select_for_update().get(
                 student=user,
@@ -2460,6 +2519,7 @@ def assessment_stop(request, assessment_id):
         except StudentResponse.DoesNotExist:
             return Response({'error': 'No in-progress attempt found. Call /start/ first.'}, status=400)
 
+        response_obj.assessment = assessment
         check_attempt_identity(response_obj, request.data)
 
         # Stop retries are intentionally idempotent: never rescore or append events.
@@ -2473,6 +2533,7 @@ def assessment_stop(request, assessment_id):
         if response_obj.status != StudentResponse.STATUS_IN_PROGRESS or response_obj.submitted_at is not None:
             return Response({'error': 'Assessment attempt is already finalized.'}, status=409)
 
+        snapshot_timing(response_obj)
         stopped_at = timezone.now()
         review_required = timing(response_obj, stopped_at)['review_required']
         score_submission(response_obj, answers_data, categories)
