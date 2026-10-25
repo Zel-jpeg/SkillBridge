@@ -24,8 +24,8 @@
 /* Placement controls share visible boundaries and feedback in both themes. */
 .pl-tabs button:not(:disabled):hover,.pl-positions button:not(:disabled):hover,button.pl-alternative:not(:disabled):hover { background:#f0fdf4; border-color:#86efac; }
 .pl-button:not(:disabled):active,.pl-tabs button:not(:disabled):active { box-shadow:inset 0 1px 3px #0000001a; }
-.pl-card-action { align-self:flex-start; pointer-events:none; background:#f0fdf4; border-color:#bbf7d0; color:#166534; font-weight:600; }
-.pl-company:hover .pl-card-action,.pl-company:focus-visible .pl-card-action { background:#15803d; border-color:#15803d; color:white; }
+.pl-card-action { align-self:flex-start; background:#f0fdf4; border-color:#bbf7d0; color:#166534; font-weight:600; }
+.pl-company .pl-card-action:hover { background:#15803d; border-color:#15803d; color:white; }
 .pl-button.pl-danger { color:#be123c; border-color:#fecdd3; }
 .pl-button.pl-danger:not(:disabled):hover { background:#fff1f2; border-color:#fb7185; }
 .pl-button.pl-danger-solid { color:white; background:#be123c; border-color:#be123c; }
@@ -44,7 +44,8 @@
 .dark .pl-button.pl-primary { background:#15803d; border-color:#15803d; color:white; }
 .dark .pl-button.pl-primary:not(:disabled):hover { background:#166534; border-color:#22c55e; }
 .dark .pl-card-action,.dark .pl-alternative .pl-current-suggestion { background:#14532d55; border-color:#166534; color:#86efac; }
-.dark .pl-company:hover .pl-card-action,.dark .pl-company:focus-visible .pl-card-action { background:#15803d; border-color:#22c55e; color:white; }
+.dark .pl-company:hover { border-color:#4ade80; }
+.dark .pl-company .pl-card-action:hover { background:#15803d; border-color:#22c55e; color:white; }
 .dark .pl-button.pl-danger { border-color:#9f1239; color:#fda4af; }
 .dark .pl-button.pl-danger:not(:disabled):hover { background:#4c0519; border-color:#fb7185; }
 .dark .pl-button.pl-danger-solid { background:#be123c; border-color:#be123c; color:white; }

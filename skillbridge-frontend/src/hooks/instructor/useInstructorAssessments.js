@@ -408,7 +408,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
       choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,
     }, true))]),
     // ── List ─────────────────────────────────────────────────────────────────
-    loadingList, filtered, stats, batchOptions,
+    assessments, loadingList, filtered, stats, batchOptions,
     // ── Filters ──────────────────────────────────────────────────────────────
     search, setSearch,
     filterBatch,  setFilterBatch,

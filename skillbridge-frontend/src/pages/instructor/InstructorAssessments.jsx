@@ -1,4 +1,4 @@
-import DataSection, { ContentSkeleton } from '../../components/DataSection'
+import { ContentSkeleton } from '../../components/DataSection'
 // src/pages/instructor/InstructorAssessments.jsx
 //
 // Assessment Library — browse, review, and fully edit all published assessments.
@@ -6,7 +6,7 @@ import DataSection, { ContentSkeleton } from '../../components/DataSection'
 // Features:
 //   • Summary stats (total, active, questions, submissions)
 //   • Search by title or batch name + filter by batch / status
-//   • Card grid — click any card to open the FULL EDIT MODAL
+//   • Paginated cards/list — click an assessment to open the FULL EDIT MODAL
 //
 // Edit modal features:
 //   • Edit assessment title (inline), duration, active toggle
@@ -20,14 +20,14 @@ import DataSection, { ContentSkeleton } from '../../components/DataSection'
 //   • Toast feedback on success / error
 
 import { useState }           from 'react'
-import { useNavigate }                   from 'react-router-dom'
 import EditableQuestionCard from '../../components/assessment/EditableQuestionCard'
 import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
 import { useAssessmentUpload }           from '../../hooks/instructor/useAssessmentUpload'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
-import { manilaDateTime } from '../../utils/assessmentDates'
-import AssessmentReportPanel from '../../components/AssessmentReportPanel'
+import AssessmentLibrary from '../../components/instructor/AssessmentLibrary'
+import AssessmentTitleEditor from '../../components/instructor/AssessmentTitleEditor'
+import { ChevronDown, LockIcon } from '../../components/Icons'
 
 /* eslint-disable react-hooks/refs -- The upload hook returns refs alongside ordinary state and callbacks. */
 // ── Type meta ─────────────────────────────────────────────────────────────────
@@ -37,12 +37,8 @@ const TYPE_META = {
   identification: { label: 'IDENT', color: 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300'   },
 }
 // ── Icons ─────────────────────────────────────────────────────────────────────
-const SearchIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
 const CloseIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
 const PlusIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-const ClockIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-const LayersIcon  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-const UsersIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 const UploadIcon  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 const WarnIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
 const SaveIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -118,87 +114,12 @@ function UploadErrors({ errors }) {
   )
 }
 
-// ── Editable question card ────────────────────────────────────────────────────
-function AssessmentCard({ a, onClick }) {
-  const created = new Date(a.created_at).toLocaleDateString('en-PH', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all active:scale-[0.99] group"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug flex-1 group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
-          {a.title}
-        </h3>
-        <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-          a.publication_status === 'published'
-            ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-        }`}>
-          {a.publication_status}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {a.batch_name ? (
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
-            {a.batch_name}
-          </span>
-        ) : (
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-            No batch
-          </span>
-        )}
-        <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
-          <ClockIcon /> {a.duration_minutes} min
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1.5 text-[11px] text-gray-600 dark:text-gray-300">
-        <span>{a.is_required ? 'Required' : 'Optional'}</span><span>·</span>
-        <span>{a.include_in_competency ? 'Competency included' : 'Result only'}</span><span>·</span>
-        <span>Order {a.display_order}</span><span>·</span><span>{a.availability_status}</span>
-      </div>
-      <div className="flex flex-wrap gap-1.5">{a.categories?.map(c => <span key={c} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-700 dark:bg-gray-800 dark:text-gray-300">{c}</span>)}</div>
-      <p className="text-[11px] text-gray-500 dark:text-gray-400">Available {manilaDateTime(a.available_at)} · Due {manilaDateTime(a.due_at)}</p>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-gray-50 dark:border-gray-800">
-        <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <LayersIcon />
-          <span className="font-semibold text-gray-700 dark:text-gray-300">{a.question_count}</span> questions
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <UsersIcon />
-          <span className="font-semibold text-gray-700 dark:text-gray-300">{a.submission_count}</span> submitted
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{a.flagged_count} stopped/flagged</span>
-        <span className="ml-auto text-[10px] text-gray-300 dark:text-gray-600">{created}</span>
-      </div>
-    </button>
-  )
-}
-
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, accent }) {
-  return (
-    <div className={`bg-white dark:bg-gray-900 border rounded-2xl px-5 py-4 flex flex-col gap-1 ${accent}`}>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-    </div>
-  )
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
 export default function InstructorAssessments() {
-  const navigate = useNavigate()
-
   const {
-    loadingList, filtered, stats, batchOptions,
-    search, setSearch,
-    filterBatch, setFilterBatch, filterStatus, setFilterStatus,
-    filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
-    filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
+    assessments, stats, batchOptions,
     selected, loadingQuestions, questionError, retryQuestions,
     openAssessment, closeAssessment,
     editTitle, setEditTitle,
@@ -230,91 +151,7 @@ export default function InstructorAssessments() {
 
 
 
-      <section className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">
-
-        {/* ── Page header ──────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Assessments</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage assessments by batch, publication state, and competency settings.</p>
-          </div>
-          <button
-            onClick={() => navigate('/instructor/assessment/create')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-          >
-            <PlusIcon /> Create Assessment
-          </button>
-        </div>
-
-        {/* ── Stats ────────────────────────────────────────────────────────── */}
-        <DataSection url="/api/instructor/assessments/" layout="stats"><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Total assessments" value={stats.total}       accent="border-gray-100 dark:border-gray-800" />
-          <StatCard label="Active"             value={stats.active}      accent="border-green-100 dark:border-green-900/40" />
-          <StatCard label="Total questions"    value={stats.questions}   accent="border-blue-100 dark:border-blue-900/40" />
-          <StatCard label="Submissions"        value={stats.submissions} accent="border-purple-100 dark:border-purple-900/40" />
-        </div></DataSection>
-
-        {/* ── Filters ──────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full min-w-[180px] sm:w-56 lg:flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><SearchIcon /></span>
-            <input
-              type="text"
-              placeholder="Search assessments…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500"
-            />
-          </div>
-          <select value={filterBatch} onChange={e => setFilterBatch(e.target.value)}
-            className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500/30">
-            <option value="all">All batches</option>
-            {batchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500/30">
-            <option value="all">All statuses</option>
-            <option value="draft">Draft</option><option value="published">Published</option><option value="closed">Closed</option>
-          </select>
-          <select aria-label="Required status" value={filterRequired} onChange={e => setFilterRequired(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">Required + optional</option><option value="required">Required</option><option value="optional">Optional</option></select>
-          <select aria-label="Competency inclusion" value={filterIncluded} onChange={e => setFilterIncluded(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">All scoring</option><option value="included">Included</option><option value="excluded">Excluded</option></select>
-          <select aria-label="Skill category" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">All categories</option>{categoryOptions.map(c => <option key={c}>{c}</option>)}</select>
-          <select aria-label="Availability" value={filterAvailability} onChange={e => setFilterAvailability(e.target.value)} className="text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-300"><option value="all">Any availability</option><option value="available">Available</option><option value="upcoming">Upcoming</option><option value="overdue">Overdue</option><option value="closed">Closed</option></select>
-        </div>
-
-<DataSection url="/api/instructor/assessments/" layout="cards">
-        {/* ── Assessment grid ───────────────────────────────────────────────── */}
-        {loadingList ? (
-          <div className="flex flex-col gap-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center flex flex-col items-center gap-3">
-            <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-400 dark:text-gray-600">
-              <LayersIcon />
-            </div>
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {search || filterBatch !== 'all' || filterStatus !== 'all'
-                ? 'No assessments match your filters'
-                : 'No assessments published yet'}
-            </p>
-            {!(search || filterBatch !== 'all' || filterStatus !== 'all') && (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Create your first assessment using the button above.</p>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(a => (
-              <AssessmentCard key={a.id} a={a} onClick={() => openAssessment(a)} />
-            ))}
-          </div>
-        )}
-        <AssessmentReportPanel />
-
-</DataSection>
-      </section>
+      <AssessmentLibrary assessments={assessments} stats={stats} batches={batchOptions} onOpen={openAssessment} />
 
       {/* ════════════════════════════════════════════════════════════════════
           FULL EDIT MODAL
@@ -323,101 +160,37 @@ export default function InstructorAssessments() {
       ════════════════════════════════════════════════════════════════════ */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm sm:p-4">
-          <div className="relative w-full h-[95dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-4xl bg-white dark:bg-gray-900 sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl border-0 sm:border border-gray-100 dark:border-gray-800">
+          <div role="dialog" aria-modal="true" aria-label="Edit assessment" className="relative w-full h-[95dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-4xl bg-white dark:bg-gray-900 sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl border-0 sm:border border-gray-100 dark:border-gray-800">
 
-            {/* ── Modal header ─────────────────────────────────────────── */}
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-col gap-3 shrink-0 bg-white dark:bg-gray-900">
-              <div className="flex items-start justify-between gap-3">
-                {/* Editable title */}
-                <div className="flex-1 min-w-0">
-                  <input
-                    value={editTitle}
-                    onChange={e => setEditTitle(e.target.value)}
-                    placeholder="Assessment title"
-                    className="w-full text-base font-bold text-gray-900 dark:text-white bg-transparent border-0 border-b-2 border-transparent focus:border-green-500 outline-none pb-0.5 transition-colors"
-                  />
+            {/* ── Assessment identity stays visible above the scrollable form. */}
+            <div className="shrink-0 bg-white px-5 pb-4 pt-5 dark:bg-gray-900">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
+                <div className="col-span-2 min-w-0 sm:col-span-1"><AssessmentTitleEditor value={editTitle} onChange={setEditTitle} disabled={saving} /></div>
+                <div className="col-start-2 row-start-2 flex shrink-0 items-center gap-2 sm:row-start-1">
+                  <button type="button" aria-label="Upload questions" onClick={() => { setShowUpload(true); upload.reset() }} disabled={selected.questions_locked} className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 transition-colors enabled:hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:enabled:hover:bg-gray-700"><UploadIcon /><span className="hidden sm:inline">Upload questions</span><span className="sm:hidden">Upload</span></button>
+                  <button type="button" onClick={closeAssessment} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 dark:hover:text-gray-200" title="Close without saving"><CloseIcon /></button>
                 </div>
-                {/* Upload + Close */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => { setShowUpload(true); upload.reset() }}
-                    disabled={selected.questions_locked}
-                    className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <UploadIcon /> Upload Questions
-                  </button>
-                  <button
-                    onClick={closeAssessment}
-                    className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    title="Close without saving"
-                  >
-                    <CloseIcon />
-                  </button>
+                <div className="col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-2 self-center text-xs sm:col-span-2">
+                  {selected.batch_name && <span className="max-w-full break-words rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{selected.batch_name}</span>}
+                  <span className="hidden text-gray-500 dark:text-gray-400 sm:inline">Assessment settings</span>
                 </div>
               </div>
-
-              {/* Meta row: duration | batch | active toggle */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <ClockIcon />
-                  <input
-                    type="number" min="1"
-                    value={editDuration}
-                    onChange={e => setEditDuration(e.target.value)}
-                    className="w-14 text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-500"
-                  />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">min</span>
-                </div>
-                {selected.batch_name && (
-                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
-                    {selected.batch_name}
-                  </span>
-                )}
-                {/* Mobile upload button */}
-                  <button
-                  onClick={() => { setShowUpload(true); upload.reset() }}
-                  disabled={selected.questions_locked}
-                  className="flex sm:hidden items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <UploadIcon /> Upload
-                </button>
-              </div>
-              <AssessmentSettings value={editSettings} onChange={setEditSettings} />
-              {selected.questions_locked && <p className="text-xs text-amber-700 dark:text-amber-300">Question editing is locked because an attempt exists. Metadata and publication settings remain editable; attempts and scores are preserved.</p>}
-
-              {/* Stats + expand/collapse toggle */}
-              {!loadingQuestions && visibleQuestions.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {questionStats.mcq > 0 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                      {questionStats.mcq} MCQ
-                    </span>
-                  )}
-                  {questionStats.truefalse > 0 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                      {questionStats.truefalse} T/F
-                    </span>
-                  )}
-                  {questionStats.identification > 0 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
-                      {questionStats.identification} Identification
-                    </span>
-                  )}
-                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                    {visibleQuestions.length} total
-                  </span>
-                  <button
-                    onClick={allExpanded ? collapseAll : expandAll}
-                    className="ml-auto text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors font-medium"
-                  >
-                    {allExpanded ? 'Collapse all ↑' : 'Expand all ↓'}
-                  </button>
-                </div>
-              )}
             </div>
+            <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Assessment settings and questions">
+              <div className="space-y-4 bg-white px-5 pb-4 dark:bg-gray-900">
+                <AssessmentSettings variant="modal" value={editSettings} onChange={setEditSettings} duration={editDuration} onDurationChange={setEditDuration} />
+                {selected.questions_locked && <div role="note" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><span aria-hidden="true" className="mt-0.5 shrink-0"><LockIcon size={16} /></span><p><strong className="font-semibold">Question editing is locked</strong><span className="mx-2 hidden text-amber-300 sm:inline" aria-hidden="true">|</span><span className="block sm:inline">An attempt already exists. Settings remain editable; attempts and scores are preserved.</span></p></div>}
+              </div>
+              {!loadingQuestions && visibleQuestions.length > 0 && <div className="flex flex-wrap items-center gap-2 border-y border-gray-100 bg-white px-5 py-3 dark:border-gray-800 dark:bg-gray-900">
+                <h3 className="mr-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Questions <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">{visibleQuestions.length}</span></h3>
+                {questionStats.mcq > 0 && <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">{questionStats.mcq} MCQ</span>}
+                {questionStats.truefalse > 0 && <span className="rounded-full bg-purple-100 px-2.5 py-1 text-[11px] font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300">{questionStats.truefalse} T/F</span>}
+                {questionStats.identification > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">{questionStats.identification} Identification</span>}
+                <button type="button" onClick={allExpanded ? collapseAll : expandAll} aria-expanded={allExpanded} className="ml-auto inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">{allExpanded ? 'Collapse all' : 'Expand all'}<ChevronDown size={13} open={allExpanded} /></button>
+              </div>}
 
             {/* ── Scrollable question list ──────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 bg-gray-50 dark:bg-gray-950">
+            <div className="px-5 py-5 bg-gray-50 dark:bg-gray-950">
               {loadingQuestions ? (
                 <ContentSkeleton layout="table" count={5} label="Loading assessment questions" />
               ) : questionError ? (
@@ -462,6 +235,8 @@ export default function InstructorAssessments() {
                   </div>}
                 </div>
               )}
+            </div>
+
             </div>
 
             {saveError && <p role="alert" className="px-5 py-2 text-sm text-rose-700 dark:text-rose-300">{saveError}</p>}

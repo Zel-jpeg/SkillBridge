@@ -8,9 +8,11 @@ import { manilaDateTime } from '../utils/assessmentDates'
 import { buildAssessmentReportPdf } from '../utils/assessmentReportPdf'
 import Avatar from './Avatar'
 import { reportTableStyles as tableStyles } from './analytics/reportTableStyles'
+import { ReportIcon } from './Icons'
 
 const kinds = [['batch_progress', 'Batch Assessment Progress'], ['student_competency', 'Student Competency'], ['assessment_completion', 'Assessment Completion']]
-const field = 'min-w-0 max-w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
+const field = 'min-h-10 w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
+const reportButton = 'min-h-10 cursor-pointer rounded-lg px-4 py-2 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50'
 
 function AssessmentReportTable({ payload, kind }) {
   const completion = kind === 'assessment_completion'
@@ -71,17 +73,22 @@ export default function AssessmentReportPanel({ embedded = false }) {
       showToast('PDF report downloaded.')
     } catch { setError('PDF export failed.'); showToast('PDF export failed.', 'error') } finally { setBusy(false) }
   }
-  return <section aria-label="Individual assessment report controls" className={embedded ? 'min-w-0 [&_select]:min-h-11 [&_select]:text-xs [&_input]:text-xs [&_button]:min-h-11 [&_button]:text-xs' : 'rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900'}>
-    {!embedded && <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assessment reports</h2>}
-    <p className="mb-3 text-xs leading-5 text-gray-500 dark:text-gray-400">{embedded ? 'Choose filters for this individual report. ' : ''}Progress and scores stay assessment-specific; recommendations appear only after final completion. No answer keys are exported.</p>
-<DataSection urls={['/api/instructor/batches/', '/api/instructor/assessments/']} layout="panel" count={1}>    <div className="flex flex-wrap gap-2">
-      <select aria-label="Report type" className={field} value={kind} onChange={e => { setKind(e.target.value); setPayload(null) }}>{kinds.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select>
-      <select aria-label="Batch filter" className={field} value={batch} onChange={e => { setBatch(e.target.value); setAssessment(''); setPayload(null) }}><option value="">All batches</option>{batches.map(b => <option key={b.id} value={b.id}>{b.name} · {b.instructor_name}</option>)}</select>
-      <select aria-label="Assessment filter" className={field} value={assessment} onChange={e => { setAssessment(e.target.value); setPayload(null) }}><option value="">All assessments</option>{assessments.filter(a => !batch || String(a.batch_id) === batch).map(a => <option key={a.id} value={a.id}>{a.title}</option>)}</select>
-      {kind === 'student_competency' && <input className={field} aria-label="Student database ID" placeholder="Student database ID (optional)" value={student} onChange={e => { setStudent(e.target.value); setPayload(null) }} />}
-      <button disabled={busy} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={generate}>Generate report</button>
-      <button disabled={busy} className="rounded-lg border border-green-600 px-4 py-2 text-sm font-semibold text-green-700 disabled:opacity-50 dark:text-green-400" onClick={csv}>Download CSV</button>
-      <button disabled={busy || !payload} className="rounded-lg border border-green-600 px-4 py-2 text-sm font-semibold text-green-700 disabled:opacity-50 dark:text-green-400" onClick={pdf}>Download PDF</button>
+  return <section aria-label="Individual assessment report controls" className={embedded ? 'min-w-0 [&_select]:min-h-11 [&_select]:text-xs [&_input]:text-xs [&_button]:min-h-11 [&_button]:text-xs' : 'min-w-0 rounded-xl border border-gray-200/80 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6'}>
+    <div className="mb-4 flex items-start gap-3">
+      {!embedded && <span aria-hidden="true" className="rounded-lg bg-green-50 p-2.5 text-green-700 dark:bg-green-950/50 dark:text-green-400"><ReportIcon size={20} /></span>}
+      <div>{!embedded && <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Assessment reports</h2>}
+      <p className="mt-0.5 text-xs leading-5 text-gray-500 dark:text-gray-400">{embedded ? 'Choose filters for this individual report. ' : ''}Progress and scores stay assessment-specific; recommendations appear only after final completion. No answer keys are exported.</p></div>
+    </div>
+<DataSection urls={['/api/instructor/batches/', '/api/instructor/assessments/']} layout="panel" count={1}>    <div className="flex flex-wrap items-end gap-3">
+      <label className="w-full min-w-0 text-xs font-medium text-gray-600 dark:text-gray-400 sm:w-auto sm:min-w-40 sm:basis-44 sm:flex-1">Report type<select aria-label="Report type" className={`${field} mt-1.5`} value={kind} onChange={e => { setKind(e.target.value); setPayload(null) }}>{kinds.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
+      <label className="w-full min-w-0 text-xs font-medium text-gray-600 dark:text-gray-400 sm:w-auto sm:min-w-40 sm:basis-44 sm:flex-1">Batch<select aria-label="Batch filter" className={`${field} mt-1.5`} value={batch} onChange={e => { setBatch(e.target.value); setAssessment(''); setPayload(null) }}><option value="">All batches</option>{batches.map(b => <option key={b.id} value={b.id}>{b.name}{b.instructor_name ? ` · ${b.instructor_name}` : ''}</option>)}</select></label>
+      <label className="w-full min-w-0 text-xs font-medium text-gray-600 dark:text-gray-400 sm:w-auto sm:min-w-40 sm:basis-44 sm:flex-1">Assessment<select aria-label="Assessment filter" className={`${field} mt-1.5`} value={assessment} onChange={e => { setAssessment(e.target.value); setPayload(null) }}><option value="">All assessments</option>{assessments.filter(a => !batch || String(a.batch_id) === batch).map(a => <option key={a.id} value={a.id}>{a.title}</option>)}</select></label>
+      {kind === 'student_competency' && <label className="w-full min-w-0 text-xs font-medium text-gray-600 dark:text-gray-400 sm:w-auto sm:min-w-40 sm:basis-44 sm:flex-1">Student database ID<input className={`${field} mt-1.5`} aria-label="Student database ID" placeholder="Optional" value={student} onChange={e => { setStudent(e.target.value); setPayload(null) }} /></label>}
+      <div className="flex flex-wrap gap-2">
+        <button disabled={busy} className={`${reportButton} bg-green-600 text-white enabled:hover:bg-green-700`} onClick={generate}>Generate report</button>
+        <button disabled={busy} className={`${reportButton} border border-green-600 text-green-700 enabled:hover:bg-green-50 dark:text-green-400 dark:enabled:hover:bg-green-950`} onClick={csv}>Download CSV</button>
+        <button disabled={busy || !payload} className={`${reportButton} border border-green-600 text-green-700 enabled:hover:bg-green-50 dark:text-green-400 dark:enabled:hover:bg-green-950`} onClick={pdf}>Download PDF</button>
+      </div>
     </div></DataSection>
     {error && <p role="alert" className="mt-3 text-sm text-rose-700 dark:text-rose-400">{error}</p>}
     {payload && freshness.stale && <p role="status" className="mt-3 text-sm text-amber-700 dark:text-amber-400">Underlying data may have changed. This report still shows its generated snapshot. <button type="button" onClick={generate} disabled={busy} className="underline">Regenerate report</button></p>}

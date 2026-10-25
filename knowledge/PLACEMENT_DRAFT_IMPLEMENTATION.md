@@ -151,9 +151,19 @@ remain one accessible button each with a visually distinct Review positions
 indicator, avoiding nested interactive controls. Tabs, positions and awaiting
 alternative cards have visible hover/selected/focus feedback. Native detail
 summaries use bordered disclosure styling and retain Enter/Space interaction.
+In both staff views, hovering a company card highlights its border without changing
+the Review positions indicator. That indicator changes only when the pointer is
+over its own area; clicking either area opens the same company workspace. Keyboard
+focus stays visible on the whole card, with Enter/Space activation preserved.
 Approval uses a green primary button; decline/removal have secondary danger
 styling, with destructive confirmation using a solid danger button. Confirmations,
 manual assignment and report downloads share the same button treatment. The
 currently suggested option is a status label rather than a disabled action.
 Enabled and disabled states, reduced motion, light/dark themes and narrow layouts
 are preserved. This presentation follow-up changes no allocation or database rules.
+
+The October 25 hover refinement passed frontend lint/build and eight synthetic
+browser checks: admin/instructor, light/dark and 1440px/390px widths. Checks covered
+independent card/action hover, pointer clicks in both areas, Enter/Space activation,
+visible card focus and no horizontal overflow, with zero page errors. API responses
+were intercepted with synthetic data; no live backend workflow was exercised.
