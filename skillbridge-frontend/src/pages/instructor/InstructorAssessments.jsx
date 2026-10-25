@@ -30,6 +30,7 @@ import AssessmentTitleEditor from '../../components/instructor/AssessmentTitleEd
 import AssessmentArchiveAction from '../../components/assessment/AssessmentArchiveAction'
 import AssessmentDuplicateAction from '../../components/assessment/AssessmentDuplicateAction'
 import AssessmentPolicyNotice from '../../components/assessment/AssessmentPolicyNotice'
+import { AssessmentStatus } from '../../components/admin/AssessmentPresentation'
 import { assessmentChangeImpact } from '../../utils/assessmentPolicy'
 import { ChevronDown, LockIcon } from '../../components/Icons'
 
@@ -174,28 +175,23 @@ export default function InstructorAssessments() {
           <div role="dialog" aria-modal="true" aria-label="Edit assessment" className="relative w-full h-[95dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-4xl bg-white dark:bg-gray-900 sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl border-0 sm:border border-gray-100 dark:border-gray-800">
 
             {/* ── Assessment identity stays visible above the scrollable form. */}
-            <div className="shrink-0 bg-white px-5 pb-4 pt-5 dark:bg-gray-900">
+            <div className="shrink-0 bg-white px-5 pb-5 pt-5 dark:bg-gray-900 sm:px-6">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
-                <div className="col-span-2 min-w-0 sm:col-span-1"><AssessmentTitleEditor value={editTitle} onChange={setEditTitle} disabled={saving} /></div>
-                <div className="col-start-2 row-start-2 flex shrink-0 items-center gap-2 sm:row-start-1">
-
-                  <button type="button" onClick={requestClose} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 dark:hover:text-gray-200" title="Close without saving"><CloseIcon /></button>
-                </div>
-                <div className="col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-2 self-center text-xs sm:col-span-2">
+                <div className="min-w-0"><AssessmentTitleEditor value={editTitle} onChange={setEditTitle} disabled={saving} /></div>
+                <button type="button" aria-label="Close assessment" onClick={requestClose} className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 dark:hover:text-gray-200" title="Close without saving"><CloseIcon /></button>
+                <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 text-xs">
                   {selected.batch_name && <span className="max-w-full break-words rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{selected.batch_name}</span>}
-                  <span className="hidden text-gray-500 dark:text-gray-400 sm:inline">Assessment settings</span>
+                  <AssessmentStatus status={(liveAssessment || selected).publication_status} />
                 </div>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Assessment settings and questions"><fieldset disabled={saving || liveAssessment?.is_archived} className="min-w-0">
-              <div className="space-y-4 bg-white px-5 pb-4 dark:bg-gray-900">
-                <div className="flex flex-wrap items-start gap-3"><AssessmentDuplicateAction assessment={liveAssessment || selected} role="instructor" disabled={dirty || saving} onSuccess={closeAssessment} /><AssessmentArchiveAction assessment={liveAssessment || selected} disabled={dirty || saving} onSuccess={closeAssessment} /></div>
+              <div className="space-y-5 bg-white px-5 pb-5 dark:bg-gray-900 sm:px-6">
+                <AssessmentPolicyNotice assessment={liveAssessment || selected} value={editSettings} variant="modal" />
                 <AssessmentSettings assessment={liveAssessment || selected} variant="modal" value={editSettings} onChange={setEditSettings} duration={editDuration} onDurationChange={setEditDuration} />
-                <AssessmentPolicyNotice assessment={liveAssessment || selected} value={editSettings} />
-                {liveAssessment?.questions_locked && <div role="note" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><span aria-hidden="true" className="mt-0.5 shrink-0"><LockIcon size={16} /></span><p><strong className="font-semibold">Question editing is locked</strong><span className="mx-2 hidden text-amber-300 sm:inline" aria-hidden="true">|</span><span className="block sm:inline">An attempt already exists. Allowed settings remain editable; attempts and scores are preserved.</span></p></div>}
+                <div aria-label="Assessment reuse and archive" className="flex flex-wrap items-start gap-3 border-t border-gray-100 pt-4 dark:border-gray-800"><AssessmentDuplicateAction assessment={liveAssessment || selected} role="instructor" disabled={dirty || saving} onSuccess={closeAssessment} /><AssessmentArchiveAction assessment={liveAssessment || selected} disabled={dirty || saving} onSuccess={closeAssessment} variant="inline" /></div>
               </div>
-              {liveAssessment?.questions_locked && <p className="px-5 pb-3 text-xs text-gray-500 dark:text-gray-400">Import questions is unavailable after a student attempt exists.</p>}
-              {!loadingQuestions && visibleQuestions.length > 0 && <div className="flex flex-wrap items-center gap-2 border-y border-gray-100 bg-white px-5 py-3 dark:border-gray-800 dark:bg-gray-900">
+              {!loadingQuestions && visibleQuestions.length > 0 && <div className="flex flex-wrap items-center gap-2 border-y border-gray-100 bg-white px-5 py-3 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
                 <h3 className="mr-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Questions <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">{visibleQuestions.length}</span></h3>
                 {questionStats.mcq > 0 && <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">{questionStats.mcq} MCQ</span>}
                 {questionStats.truefalse > 0 && <span className="rounded-full bg-purple-100 px-2.5 py-1 text-[11px] font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300">{questionStats.truefalse} T/F</span>}
@@ -204,7 +200,7 @@ export default function InstructorAssessments() {
               </div>}
 
             {/* ── Scrollable question list ──────────────────────────────── */}
-            <div className="px-5 py-5 bg-gray-50 dark:bg-gray-950">
+            <div className="px-5 py-5 bg-gray-50 dark:bg-gray-950 sm:px-6">
               {loadingQuestions ? (
                 <ContentSkeleton layout="table" count={5} label="Loading assessment questions" />
               ) : questionError ? (
@@ -217,7 +213,7 @@ export default function InstructorAssessments() {
                     </div>
                   )}
 
-                  {liveAssessment?.questions_locked ? visibleQuestions.map((q, i) => <div key={q.id || q._tempId} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><strong>{i + 1}. {q.question_text}</strong><p className="text-xs">{q.category?.name || 'Uncategorized'} · {q.question_type}</p><p className="mt-1 text-xs">Grading answer: {q.question_type === 'identification' ? q.identAnswer : q.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></div>) : visibleQuestions.map((q, i) => (
+                  {liveAssessment?.questions_locked ? visibleQuestions.map((q, i) => <div key={q.id || q._tempId} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"><div className="flex items-start justify-between gap-3"><strong>{i + 1}. {q.question_text}</strong><span aria-hidden="true" className="mt-0.5 shrink-0 text-gray-400"><LockIcon size={15} /></span></div><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{q.category?.name || 'Uncategorized'} · {q.question_type}</p><p className="mt-1 text-xs">Grading answer: {q.question_type === 'identification' ? q.identAnswer : q.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></div>) : visibleQuestions.map((q, i) => (
                     <EditableQuestionCard
                       key={q._tempId}
                       q={q}
@@ -256,9 +252,9 @@ export default function InstructorAssessments() {
 
             {saveError && <p role="alert" className="px-5 py-2 text-sm text-rose-700 dark:text-rose-300">{saveError}</p>}
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 shrink-0">
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-end gap-3 shrink-0 sm:px-6">
               <p className="hidden sm:block text-xs text-gray-400 dark:text-gray-500 flex-1">
-                Changes are not saved until you click "Save All Changes".
+                Changes are saved when you click Save All Changes.
               </p>
               <button
                 onClick={requestClose}

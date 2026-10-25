@@ -5,6 +5,19 @@ for previously saved profiles. No regeneration or data migration is required.
 
 ## Definitions and UI
 
+### Individual versus combined scores
+
+The staff student profile now labels this distinction beside the score tables:
+
+- Assessments shows each assessment's current category raw/max points and percentage.
+- Combined competency pools raw points and maximum points for each category across eligible assessments in the same batch. The percentage is `sum(raw_score) / sum(max_score) * 100`, rounded to two decimal places by the backend. It is not an average of assessment percentages.
+- For example, 8/10 in one assessment and 2/5 in another combine to 10/15, or 66.67%. If only one assessment contributes to a category, its individual and combined scores match.
+- Eligible evidence is included submitted, unflagged evidence from published or closed assessments. Stopped attempts, flagged attempts, excluded assessments and archived prior attempts do not contribute as current evidence. Required completion and current finalized evidence still govern combined-result visibility.
+
+The source of truth is [combined competency](../skillbridge-backend/api/combined_competency.py), especially eligible_evidence and recalculate_combined. The frontend continues to display supplied category values without recomputing them.
+
+### Interpretation conventions
+
 - Highest-scoring areas are **all** assessed categories equal to the maximum API
   percentage, compared before formatting. Array order, names and IDs never decide
   the winner. Input order only controls display order.

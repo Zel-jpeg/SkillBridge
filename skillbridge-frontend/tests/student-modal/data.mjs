@@ -49,5 +49,14 @@ export function syntheticStudent(scenario = 'complete') {
     student.assessment_results[1] = { ...student.assessment_results[1], is_flagged: true, violation_count: 2, stopped_reason: 'Submitted attempt flagged for integrity review' }
   }
   if (scenario === 'approved') student.placement = { status: 'approved', company: { name: student.top_recommendations[0].company, address_text: 'Synthetic location, Panabo City' }, position: { title: student.top_recommendations[0].position }, match_score_at_assignment: 78.5, approved_at: '2026-09-21T04:00:00Z' }
+  if (scenario === 'design') {
+    const categories = [
+      { category_id: 1, category: 'Web Development', raw_score: 3, max_score: 3, percentage: 100, source_assessment_ids: [101] },
+      { category_id: 2, category: 'Database Management', raw_score: 2, max_score: 3, percentage: 66.67, source_assessment_ids: [101] },
+      { category_id: 3, category: 'Networking', raw_score: 1, max_score: 2, percentage: 50, source_assessment_ids: [101] },
+      { category_id: 4, category: 'Programming', raw_score: 1, max_score: 2, percentage: 50, source_assessment_ids: [101] },
+    ]
+    Object.assign(student, { name: 'Alex Rivera', studentId: '2023-00124', course: 'BSIT', email: 'alex.rivera@example.invalid', batch: { id: 77, name: 'OJT Batch 2026' }, instructor: 'Jamie Cruz', total_required_count: 1, completed_required_count: 1, assessment_results: [{ ...results[0], title: 'Test Assessment', category_scores: categories, prior_attempts: [] }], combined_category_scores: categories })
+  }
   return student
 }

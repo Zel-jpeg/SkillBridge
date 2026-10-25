@@ -26,7 +26,7 @@ function lockBody() {
 }
 
 /** Native top-layer modality supplies inert background, focus trapping and nested Escape handling. */
-export default function DialogShell({ title, description, avatar, headerDetails, children, footer, onClose, size = 'detail', closeLabel = 'Close details', restoreFocusRef }) {
+export default function DialogShell({ title, description, avatar, headerDetails, eyebrow, headerBadge, children, footer, onClose, size = 'detail', closeLabel = 'Close details', restoreFocusRef }) {
   const { expired } = useSession()
   const dialog = useRef(null)
   const backdropStart = useRef(false)
@@ -56,7 +56,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
   function trapTab(event) {
     // Portal events may bubble through a parent dialog in React's tree.
     if (event.key !== 'Tab' || event.target.closest('dialog') !== event.currentTarget) return
-    const controls = [...event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')]
+    const controls = [...event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [tabindex="0"]')]
       .filter(node => node.tabIndex >= 0 && node.getClientRects().length > 0)
     const first = controls[0]
     const last = controls.at(-1)
@@ -84,10 +84,12 @@ export default function DialogShell({ title, description, avatar, headerDetails,
     <header className="sb-detail-header">
       {avatar}
       <div className="min-w-0 flex-1">
+        {eyebrow && <p className="sb-detail-eyebrow">{eyebrow}</p>}
         <h2 id={`${id}-title`} className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
         <p id={`${id}-description`} className={size === 'confirm' ? 'mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300' : 'sr-only'}>{description}</p>
         {headerDetails}
       </div>
+      {headerBadge && <div className="sb-detail-header-badge">{headerBadge}</div>}
       <button type="button" className="sb-detail-close" aria-label={closeLabel} title={closeLabel} onClick={onClose}><XIcon size={20} /></button>
     </header>
     {children}

@@ -18,9 +18,9 @@ export default function AssessmentTitleEditor({ value, onChange, disabled = fals
     setEditing(false)
   }
   const button = 'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-lg px-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50'
-  if (!editing) return <div className="flex min-w-0 items-start gap-2">
-    <h2 className="min-w-0 flex-1 break-words text-lg font-semibold leading-7 text-gray-900 dark:text-white">{value || 'Untitled assessment'}</h2>
-    <button ref={editButton} type="button" disabled={disabled} aria-label="Edit assessment name" title="Edit assessment name" onClick={() => { setOriginal(value); setEditing(true) }} className={`${button} w-9 border border-gray-200 text-gray-500 hover:border-green-300 hover:bg-green-50 hover:text-green-700 dark:border-gray-700 dark:text-gray-400 dark:hover:border-green-700 dark:hover:bg-green-950 dark:hover:text-green-300`}><PencilIcon size={15} /></button>
+  if (!editing) return <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+    <h2 className="min-w-0 break-words text-xl font-semibold leading-8 text-gray-900 dark:text-white">{value || 'Untitled assessment'}</h2>
+    <button ref={editButton} type="button" disabled={disabled} aria-label="Edit assessment name" title="Edit assessment name" onClick={() => { setOriginal(value); setEditing(true) }} className={`${button} gap-2 text-gray-500 hover:bg-green-50 hover:text-green-700 dark:text-gray-400 dark:hover:bg-green-950 dark:hover:text-green-300`}><PencilIcon size={15} /><span>Edit name</span></button>
   </div>
   return <div className="min-w-0">
     <div className="flex min-w-0 items-center gap-2">

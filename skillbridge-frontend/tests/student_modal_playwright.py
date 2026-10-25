@@ -39,8 +39,19 @@ def geometry(page, width):
 def screenshot(page, name):
     page.screenshot(path=str(ARTIFACTS / (name + ".png")), full_page=False)
 
+def hover_feedback(page, control):
+    # Compare the rendered state, not just the presence of a CSS class.
+    control.scroll_into_view_if_needed()
+    page.mouse.move(1, 1)
+    control.evaluate('el => el.blur()')
+    before = control.evaluate('el => getComputedStyle(el).backgroundColor')
+    control.hover()
+    after = control.evaluate('el => getComputedStyle(el).backgroundColor')
+    assert before != after, (control.inner_text(), before, after)
+    assert control.evaluate('el => getComputedStyle(el).cursor') in ['pointer', 'help']
+
 def fixture(page, scenario="complete", mode="instructor", width=1366, dark=False):
-    page.set_viewport_size({"width": width, "height": {375: 812, 768: 1024, 1024: 768, 1366: 900}[width]})
+    page.set_viewport_size({"width": width, "height": {320: 568, 375: 812, 430: 932, 640: 800, 768: 1024, 820: 1180, 1024: 768, 1366: 900, 1920: 1080}[width]})
     page.goto(BASE + "/tests/student-modal/index.html?scenario=" + scenario + "&mode=" + mode)
     page.wait_for_load_state("networkidle")
     if dark:
@@ -56,7 +67,7 @@ with sync_playwright() as p:
     page = context.new_page()
     page.set_default_timeout(10000)
     page.on("pageerror", lambda error: errors.append(str(error)))
-    for width in [375, 768, 1024, 1366]:
+    for width in [320, 375, 430, 640, 768, 820, 1024, 1366, 1920]:
         for dark in [False, True]:
             fixture(page, width=width, dark=dark)
             initial = geometry(page, width)
@@ -80,6 +91,81 @@ with sync_playwright() as p:
             expect(page.locator("#open-detail")).to_be_focused()
             assert page.evaluate("document.body.style.overflow") == ""
             record(f"{width}px {'dark' if dark else 'light'}: five panels, stable geometry, independent scroll, fixed header/tabs, close, restoration")
+
+    # Approved visual direction with realistic short synthetic records, plus landscape.
+    for width, height in [(320, 568), (375, 812), (430, 932), (768, 1024), (820, 1180), (1024, 768), (1366, 900), (1920, 1080), (812, 375)]:
+        fixture(page, scenario="design", mode="dashboard", width=375)
+        page.set_viewport_size({"width": width, "height": height})
+        for tab in TABS:
+            select_tab(page, tab)
+            geometry(page, width)
+            panel = page.locator('.sb-detail-panel:not([hidden])')
+            if tab in ["Assessments", "Combined competency"]:
+                rows = panel.get_by_role("table", name="Category scores").get_by_role("row")
+                expect(rows).to_have_count(5)
+                expect(panel.get_by_role("cell", name="66.67%", exact=True)).to_be_visible()
+            if tab == "Recommendations":
+                expect(panel.locator('.sb-detail-hybrid')).to_have_count(2)
+            if width in [375, 768, 1366] and height > 500:
+                screenshot(page, f"redesign-{tab.lower().replace(' ', '-')}-{width}")
+        page.get_by_role("button", name="View assessments", exact=True).click()
+        expect(page.get_by_role("tab", name=re.compile("^Assessments"))).to_be_focused()
+        expect(page.get_by_role("tab", name=re.compile("^Assessments"))).to_have_attribute("aria-selected", "true")
+        select_tab(page, "Overview")
+        page.get_by_role("button", name="View recommendations", exact=True).click()
+        expect(page.get_by_role("tab", name="Recommendations", exact=True)).to_be_focused()
+        record(f"Approved redesign {width}x{height}: five tabs, exact scores, ranked fit, empty history, internal navigation")
+
+    for dark in [False, True]:
+        fixture(page, scenario="design", mode="dashboard", dark=dark)
+        hover_feedback(page, page.get_by_role("tab", name=re.compile("^Assessments")))
+        hover_feedback(page, page.get_by_role("button", name="View assessments", exact=True))
+        page.get_by_role("button", name="View assessments", exact=True).click()
+        expect(page.get_by_text("Scores from this assessment only.", exact=False)).to_be_visible()
+        summary = page.locator('.sb-detail-panel:not([hidden]) summary', has_text="Assessment summary")
+        hover_feedback(page, summary)
+        summary.click()
+        assert summary.evaluate('el => el.parentElement.open')
+        summary.focus()
+        page.keyboard.press("Enter")
+        assert not summary.evaluate('el => el.parentElement.open')
+        select_tab(page, "Combined competency")
+        summary = page.locator('.sb-detail-panel:not([hidden]) summary', has_text="Combined assessment results")
+        hover_feedback(page, summary)
+        summary.click()
+        assert summary.evaluate('el => el.parentElement.open')
+        summary.click()
+        technical = page.locator('.sb-detail-panel:not([hidden]) summary', has_text="Technical details")
+        hover_feedback(page, technical)
+        technical.click()
+        expect(page.get_by_text("NLP model used", exact=True)).to_be_visible()
+        technical.click()
+        expect(page.get_by_text("Individual and combined scores can match", exact=False)).to_be_visible()
+        select_tab(page, "Recommendations")
+        help_button = page.get_by_role("button", name="Hybrid match: explanation").first
+        hover_feedback(page, help_button)
+        expect(page.get_by_role("tooltip")).to_be_visible()
+        page.mouse.move(1, 1)
+        expect(page.get_by_role("tooltip")).to_have_count(0)
+        help_button.click()
+        expect(help_button).to_have_attribute("aria-expanded", "true")
+        help_button.click()
+        expect(help_button).to_have_attribute("aria-expanded", "false")
+        how = page.locator('.sb-detail-panel:not([hidden]) summary', has_text="How scores work")
+        hover_feedback(page, how)
+        how.click()
+        expect(page.get_by_text("Hybrid match combines 60%", exact=False)).to_be_visible()
+        how.click()
+        select_tab(page, "Retake history")
+        history_link = page.get_by_role("button", name="View assessments", exact=True)
+        hover_feedback(page, history_link)
+        history_link.click()
+        expect(page.get_by_role("tab", name=re.compile("^Assessments"))).to_have_attribute("aria-selected", "true")
+        close = page.get_by_role("button", name="Close student details")
+        hover_feedback(page, close)
+        close.click()
+        expect(page.locator("dialog[open]")).to_have_count(0)
+        record(f"{'Dark' if dark else 'Light'} controls: visible hover, links/tabs, click and keyboard disclosures, help toggles, close")
 
     fixture(page)
     overview = page.get_by_role("tab", name="Overview", exact=True)
@@ -228,6 +314,7 @@ with sync_playwright() as p:
     record("Compact inline details have natural height and do not lock page scroll")
 
     fixture(page)
+    page.evaluate("localStorage.setItem('sb-token', 'synthetic-expiry-check')")
     page.locator('#expire-session').evaluate('el => el.click()')
     expect(page.locator('dialog[open]')).to_have_count(0)
     expect(page.get_by_role('heading', name='Session Expired')).to_be_visible()
@@ -261,7 +348,7 @@ with sync_playwright() as p:
             body = request.post_data_json
             mutations.append(body)
             api_student["assessment_results"][0]["retake_allowed"] = body["retake_allowed"]
-            payload = {"ok": True}
+            payload = {"ok": True, "retake_allowed": body["retake_allowed"]}
         elif path.endswith("/batches/77/students/"):
             payload = {"batch": api_student["batch"], "students": [api_student]}
         elif path.endswith("/batches/"):
@@ -303,6 +390,8 @@ with sync_playwright() as p:
             page.get_by_role("button", name="Revoke retake for QA Integration Assessment").click()
             page.locator("dialog[open]").last.get_by_role("button", name="Revoke", exact=True).click()
             expect(page.get_by_role("button", name="Approve retake for QA Integration Assessment")).to_be_visible()
+            expect(page.locator("dialog[open]")).to_have_count(1)
+            expect(page.get_by_role("button", name="Approve retake for QA Integration Assessment")).to_be_focused()
         else:
             expect(page.get_by_role("button", name=re.compile("Approve retake for|Revoke retake for"))).to_have_count(0)
         page.keyboard.press("Escape")

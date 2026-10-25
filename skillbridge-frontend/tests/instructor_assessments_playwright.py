@@ -43,6 +43,7 @@ class Fixture:
         self.context.route('**/*', self.route)
         self.page = self.context.new_page()
         self.page.set_default_timeout(10000)
+        self.page.set_default_navigation_timeout(30000)
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
 
     def route(self, route):
@@ -168,7 +169,7 @@ with sync_playwright() as p:
         assert cards.first.evaluate('n => getComputedStyle(n).borderColor') != normal
         cards.first.click(position={'x': 8, 'y': 8})
         expect(page.get_by_role('dialog', name='Edit assessment', exact=True).get_by_role('heading', name='Assessment 23 — Technical foundations', exact=True)).to_be_visible()
-        expect(page.get_by_text('Question editing is locked', exact=False)).to_be_visible()
+        expect(page.get_by_text('Some settings are locked', exact=True)).to_be_visible()
         page.get_by_title('Close without saving', exact=True).click()
         trigger = cards.first.get_by_role('button', name=re.compile('Open assessment'))
         page.keyboard.press('Tab')
@@ -285,6 +286,57 @@ with sync_playwright() as p:
         } for i in range(1, 11)]
         cards.first.get_by_role('button', name=re.compile('Open assessment')).click()
         settings = page.locator('[aria-label="Assessment settings and questions"]')
+        editor = page.get_by_role('dialog', name='Edit assessment', exact=True)
+        rules = settings.locator('details').filter(has=page.locator('summary', has_text='View editing rules'))
+        timing = settings.locator('details').filter(has=page.locator('summary', has_text='How student timing works'))
+        expect(settings.get_by_text('Some settings are locked', exact=True)).to_have_count(1)
+        expect(rules).not_to_have_attribute('open', '')
+        expect(timing).not_to_have_attribute('open', '')
+        rules.locator('summary').focus()
+        page.keyboard.press('Enter')
+        expect(rules.get_by_text('A new deadline cannot be introduced.', exact=True)).to_be_visible()
+        expect(rules.get_by_text('Question content, categories, answer keys and imports cannot be changed after an attempt.', exact=True)).to_be_visible()
+        page.keyboard.press('Space')
+        expect(rules).not_to_have_attribute('open', '')
+        timing.locator('summary').click()
+        expect(timing.get_by_text('A student’s countdown shows', exact=False)).to_be_visible()
+        timing.locator('summary').click()
+        # Reading guidance must not mark the draft dirty or disable duplication.
+        reuse = settings.locator('[aria-label="Assessment reuse and archive"]')
+        expect(reuse.get_by_role('button', name='Duplicate as draft', exact=True)).to_be_enabled()
+        expect(reuse.get_by_role('button', name='Archive assessment', exact=True)).to_be_disabled()
+        assert reuse.bounding_box()['y'] > settings.get_by_role('button', name=re.compile('^Due at:')).bounding_box()['y']
+        reuse.get_by_role('button', name='Duplicate as draft', exact=True).click()
+        copy_dialog = page.get_by_role('dialog', name='Duplicate assessment as draft', exact=True)
+        expect(copy_dialog).to_be_visible()
+        copy_dialog.get_by_role('button', name='Cancel', exact=True).click()
+        expect(editor).to_be_visible()
+        expect(settings.get_by_role('button', name='Due at: Not set (locked)', exact=True)).to_be_disabled()
+        for width, height in [(1440, 1000), (768, 1000), (390, 844), (320, 640), (1024, 600)]:
+            page.set_viewport_size({'width': width, 'height': height})
+            for dark in [False, True]:
+                page.evaluate('dark => document.documentElement.classList.toggle("dark", dark)', dark)
+                settings.evaluate('n => n.scrollTop = 0')
+                assert settings.evaluate('n => n.scrollWidth <= n.clientWidth')
+                publication = settings.get_by_label('Publication state', exact=True).bounding_box()
+                order = settings.get_by_label('Student display order', exact=True).bounding_box()
+                assert abs(publication['width'] - order['width']) < 1
+                assert abs(publication['height'] - order['height']) < 1
+                assert abs(publication['y'] - order['y']) < 1
+                if width < 640:
+                    notice_text = rules.locator('summary > span').nth(1).bounding_box()
+                    disclosure = rules.locator('summary > span').nth(2).bounding_box()
+                    assert notice_text['width'] >= width - 120
+                    assert disclosure['y'] >= notice_text['y'] + notice_text['height']
+                page.evaluate('document.activeElement?.blur()')
+                page.screenshot(path=str(OUT / f'locked-modal-{width}-{height}-{"dark" if dark else "light"}.png'))
+                rules.locator('summary').click()
+                expect(rules.get_by_text('A new deadline cannot be introduced.', exact=True)).to_be_visible()
+                assert settings.evaluate('n => n.scrollWidth <= n.clientWidth')
+                rules.locator('summary').click()
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        settings.evaluate('n => n.scrollTop = 0')
+        checks.append('One lock notice, keyboard editing-rules/timing disclosures, subordinate reuse/archive actions and ten balanced responsive light/dark locked layouts')
         title_input = page.get_by_placeholder('Assessment title', exact=True)
         expect(title_input).to_have_count(0)
         page.get_by_role('dialog', name='Edit assessment', exact=True).get_by_role('heading', name='Web & database skills', exact=True).click()
@@ -312,16 +364,29 @@ with sync_playwright() as p:
         expect(settings.get_by_text('2 T/F', exact=True)).to_be_visible()
         expect(settings.get_by_text('3 Identification', exact=True)).to_be_visible()
         expect(page.get_by_role('button', name='Import questions', exact=True)).to_have_count(0)
-        expect(page.get_by_text('Import questions is unavailable after a student attempt exists.', exact=True)).to_be_visible()
         expect(settings.get_by_label('Publication state', exact=True)).to_be_enabled()
         expect(settings.get_by_label('Duration', exact=True)).to_be_disabled()
         expect(settings.get_by_role('button', name=re.compile('^Available at:'))).to_be_disabled()
         page.get_by_title('Close without saving', exact=True).click()
         page.get_by_role('dialog', name='Discard unsaved changes?', exact=True).get_by_role('button', name='Discard changes', exact=True).click()
+        # An existing deadline remains editable; an active attempt locks publication.
+        f.records[0]['due_at'] = '2026-11-02T09:00:00+08:00'
+        f.records[0]['unfinished_attempt_count'] = 1
+        f.refresh()
+        cards.first.get_by_role('button', name=re.compile('Open assessment')).click()
+        expect(settings.get_by_label('Publication state', exact=True)).to_be_disabled()
+        expect(settings.get_by_role('button', name=re.compile('^Due at:'))).to_be_enabled()
+        rules.locator('summary').click()
+        expect(rules.get_by_text('The assessment deadline can only be extended or removed.', exact=True)).to_be_visible()
+        expect(rules.get_by_text('Publication is locked while students are taking the assessment.', exact=True)).to_be_visible()
+        page.get_by_title('Close without saving', exact=True).click()
+        f.records[0]['due_at'] = None
+        f.records[0]['unfinished_attempt_count'] = 0
         # Unattempted authoring keeps the original schedule-picker checks.
         f.records[0]['questions_locked'] = False
         f.refresh()
         cards.first.get_by_role('button', name=re.compile('Open assessment')).click()
+        expect(settings.get_by_text('Some settings are locked', exact=True)).to_have_count(0)
         settings.get_by_label('Duration', exact=True).fill('45')
         settings.get_by_label('Publication state', exact=True).select_option('closed')
         settings.get_by_label('Student display order', exact=True).fill('6')

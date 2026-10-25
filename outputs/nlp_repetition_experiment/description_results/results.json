@@ -1,0 +1,1734 @@
+{
+  "scope": "Offline description experiment; same synthetic development cases, no new evidence or system writes.",
+  "cases": 60,
+  "positions": 6,
+  "model": "spacy_md",
+  "dataset_sha256": "f11af215818563d72ef8d9bef367c922a11a8d33a16bc3cd193b5ed022cba88e",
+  "source_sha256": {
+    "recommendation_nlp.py": "bc8b9e1e5aff4c2ae84ab380f0b858981a6302b07cc068c823c5456e52736f8d",
+    "skill_taxonomy.py": "031707b48cfa2c2fa4f43c011c77401f63278f53635efa1799d2d0900e3bb5f1"
+  },
+  "plan": {
+    "arms": {
+      "current": "Exact production-generated text with repeated evidence.",
+      "previous_readable": "Previous narrative-only input; unchanged reference.",
+      "concise_bands": "Canonical category, competency band and unchanged selected tags, once. No title/company/orientation; position vocabulary once; numbers remain numerical.",
+      "concise_topics": "Same concise input with bands removed; numerical component retains scores. Selected-tag counts still depend on scores as in production."
+    },
+    "matchers": [
+      "Production spaCy preprocessing + per-student TF-IDF/cosine",
+      "Exploratory raw spaCy Medium Doc.vector/cosine"
+    ],
+    "fixed": "Same category vectors, tags, labels, stable ID ties, 60/25/15; neutral location 0.5.",
+    "limits": "No question-level assessed skill annotations or confirmed duties available. Do not describe contextual tags as proven skills. No post-result tuning."
+  },
+  "structured_control": {
+    "top1": 0.9,
+    "top3": 1.0,
+    "macro_f1": 0.9019303308776992,
+    "mean_expected_rank": 1.1166666666666667
+  },
+  "variants": {
+    "current": {
+      "tfidf": {
+        "candidate_similarity_std_mean": 0.15264002483988232,
+        "min_similarity": 0.09623922569755244,
+        "max_similarity": 0.7635562741898344,
+        "nlp": {
+          "top1": 0.65,
+          "top3": 1.0,
+          "macro_f1": 0.6178845632545821,
+          "mean_expected_rank": 1.4,
+          "top1_changed": 0,
+          "helped_top1": 0,
+          "hurt_top1": 0,
+          "full_order_changed": 0,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.6
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.2
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.3
+            }
+          },
+          "changed_cases": [],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 17
+          }
+        },
+        "hybrid": {
+          "top1": 0.8,
+          "top3": 1.0,
+          "macro_f1": 0.7976039636127356,
+          "mean_expected_rank": 1.2,
+          "top1_changed": 0,
+          "helped_top1": 0,
+          "hurt_top1": 0,
+          "full_order_changed": 0,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.7
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.5
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.8
+            }
+          },
+          "changed_cases": [],
+          "versus_structured_top1": {
+            "helped": 1,
+            "hurt": 7
+          }
+        }
+      },
+      "native_vectors": {
+        "candidate_similarity_std_mean": 0.042211860305879804,
+        "min_similarity": 0.8318813073565368,
+        "max_similarity": 0.9980200270336731,
+        "nlp": {
+          "top1": 0.8166666666666667,
+          "top3": 1.0,
+          "macro_f1": 0.8041721563460693,
+          "mean_expected_rank": 1.2333333333333334,
+          "top1_changed": 0,
+          "helped_top1": 0,
+          "hurt_top1": 0,
+          "full_order_changed": 0,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.4
+            }
+          },
+          "changed_cases": [],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 7
+          }
+        },
+        "hybrid": {
+          "top1": 0.8833333333333333,
+          "top3": 1.0,
+          "macro_f1": 0.8846092503987242,
+          "mean_expected_rank": 1.1166666666666667,
+          "top1_changed": 0,
+          "helped_top1": 0,
+          "hurt_top1": 0,
+          "full_order_changed": 0,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.9
+            }
+          },
+          "changed_cases": [],
+          "versus_structured_top1": {
+            "helped": 0,
+            "hurt": 1
+          }
+        }
+      }
+    },
+    "previous_readable": {
+      "tfidf": {
+        "candidate_similarity_std_mean": 0.049541662506114775,
+        "min_similarity": 0.11780162191445494,
+        "max_similarity": 0.3765388716908877,
+        "nlp": {
+          "top1": 0.6166666666666667,
+          "top3": 0.9666666666666667,
+          "macro_f1": 0.5924499219390861,
+          "mean_expected_rank": 1.5,
+          "top1_changed": 9,
+          "helped_top1": 3,
+          "hurt_top1": 5,
+          "full_order_changed": 48,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.4
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.2
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.4
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-054",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-107",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-109",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-206",
+              "expected": 5,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-256",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-259",
+              "expected": 6,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 3,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-260",
+              "expected": 6,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 3,
+              "after_expected_rank": 3
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 19
+          }
+        },
+        "hybrid": {
+          "top1": 0.8666666666666667,
+          "top3": 1.0,
+          "macro_f1": 0.8668427604960113,
+          "mean_expected_rank": 1.1333333333333333,
+          "top1_changed": 4,
+          "helped_top1": 4,
+          "hurt_top1": 0,
+          "full_order_changed": 18,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.7
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.7
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.9
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-159",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 4
+          }
+        }
+      },
+      "native_vectors": {
+        "candidate_similarity_std_mean": 0.0032143192974678917,
+        "min_similarity": 0.9707622789487571,
+        "max_similarity": 0.9905337161186546,
+        "nlp": {
+          "top1": 0.3333333333333333,
+          "top3": 0.8,
+          "macro_f1": 0.30606430606430607,
+          "mean_expected_rank": 2.3333333333333335,
+          "top1_changed": 35,
+          "helped_top1": 0,
+          "hurt_top1": 29,
+          "full_order_changed": 59,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.4
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.3
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.1
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.2
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.0
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-053",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-054",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-055",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-059",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-062",
+              "expected": 2,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-103",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-105",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-107",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-109",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-110",
+              "expected": 3,
+              "before": 3,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-111",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-153",
+              "expected": 4,
+              "before": 2,
+              "after": 1,
+              "before_expected_rank": 2,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-155",
+              "expected": 4,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 3,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-159",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-160",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-161",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-162",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-202",
+              "expected": 5,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-203",
+              "expected": 5,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-204",
+              "expected": 5,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 2,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-206",
+              "expected": 5,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-208",
+              "expected": 5,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-209",
+              "expected": 5,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-210",
+              "expected": 5,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-252",
+              "expected": 6,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-253",
+              "expected": 6,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-254",
+              "expected": 6,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 2,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-255",
+              "expected": 6,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 2,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-256",
+              "expected": 6,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-258",
+              "expected": 6,
+              "before": 5,
+              "after": 1,
+              "before_expected_rank": 2,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-260",
+              "expected": 6,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 1,
+            "hurt": 35
+          }
+        },
+        "hybrid": {
+          "top1": 0.9,
+          "top3": 1.0,
+          "macro_f1": 0.9019303308776992,
+          "mean_expected_rank": 1.1,
+          "top1_changed": 1,
+          "helped_top1": 1,
+          "hurt_top1": 0,
+          "full_order_changed": 20,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.9
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-155",
+              "expected": 4,
+              "before": 3,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 0,
+            "hurt": 0
+          }
+        }
+      }
+    },
+    "concise_bands": {
+      "tfidf": {
+        "candidate_similarity_std_mean": 0.1292479288124861,
+        "min_similarity": 0.17944806060032462,
+        "max_similarity": 0.8026581356992266,
+        "nlp": {
+          "top1": 0.6833333333333333,
+          "top3": 0.9666666666666667,
+          "macro_f1": 0.6623514923210664,
+          "mean_expected_rank": 1.45,
+          "top1_changed": 4,
+          "helped_top1": 2,
+          "hurt_top1": 0,
+          "full_order_changed": 39,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.6
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.3
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.4
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 1,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-160",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-259",
+              "expected": 6,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 3,
+              "after_expected_rank": 3
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 3,
+            "hurt": 16
+          }
+        },
+        "hybrid": {
+          "top1": 0.8,
+          "top3": 1.0,
+          "macro_f1": 0.7901905436993156,
+          "mean_expected_rank": 1.2166666666666666,
+          "top1_changed": 6,
+          "helped_top1": 3,
+          "hurt_top1": 3,
+          "full_order_changed": 21,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.7
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.4
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.8
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-159",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-254",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 8
+          }
+        }
+      },
+      "native_vectors": {
+        "candidate_similarity_std_mean": 0.0038746857902921526,
+        "min_similarity": 0.980006580132464,
+        "max_similarity": 0.9974779740393829,
+        "nlp": {
+          "top1": 0.6333333333333333,
+          "top3": 0.8666666666666667,
+          "macro_f1": 0.5992743378756256,
+          "mean_expected_rank": 1.8166666666666667,
+          "top1_changed": 20,
+          "helped_top1": 4,
+          "hurt_top1": 15,
+          "full_order_changed": 60,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.6
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.2
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.3
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-103",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-109",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-111",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 6
+            },
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-159",
+              "expected": 4,
+              "before": 4,
+              "after": 2,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-160",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-161",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-206",
+              "expected": 5,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-208",
+              "expected": 5,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 3,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-252",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-253",
+              "expected": 6,
+              "before": 6,
+              "after": 2,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-255",
+              "expected": 6,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-256",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-258",
+              "expected": 6,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-259",
+              "expected": 6,
+              "before": 4,
+              "after": 5,
+              "before_expected_rank": 3,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-260",
+              "expected": 6,
+              "before": 6,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 3,
+            "hurt": 19
+          }
+        },
+        "hybrid": {
+          "top1": 0.9,
+          "top3": 1.0,
+          "macro_f1": 0.9019303308776992,
+          "mean_expected_rank": 1.1,
+          "top1_changed": 1,
+          "helped_top1": 1,
+          "hurt_top1": 0,
+          "full_order_changed": 17,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.9
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-155",
+              "expected": 4,
+              "before": 3,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 0,
+            "hurt": 0
+          }
+        }
+      }
+    },
+    "concise_topics": {
+      "tfidf": {
+        "candidate_similarity_std_mean": 0.127483316991552,
+        "min_similarity": 0.19526082647103396,
+        "max_similarity": 0.7735294117301427,
+        "nlp": {
+          "top1": 0.65,
+          "top3": 0.9666666666666667,
+          "macro_f1": 0.584970539940114,
+          "mean_expected_rank": 1.5,
+          "top1_changed": 8,
+          "helped_top1": 3,
+          "hurt_top1": 3,
+          "full_order_changed": 40,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.6
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.4
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.0
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 1,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-160",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-252",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-256",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-258",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-259",
+              "expected": 6,
+              "before": 5,
+              "after": 4,
+              "before_expected_rank": 3,
+              "after_expected_rank": 3
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 2,
+            "hurt": 17
+          }
+        },
+        "hybrid": {
+          "top1": 0.8,
+          "top3": 1.0,
+          "macro_f1": 0.7931470445469637,
+          "mean_expected_rank": 1.2333333333333334,
+          "top1_changed": 8,
+          "helped_top1": 4,
+          "hurt_top1": 4,
+          "full_order_changed": 23,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.5
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.7
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-003",
+              "expected": 1,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-107",
+              "expected": 3,
+              "before": 1,
+              "after": 3,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-161",
+              "expected": 4,
+              "before": 1,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-254",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 1,
+            "hurt": 7
+          }
+        }
+      },
+      "native_vectors": {
+        "candidate_similarity_std_mean": 0.004041711441369582,
+        "min_similarity": 0.9786808197424176,
+        "max_similarity": 0.9972908485804367,
+        "nlp": {
+          "top1": 0.65,
+          "top3": 0.8833333333333333,
+          "macro_f1": 0.5857782356638191,
+          "mean_expected_rank": 1.7666666666666666,
+          "top1_changed": 19,
+          "helped_top1": 4,
+          "hurt_top1": 14,
+          "full_order_changed": 60,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.0
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.4
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-109",
+              "expected": 3,
+              "before": 3,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-154",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 6
+            },
+            {
+              "case_id": "prepared-156",
+              "expected": 4,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-157",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-158",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-159",
+              "expected": 4,
+              "before": 4,
+              "after": 2,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-160",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 5
+            },
+            {
+              "case_id": "prepared-161",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 3
+            },
+            {
+              "case_id": "prepared-162",
+              "expected": 4,
+              "before": 4,
+              "after": 1,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-205",
+              "expected": 5,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-206",
+              "expected": 5,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-208",
+              "expected": 5,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-251",
+              "expected": 6,
+              "before": 4,
+              "after": 6,
+              "before_expected_rank": 3,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-252",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-253",
+              "expected": 6,
+              "before": 6,
+              "after": 2,
+              "before_expected_rank": 1,
+              "after_expected_rank": 4
+            },
+            {
+              "case_id": "prepared-255",
+              "expected": 6,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-256",
+              "expected": 6,
+              "before": 6,
+              "after": 5,
+              "before_expected_rank": 1,
+              "after_expected_rank": 2
+            },
+            {
+              "case_id": "prepared-258",
+              "expected": 6,
+              "before": 5,
+              "after": 6,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            },
+            {
+              "case_id": "prepared-259",
+              "expected": 6,
+              "before": 4,
+              "after": 5,
+              "before_expected_rank": 3,
+              "after_expected_rank": 2
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 3,
+            "hurt": 18
+          }
+        },
+        "hybrid": {
+          "top1": 0.9,
+          "top3": 1.0,
+          "macro_f1": 0.9019303308776992,
+          "mean_expected_rank": 1.1,
+          "top1_changed": 1,
+          "helped_top1": 1,
+          "hurt_top1": 0,
+          "full_order_changed": 18,
+          "per_role": {
+            "Backend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Frontend Developer Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Database Administrator Intern": {
+              "cases": 10,
+              "top1": 0.8
+            },
+            "QA Tester Intern": {
+              "cases": 10,
+              "top1": 0.9
+            },
+            "Network Administrator Intern": {
+              "cases": 10,
+              "top1": 1.0
+            },
+            "IT Support Intern": {
+              "cases": 10,
+              "top1": 0.9
+            }
+          },
+          "changed_cases": [
+            {
+              "case_id": "prepared-155",
+              "expected": 4,
+              "before": 3,
+              "after": 4,
+              "before_expected_rank": 2,
+              "after_expected_rank": 1
+            }
+          ],
+          "versus_structured_top1": {
+            "helped": 0,
+            "hurt": 0
+          }
+        }
+      }
+    }
+  },
+  "integrity_checks": [
+    "Same dataset and production generator hashes as earlier test",
+    "Expected-label permutation leaves text/category inputs unchanged",
+    "Zero-score category supplies no positive vocabulary",
+    "New text uses no expanded evidence repetitions",
+    "Stable category ordering",
+    "Prior Medium TF-IDF baseline metrics reproduced exactly",
+    "No Django database imports; source/data unchanged; no fallback/downloads"
+  ],
+  "samples": {
+    "current": {
+      "student_matching_input": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Programming (95.0%) and Database (90.0%). The student demonstrates excellent programming competency (95 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; excellent database management competency (90 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; strong web development competency (80 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; basic cybersecurity competency (55 percent); category vocabulary: authentication, encryption; basic networking competency (45 percent); category vocabulary: TCP/IP, routing. Skill evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management excellent competency database management SQL database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design database management database design web development strong competency web development strong competency web development strong competency web development strong competency web development strong competency web development HTML web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design web development responsive design web development web API web development web API web development web API web development web API web development web API web development frontend web development frontend web development frontend web development frontend web development frontend web development DOM web development DOM web development DOM web development DOM web development DOM cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing. Category vocabulary is contextual; these terms were not separately assessed.",
+      "position_matching_input": "Backend Developer Intern at ABC Software Solutions. Required skill percentages: Programming: 92 percent; Database: 84 percent; Networking: 38 percent; Web Development: 76 percent; Cybersecurity: 52 percent. Competency requirements: excellent programming competency (92 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; strong database management competency (84 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; proficient web development competency (76 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design; basic cybersecurity competency (52 percent); category vocabulary: authentication, encryption; basic networking competency (38 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint. Requirement evidence: programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming excellent competency programming Python programming Python programming Python programming Python programming Python programming Python programming Java programming Java programming Java programming Java programming Java programming Java programming JavaScript programming JavaScript programming JavaScript programming OOP programming OOP programming OOP programming OOP programming OOP programming OOP programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming algorithms programming data structures programming data structures programming data structures programming data structures programming data structures programming data structures programming debugging programming debugging programming debugging programming debugging programming debugging programming debugging programming Git programming Git programming Git programming Git programming Git programming Git database management strong competency database management strong competency database management strong competency database management strong competency database management strong competency database management SQL database management SQL database management SQL database management SQL database management SQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management PostgreSQL database management MySQL database management MySQL database management MySQL database management MySQL database management MySQL database management ERD database management ERD database management ERD database management ERD database management ERD database management normalization database management normalization database management normalization database management normalization database management normalization database management indexing database management indexing database management indexing database management indexing database management indexing database management query optimization database management query optimization database management query optimization database management query optimization database management query optimization database management database design database management database design database management database design database management database design database management database design web development proficient competency web development proficient competency web development proficient competency web development proficient competency web development HTML web development HTML web development HTML web development HTML web development CSS web development CSS web development CSS web development CSS web development JavaScript web development JavaScript web development React web development React web development React web development React web development responsive design web development responsive design web development responsive design web development responsive design cybersecurity basic competency cybersecurity authentication cybersecurity encryption networking basic competency networking TCP/IP networking routing backend backend server-side server-side REST API REST API Django Django Flask Flask authentication authentication database integration database integration business logic business logic API endpoint API endpoint."
+    },
+    "previous_readable": {
+      "student_matching_input": "Assessment evidence indicates a backend and data-oriented competency pattern, led by Programming (95.0%) and Database (90.0%). The student demonstrates excellent programming competency (95 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; excellent database management competency (90 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; strong web development competency (80 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM; basic cybersecurity competency (55 percent); category vocabulary: authentication, encryption; basic networking competency (45 percent); category vocabulary: TCP/IP, routing. Category vocabulary is contextual; these terms were not separately assessed.",
+      "position_matching_input": "Backend Developer Intern at ABC Software Solutions. Required skill percentages: Programming: 92 percent; Database: 84 percent; Networking: 38 percent; Web Development: 76 percent; Cybersecurity: 52 percent. Competency requirements: excellent programming competency (92 percent); category vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git; strong database management competency (84 percent); category vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design; proficient web development competency (76 percent); category vocabulary: HTML, CSS, JavaScript, React, responsive design; basic cybersecurity competency (52 percent); category vocabulary: authentication, encryption; basic networking competency (38 percent); category vocabulary: TCP/IP, routing. Role-specific vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint."
+    },
+    "concise_bands": {
+      "student_matching_input": "cybersecurity basic. Contextual vocabulary: authentication, encryption. database management excellent. Contextual vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design. networking basic. Contextual vocabulary: TCP/IP, routing. programming excellent. Contextual vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git. web development strong. Contextual vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM.",
+      "position_matching_input": "cybersecurity basic. Contextual vocabulary: authentication, encryption. database management strong. Contextual vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design. networking basic. Contextual vocabulary: TCP/IP, routing. programming excellent. Contextual vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git. web development proficient. Contextual vocabulary: HTML, CSS, JavaScript, React, responsive design. Position vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint."
+    },
+    "concise_topics": {
+      "student_matching_input": "cybersecurity. Contextual vocabulary: authentication, encryption. database management. Contextual vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design. networking. Contextual vocabulary: TCP/IP, routing. programming. Contextual vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git. web development. Contextual vocabulary: HTML, CSS, JavaScript, React, responsive design, web API, frontend, DOM.",
+      "position_matching_input": "cybersecurity. Contextual vocabulary: authentication, encryption. database management. Contextual vocabulary: SQL, PostgreSQL, MySQL, ERD, normalization, indexing, query optimization, database design. networking. Contextual vocabulary: TCP/IP, routing. programming. Contextual vocabulary: Python, Java, JavaScript, OOP, algorithms, data structures, debugging, Git. web development. Contextual vocabulary: HTML, CSS, JavaScript, React, responsive design. Position vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint."
+    }
+  },
+  "display_example": {
+    "student": "Assessment results: Programming 95% (excellent); Database 90% (excellent); Networking 45% (basic); Web Development 80% (strong); Cybersecurity 55% (basic). Category vocabulary is contextual and does not establish separately assessed technology skills.",
+    "position": "Backend Developer Intern at ABC Software Solutions. Required category percentages: Programming 92%; Database 84%; Networking 38%; Web Development 76%; Cybersecurity 52%. Position vocabulary: backend, server-side, REST API, Django, Flask, authentication, database integration, business logic, API endpoint. Vocabulary does not confirm specific job duties."
+  },
+  "input_sizes": {
+    "current": {
+      "mean_student_words": 388.51666666666665,
+      "mean_position_words": 360.3333333333333
+    },
+    "previous_readable": {
+      "mean_student_words": 93.2,
+      "mean_position_words": 102.16666666666667
+    },
+    "concise_bands": {
+      "mean_student_words": 49.0,
+      "mean_position_words": 59.666666666666664
+    },
+    "concise_topics": {
+      "mean_student_words": 44.0,
+      "mean_position_words": 54.666666666666664
+    }
+  },
+  "model_version": "3.8.0",
+  "elapsed_seconds_after_load": 5.226,
+  "input_sha256": {
+    "current": "ad798e9dd2c7c233dc2ebf88beaec0e233896b034918787475fc9ae48f2afffb",
+    "previous_readable": "62fa8310b64b866e0f206fb46c18107097c4d640f9888fd540be15cc26979c41",
+    "concise_bands": "8ea96042692de47cd04323d3b9e638fc34120899120f9c3e0d71e194923ccd1d",
+    "concise_topics": "f5091cd45e67efc3e7e0ea3715ec170e20b15c1f0160dc7516a419535277f9cc"
+  }
+}

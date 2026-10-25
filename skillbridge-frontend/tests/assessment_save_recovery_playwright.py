@@ -1,11 +1,13 @@
 """Actual instructor editor sends one transactional save and retains failed drafts."""
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 
 ARTIFACTS = Path(__file__).parent / 'artifacts/assessment-save-recovery'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5178')
 assessment = {'id': 1, 'title': 'Synthetic assessment', 'batch_id': 1, 'batch_name': 'Synthetic batch',
               'duration_minutes': 30, 'publication_status': 'draft', 'is_required': True, 'include_in_competency': True,
               'display_order': 1, 'available_at': None, 'due_at': None, 'question_count': 1, 'questions_locked': False}
@@ -49,9 +51,10 @@ with sync_playwright() as p:
     context.route('**/*', route_request)
     page = context.new_page()
     page.set_default_timeout(10000)
+    page.set_default_navigation_timeout(30000)
     page.on('pageerror', lambda error: errors.append(str(error)))
     try:
-        page.goto('http://127.0.0.1:5178/instructor/assessments')
+        page.goto(BASE + '/instructor/assessments')
         page.wait_for_load_state('networkidle')
         page.get_by_role('button', name='Open assessment Synthetic assessment', exact=True).click()
         title = page.get_by_placeholder('Assessment title', exact=True)

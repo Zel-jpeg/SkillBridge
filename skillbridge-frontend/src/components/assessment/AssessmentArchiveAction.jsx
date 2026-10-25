@@ -7,7 +7,7 @@ import { getCachedData, invalidateCache, updateCachedData } from '../../hooks/us
 import { useToast } from '../../context/ToastContext'
 import { ASSESSMENTS_URL } from '../../utils/adminAssessmentState'
 
-export default function AssessmentArchiveAction({ assessment, disabled = false, onSuccess }) {
+export default function AssessmentArchiveAction({ assessment, disabled = false, onSuccess, variant = 'default' }) {
   const [confirm, setConfirm] = useState(false)
   const pending = useRef(false)
   const { showToast } = useToast()
@@ -35,9 +35,9 @@ export default function AssessmentArchiveAction({ assessment, disabled = false, 
     } finally { pending.current = false }
   }
 
-  return <div className="space-y-1.5">
-    <button type="button" disabled={!!reason} title={reason || undefined} onClick={() => setConfirm(true)} className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><ArchiveIcon size={14} />{restoring ? 'Restore assessment' : 'Archive assessment'}</button>
-    {reason && <p className="max-w-md text-xs leading-5 text-gray-500 dark:text-gray-400">{reason}</p>}
+  return <div className={variant === 'inline' ? 'flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2' : 'space-y-1.5'}>
+    <button type="button" disabled={!!reason} title={reason || undefined} onClick={() => setConfirm(true)} className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 enabled:hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:enabled:hover:bg-gray-800"><ArchiveIcon size={14} />{restoring ? 'Restore assessment' : 'Archive assessment'}</button>
+    {reason && <p className={variant === 'inline' ? 'min-w-0 flex-1 basis-48 text-xs leading-5 text-gray-500 dark:text-gray-400' : 'max-w-md text-xs leading-5 text-gray-500 dark:text-gray-400'}>{reason}</p>}
     {confirm && <ConfirmModal tone="confirm" title={restoring ? 'Restore assessment?' : 'Archive assessment?'} confirmLabel={restoring ? 'Restore assessment' : 'Archive assessment'}
       message={restoring ? `“${assessment.title}” will return to Assessments as ${assessment.publication_status}. It will remain unavailable to students until explicitly published.` : `“${assessment.title}” will move to Assessment archives and become read-only. Questions, student results, reports and competency evidence are preserved. Publication and completion rules stay unchanged.`}
       onCancel={() => setConfirm(false)} onConfirm={submit} />}

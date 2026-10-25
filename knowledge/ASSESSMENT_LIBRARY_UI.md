@@ -60,19 +60,58 @@ pills initially and reveal the others inline on demand.
 
 ## Instructor editor header
 
+### Approved modal refinement — 25 October 2026
+
+The latest image concept is implemented in the instructor editor. The fixed
+header pairs the title with a labeled Edit name action and displays the saved
+publication status beside the batch. Name editing still requires that explicit
+action; title changes remain unsaved until the confirmed Save All Changes flow.
+
+One amber Some settings are locked notice replaces the repeated attempt/import
+warnings. Its native View editing rules disclosure preserves the detailed content,
+deadline and active-attempt publication rules. On narrow screens the disclosure
+occupies its own row so the explanation remains readable. The separate Schedule
+section uses a right-aligned Manila timezone label, paired date controls, visible
+lock icons and Not set for locked empty values. How student timing works expands
+the existing cutoff/extra-time explanation. Changed-setting impacts remain visible
+without requiring a disclosure, and the save confirmation retains its full review.
+
+Duration remains narrow; Publication state and Student display order retain equal
+widths, heights and baselines. Requirement and competency panels keep the precise
+completion/evidence descriptions. Duplicate as draft and Archive assessment move
+below the settings into a subordinate action row, with the existing disabled
+reasons and confirmation behavior. Questions and the fixed save/cancel footer
+retain their existing functionality. The default shared settings/policy layouts
+used elsewhere are unchanged; these presentation refinements opt into the modal
+variant. No timing, permission, scoring or save API policy changed.
+
+Verification for this refinement passed frontend lint/build, all 11 focused
+policy/date/filter-state tests, the 11-group synthetic instructor browser suite
+and both failed-save/retry groups, with zero browser page errors. The browser
+checks cover keyboard disclosures without dirtying the draft, duplicate-dialog
+open/cancel, locked empty dates, editable existing deadlines, active publication
+locks, and equal publication/order geometry across ten locked and ten editable
+light/dark modal layouts. Desktop light/dark and 320px dark screenshots were
+visually reviewed; a narrow lock-notice wrapping problem was corrected and
+rechecked. Concurrent browser cold starts initially exceeded the old navigation
+timeout; isolated final runs passed with a 30-second navigation allowance.
+All API traffic was mocked; no backend or real-record changes were needed.
+Screenshots are in ignored `skillbridge-frontend/tests/artifacts/instructor-assessments/`.
+
 The approved modal header displays the assessment name as text with a real pencil
 button. Edit assessment name opens and focuses the title input. Done or Enter
 returns to the display view; Cancel or Escape restores the name from before that
 edit. Empty names cannot be accepted. Name changes remain part of the modal draft
-until Save All Changes. Batch identity and a bordered upload action sit alongside;
-upload remains disabled after an attempt exists.
+until Save All Changes. Batch identity and the saved publication badge sit beneath
+the title. Import remains beside question additions and unavailable after an
+attempt exists.
 Duration occupies a narrow column; Publication state and Student display order
 have equal columns, matching labels and 40px controls. On phones, duration sits
 above the balanced pair and the title gets its own full-width row.
 
 Two checkbox panels group requirement and competency settings. A single
 Asia/Manila timezone label covers the paired schedule fields. An amber lock notice
-separates editable settings from the question toolbar and its question-type counts.
+above settings explains restrictions; the question toolbar retains its type counts.
 The title and save/cancel footer remain visible while settings and questions share
 one scrolling body, including on narrow or short screens.
 

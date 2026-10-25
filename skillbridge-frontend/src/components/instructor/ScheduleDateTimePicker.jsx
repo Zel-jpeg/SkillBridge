@@ -7,7 +7,7 @@ import { Popover } from 'react-aria-components/Popover'
 import { Modal, ModalOverlay } from 'react-aria-components/Modal'
 import { TimeField } from 'react-aria-components/TimeField'
 import { Time, today, toCalendarDate, toTime } from '@internationalized/date'
-import { CalendarIcon, ChevronDown, ChevronRightIcon } from '../Icons'
+import { CalendarIcon, ChevronDown, ChevronRightIcon, LockIcon } from '../Icons'
 import { parseScheduleValue, scheduleLabel, scheduleValue } from '../../utils/scheduleDateTime'
 
 const secondary = 'inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-600 outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-green-600 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
@@ -64,8 +64,8 @@ export default function ScheduleDateTimePicker({ label, value, onChange, error, 
   return <I18nProvider locale="en-PH"><div className="min-w-0 space-y-1.5">
     <span id={id} className="block text-xs font-medium text-gray-600 dark:text-gray-300">{label}</span>
     <DialogTrigger isOpen={open} onOpenChange={changeOpen}>
-      <Button isDisabled={disabled} aria-label={`${label}: ${scheduleLabel(value)}`} aria-describedby={error ? `${id}-error` : undefined} aria-invalid={!!error} className={`flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 text-left text-xs outline-none transition-colors hover:border-green-400 focus-visible:ring-2 focus-visible:ring-green-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-800 ${error ? 'border-rose-500' : 'border-gray-200 dark:border-gray-700'}`}>
-        <span aria-hidden="true" className="shrink-0 text-gray-400"><CalendarIcon size={15} /></span><span className={`min-w-0 flex-1 truncate ${value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{scheduleLabel(value)}</span><span aria-hidden="true" className="shrink-0 text-gray-400"><ChevronDown size={13} open={open} /></span>
+      <Button isDisabled={disabled} aria-label={`${label}: ${disabled && !value ? 'Not set' : scheduleLabel(value)}${disabled ? ' (locked)' : ''}`} aria-describedby={error ? `${id}-error` : undefined} aria-invalid={!!error} className={`flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 text-left text-xs outline-none transition-colors enabled:hover:border-green-400 focus-visible:ring-2 focus-visible:ring-green-600 disabled:cursor-not-allowed disabled:bg-gray-50 dark:bg-gray-800 dark:disabled:bg-gray-800/60 ${error ? 'border-rose-500' : 'border-gray-200 dark:border-gray-700'}`}>
+        <span aria-hidden="true" className="shrink-0 text-gray-400">{disabled ? <LockIcon size={15} /> : <CalendarIcon size={15} />}</span><span className={`min-w-0 flex-1 truncate ${value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{disabled && !value ? 'Not set' : scheduleLabel(value)}</span><span aria-hidden="true" className="shrink-0 text-gray-400">{disabled ? <CalendarIcon size={15} /> : <ChevronDown size={13} open={open} />}</span>
       </Button>
       {compact ? <ModalOverlay isDismissable className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-3"><Modal className={`max-h-[calc(100dvh-24px)] w-[304px] max-w-full ${pickerSurface}`}>{content}</Modal></ModalOverlay> : <Popover placement="bottom start" offset={6} containerPadding={12} className={`z-[100] max-h-[calc(100dvh-24px)] w-[min(304px,calc(100vw-24px))] ${pickerSurface}`}>{content}</Popover>}
     </DialogTrigger>

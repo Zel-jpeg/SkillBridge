@@ -20,8 +20,8 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
   }
   const student = type === 'student'
   const footer = <div>{error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}{user.archived && onRestore
-    ? <button type="button" disabled={saving} className="min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-green-700" onClick={() => save(() => onRestore(user))}>Restore account</button>
-    : onRemove && <button type="button" disabled={saving} className="min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-rose-800 dark:text-rose-300" onClick={() => onRemove(user)}>Remove {student ? 'student' : 'instructor'}</button>}</div>
+    ? <button type="button" disabled={saving} className="sb-detail-action min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-green-700" onClick={() => save(() => onRestore(user))}>Restore account</button>
+    : onRemove && <button type="button" disabled={saving} className="sb-detail-action sb-detail-action--danger min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-rose-800 dark:text-rose-300" onClick={() => onRemove(user)}>Remove {student ? 'student' : 'instructor'}</button>}</div>
   if (student) return <StudentDetailModal student={user} onClose={onClose} onToggleRetake={onToggleRetake} footer={footer} />
   return <DialogShell title={user.name || 'Instructor details'} description="Instructor enrollment and account details." onClose={() => { if (!pending.current) onClose() }} footer={footer}
     avatar={<Avatar name={user.name} photoUrl={user.photoUrl} tone="neutral" className="h-11 w-11 rounded-lg text-sm" />}

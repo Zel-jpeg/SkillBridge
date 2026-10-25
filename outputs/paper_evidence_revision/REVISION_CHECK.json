@@ -1,0 +1,39 @@
+{
+  "source_sha256": "ff46efcc0934a70915cef32452dee74881264a502ea92bf93acbe74fe1bbdb81",
+  "output_sha256": "95ce911faea91acfcf94e5ce59890afe73c4f01aabb2f581672b9ca09086c887",
+  "source_pages": 88,
+  "output_pages": 89,
+  "replaced_pdf_pages": [
+    55,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75
+  ],
+  "added_reference_page": 89,
+  "unchanged_pages_text_checked": 81,
+  "rendered_body_bottom_y": {
+    "55": 124,
+    "70": 202,
+    "71": 206,
+    "72": 107,
+    "73": 128,
+    "74": 102,
+    "75": 206,
+    "89": 292
+  },
+  "visual_qa_pages": [
+    55,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    89
+  ],
+  "visual_qa_result": "Rendered and visually inspected: no clipping or overlap found.",
+  "source_unchanged_verified": true
+}

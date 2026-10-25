@@ -1,6 +1,46 @@
 # Student detail modal redesign
 
-Implemented 29 September 2026. This is a frontend-only presentation change. Existing user changes in AGENTS.md, PROJECT_OVERVIEW.md, SKILL_SOURCES.md and the untracked design-taste skill were preserved.
+## Approved visual implementation — 25 October 2026
+
+Implemented the five user-approved [imagegen concepts](../outputs/ui-concepts/student-profile-2026-10-25/DESIGN_BRIEF.md) in the shared instructor/admin student profile. Production content still comes from the existing scoped records; illustrative companies, identity details and recommendation values from the mockups are not application data.
+
+- Student-specific dialog treatment: a 1240px maximum width, forest-green initials avatar, stronger identity heading, batch badge and explicit read-only state. Other dialog variants retain their existing width. The existing administrator footer and instructor assessment controls remain available where authorized.
+- Overview groups completion, enrollment, placement and assessment snapshots. The unplaced state remains separate from recommendation access. Approved placement still uses the existing snapshot component. Links switch to the appropriate tab.
+- Assessment category scores gain proportional bars, with exact numeric values retained. Individual interpretation uses the existing summary helper, including every highest-score tie, missing/all-zero evidence and category-based guidance. The full narrative is available under Assessment summary. Stopped/flagged attempts retain their warnings and receive no positive interpretation.
+- Combined competency presents source evidence and finalization alongside category scores; interpretation remains collapsed initially and actual model provenance is available under Technical details. Category values are supplied by the API and are not recomputed by the frontend.
+- Recommendations retain endpoint order, real company images, fit explanations, distance and approved-placement relationship. Hybrid match leads each row; the three component scores remain distinct. No illustrative-data labels or fictitious records from the design concepts are shown in production.
+- Retake history has a clearer empty state and a link to current assessments. Populated history retains archived category snapshots, timestamps and integrity metadata. Archival still occurs when an approved retake starts.
+
+### Responsive and accessible behavior
+
+The follow-up adds visible hover feedback to inactive/active tabs, internal navigation links, native disclosures, score explanation buttons, retake actions and administrator account actions. Destructive actions keep rose feedback. Disabled controls retain a disabled cursor; keyboard outlines and reduced-motion handling remain available. The existing navigation, disclosure, help, close and authorized mutation handlers are retained rather than adding interactions to status labels.
+
+Assessment score sections explicitly describe one assessment's current result. Combined sections explain pooling earned/maximum points across eligible assessments in the batch and why one contributing assessment can produce the same score in both tabs. This is explanatory copy; scoring and inclusion rules are unchanged.
+
+The student modal uses container queries to stack summary, score/interpretation and evidence panels below 760px of available dialog content width. Small phones use a viewport-height sheet with safe-area padding, wrapping identity text, horizontally scrollable tabs and a separately scrolling body. Recommendation components become labeled vertical rows. Short landscape screens use the available viewport height. Header overflow is independently scrollable for unusually long names on short screens; close controls remain reachable. The modal does not resize when switching tabs.
+
+Keyboard tab navigation, focus trapping/restoration, nested confirmations, reduced motion and dark mode are retained. Native disclosure summaries are included in the explicit focus loop. Internal navigation focuses the destination tab and resets the panel scroll position. No new dependencies, detail requests, backend changes or changes to scoring, eligibility, ranking, authorization or placement approval were introduced.
+
+### Current verification
+
+Frontend lint and production build pass. The initial implementation passed all 208 frontend Node tests; the hover/copy follow-up reran the 22 relevant summary and student-detail tests, all passing. All 50 synthetic browser groups pass with zero page errors, including rendered hover feedback, disclosure click/keyboard toggles and help-button click toggles in light/dark modes. The matrix covers 320, 375, 430, 640, 768, 820, 1024, 1366 and 1920px widths in light/dark modes, plus the approved concept fixture and 812x375 phone landscape. Geometry checks confirm no horizontal document/panel overflow, stable dialog bounds and a reachable 44px close control. The old session-expiry fixture was updated to supply a synthetic session token, matching the current provider's authenticated-session guard; the retake mock now returns the API's actual retake_allowed field and explicitly checks focus restoration before Escape. Application authentication and retake behavior were not changed. A final wording-only refinement labels pending and submitted entries together as Current assessment attempts.
+
+Commands from skillbridge-frontend:
+
+```powershell
+& 'C:/Program Files/nodejs/npm.cmd' run lint
+& 'C:/Program Files/nodejs/npm.cmd' run build
+node --test
+python ../.agents/skills/webapp-testing/scripts/with_server.py --server "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174 --strictPort" --port 5174 -- python -u tests/student_modal_playwright.py
+```
+
+The browser command ran outside the restricted sandbox to permit localhost sockets. It used installed headless Chrome and synthetic fixtures; real-page integrations intercepted API requests. Browser results are in skillbridge-frontend/tests/artifacts/student-modal/results.json. Visual inspection included all five redesigned tabs and representative mobile/tablet/dark renders. Saved implementation previews: [desktop Overview](../outputs/ui-concepts/student-profile-2026-10-25/implemented/desktop-overview.png), [tablet Retake history](../outputs/ui-concepts/student-profile-2026-10-25/implemented/tablet-retake-history.png) and [mobile Recommendations](../outputs/ui-concepts/student-profile-2026-10-25/implemented/mobile-recommendations.png). These screenshots use synthetic data.
+
+Live authenticated services, physical devices and screen-reader announcements remain outside synthetic verification. Backend/database tests are unnecessary for this presentation-only change and were not run.
+
+## Historical implementation notes — 29 September 2026
+
+Implemented 29 September 2026. This is a frontend-only presentation change. Existing user changes in AGENTS.md, PROJECT_OVERVIEW.md, SKILL_SOURCES.md and the untracked design-taste skill were preserved. The following inventory and verification describe that earlier implementation; the October update above supersedes its visual layout.
 
 ## Architecture and initial audit
 

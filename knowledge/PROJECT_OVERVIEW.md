@@ -80,6 +80,10 @@ and fallback when explaining results.
   skill leaderboards and student details for admin/instructor dashboards; frontend
   evidence presentation, role scopes and synthetic responsive checks.
 
+- [Student profile details](STUDENT_DETAIL_MODAL_REDESIGN.md): Shared five-tab
+  instructor/admin modal, approved visual concepts, responsive phone/tablet layouts,
+  preserved result/placement meanings and synthetic interaction checks.
+
 - [Shared notification toasts](NOTIFICATION_TOASTS.md): App-wide countdown cards,
   hover/focus/touch pause, modal/fullscreen support, role/action coverage and local
   responsive/dark-mode browser verification.
