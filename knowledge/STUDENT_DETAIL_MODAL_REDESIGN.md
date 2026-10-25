@@ -2,6 +2,12 @@
 
 ## Approved visual implementation — 25 October 2026
 
+Dashboard follow-up: selecting a student from a skill leaderboard now leaves the
+leaderboard mounted underneath. Closing the student profile returns to its
+previous search, page and scroll position, with focus on the selected student;
+closing the leaderboard returns to the dashboard skill card. This applies to
+instructor and admin dashboards. See [dashboard verification](DASHBOARD_HIGHLIGHTS.md).
+
 Implemented the five user-approved [imagegen concepts](../outputs/ui-concepts/student-profile-2026-10-25/DESIGN_BRIEF.md) in the shared instructor/admin student profile. Production content still comes from the existing scoped records; illustrative companies, identity details and recommendation values from the mockups are not application data.
 
 - Student-specific dialog treatment: a 1240px maximum width, forest-green initials avatar, stronger identity heading, batch badge and explicit read-only state. Other dialog variants retain their existing width. The existing administrator footer and instructor assessment controls remain available where authorized.

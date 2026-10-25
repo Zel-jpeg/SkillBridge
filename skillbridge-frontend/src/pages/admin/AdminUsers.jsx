@@ -16,6 +16,7 @@ import StatusBadge       from '../../components/StatusBadge'
 import { useAdminUsers } from '../../hooks/admin/useAdminUsers'
 import { matchColor } from '../../utils/formatters'
 import Avatar from '../../components/Avatar'
+import StudentPerformanceCard from '../../components/StudentPerformanceCard'
 
 // ── Small page-scoped icons ───────────────────────────────────────
 const PlusIcon     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -45,7 +46,7 @@ export default function AdminUsers() {
     filterStatus, setFilterStatus, filterCourse, setFilterCourse, filterInstructor, setFilterInstructor,
     sortCol, sortDir, toggleSort,
     page, setPage, view, setView,
-    displayed, counts, instructorsList,
+    displayed, filtered, counts, instructorsList,
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
     approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
@@ -237,7 +238,7 @@ export default function AdminUsers() {
 
               <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-auto">
                 {[{ val: 'grid', Icon: GridIcon }, { val: 'list', Icon: ListIcon }].map(v => (
-                  <button key={v.val} onClick={() => setView(v.val)}
+                  <button key={v.val} aria-label={v.val === 'grid' ? 'Show cards' : 'Show list'} onClick={() => setView(v.val)}
                     className={`p-1.5 rounded-lg transition-colors ${view === v.val ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
                     <v.Icon />
                   </button>
@@ -249,9 +250,10 @@ export default function AdminUsers() {
 
             {/* Grid */}
             {displayed.length > 0 && (
-              <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3`}>
+              <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${activeTab === 'instructors' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
                 {displayed.map(u => {
                   const role = u.role || (u.instructorId ? 'instructor' : 'student')
+                  if (role === 'student') return <StudentPerformanceCard key={u.id} student={u} onOpen={selected => openUser(selected, 'student')} />
                   return (
                     <div key={u.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); openUser(u, role) }}
                       className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md cursor-pointer transition-shadow">
@@ -333,7 +335,7 @@ export default function AdminUsers() {
               </div>
             )}
 
-            <Pagination total={displayed.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
+            <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
           </div>
         )}
 

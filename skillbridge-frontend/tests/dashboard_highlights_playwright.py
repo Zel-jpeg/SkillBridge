@@ -4,8 +4,11 @@ Start Vite on 127.0.0.1:5197, or set DASHBOARD_TEST_URL to its local origin.
 """
 import json
 import os
+import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
+sys.path.insert(0, str(Path(__file__).parent / '.runtime'))
 from playwright.sync_api import sync_playwright, expect
 
 BASE = os.environ.get('DASHBOARD_TEST_URL', 'http://127.0.0.1:5197')
@@ -37,7 +40,10 @@ class Fixture:
     def __init__(self, browser, role, mode='normal'):
         self.role, self.mode = role, mode
         self.rows = [student(i) for i in range(1, 14)]
+        if mode == 'two_students':
+            self.rows = self.rows[:2]
         self.errors, self.mutations = [], []
+        self.analytics_calls = 0
         self.context = browser.new_context(viewport={'width': 1366, 'height': 1000}, reduced_motion='reduce')
         user = {'id': 99, 'role': role, 'name': 'Synthetic Staff', 'is_approved': True}
         self.context.add_init_script('''localStorage.setItem('sb-token','synthetic-only');
@@ -65,16 +71,20 @@ class Fixture:
         if path == '/api/auth/me/':
             return route.fulfill(json=self.user)
         if path == '/api/management/analytics/':
+            self.analytics_calls += 1
             if self.mode == 'stats_failure':
                 return route.fulfill(status=503, json={'error': 'Synthetic unavailable summary'})
             empty = self.mode == 'empty'
             summary = {'students': 0 if empty else 13, 'required_complete': 0 if empty else 10,
-                'completion_rate': None if empty else 76.9, 'approved': 0 if empty else 5,
+                'completion_rate': None if empty else 76.9, 'placement_rate': None if empty else 38.5, 'approved': 0 if empty else 5,
                 'approved_other_batch': 0, 'unplaced': 0 if empty else 8,
                 'awaiting_review': 0 if empty else 5, 'needs_followup': 0 if empty else 1,
-                'slots_remaining': 0 if empty else 20, 'slots_total': 25, 'pending_instructors': 0}
+                'slots_remaining': 0 if empty else 20, 'slots_total': 25, 'pending_instructors': 0 if empty or self.role != 'admin' else 2}
+            if self.mode == 'two_students':
+                summary.update(students=2, required_complete=1, completion_rate=50, approved=0,
+                    placement_rate=0, unplaced=2, needs_followup=0)
             rows = [] if empty else [{'id': row['id'], 'name': row['student_name'], 'batch_id': 1,
-                'reasons': ['Stopped / flagged'] if row['id'] == 2 else [], 'scores': {}, 'attempt_states': {}}
+                'reasons': ['Stopped / flagged'] if row['id'] == 2 and self.mode != 'two_students' else [], 'scores': {}, 'attempt_states': {}}
                 for row in self.rows]
             return route.fulfill(json={'role': self.role, 'generated_at': '2026-10-20T08:00:00Z',
                 'summary': summary, 'scope': {}, 'students': rows, 'placement_students': [],
@@ -111,7 +121,11 @@ class Fixture:
 
 
 def dialog(page):
-    return page.locator('dialog[open]')
+    return page.locator('dialog[open]').last
+
+
+def summary_values(summary, role):
+    return summary.locator('.dashboard-summary-value' if role == 'instructor' else ':scope > div > dd:first-of-type').all_text_contents()
 
 
 def geometry(page):
@@ -134,13 +148,43 @@ with sync_playwright() as p:
         print(f'Checking {role} dashboard', flush=True)
         fixture = Fixture(browser, role)
         page = fixture.open()
+        assert fixture.analytics_calls == 1, 'Header and dashboard must share one deduplicated analytics request'
+        expect(page.get_by_role('region', name='Needs attention', exact=True)).to_have_count(0)
+        bell = page.get_by_role('button', name=re.compile('^Open notifications'))
+        bell.focus()
+        page.keyboard.press('Enter')
+        notifications = page.get_by_role('region', name='Notifications', exact=True)
+        expect(notifications).to_be_visible()
+        expect(notifications.get_by_role('link')).to_have_count(3 if role == 'admin' else 2)
+        expect(page.locator('.sb-notification-badge')).to_have_text('3' if role == 'admin' else '2')
+        expect(notifications.get_by_role('link', name='Stopped / flagged', exact=False)).to_have_attribute('href', f'/{role}/reports?tab=assessments&group=reason%3AStopped+%2F+flagged')
+        expect(notifications.get_by_role('link', name=re.compile('Placement review'))).to_have_attribute('href', f'/{role}/reports?tab=placements&group=awaiting')
+        if role == 'admin':
+            expect(notifications.get_by_role('link', name=re.compile('Instructor approvals'))).to_have_attribute('href', '/admin/users?tab=pending')
+        page.keyboard.press('Escape')
+        expect(notifications).to_have_count(0)
+        expect(bell).to_be_focused()
+        bell.click()
+        page.get_by_role('button', name='Open profile menu', exact=True).click()
+        expect(notifications).to_have_count(0)
+        bell.click()
+        expect(page.locator('#sb-profile-menu')).to_have_count(0)
+        notifications.get_by_role('button', name='Close notifications', exact=True).click()
+        expect(bell).to_be_focused()
+        checks.append(f'{role}: scoped notification cards, shared request, grouped badge, Escape/focus and profile-menu coordination')
         summary = page.locator('dl[aria-label="Dashboard summary"]')
         expect(summary.locator(':scope > div')).to_have_count(5 if role == 'admin' else 4)
         expected = ['13', '10', '5', '5 / 13', '20'] if role == 'admin' else ['13', '10', '1', '5 / 13']
-        assert summary.locator(':scope > div > dd:first-of-type').all_text_contents() == expected
+        assert summary_values(summary, role) == expected
         assert summary.locator('dt').all_text_contents() == (
             ['Students in active batches', 'Required complete', 'Awaiting placement review', 'Placement progress', 'Remaining OJT slots']
-            if role == 'admin' else ['Enrolled students', 'Required complete', 'Students needing follow-up', 'Placement progress'])
+            if role == 'admin' else ['Enrolled students', 'Required complete', 'Needs follow-up', 'Placement progress'])
+        if role == 'instructor':
+            expect(summary.get_by_role('progressbar', name='Required complete percentage')).to_have_attribute('aria-valuenow', '76.9')
+            expect(summary.get_by_role('progressbar', name='Placement progress percentage')).to_have_attribute('aria-valuenow', '38.5')
+            expect(summary.get_by_text('of 13 students', exact=True)).to_be_visible()
+            expect(summary.get_by_text('1 student needs follow-up', exact=True)).to_be_visible()
+            expect(summary.get_by_role('link', name='Needs follow-up')).to_have_attribute('href', '/instructor/reports?tab=assessments&group=followup')
         page.screenshot(path=str(ARTIFACTS / f'{role}-summary-desktop.png'))
         checks.append(f'{role}: role-specific linked summary cards; completion, placement and follow-up stay separate')
         matches = page.get_by_role('region', name='Top matches', exact=True)
@@ -163,11 +207,39 @@ with sync_playwright() as p:
         podium = dialog(page).get_by_role('button', name="View Synthetic Student 01's details", exact=True)
         podium.focus()
         page.keyboard.press('Space')
+        expect(page.locator('dialog[open]')).to_have_count(2)
         expect(dialog(page).get_by_role('heading', name='Synthetic Student 01', exact=True)).to_be_visible()
         dialog(page).get_by_role('tab', name='Assessments').click()
-        expect(dialog(page).get_by_role('heading', name='Individual assessment results')).to_be_visible()
+        expect(dialog(page).get_by_role('heading', name='Assessment results', exact=True)).to_be_visible()
         expect(dialog(page).get_by_role('button', name='Approve retake', exact=False)).to_have_count(0)
         page.keyboard.press('Escape')
+        expect(page.locator('dialog[open]')).to_have_count(1)
+        expect(podium).to_be_focused()
+        expect(dialog(page).get_by_role('heading', name='Web Leaderboard', exact=True)).to_be_visible()
+        assert page.evaluate('document.body.style.overflow') == 'hidden'
+        # Keep search, page and scroll position when closing student details.
+        remaining = dialog(page).get_by_role('region', name='Remaining rankings')
+        remaining.get_by_role('searchbox', name='Search remaining students…').fill('Synthetic')
+        remaining.get_by_role('navigation', name='Remaining rankings pages').get_by_role('button', name='2', exact=True).click()
+        ranked = remaining.get_by_role('button', name="View Synthetic Student 09's details", exact=True)
+        ranked.scroll_into_view_if_needed()
+        scroll_before = page.locator('.lb-body').evaluate('el => el.scrollTop')
+        ranked.click()
+        expect(page.locator('dialog[open]')).to_have_count(2)
+        dialog(page).get_by_role('button', name='Close student details', exact=True).click()
+        expect(page.locator('dialog[open]')).to_have_count(1)
+        expect(ranked).to_be_focused()
+        expect(remaining.get_by_role('searchbox')).to_have_value('Synthetic')
+        expect(remaining.get_by_role('button', name='2', exact=True)).to_have_attribute('aria-current', 'page')
+        assert abs(page.locator('.lb-body').evaluate('el => el.scrollTop') - scroll_before) < 2
+        pending = dialog(page).get_by_role('button', name="View Synthetic Student 13's details", exact=True)
+        pending.click()
+        expect(page.locator('dialog[open]')).to_have_count(2)
+        page.mouse.click(2, 2)
+        expect(page.locator('dialog[open]')).to_have_count(1)
+        expect(pending).to_be_focused()
+        page.keyboard.press('Escape')
+        expect(page.locator('dialog[open]')).to_have_count(0)
         expect(skill).to_be_focused()
         skills.get_by_role('button', name='View Zero score ranking', exact=True).click()
         expect(dialog(page).get_by_role('heading', name='Zero score Leaderboard', exact=True)).to_be_visible()
@@ -199,31 +271,61 @@ with sync_playwright() as p:
         search.fill('')
         checks.append(f'{role}: card and row details; search keeps highlights scoped to whole dashboard')
 
-        for width in [375, 768, 1366]:
+        for width in [320, 375, 768, 1024, 1366, 1920]:
             page.set_viewport_size({'width': width, 'height': 1000})
             for dark in [False, True]:
                 page.evaluate('(dark) => document.documentElement.classList.toggle("dark", dark)', dark)
+                summary.evaluate('el => el.scrollIntoView({block: "center"})')
+                geometry(page)
+                bell.click()
+                bounds = notifications.bounding_box()
+                assert bounds['x'] >= 0 and bounds['x'] + bounds['width'] <= width + 1
+                assert notifications.evaluate('el => el.scrollWidth <= el.clientWidth + 1')
+                if width in [375, 1366]:
+                    page.screenshot(path=str(ARTIFACTS / f'{role}-notifications-{width}-{"dark" if dark else "light"}.png'))
+                page.keyboard.press('Escape')
+                if role == 'instructor':
+                    columns = summary.evaluate('el => getComputedStyle(el).gridTemplateColumns.split(" ").length')
+                    assert columns == (4 if width >= 1280 else 2 if width >= 560 else 1)
+                    for item in summary.locator(':scope > div').all():
+                        assert item.evaluate('el => el.scrollWidth <= el.clientWidth + 1')
+                    if width in [375, 1366]:
+                        summary.screenshot(path=str(ARTIFACTS / f'instructor-cards-{width}-{"dark" if dark else "light"}.png'))
                 skills.scroll_into_view_if_needed()
                 geometry(page)
                 if width in [375, 1366]:
                     page.screenshot(path=str(ARTIFACTS / f'{role}-{width}-{"dark" if dark else "light"}.png'))
             skills.get_by_role('button', name='View Web ranking', exact=True).click()
             geometry(page)
+            selected = dialog(page).get_by_role('button', name="View Synthetic Student 01's details", exact=True)
+            selected.click()
+            expect(page.locator('dialog[open]')).to_have_count(2)
+            geometry(page)
+            page.keyboard.press('Escape')
+            expect(page.locator('dialog[open]')).to_have_count(1)
+            expect(selected).to_be_focused()
             page.keyboard.press('Escape')
         page.set_viewport_size({'width': 375, 'height': 1000})
-        summary.scroll_into_view_if_needed()
+        summary.evaluate('el => el.scrollIntoView({block: "center"})')
         geometry(page)
         page.screenshot(path=str(ARTIFACTS / f'{role}-summary-mobile-dark.png'))
-        checks.append(f'{role}: 375/768/1366px, dark/light, dialog and page geometry')
+        checks.append(f'{role}: 320/375/768/1024/1366/1920px, dark/light, dialog and page geometry')
         fixture.close()
 
         for mode in ['empty', 'failure']:
             fixture = Fixture(browser, role, mode)
             page = fixture.open()
             if mode == 'empty':
+                page.get_by_role('button', name=re.compile('^Open notifications')).click()
+                expect(page.get_by_text("You're all caught up", exact=True)).to_be_visible()
+                expect(page.locator('.sb-notification-badge')).to_have_count(0)
+                page.keyboard.press('Escape')
                 summary = page.locator('dl[aria-label="Dashboard summary"]')
                 expect(summary.locator(':scope > div')).to_have_count(5 if role == 'admin' else 4)
-                assert summary.locator(':scope > div > dd:first-of-type').all_text_contents() == (['0', '0', '0', '0 / 0', '0'] if role == 'admin' else ['0', '0', '0', '0 / 0'])
+                assert summary_values(summary, role) == (['0', '0', '0', '0 / 0', '0'] if role == 'admin' else ['0', '0', '0', '0 / 0'])
+                if role == 'instructor':
+                    expect(summary.get_by_role('progressbar')).to_have_count(0)
+                    expect(summary.get_by_text('No students need follow-up', exact=True)).to_be_visible()
                 expect(page.get_by_text('No current matches available.', exact=False)).to_be_visible()
                 expect(page.get_by_text('No final skill results available yet.', exact=False)).to_be_visible()
             else:
@@ -234,15 +336,37 @@ with sync_playwright() as p:
             fixture = Fixture(browser, role, 'complete_locked')
             page = fixture.open()
             summary = page.locator('dl[aria-label="Dashboard summary"]')
-            assert summary.locator(':scope > div > dd:first-of-type').all_text_contents() == ['13', '10', '1', '5 / 13']
+            assert summary_values(summary, role) == ['13', '10', '1', '5 / 13']
             expect(page.get_by_role('button', name='View top match for Synthetic Student 01', exact=True)).to_have_count(0)
             fixture.close()
             checks.append('instructor: completed required work stays complete when final recommendations are locked')
+            fixture = Fixture(browser, role, 'two_students')
+            page = fixture.open()
+            summary = page.locator('dl[aria-label="Dashboard summary"]')
+            assert summary_values(summary, role) == ['2', '1', '0', '0 / 2']
+            expect(summary.get_by_role('progressbar', name='Required complete percentage')).to_have_attribute('aria-valuenow', '50')
+            expect(summary.get_by_role('progressbar', name='Placement progress percentage')).to_have_attribute('aria-valuenow', '0')
+            expect(summary.get_by_text('No students need follow-up', exact=True)).to_be_visible()
+            summary.screenshot(path=str(ARTIFACTS / 'instructor-cards-two-students.png'))
+            cards = summary.locator(':scope > div')
+            for index, expected_url in enumerate(['tab=assessments', 'tab=assessments&group=complete', 'tab=assessments&group=followup', 'tab=placements']):
+                cards.nth(index).click()
+                expect(page).to_have_url(BASE + '/instructor/reports?' + expected_url)
+                page.go_back()
+                expect(summary).to_be_visible()
+            fixture.close()
+            checks.append('instructor: 2-student concept, real zero placement bar, reassuring zero follow-up and all four report destinations')
         else:
             fixture = Fixture(browser, role, 'stats_failure')
             page = fixture.open()
             expect(page.locator('dl[aria-label="Dashboard summary"]')).to_have_count(0)
             expect(page.get_by_role('button', name='Retry', exact=True)).to_be_visible()
+            page.get_by_role('button', name=re.compile('^Open notifications')).click()
+            expect(page.get_by_text('Reminders are unavailable.', exact=True)).to_be_visible()
+            expect(page.get_by_text("You're all caught up", exact=True)).to_have_count(0)
+            fixture.mode = 'empty'
+            page.get_by_role('button', name='Retry reminders', exact=True).click()
+            expect(page.get_by_text("You're all caught up", exact=True)).to_be_visible()
             fixture.close()
             checks.append('admin: failed summary API shows retry instead of zero counts')
     browser.close()

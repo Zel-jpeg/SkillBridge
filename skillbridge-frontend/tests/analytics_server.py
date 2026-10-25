@@ -38,6 +38,10 @@ foreign = Batch.objects.create(name='Foreign current cohort', instructor=other)
 company = Company.objects.create(name='Synthetic Agency', address={'city': 'Davao City'})
 position = Position.objects.create(company=company, title='Developer Intern', slots_available=20)
 second = Position.objects.create(company=company, title='Network Intern', slots_available=5)
+area_company = Company.objects.create(name='Synthetic Panabo Agency', address={'city': 'Panabo City'})
+Position.objects.create(company=area_company, title='Panabo Support Intern', slots_available=3)
+tagum_company = Company.objects.create(name='Synthetic Tagum Agency', address={'city': 'Tagum City'})
+Position.objects.create(company=tagum_company, title='Tagum Support Intern', slots_available=2)
 categories = [SkillCategory.objects.create(name=name) for name in ['Database', 'Networking', 'Programming', 'Web']]
 for category in categories:
     PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=60)

@@ -1,0 +1,50 @@
+.ap-panels { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; align-items:start; color:#111827; font-size:12px; line-height:1.5; }
+.ap-panel { min-width:0; padding:24px; border:1px solid #e5e7eb; border-radius:16px; background:#fff; container-type:inline-size; }
+.ap-header { display:flex; align-items:flex-start; gap:12px; }
+.ap-icon { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; border-radius:12px; background:#ecfdf5; color:#15803d; }
+.ap-header > div { min-width:0; }
+.ap-header h3 { font-size:14px; line-height:1.5; font-weight:600; overflow-wrap:anywhere; }
+.ap-header p { margin-top:3px; color:#64748b; }
+.ap-summary { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:24px 0; border-bottom:1px solid #e5e7eb; margin-bottom:20px; }
+.ap-summary strong { display:block; color:#15803d; font-size:30px; line-height:1.2; font-weight:650; letter-spacing:-.02em; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.ap-summary p { color:#64748b; margin-top:5px; }
+.ap-summary > span { background:#f1f5f9; color:#64748b; border-radius:8px; padding:6px 10px; font-weight:500; }
+.ap-rows { display:grid; gap:20px; max-height:40rem; overflow-y:auto; overscroll-behavior-y:contain; scrollbar-gutter:stable; padding:3px; margin:-3px; }
+.ap-rows h4 { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.ap-batch,.ap-assessment { min-width:0; border:1px solid #e2e8f0; border-radius:12px; padding:16px; background:#f8fafc; }
+.ap-row-title { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:5px 12px; }
+.ap-row-title > span,.ap-assessment-heading p { color:#64748b; }
+.ap-assessment-heading p { margin-top:4px; overflow-wrap:anywhere; }
+.ap-track { display:flex; height:10px; margin-top:14px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+.ap-track > span { display:block; height:100%; background:#16a34a; }
+.ap-track:not(.ap-attempt-track) > span { border-radius:inherit; }
+.ap-attempt-track { height:12px; }
+.ap-progress-caption { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; margin-top:7px; color:#64748b; }
+.ap-counts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.ap-counts > div { min-width:0; background:#fff; border:1px solid #e2e8f0; border-radius:9px; padding:10px 12px; }
+.ap-counts dt { display:flex; align-items:center; gap:7px; color:#64748b; }
+.ap-counts dd { padding-left:15px; font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; }
+.ap-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ap-dot--complete { background:#16a34a; }.ap-dot--remaining { background:#94a3b8; }
+.ap-batch-action { display:flex; width:100%; min-height:44px; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding:10px 12px; border:1px solid #86efac; border-radius:9px; background:#fff; color:#15803d; text-align:left; cursor:pointer; transition:background .15s,border-color .15s; }
+.ap-batch-action strong { display:block; font-weight:600; }.ap-batch-action small { display:block; margin-top:2px; font-size:12px; color:#64748b; }
+.ap-batch-action > svg,.ap-statuses button > svg { flex-shrink:0; }
+.ap-statuses { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; }
+.ap-statuses button { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:64px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:9px; background:#fff; color:#64748b; text-align:left; cursor:pointer; transition:background .15s,border-color .15s; }
+.ap-statuses button > span { min-width:0; }.ap-status-label { display:flex; align-items:center; gap:7px; overflow-wrap:anywhere; }
+.ap-statuses strong { display:block; padding-left:15px; font-size:18px; font-weight:600; color:#111827; font-variant-numeric:tabular-nums; }
+.ap-batch-action:hover,.ap-statuses button:hover,.ap-batch-action[aria-pressed=true],.ap-statuses button[aria-pressed=true] { border-color:#4ade80; background:#f0fdf4; }
+.ap-batch-action:focus-visible,.ap-statuses button:focus-visible,.ap-pagination button:focus-visible { outline:2px solid #15803d; outline-offset:3px; }
+.ap-helper,.ap-empty { margin-top:16px; color:#64748b; }.ap-empty { margin:0; padding:16px 0; }
+.ap-pagination { margin-top:18px; }.ap-pagination button { min-height:44px; min-width:36px; }
+.dark .ap-panels { color:#f1f5f9; }.dark .ap-panel { border-color:#1f2937; background:#111827; }.dark .ap-icon { background:#123823; color:#86efac; }
+.dark .ap-header p,.dark .ap-summary p,.dark .ap-summary > span,.dark .ap-row-title > span,.dark .ap-assessment-heading p,.dark .ap-progress-caption,.dark .ap-counts dt,.dark .ap-batch-action small,.dark .ap-statuses button,.dark .ap-helper,.dark .ap-empty { color:#a8b5c7; }
+.dark .ap-summary { border-color:#334155; }.dark .ap-summary > span { background:#1e293b; }.dark .ap-summary strong,.dark .ap-batch-action { color:#86efac; }
+.dark .ap-batch,.dark .ap-assessment { border-color:#334155; background:#182234; }.dark .ap-track { background:#334155; }
+.dark .ap-counts > div,.dark .ap-statuses button,.dark .ap-batch-action { background:#111827; border-color:#334155; }.dark .ap-statuses strong { color:#f1f5f9; }
+.dark .ap-batch-action:hover,.dark .ap-statuses button:hover,.dark .ap-batch-action[aria-pressed=true],.dark .ap-statuses button[aria-pressed=true] { background:#123823; border-color:#4ade80; }
+.dark .ap-batch-action:focus-visible,.dark .ap-statuses button:focus-visible { outline-color:#4ade80; }
+@media (max-width:1199px) { .ap-panels { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:639px) { .ap-panel { padding:18px; }.ap-header { gap:10px; }.ap-icon { width:36px; height:36px; border-radius:10px; }.ap-summary strong { font-size:28px; } }
+@container (max-width:330px) { .ap-statuses,.ap-counts { grid-template-columns:minmax(0,1fr); }.ap-batch,.ap-assessment { padding:12px; }.ap-pagination > div > div { flex-wrap:wrap; justify-content:center; } }
+@media (prefers-reduced-motion:reduce) { .ap-batch-action,.ap-statuses button { transition:none; } }

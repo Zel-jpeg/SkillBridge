@@ -1,5 +1,10 @@
 # Company-first placement and shared suggestions
 
+25 October UI follow-up: the approved three-tab visual concepts are implemented
+for both staff roles. See [placement collection redesign](PLACEMENT_COLLECTION_UI.md)
+for card/table/details behavior and verification. The placement, capacity and
+authorization contract below remains unchanged.
+
 Implemented on `update-placement-ui-ux`, simplified at the user's request on
 21 October 2026. This version adds **zero tables** and **one column** to the existing
 `OJTPlacement` table. Only explicit authorized approval finalizes placement.

@@ -1,5 +1,12 @@
 # Agency capacity and company-area placement counts
 
+Terminology update, 26 October 2026: application labels, report exports and current
+API messages now use **slots** for position capacity and **batch / selected
+students** instead of cohort. Earlier references below retain their original
+wording. Capacity meanings and API field names are unchanged. The analytics
+placement section now has a paginated shared-slots table and a clear Company area
+filter chip; see [implementation notes](ANALYTICS_IMPLEMENTATION.md).
+
 The user confirmed on 18 October 2026 that the outline-defense panel meant:
 
 - Agency demand is configured position capacity. Five seats minus one approved

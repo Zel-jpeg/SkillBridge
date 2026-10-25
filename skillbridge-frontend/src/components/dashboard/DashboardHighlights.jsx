@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import Avatar from '../Avatar'
 import { dashboardHighlights } from '../../utils/dashboardStudents'
 import { matchColor, scoreColor } from '../../utils/formatters'
@@ -22,7 +22,6 @@ function ViewIcon() {
 export default function DashboardHighlights({ students, onSelectStudent }) {
   const { leaders, topMatches } = useMemo(() => dashboardHighlights(students), [students])
   const [category, setCategory] = useState(null)
-  const skillTrigger = useRef(null)
   const skill = leaders.find(leader => leader.category === category)
   return <>
     <section aria-label="Top matches" className="space-y-3">
@@ -42,13 +41,13 @@ export default function DashboardHighlights({ students, onSelectStudent }) {
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold text-gray-900 dark:text-white">Top performers by skill</h2><p className="text-xs text-gray-500 dark:text-gray-400">Select a skill to see the full ranking</p></div>
       {leaders.length ? <div className={grid}>{leaders.map(({ category, student, score }, index) => {
         const palette = palettes[index % palettes.length]
-        return <button type="button" key={category} aria-label={`View ${category} ranking`} aria-haspopup="dialog" onClick={event => { skillTrigger.current = event.currentTarget; setCategory(category) }} className={card}>
+        return <button type="button" key={category} aria-label={`View ${category} ranking`} aria-haspopup="dialog" onClick={() => setCategory(category)} className={card}>
           <div className="flex items-start justify-between gap-2"><span className={`min-w-0 break-words rounded-full px-2.5 py-1 text-xs font-medium ${palette.pill}`}>{category}</span><ViewIcon /></div>
           <p className="mt-3 truncate text-xs font-semibold text-gray-900 dark:text-white">{student.name}</p><p className={`mt-0.5 text-lg font-bold ${scoreColor(score)}`}>{score}%</p>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div className={`h-full rounded-full ${palette.bar}`} style={{ width: barWidth(score) }} /></div>
         </button>
       })}</div> : <p className="rounded-2xl border border-dashed border-gray-200 p-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">No final skill results available yet. Locked or missing results are excluded from rankings.</p>}
     </section>
-    {skill && <Suspense fallback={<p role="status" className="text-xs text-gray-500">Loading skill ranking…</p>}><SkillLeaderboardModal skill={skill} allStudents={students} onClose={() => setCategory(null)} onSelectStudent={student => { setCategory(null); onSelectStudent(student, skillTrigger.current) }} /></Suspense>}
+    {skill && <Suspense fallback={<p role="status" className="text-xs text-gray-500">Loading skill ranking…</p>}><SkillLeaderboardModal skill={skill} allStudents={students} onClose={() => setCategory(null)} onSelectStudent={onSelectStudent} /></Suspense>}
   </>
 }

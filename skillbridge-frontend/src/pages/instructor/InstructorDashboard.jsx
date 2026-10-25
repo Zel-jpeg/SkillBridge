@@ -14,6 +14,7 @@ import SearchBar                from '../../components/SearchBar'
 import EmptyState               from '../../components/EmptyState'
 import { useInstructorDashboard } from '../../hooks/instructor/useInstructorDashboard'
 import Avatar                   from '../../components/Avatar'
+import CompanyImage from '../../components/CompanyImage'
 import PlacementStatusCard      from '../../components/placements/PlacementStatusCard'
 
 function scoreColor(pct) {
@@ -98,7 +99,7 @@ export default function InstructorDashboard() {
               {instructor.subject}{loading ? ' · Loading batch…' : studentsList.length > 0 ? ` · ${studentsList[0]?.batch?.name || 'Active batch'}` : ' · No active batch'}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex max-w-full items-center gap-2 flex-wrap">
             <button onClick={() => navigate('/instructor/students')}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2.5"/><line x1="19" y1="8" x2="19" y2="14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><line x1="22" y1="11" x2="16" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
@@ -218,7 +219,7 @@ export default function InstructorDashboard() {
                           )}
                           {s.top_recommendations?.[0] && (
                             <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-lg px-2.5 py-1.5">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                              <CompanyImage name={s.top_recommendations[0].company} imageUrl={s.top_recommendations[0].company_image_url} className="h-6 w-6 rounded-md" />
                               <span className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">{s.top_recommendations[0].company}</span>
                               <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{s.top_recommendations[0].match_score}%</span>
                             </div>

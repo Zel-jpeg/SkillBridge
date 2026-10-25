@@ -70,9 +70,17 @@ and fallback when explaining results.
   staff workflow, shared provisional allocation using existing tables, capacity,
   permissions and rollout.
 
+- [Placement collection redesign](PLACEMENT_COLLECTION_UI.md): Approved company,
+  allocation and decision-history concepts implemented for both staff roles,
+  responsive details/collections, company position review with eight-student
+  candidate pages and preserved workflow verification.
+
 - [Staff analytics implementation](ANALYTICS_IMPLEMENTATION.md): Role-specific
   linked dashboard cards, scoped Reports & Analytics, chart drill-downs, snapshot
-  exports, recorded activity/history limits and local verification.
+  exports, student card/list views with shared eight-student pages, completion
+  and attempt panels with direct drill-downs, a Skills count matrix and separate
+  company-match filters, area-filtered placement/slot panels, simpler batch/slot
+  terminology, recorded activity/history limits and local verification.
 - [Approved dashboard and analytics plan](DASHBOARD_AND_ANALYTICS_PLAN.md): Design
   rationale, metric definitions and historical-snapshot boundary.
 
@@ -84,9 +92,21 @@ and fallback when explaining results.
   instructor/admin modal, approved visual concepts, responsive phone/tablet layouts,
   preserved result/placement meanings and synthetic interaction checks.
 
+- [Student collection cards](STUDENT_CARD_COLLECTIONS.md): Shared dashboard-inspired
+  instructor/admin student cards, combined evidence guards, preserved actions,
+  corrected admin pagination and synthetic responsive checks.
+
 - [Shared notification toasts](NOTIFICATION_TOASTS.md): App-wide countdown cards,
   hover/focus/touch pause, modal/fullscreen support, role/action coverage and local
   responsive/dark-mode browser verification.
+
+- [Staff notification reminders](STAFF_NOTIFICATIONS.md): Header bell and grouped
+  current action cards, scoped follow-up/placement/approval links, live-query reuse
+  and distinct loading/error/empty states.
+
+- [Student notification reminders](STUDENT_NOTIFICATIONS.md): Manila deadline
+  windows, current retake/result/approved-placement notices, private staff history
+  boundary, shared refresh and reviewed placement/capacity workflow.
 
 - [Release and recovery handoff](RELEASE_AND_RECOVERY_HANDOFF.md): Owner-run
   Vercel/Railway release, safe readiness probe, isolated restore and pending live checks.

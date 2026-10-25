@@ -435,7 +435,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
                 <div>
                   <label htmlFor={`position-${pos.id}-slots`} className="block text-xs font-semibold text-gray-600 dark:text-gray-300">Slots available</label>
-                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Open seats for this role</p>
+                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Open slots for this role</p>
                 </div>
                 <input id={`position-${pos.id}-slots`} type="number" min="0" value={pos.slots} onChange={e => setPosField(idx, 'slots', e.target.value)}
                   className="w-24 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />

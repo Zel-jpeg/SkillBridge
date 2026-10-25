@@ -12,18 +12,34 @@ export function analyticsCards(data, role) {
   const rate = value => value == null ? 'No students in scope' : `${value}% of students in scope`
   const target = (tab, group = '') => `/${role}/reports?${new URLSearchParams({ tab, ...(group && { group }) })}`
   const cards = [
-    { label: role === 'admin' ? 'Students in active batches' : 'Enrolled students', value: summary.students, description: role === 'admin' ? 'Distinct students in the current cohort' : 'Students in the current active batch', to: target('assessments') },
+    { label: role === 'admin' ? 'Students in active batches' : 'Enrolled students', value: summary.students, description: role === 'admin' ? 'Distinct students in the selected batches' : 'Students in the current active batch', to: target('assessments') },
     { label: 'Required complete', value: summary.required_complete, description: rate(summary.completion_rate), tone: 'success', to: target('assessments', 'complete') },
   ]
   if (role === 'admin') cards.push({ label: 'Awaiting placement review', value: summary.awaiting_review, description: 'Unplaced with current recommendations', tone: summary.awaiting_review ? 'warning' : 'neutral', to: target('placements', 'awaiting') })
   else cards.push({ label: 'Students needing follow-up', value: summary.needs_followup, description: 'Distinct students with an actionable issue', tone: summary.needs_followup ? 'attention' : 'neutral', to: target('assessments', 'followup') })
   cards.push({ label: 'Placement progress', value: `${summary.approved} / ${summary.students}`, description: `${summary.unplaced} unplaced${summary.approved_other_batch ? ` · ${summary.approved_other_batch} approved in another batch` : ''}`, tone: 'success', to: target('placements') })
   if (role === 'admin') cards.push({ label: 'Remaining OJT slots', value: summary.slots_remaining, description: 'Shared system-wide capacity', to: target('placements', 'capacity') })
+  if (role === 'instructor') {
+    const count = summary.students
+    const details = [
+      { kind: 'enrolled', description: 'In the active batch' },
+      { kind: 'complete', supportingValue: `of ${count} students`, progress: summary.completion_rate,
+        description: summary.completion_rate == null ? 'No students in scope' : `${summary.completion_rate}% completed` },
+      { kind: 'followup', label: 'Needs follow-up', description: summary.needs_followup
+        ? `${summary.needs_followup} student${summary.needs_followup === 1 ? '' : 's'} need${summary.needs_followup === 1 ? 's' : ''} follow-up` : 'No students need follow-up' },
+      { kind: 'placement', progress: summary.placement_rate,
+        description: `${summary.unplaced} student${summary.unplaced === 1 ? '' : 's'} unplaced${summary.approved_other_batch ? ` · ${summary.approved_other_batch} approved in another batch` : ''}` },
+    ]
+    return cards.map((card, index) => ({ ...card, ...details[index] }))
+  }
   return cards
 }
 
 export function selectAnalyticsStudents(data, tab, group, search = '') {
-  let rows = tab === 'placements' ? data.placement_students : data.students
+  // Status counts summarize selected students independently of company filters.
+  // Company/area drill-downs and the default placement records use filtered data.
+  const studentStatus = ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group)
+  let rows = tab === 'placements' && !studentStatus ? data.placement_students : data.students
   if (group === 'complete') rows = rows.filter(row => row.required_complete)
   else if (group === 'incomplete') rows = rows.filter(row => !row.required_complete)
   else if (group === 'followup') rows = rows.filter(row => row.reasons.length)
@@ -44,8 +60,8 @@ export function selectAnalyticsStudents(data, tab, group, search = '') {
 
 // All table exports use the already displayed snapshot, never a second GET.
 export function analyticsTable(data, tab, group, students) {
-  if (group === 'geography') return { title: 'Residence and company-area comparison', columns: ['Area', 'Cohort residents', 'Unplaced cohort residents', 'Approved deployments to companies', 'Companies with configured positions', 'Shared configured seats', 'Shared remaining seats'], rows: data.geography.map(row => [row.name, row.residents, row.unplaced_residents, row.approved_deployments, row.companies, row.total_slots, row.remaining_slots]) }
-  if (group === 'capacity') return { title: 'Shared position capacity', columns: ['Company', 'Position', 'Company area', 'Configured seats', 'Approved assignments', 'Remaining seats'],
+  if (group === 'geography') return { title: 'Residence and company-area comparison', columns: ['Area', 'Selected student residents', 'Unplaced selected student residents', 'Approved deployments to companies', 'Companies with configured positions', 'Shared configured slots', 'Shared remaining slots'], rows: data.geography.map(row => [row.name, row.residents, row.unplaced_residents, row.approved_deployments, row.companies, row.total_slots, row.remaining_slots]) }
+  if (group === 'capacity') return { title: 'Shared position capacity', columns: ['Company', 'Position', 'Company area', 'Configured slots', 'Approved assignments', 'Remaining slots'],
     rows: data.capacity.map(row => [row.company, row.name, row.area, row.total, row.occupied, row.remaining]) }
   if (group === 'assessments') return { title: 'Assessment completion', columns: ['Assessment', 'Batch', 'Publication', 'Assigned', 'Valid submitted', 'In progress', 'Not started', 'Stopped / flagged', 'Retakes approved'],
     rows: data.assessments.map(row => [row.name, row.batch, row.publication_status, row.assigned, row.submitted, row.in_progress, row.not_started, row.stopped, row.retake_approved]) }
@@ -61,14 +77,14 @@ export function analyticsSelectionLabel(data, group) {
   const [kind, id, state] = group.split(':')
   const states = { submitted: 'Valid submitted', in_progress: 'In progress', not_started: 'Not started', stopped: 'Stopped / flagged', strong: 'Strong', fair: 'Fair', needs_work: 'Needs work' }
   if (kind === 'reason') return group.slice(7)
-  if (kind === 'band') return `${group.slice(5)} best matches`
+  if (kind === 'band') return ({ Strong: 'Strong fit · best current company match', Fair: 'Fair fit · best current company match', Low: 'Low fit · best current company match', 'No current match': 'No current recommendation', Locked: 'Final results locked' })[group.slice(5)] || 'Selected company match group'
   if (kind === 'skill') return `${data.skills.find(row => String(row.id) === id)?.name || 'Selected category'} · ${states[state] || 'All evidence'}`
   if (kind === 'attempt') return `${data.assessments.find(row => String(row.id) === id)?.name || 'Selected assessment'} · ${states[state] || 'All attempts'}`
   if (kind === 'batch') return data.options.batches.find(row => String(row.id) === id)?.name || 'Selected batch'
   if (kind === 'company') return data.options.companies.find(row => String(row.id) === id)?.name || 'Selected company'
   if (kind === 'area') return `Company area: ${group.slice(5)}`
-  if (group === 'geography') return 'Cohort residence counts are separate from company deployment and shared capacity'
-  return ({ complete: 'Required assessments complete', incomplete: 'Incomplete required assessments', followup: 'Students needing follow-up', awaiting: 'Awaiting placement review', approved: 'Approved in cohort', approved_other_batch: 'Approved in another batch', unplaced: 'Unplaced', capacity: 'Shared position capacity', assessments: 'Assessment completion', skills: 'Combined skill distribution', activity: 'Recorded submission activity' })[group] || 'Selected records'
+  if (group === 'geography') return 'Selected student residence counts are separate from company deployment and shared capacity'
+  return ({ complete: 'Required assessments complete', incomplete: 'Incomplete required assessments', followup: 'Students needing follow-up', awaiting: 'Awaiting placement review', approved: 'Approved in selected batches', approved_other_batch: 'Approved in another batch', unplaced: 'Unplaced', capacity: 'Shared position capacity', assessments: 'Assessment completion', skills: 'Combined skill distribution', activity: 'Recorded submission activity' })[group] || 'Selected records'
 }
 
 export function analyticsFilterText(data) {

@@ -5,7 +5,7 @@ import DataSection from '../../components/DataSection'
 
 import { useNavigate }         from 'react-router-dom'
 import StudentModal            from '../../components/instructor/StudentModal'
-import { SkillScoreRow }       from '../../components/SkillTagBadge'
+import StudentPerformanceCard from '../../components/StudentPerformanceCard'
 import EnrollModal             from '../../components/instructor/EnrollModal'
 import ConfirmModal            from '../../components/admin/ConfirmModal'
 import Pagination              from '../../components/Pagination'
@@ -29,19 +29,12 @@ function scoreColor(pct) {
   if (pct >= 60)   return 'text-amber-600 dark:text-amber-400'
   return 'text-rose-500 dark:text-rose-400'
 }
-function scoreBgBar(pct) {
-  if (pct >= 80) return 'bg-green-600'
-  if (pct >= 60) return 'bg-amber-500'
-  return 'bg-rose-500'
-}
+
 function avg(scores) {
   const vals = Object.values(scores ?? {})
   return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null
 }
-function topSkill(scores) {
-  const e = Object.entries(scores ?? {}); if (!e.length) return null
-  return e.reduce((a, b) => b[1] > a[1] ? b : a)
-}
+
 
 export default function EnrolledStudents() {
   const navigate = useNavigate()
@@ -113,7 +106,7 @@ export default function EnrolledStudents() {
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2"><PlusIcon /> Start New Batch</h3>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Give this cohort a school-year name.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Give this batch a school-year name.</p>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Batch Name</label>
@@ -243,7 +236,7 @@ export default function EnrolledStudents() {
           </div>
           <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-auto">
             {[{v:'grid',Icon:GridIcon},{v:'list',Icon:ListIcon}].map(vi => (
-              <button key={vi.v} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
+              <button key={vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
             ))}
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{filtered.length} students</p>
@@ -259,70 +252,8 @@ export default function EnrolledStudents() {
           <>
             {/* Grid */}
             <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4`}>
-              {paginated.map(s => {
-                const overall = avg(s.scores), top = topSkill(s.scores)
-                return (
-                  <div key={s.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); setSelectedStudent(s) }}
-                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 transition-all cursor-pointer">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar name={s.name} photoUrl={s.photoUrl} className="w-10 h-10 rounded-full text-sm" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{s.name}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{s.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <StatusBadge status={s.status} />
-                        {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors" title="Remove"><TrashIcon /></button>}
-                      </div>
-                    </div>
-                    <PlacementStatusCard placement={s.placement} audience="instructor" compact />
-                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">{s.completedRequiredCount} of {s.totalRequiredCount} required · {s.remainingRequiredCount} remaining · {s.recommendationsLocked ? 'Recommendations locked' : 'Recommendations unlocked'}</p>
-                    {s.status === 'completed' ? (
-                      <div className="flex flex-col gap-3">
-                        {/* Overall bar */}
-                        <div>
-                          <div className="flex justify-between mb-1"><span className="text-xs text-gray-500 dark:text-gray-400">Overall</span><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall}%</span></div>
-                          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreBgBar(overall)}`} style={{ width: `${overall}%` }} /></div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                          {categories.map(cat => {
-                            const sc = s.scores[cat]
-                            if (sc === undefined) return null
-                            return <SkillScoreRow key={cat} category={cat} score={sc} tag={s.tags?.[cat]} compact />
-                          })}
-                        </div>
-                        {/* Best skill */}
-                        {top && <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg><span className="text-xs text-gray-500 dark:text-gray-400">Best in</span><span className="text-xs font-semibold text-gray-900 dark:text-white">{top[0]}</span><span className="ml-auto text-xs font-bold text-green-600 dark:text-green-400">{top[1]}%</span></div>}
-                        {s.top_recommendations?.[0] && (
-                          <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-lg px-2.5 py-1.5">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">{s.top_recommendations[0].company}</span>
-                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{s.top_recommendations[0].match_score}%</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-                        </div>
-                        <p className={`text-xs text-center ${s.status === 'stopped' ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400 dark:text-gray-600'}`}>
-                          {s.status === 'stopped' ? s.stoppedReason || 'Assessment stopped and flagged' : 'Waiting for assessment'}
-                        </p>
-                        <div className="flex flex-wrap gap-1 justify-center">
-                          {categories.slice(0, 4).map(c => (
-                            <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">{c.split(' ')[0]}</span>
-                          ))}
-                          {categories.length > 4 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-700">+{categories.length - 4}</span>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {paginated.map(student => <StudentPerformanceCard key={student.id} student={student} categories={categories}
+                onOpen={selected => setSelectedStudent(selected)} onRemove={isArchived ? undefined : selected => setConfirmRemove(selected)} />)}
             </div>
 
             {/* List */}
