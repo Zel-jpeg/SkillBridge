@@ -1,3 +1,4 @@
+import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminUsers.jsx  (SLIMMED — 1676 → ~280 lines)
 // All data + logic now in useAdminUsers.js
@@ -158,7 +159,7 @@ export default function AdminUsers() {
           </div>
         </div>
 
-        <DataSection url="/api/admin/users/" pending={initialUsersPending} layout="table">
+
 {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {TABS.map(t => (
@@ -176,7 +177,7 @@ export default function AdminUsers() {
         </div>
 
         {/* ── PENDING TAB ── simple approve/reject list */}
-        {activeTab === 'pending' && (
+{activeTab === 'pending' && <DataSection url="/api/admin/users/" pending={initialUsersPending} layout="allocation" label="Loading instructor requests">
           <div className="space-y-2">
             {pendingInstructors.length === 0 ? (
               <EmptyState message="No pending instructor requests." />
@@ -205,7 +206,7 @@ export default function AdminUsers() {
               </div>
             ))}
           </div>
-        )}
+        </DataSection>}
 
         {/* ── ALL OTHER TABS ── full filter + table/grid */}
         {activeTab !== 'pending' && (
@@ -216,19 +217,19 @@ export default function AdminUsers() {
 
               {activeTab === 'students' && (
                 <>
-                  <select value={filterCourse} onChange={e => setFilterCourse(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
+                  <select aria-label="Filter students by course" value={filterCourse} onChange={e => setFilterCourse(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
                     <option value="all">All courses</option>
                     <option value="BSIT">BSIT</option>
                     <option value="BSIS">BSIS</option>
                   </select>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
+                  <select aria-label="Filter students by status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
                     <option value="all">All status</option>
                     <option value="completed">Completed</option>
                     <option value="stopped">Stopped / flagged</option>
                     <option value="pending">Pending</option>
                   </select>
                   {instructorsList.length > 0 && (
-                    <select value={filterInstructor} onChange={e => setFilterInstructor(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
+                    <select aria-label="Filter students by instructor" value={filterInstructor} onChange={e => setFilterInstructor(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
                       <option value="all">All instructors</option>
                       {instructorsList.map(i => <option key={i} value={i}>{i}</option>)}
                     </select>
@@ -246,6 +247,7 @@ export default function AdminUsers() {
               </div>
             </div>
 
+            <DataSection url="/api/admin/users/" pending={initialUsersPending} skeleton={<CollectionSkeleton view={view} kind={activeTab === 'students' ? 'student' : 'user'} columns={activeTab === 'instructors' ? 4 : 3} />}>
             {displayed.length === 0 && <EmptyState message="No users match your filters." onClear={() => { setSearch(''); setFilterStatus('all'); setFilterCourse('all'); setFilterInstructor('all') }} />}
 
             {/* Grid */}
@@ -336,10 +338,11 @@ export default function AdminUsers() {
             )}
 
             <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
+            </DataSection>
           </div>
         )}
 
-</DataSection>
+
       </section>
     </div>
   )

@@ -68,7 +68,7 @@ function NlpConfigurationCard() {
       <DataSection url="/api/admin/nlp-configuration/" layout="panel" count={1}><div className="flex flex-col lg:flex-row lg:items-end gap-3">
         <div className="flex-1">
           <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Current active model: {config?.active_model_label || 'Loading…'}</label>
-          <select value={selected} onChange={e => setSelected(e.target.value)}
+          <select aria-label="Recommendation model" value={selected} onChange={e => setSelected(e.target.value)}
             className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
             {(config?.models || []).map(model => (
               <option key={model.id} value={model.id}>{model.label}{model.available ? '' : ' (fallback will be used)'}</option>

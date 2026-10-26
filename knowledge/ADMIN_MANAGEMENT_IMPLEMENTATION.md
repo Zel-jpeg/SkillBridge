@@ -2,6 +2,11 @@
 
 Status: implemented and locally verified, 20 October 2026.
 
+26 October UI follow-up: [admin batch collection](ADMIN_BATCH_COLLECTION_UI.md)
+implements the approved batch cards and focused student roster, shared view
+toggles, clickable list rows and centered decision confirmations. Existing APIs,
+reviewed enrollment, authorization and audit semantics are preserved.
+
 User instruction: on PAUSE, stop at a safe point and record changes, verification
 and remaining work here. Resume only on CONTINUE. Do not deploy or change live data.
 

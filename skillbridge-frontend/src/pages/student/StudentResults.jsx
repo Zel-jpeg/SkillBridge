@@ -236,7 +236,7 @@ export default function StudentResults() {
   if (resultsLoading || !resultData || resultsError || recommendationsLocked) return (
     <div className="min-w-0">
 
-      <DataSection url="/api/student/results/combined/" layout="profile"><section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <DataSection url="/api/student/results/combined/" layout="result-summary"><section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400">← Skills Assessments</button>
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 sm:p-8">
           {resultsLoading || (!resultData && !resultsError) ? <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading your final skill profile…</p>

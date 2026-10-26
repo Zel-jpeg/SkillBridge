@@ -341,7 +341,7 @@ export default function StudentProfile() {
 
 
 
-      <DataSection url="/api/students/me/" layout="profile"><section className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
+      <section className="max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
 
         {/* Back */}
         <button
@@ -362,6 +362,7 @@ export default function StudentProfile() {
           </p>
         </div>
 
+        <DataSection url="/api/students/me/" layout="profile" label="Loading your profile">
         {/* ── Photo — read-only, sourced from DNSC Google account ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-6 flex items-center gap-4 sm:gap-5">
           <div className="shrink-0">
@@ -692,7 +693,8 @@ export default function StudentProfile() {
           )}
         </div>
 
-      </section></DataSection>
+        </DataSection>
+      </section>
     </div>
   )
 }

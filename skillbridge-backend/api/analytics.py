@@ -1,6 +1,5 @@
 """Read-only staff analytics. Current cohort state is never a historical snapshot."""
 from collections import Counter, defaultdict
-from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
 from django.db.models import Count, Q
@@ -11,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .management_access import managed_batches
+from .analytics_activity import activity_dates, submission_activity
 from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, OJTPlacement,
                      Position, Recommendation, StudentResponse, User)
 
@@ -45,7 +45,7 @@ def analytics_payload(user, params):
     if user.role not in ('admin', 'instructor') or not user.is_active or (user.role == 'instructor' and not user.is_approved):
         raise PermissionDenied('Approved staff only.')
     allowed = {'batch_id', 'instructor_id', 'course', 'batch_status', 'assessment_id',
-               'company_id', 'position_id', 'area', 'date_from', 'date_to', '_t'}
+               'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period', '_t'}
     if set(params) - allowed or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated analytics filter.'})
     batch_id = positive_id(params, 'batch_id')
@@ -60,13 +60,7 @@ def analytics_payload(user, params):
         raise ValidationError({'error': 'Invalid batch_status.'})
     now = timezone.now()
     today = now.astimezone(MANILA).date()
-    try:
-        end = date.fromisoformat(params.get('date_to') or today.isoformat())
-        start = date.fromisoformat(params.get('date_from') or (end - timedelta(days=55)).isoformat())
-    except ValueError:
-        raise ValidationError({'error': 'Activity dates must use YYYY-MM-DD.'})
-    if start > end or (end - start).days > 365 or end > today:
-        raise ValidationError({'error': 'Activity range must be ordered, no more than 366 days, and not in the future.'})
+    activity_period, start, end = activity_dates(params, today)
 
     owned = list(managed_batches(user).select_related('instructor').order_by('-created_at', '-id'))
     owned_map = {batch.id: batch for batch in owned}
@@ -253,7 +247,7 @@ def analytics_payload(user, params):
                 or current[student_id].batch_id != batch_id):
             return
         day = submitted_at.astimezone(MANILA).date()
-        if start <= day <= end:
+        if day <= today:
             events.add((student_id, assessment_id, submitted_at.isoformat(), day))
     for response in response_scope.select_related('assessment'):
         add_event(response.student_id, response.assessment.batch_id, response.assessment_id,
@@ -261,9 +255,8 @@ def analytics_payload(user, params):
     for history in AssessmentAttemptHistory.objects.filter(response__in=response_scope).select_related('response__assessment'):
         add_event(history.response.student_id, history.response.assessment.batch_id, history.response.assessment_id,
                   history.submitted_at, history.status, history.is_flagged)
-    days = Counter(event[3] for event in events)
-    activity = [{'date': (start + timedelta(days=offset)).isoformat(), 'submissions': days[start + timedelta(days=offset)]}
-                for offset in range((end - start).days + 1)]
+    activity_days = Counter(event[3] for event in events)
+    start, activity_interval, activity = submission_activity(events, start, end, activity_period)
     summary = {'students': len(students), 'required_complete': sum(row['required_complete'] for row in students),
         'approved': len(approved), 'approved_other_batch': len(other_approved),
         'unplaced': sum(row['placement_status'] == 'unplaced' for row in students),
@@ -278,6 +271,7 @@ def analytics_payload(user, params):
         'scope': {'batch_ids': selected_ids, 'batch_status': status, 'course': course, 'instructor_id': instructor_id,
             'assessment_id': assessment_id, 'company_id': company_id, 'position_id': position_id, 'area': params.get('area', ''),
             'date_from': start.isoformat(), 'date_to': end.isoformat(),
+            'activity_period': activity_period, 'activity_interval': activity_interval,
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
             'capacity_scope': 'Shared system-wide slots; only company/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},
@@ -287,6 +281,7 @@ def analytics_payload(user, params):
         'match_bands': [{'name': name, 'count': count} for name, count in match_bands.items()],
         'companies': [{'id': key[0], 'name': key[1], 'count': count} for key, count in company_counts.most_common()],
         'areas': [{'name': name, 'count': count} for name, count in area_counts.most_common()], 'geography': geography, 'activity': activity,
+        'activity_days': [{'date': day.isoformat(), 'submissions': count} for day, count in sorted(activity_days.items())],
         'options': {'batches': [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id} for batch in owned],
             'instructors': [{'id': owner_id, 'name': name} for owner_id, name in sorted({(batch.instructor_id, batch.instructor.name) for batch in owned})] if user.role == 'admin' else [],
             'courses': sorted(set(BatchEnrollment.objects.filter(batch_id__in=owned_map, student__role='student')

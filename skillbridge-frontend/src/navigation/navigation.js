@@ -29,7 +29,7 @@ export const ROLE_NAVIGATION = {
     { label: 'Users', path: '/admin/users', icon: 'users' },
     { label: 'Assessments', path: '/admin/assessments', icon: 'assessments' },
     { label: 'New Assessment', path: '/admin/assessment/create', icon: 'create' },
-    { label: 'Batches', path: '/admin/batches', icon: 'users' },
+    { label: 'Batches', path: '/admin/batches', icon: 'batches' },
     { label: 'Reports & Analytics', path: '/admin/reports', icon: 'reports' },
   ],
 }

@@ -1,5 +1,5 @@
 // src/components/AddressDropdowns.jsx
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useId } from 'react'
 
 import { externalJson } from '../utils/externalServices'
 
@@ -38,6 +38,7 @@ function addressRows(value) {
 }
 
 export default function AddressDropdowns({ label = '', onChange, error, prioritizeDavao = false }) {
+  const id = useId()
 
   const [provinces, setProvinces]   = useState([])
   const [cities,    setCities]      = useState([])
@@ -135,11 +136,12 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
 
       {/* PROVINCE */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label htmlFor={`${id}-province`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           {label ? `${label} — ` : ''}Province
         </label>
         <div className="relative">
           <select
+            id={`${id}-province`}
             value={selected.provinceCode}
             onChange={handleProvinceChange}
             disabled={loading.provinces}
@@ -161,7 +163,6 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
               <option key={p.code} value={p.code}>{p.name}</option>
             ))}
           </select>
-          <Chevron />
         </div>
         {davaoProvinces.length > 0 && (
           <p className="mt-1.5 text-xs text-green-700">Davao provinces are listed first. You can still choose any province.</p>
@@ -170,11 +171,12 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
 
       {/* CITY / MUNICIPALITY */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label htmlFor={`${id}-city`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           City / Municipality
         </label>
         <div className="relative">
           <select
+            id={`${id}-city`}
             value={selected.cityCode}
             onChange={handleCityChange}
             disabled={!selected.provinceCode || loading.cities}
@@ -193,17 +195,17 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
               <option key={c.code} value={c.code}>{c.name}</option>
             ))}
           </select>
-          <Chevron />
         </div>
       </div>
 
       {/* BARANGAY */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label htmlFor={`${id}-barangay`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           Barangay
         </label>
         <div className="relative">
           <select
+            id={`${id}-barangay`}
             value={selected.barangay}
             onChange={handleBarangayChange}
             disabled={!selected.cityCode || loading.barangays}
@@ -222,23 +224,11 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
               <option key={b.code} value={b.name}>{b.name}</option>
             ))}
           </select>
-          <Chevron />
         </div>
       </div>
 
       {/* Validation error from parent */}
       {error && <p className="text-xs text-red-500">{error}</p>}
-    </div>
-  )
-}
-
-// Small down arrow icon for the selects
-function Chevron() {
-  return (
-    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
     </div>
   )
 }

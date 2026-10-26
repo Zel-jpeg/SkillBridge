@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useId } from 'react'
 import { assessmentLocks } from '../../utils/assessmentPolicy'
 import { LockIcon } from '../Icons'
 import { AssessmentTimingGuidance } from '../assessment/AssessmentPolicyNotice'
@@ -19,16 +19,18 @@ function AssessmentSchedule({ value, field, errors, locks }) {
 }
 
 export default function AssessmentSettings({ value, onChange, errors = {}, variant = 'default', duration, onDurationChange, assessment = {} }) {
+  const id = useId()
   const field = (key, next) => onChange({ ...value, [key]: next })
   const locks = assessmentLocks(assessment)
   if (variant === 'modal') {
-    const modalControl = 'h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-xs font-normal text-gray-900 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
+    const modalControl = 'h-11 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-xs font-normal text-gray-900 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
     const label = 'flex min-w-0 flex-col gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300'
     return <div className="space-y-5">
       <h3 className="border-b border-gray-100 pb-2.5 text-sm font-semibold text-gray-900 dark:border-gray-800 dark:text-white">Assessment settings</h3>
       <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)]">
         <label className={`${label} col-span-2 sm:col-span-1`}>Duration
-          <span className="relative block w-30 max-w-full"><input aria-label="Duration" type="number" min="1" disabled={locks.duration} value={duration} onChange={e => onDurationChange(e.target.value)} className={`${modalControl} pr-12 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 dark:disabled:text-gray-400 ${locks.duration ? 'pl-8' : ''}`} />{locks.duration && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-gray-400"><LockIcon size={14} /></span>}<span className="pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-2.5 font-normal text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">min</span></span>
+          <span className="relative block w-30 max-w-full"><input aria-label="Duration" aria-invalid={!!errors.duration_minutes} aria-describedby={errors.duration_minutes ? `${id}-duration-error` : undefined} type="number" min="1" disabled={locks.duration} value={duration} onChange={e => onDurationChange(e.target.value)} className={`${modalControl} pr-12 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 dark:disabled:text-gray-400 ${locks.duration ? 'pl-8' : ''}`} />{locks.duration && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-gray-400"><LockIcon size={14} /></span>}<span className="pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-2.5 font-normal text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">min</span></span>
+          {errors.duration_minutes && <span id={`${id}-duration-error`} className="text-red-600 dark:text-red-400">{errors.duration_minutes}</span>}
         </label>
         <label className={label}>Publication state
           <select aria-label="Publication state" disabled={locks.publication} className={`${modalControl} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 dark:disabled:text-gray-400`} value={value.publication_status} onChange={e => field('publication_status', e.target.value)}><option value="draft" disabled={locks.attempted}>Draft</option><option value="published">Published</option><option value="closed">Closed</option></select>

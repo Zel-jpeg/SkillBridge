@@ -202,7 +202,7 @@ export default function InstructorAssessments() {
             {/* ── Scrollable question list ──────────────────────────────── */}
             <div className="px-5 py-5 bg-gray-50 dark:bg-gray-950 sm:px-6">
               {loadingQuestions ? (
-                <ContentSkeleton layout="table" count={5} label="Loading assessment questions" />
+                <ContentSkeleton layout="questions" count={2} label="Loading assessment questions" />
               ) : questionError ? (
                 <div role="alert" className="sb-data-error"><p>{questionError}</p><button type="button" onClick={retryQuestions}>Retry</button></div>
               ) : (

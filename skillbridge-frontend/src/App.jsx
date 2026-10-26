@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
-import { ContentSkeleton } from './components/DataSection'
+import { RouteSkeleton } from './components/loading/Skeletons'
 import { loadDestination, prepareNavigation } from './api/prefetch.js'
 import { useSession } from './context/SessionContext'
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
@@ -54,12 +54,12 @@ function PreparedPage({ children }) {
 }
 
 function Page({ children }) {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const { expired } = useSession()
   useEffect(() => {
     if (!expired) loadDestination(pathname)
   }, [pathname, expired])
-  return <ErrorBoundary key={pathname}><Suspense fallback={<div className="p-6"><ContentSkeleton layout="stats" /><div className="mt-6"><ContentSkeleton layout="table" /></div></div>}>
+  return <ErrorBoundary key={pathname}><Suspense fallback={<RouteSkeleton pathname={pathname} search={search} />}>
     <PreparedPage>{children}</PreparedPage>
   </Suspense></ErrorBoundary>
 }

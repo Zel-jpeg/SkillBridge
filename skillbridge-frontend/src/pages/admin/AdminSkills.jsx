@@ -168,7 +168,7 @@ export default function AdminSkills() {
         />
       )}
 
-      <DataSection url="/api/admin/skills/" layout="table"><section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         <TaxonomyQuality />
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -189,6 +189,7 @@ export default function AdminSkills() {
             </div>
           </div>
 
+          <DataSection url="/api/admin/skills/" layout="table" columns={3} label="Loading skill categories">
           {loading ? (
             <div className="py-12 flex justify-center text-gray-400">
               <Spinner />
@@ -241,8 +242,9 @@ export default function AdminSkills() {
               </table>
             </div>
           )}
+          </DataSection>
         </div>
-      </section></DataSection>
+      </section>
     </div>
   )
 }

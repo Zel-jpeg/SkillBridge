@@ -52,7 +52,7 @@ with sync_playwright() as p:
         dialog.get_by_role('button', name='Edit instructor', exact=True).click()
         dialog.get_by_label('name', exact=True).fill('Updated Instructor')
         dialog.get_by_role('button', name='Save changes', exact=True).evaluate('(b)=>{b.click();b.click()}')
-        expect(dialog.get_by_role('alert')).to_have_text('Synthetic instructor edit rejected; correct the draft.')
+        expect(dialog.locator('[role="alert"]:not(.sb-toast-message)')).to_have_text('Synthetic instructor edit rejected; correct the draft.')
         expect(dialog.get_by_label('name', exact=True)).to_have_value('Updated Instructor')
         assert len(patches) == 1
         dialog.get_by_role('button', name='Save changes', exact=True).click()
@@ -67,7 +67,7 @@ with sync_playwright() as p:
         page.get_by_role('dialog', name='Updated Instructor', exact=True).get_by_role('button', name='Remove instructor', exact=True).click()
         confirmation = page.get_by_role('dialog', name='Remove instructor?', exact=True)
         confirmation.get_by_role('button', name='Remove', exact=True).click()
-        expect(confirmation.get_by_role('alert')).to_have_text('Synthetic account conflict; refresh before retry.')
+        expect(confirmation.locator('[role="alert"]:not(.sb-toast-message)')).to_have_text('Synthetic account conflict; refresh before retry.')
         assert teacher['is_active']
         confirmation.get_by_role('button', name='Remove', exact=True).click()
         expect(confirmation).to_have_count(0)

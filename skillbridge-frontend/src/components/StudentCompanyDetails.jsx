@@ -26,7 +26,7 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
     headerDetails={company && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Partner company · {positions.length} listed position{positions.length !== 1 ? 's' : ''}</p>}
     footer={<PlacementGuidance compact />}>
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-      <DataSection url={COMPANIES_URL} layout="profile" count={1} label="Loading company details">
+      <DataSection url={COMPANIES_URL} layout="company-detail" count={1} label="Loading company details">
         {!company ? <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">This company or position is no longer listed. Close this view to see the latest recommendations.</p> : <>
           <section aria-label="Company location" className="mb-6 rounded-xl bg-gray-50 p-4 dark:bg-gray-800/60">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Location</h3>

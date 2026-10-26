@@ -47,9 +47,11 @@ show possible staleness rather than automatically rerunning. The server still
 decides assessment and placement access. See [live data freshness](LIVE_DATA_FRESHNESS.md)
 for the coverage map, transport/configuration, verification and deployment limits.
 
-Sign-in stores the authenticated session and navigates without waiting for other
-pages. Current-route reads overlap page-code loading; sections render independently,
-then a bounded queue prepares likely next destinations through the same cache.
+Sign-in stores the authenticated session and prepares essential dashboard code/data
+in parallel for up to 1.5 seconds before handoff. Pending/setup routes bypass this
+step; slow reads continue in the same cache behind section skeletons. A two-slot
+background queue then prepares likely next destinations without gating foreground
+navigation. See [dashboard-first loading](DASHBOARD_FIRST_LOADING.md).
 See [navigation and loading](NAVIGATION_LOADING.md) for every route's request
 coverage, lifecycle protections, local measurements and verification limits.
 
@@ -58,6 +60,18 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Dashboard-first loading](DASHBOARD_FIRST_LOADING.md): Bounded dashboard
+  preparation after authentication, two-slot background warming, foreground
+  priority, session-safe cancellation and synthetic verification.
+
+- [Section loading presentation](SKELETON_LOADING_UI.md): Initial placeholders
+  matched to metrics, cards, lists, charts, assessment questions and dialogs;
+  persistent controls, responsive geometry and retained background content.
+
+- [Shared dropdown presentation](SHARED_DROPDOWNS.md): System-wide native select
+  audit, modern field/picker styling, accessible labels, light/dark and touch
+  presentation, native browser fallback and focused interaction verification.
 
 - [Assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md): Used-content
   locks, deadline-capped attempt snapshots, audited extra time, safe draft copies
@@ -80,7 +94,8 @@ and fallback when explaining results.
   exports, student card/list views with shared eight-student pages, completion
   and attempt panels with direct drill-downs, a Skills count matrix and separate
   company-match filters, area-filtered placement/slot panels, simpler batch/slot
-  terminology, recorded activity/history limits and local verification.
+  terminology, monthly-default submission activity with daily/weekly/yearly/all-time
+  presets, recorded activity/history limits and local verification.
 - [Approved dashboard and analytics plan](DASHBOARD_AND_ANALYTICS_PLAN.md): Design
   rationale, metric definitions and historical-snapshot boundary.
 
@@ -90,7 +105,8 @@ and fallback when explaining results.
 
 - [Student profile details](STUDENT_DETAIL_MODAL_REDESIGN.md): Shared five-tab
   instructor/admin modal, approved visual concepts, responsive phone/tablet layouts,
-  preserved result/placement meanings and synthetic interaction checks.
+  preserved result/placement meanings and synthetic interaction checks; matching
+  admin instructor account cards and responsive editing.
 
 - [Student collection cards](STUDENT_CARD_COLLECTIONS.md): Shared dashboard-inspired
   instructor/admin student cards, combined evidence guards, preserved actions,
@@ -229,7 +245,8 @@ and fallback when explaining results.
   position wording and prominent coordinator decision guidance.
 
 - [Admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md): Paginated card/list
-  views, protected management drafts, lazy modal sections and synthetic UI checks.
+  views, shared category pills and modal settings, protected management drafts,
+  lazy modal sections and synthetic UI checks.
 - [Instructor assessment library](ASSESSMENT_LIBRARY_UI.md): Light/dark assessment
   cards and list, dashboard-style view switch, secondary filters, shared pagination
   and labeled report controls.
@@ -241,6 +258,10 @@ and fallback when explaining results.
 - [Admin management implementation](ADMIN_MANAGEMENT_IMPLEMENTATION.md): Shared
   authoring, admin batch/instructor assignment, scoped unenrollment, audit history,
   migration 0021, local verification and resumable checkpoint.
+
+- [Admin batch collection](ADMIN_BATCH_COLLECTION_UI.md): Approved batch cards,
+  focused student roster, shared card/list toggles, full-row navigation and
+  centered confirmations for management decisions.
 
 - [Database connection troubleshooting](DATABASE_CONNECTIONS.md): Local startup
   stalls, bounded PostgreSQL connection waits and Supabase access checks.

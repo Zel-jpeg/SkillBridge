@@ -1,3 +1,4 @@
+import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import { useToast } from '../../context/ToastContext'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminDashboard.jsx  (SLIMMED — 588 → ~170 lines)
@@ -45,7 +46,7 @@ export default function AdminDashboard() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const {
-    students,
+    students, loading,
     search, setSearch, filterStatus, setFilter,
     view, setView, page, setPage,
     filtered, paginated, PAGE_SIZE,
@@ -124,8 +125,7 @@ export default function AdminDashboard() {
 
         <DashboardOverview role="admin" />
 
-        <DataSection url="/api/admin/students/recommendations/" layout="table" label="Loading student recommendations">
-        <DashboardHighlights students={students} onSelectStudent={selectStudent} />
+        <DashboardHighlights loadingUrl="/api/admin/students/recommendations/" students={students} onSelectStudent={selectStudent} />
 
         {/* All Students */}
         <div className="space-y-3">
@@ -150,9 +150,10 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{filtered.length} students</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{loading ? 'Loading students…' : `${filtered.length} students`}</p>
           </div>
 
+          <DataSection url="/api/admin/students/recommendations/" skeleton={<CollectionSkeleton view={view} />}>
           {filtered.length === 0 && <EmptyState message="No students match your search." onClear={() => { setSearch(''); setFilter('all') }} />}
 
           {/* Grid view */}
@@ -234,6 +235,7 @@ export default function AdminDashboard() {
           )}
 
           <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
+          </DataSection>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 px-1 pb-4">
@@ -245,8 +247,6 @@ export default function AdminDashboard() {
           ].map(l => <span key={l.label} className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.cls}`}>{l.label}</span>)}
         </div>
 
-
-</DataSection>
       </section>
     </div>
   )

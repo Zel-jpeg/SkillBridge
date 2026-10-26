@@ -1,3 +1,4 @@
+import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
 // src/pages/instructor/EnrolledStudents.jsx  (SLIMMED — 1273 → ~200 lines)
 // All data + logic now in useEnrolledStudents.js
@@ -126,7 +127,7 @@ export default function EnrolledStudents() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
 
         {/* Header */}
-        <DataSection pending={initialBatchPending} url="/api/instructor/batches/" layout="panel" count={1}><div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Enrolled students</h1>
@@ -138,12 +139,12 @@ export default function EnrolledStudents() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm text-gray-500 dark:text-gray-400">{instructor.subject}</p>
-              <select value={activeBatchId} onChange={e => { setActiveBatchId(Number(e.target.value)); setPage(1) }}
+              <DataSection pending={initialBatchPending} url="/api/instructor/batches/" layout="control" count={1}><select aria-label="Selected batch" value={activeBatchId} onChange={e => { setActiveBatchId(Number(e.target.value)); setPage(1) }}
                 className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer font-medium">
                 {[...batches].reverse().map(b => (
                   <option key={b.id} value={b.id}>{b.name}{b.status === 'archived' ? ' (Archived)' : ' ★ Active'}</option>
                 ))}
-              </select>
+              </select></DataSection>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -155,7 +156,7 @@ export default function EnrolledStudents() {
             )}
             {!isArchived && activeBatch && (
               <>
-                <button onClick={() => setShowModal(true)}
+                <button disabled={initialBatchPending} onClick={() => setShowModal(true)}
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2.5"/><line x1="19" y1="8" x2="19" y2="14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><line x1="22" y1="11" x2="16" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
                   Enroll students
@@ -165,7 +166,7 @@ export default function EnrolledStudents() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
                   New assessment
                 </button>
-                <button onClick={() => setShowArchiveConf(true)}
+                <button disabled={initialBatchPending} onClick={() => setShowArchiveConf(true)}
                   className="flex items-center gap-1.5 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-700 dark:text-amber-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
                   <ArchiveIcon /> Archive batch
                 </button>
@@ -185,16 +186,17 @@ export default function EnrolledStudents() {
                     Switch to active batch
                   </button>
                 )}
-                <button onClick={handleUnarchiveBatch}
+                <button disabled={initialBatchPending} onClick={handleUnarchiveBatch}
                   className="flex items-center gap-1.5 border border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950 text-green-700 dark:text-green-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
                   <UnarchiveIcon /> Unarchive batch
                 </button>
               </>
             )}
           </div>
-        </div></DataSection>
+        </div>
 
-<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="table">
+
+<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="roster-stats" count={8} label="Loading batch totals">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -215,6 +217,7 @@ export default function EnrolledStudents() {
           ))}
         </div>
 
+</DataSection>
         {/* Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-0 sm:min-w-56">
@@ -239,9 +242,10 @@ export default function EnrolledStudents() {
               <button key={vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{filtered.length} students</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} students`}</p>
         </div>
 
+<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
         {/* Empty state */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-16 flex flex-col items-center gap-3">

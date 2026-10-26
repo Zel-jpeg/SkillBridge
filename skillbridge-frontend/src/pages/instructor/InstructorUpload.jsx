@@ -300,17 +300,17 @@ export default function InstructorUpload({ role = 'instructor' }) {
               {errors.batch_id && <p className="text-xs text-red-600 mt-1">{errors.batch_id}</p>}
             </div>
           </div>
-<DataSection url="/api/instructor/assessments/" layout="panel" count={1}>
+
           <AssessmentSettings value={{ publication_status: publicationStatus, is_required: isRequired,
             include_in_competency: includeInCompetency, display_order: displayOrder,
             available_at: availableAt, due_at: dueAt }}
             onChange={next => { setPublicationStatus(next.publication_status); setIsRequired(next.is_required)
               setIncludeInCompetency(next.include_in_competency); setDisplayOrder(next.display_order)
-              setAvailableAt(next.available_at); setDueAt(next.due_at) }} errors={errors} /></DataSection>
+              setAvailableAt(next.available_at); setDueAt(next.due_at) }} errors={errors} />
 
         </div>
 
-<DataSection url="/api/categories/" layout="panel" count={1}>
+
         {/* ── SECTION 2: Skill Categories ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
           <div>
@@ -319,6 +319,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
               Define the skill areas this assessment will measure. The system will suggest categories as you type questions.
             </p>
           </div>
+          <DataSection url="/api/categories/" layout="category-editor" label="Loading skill categories">
           <div className="flex gap-2">
             <input ref={catRef} type="text" value={catInput}
               onChange={e => { setCatInput(e.target.value); setErrors(er => ({ ...er, catDupe: '', categories: '' })) }}
@@ -345,9 +346,9 @@ export default function InstructorUpload({ role = 'instructor' }) {
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-600 italic">No categories yet. Add at least one before publishing.</p>
           )}
+          </DataSection>
         </div>
 
-</DataSection>
         {/* ── SECTION 3: Questions ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
 

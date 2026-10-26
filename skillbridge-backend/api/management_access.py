@@ -33,6 +33,7 @@ def batch_payload(batch, student_count=None):
     return {'id': batch.id, 'name': batch.name, 'status': batch.status,
             'created_at': batch.created_at, 'archived_at': batch.archived_at,
             'instructor_id': batch.instructor_id, 'instructor_name': batch.instructor.name,
+            'instructor_photo_url': batch.instructor.photo_url,
             'created_by_id': batch.created_by_id,
             'student_count': student_count if student_count is not None else batch.enrollments.count()}
 

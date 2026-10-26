@@ -1,5 +1,35 @@
 # Authentication and account recovery contract
 
+## Login background presentation
+
+Both public sign-in screens share
+[AuthBackground](../skillbridge-frontend/src/components/auth/AuthBackground.jsx).
+It uses the user-provided DNSC campus photo with a fixed full-screen crop and
+green gradient overlay behind the existing white sign-in card. The card remains
+in normal document flow so narrow/short screens and expanded help can scroll.
+
+The source JPG is not copied into the application or modified. Its optimized
+WebP derivatives are [desktop](../skillbridge-frontend/public/images/dnsc-campus.webp)
+(1920×1230, quality 74, 153,138 bytes) and
+[small screen](../skillbridge-frontend/public/images/dnsc-campus-small.webp)
+(960×615, quality 72, 66,584 bytes), converted with Pillow while preserving photo
+orientation and aspect ratio. The source was 334,925 bytes. A `picture` source
+selects the smaller file below 768px; each page downloads one derivative.
+
+The image is decorative, uses empty alternative text, async decoding and low fetch
+priority. A solid green surface and CSS overlay remain while the photo loads.
+The sign-in controls render independently. Image hosting stays same-origin;
+authentication, preparation timing, provider configuration and recovery are unchanged.
+
+Verified locally at 360/768/1440px on both pages, including dark appearance,
+expanded help, short-screen scrolling and delayed image loading. Each viewport
+requested one correct WebP derivative and showed no horizontal overflow or page
+errors. Frontend lint/build and the 12 existing sign-in outcome checks passed.
+Temporary preview automation was removed; ignored screenshots remain under
+`skillbridge-frontend/tests/artifacts/auth-background/`.
+
+## Authentication contract
+
 The user selected this role contract on 18 October 2026:
 
 | Role | Supported sign-in and onboarding |

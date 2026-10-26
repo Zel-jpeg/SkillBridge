@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as datetime_timezone
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 
 from django.db import connection
@@ -173,6 +174,39 @@ class AnalyticsTests(APITestCase):
             self.assertEqual(self.client.get(self.url, params).status_code, 400, params)
         self.assertEqual(self.client.get(self.url + '?batch_id=1&batch_id=2').status_code, 400)
         self.assertEqual(self.get(_t='1792485785252')['summary']['students'], 1)
+
+    def test_activity_defaults_to_current_manila_month_and_supports_presets(self):
+        now = datetime(2026, 10, 26, 2, tzinfo=datetime_timezone.utc)
+        with patch('api.analytics.timezone.now', return_value=now):
+            self.ready()
+            result = self.get()
+            self.assertEqual(result['scope']['activity_period'], 'monthly')
+            self.assertEqual(result['scope']['date_from'], '2026-10-01')
+            self.assertEqual(result['scope']['date_to'], '2026-10-26')
+            for period, start in [('daily', '2026-10-26'), ('weekly', '2026-10-26'), ('yearly', '2026-01-01')]:
+                data = self.get(activity_period=period)
+                self.assertEqual(data['scope']['date_from'], start)
+                self.assertEqual(sum(row['submissions'] for row in data['activity']), 1)
+                self.assertEqual(data['summary'], result['summary'])
+
+    def test_all_time_includes_old_retakes_without_foreign_flagged_or_duplicate_events(self):
+        response = self.ready()
+        old = timezone.now() - timedelta(days=800)
+        for number, submitted, flagged in [(1, old, False), (2, response.submitted_at, False),
+                                          (3, old - timedelta(days=400), True)]:
+            AssessmentAttemptHistory.objects.create(response=response, attempt_number=number,
+                status='submitted', submitted_at=submitted, is_flagged=flagged, category_scores=[], answers=[])
+        StudentResponse.objects.create(student=self.foreign_student, assessment=self.foreign_assessment,
+            status='submitted', submitted_at=old - timedelta(days=800))
+        data = self.get(activity_period='all_time')
+        self.assertEqual(data['scope']['date_from'], old.astimezone(ZoneInfo('Asia/Manila')).date().isoformat())
+        self.assertEqual(data['scope']['activity_interval'], 'month')
+        self.assertLess(len(data['activity']), 30)
+        self.assertEqual(sum(row['submissions'] for row in data['activity']), 2)
+        self.assertEqual(sum(row['submissions'] for row in data['activity_days']), 2)
+        monthly = self.get()
+        self.assertEqual(monthly['activity_days'], data['activity_days'])
+        self.assertEqual(sum(row['submissions'] for row in monthly['activity']), 1)
 
     def test_query_count_does_not_grow_per_student_and_no_answer_data_leaks(self):
         self.ready()

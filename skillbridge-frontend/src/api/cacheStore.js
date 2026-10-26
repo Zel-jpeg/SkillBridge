@@ -203,8 +203,11 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
     abortUnobserved,
     error: url => errors.get(url),
     pending: url => inflight.has(url),
-    foregroundReady: () => inflight.size === 0 && [...listeners.keys()].every(url =>
-      !inflight.has(url) && (read(url) !== null || errors.has(url))),
+    foregroundReady: (optionalUrls = []) => {
+      const optional = new Set(optionalUrls)
+      return [...inflight.keys()].every(url => optional.has(url) && !hasSubscribers(url)) &&
+        [...listeners.keys()].every(url => !inflight.has(url) && (read(url) !== null || errors.has(url)))
+    },
     observe: callback => { observers.add(callback); return () => observers.delete(callback) },
     revision: () => revision,
   }

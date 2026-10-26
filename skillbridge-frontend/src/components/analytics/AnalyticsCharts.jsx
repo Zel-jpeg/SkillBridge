@@ -1,5 +1,6 @@
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import './AnalyticsCharts.css'
+import { activityDateLabel } from '../../utils/activityPeriods'
 
 const colors = ['#16a34a', '#3b82f6', '#94a3b8', '#f43f5e']
 const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
@@ -102,18 +103,19 @@ export function PlacementDonut({ summary, onSelect }) {
   </div>
 }
 
-export function ActivityLine({ rows, onSelect }) {
+export function ActivityLine({ rows, onSelect, interval = 'day' }) {
   const total = rows.reduce((sum, row) => sum + row.submissions, 0)
-  const dateLabel = date => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${date}T00:00:00+08:00`))
+  const dateLabel = date => activityDateLabel(date, interval)
+  const chartRows = rows.map(row => ({ ...row, name: dateLabel(row.date) }))
   return <>
     <p className="text-xs leading-5 text-gray-600 dark:text-gray-400"><strong className="text-lg font-semibold tabular-nums text-gray-900 dark:text-white">{total}</strong> recorded submissions</p>
-    <ResponsiveContainer width="100%" height={260} initialDimension={{ width: 600, height: 260 }}><AreaChart accessibilityLayer data={rows} margin={{ top: 12, right: 12, left: -20, bottom: 4 }}>
+    <ResponsiveContainer width="100%" height={260} initialDimension={{ width: 600, height: 260 }}><AreaChart accessibilityLayer data={chartRows} margin={{ top: 12, right: 12, left: -20, bottom: 4 }}>
       <CartesianGrid vertical={false} stroke="var(--analytics-grid)" strokeDasharray="3 3" />
       <XAxis dataKey="date" tick={axis} tickFormatter={dateLabel} minTickGap={36} axisLine={false} tickLine={false} />
       <YAxis allowDecimals={false} tick={axis} axisLine={false} tickLine={false} />
       <Tooltip content={<ChartTooltip unit="submissions" />} />
-      <Area dataKey="submissions" name="Recorded" type="linear" stroke="#16a34a" strokeWidth={2} fill="#16a34a" fillOpacity={0.1} isAnimationActive={false} />
+      <Area dataKey="submissions" name="Recorded" type="linear" stroke="#16a34a" strokeWidth={2} fill="#16a34a" fillOpacity={0.1} dot={rows.length === 1 ? { r: 4, fill: '#16a34a' } : false} isAnimationActive={false} />
     </AreaChart></ResponsiveContainer>
-    <button type="button" onClick={onSelect} className={`min-h-11 rounded-lg text-xs font-semibold text-green-700 underline underline-offset-4 dark:text-green-400 ${focus}`}>View daily activity table</button>
+    <button type="button" onClick={onSelect} className={`min-h-11 rounded-lg text-xs font-semibold text-green-700 underline underline-offset-4 dark:text-green-400 ${focus}`}>View {interval === 'month' ? 'monthly' : interval === 'year' ? 'yearly' : 'daily'} activity table</button>
   </>
 }

@@ -4,6 +4,7 @@ import DataSection from '../DataSection'
 import Pagination from '../Pagination'
 import CollectionViewToggle from '../CollectionViewToggle'
 import AssessmentReportPanel from '../AssessmentReportPanel'
+import CategoryPills from '../assessment/AssessmentCategoryPills'
 import { AssessmentStatus } from '../admin/AssessmentPresentation'
 import { ChevronRightIcon, ClockIcon, ListIcon, PlusIcon, ReportIcon, SearchIcon, SkillIcon, UserIcon, WarnIcon } from '../Icons'
 import { ASSESSMENTS_URL, assessmentPage, assessmentViewReducer, DEFAULT_FILTERS, initialAssessmentView } from '../../utils/adminAssessmentState'
@@ -14,16 +15,6 @@ const control = 'min-h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-
 const statusTabs = [['all', 'All'], ['published', 'Published'], ['draft', 'Drafts'], ['closed', 'Closed']]
 const PAGE_SIZE = 4
 const readable = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
-
-function CategoryPills({ categories = [] }) {
-  const [expanded, setExpanded] = useState(false)
-  const badge = 'max-w-full break-words rounded-md bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-  return <div className="flex flex-wrap items-start gap-1">
-    {(expanded ? categories : categories.slice(0, 3)).map(name => <span key={name} className={badge}>{name}</span>)}
-    {categories.length > 3 && <button type="button" aria-expanded={expanded} aria-label={expanded ? 'Show fewer categories' : `Show ${categories.length - 3} more categories`} onClick={() => setExpanded(value => !value)} className="relative z-10 max-w-full cursor-pointer rounded-md border border-green-300 bg-white px-2 py-1 text-[11px] font-semibold text-green-700 transition-colors hover:border-green-500 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:border-green-800 dark:bg-gray-900 dark:text-green-300 dark:hover:border-green-500 dark:hover:bg-green-950">{expanded ? '− Show less' : `+${categories.length - 3} more`}</button>}
-    {!categories.length && <span className="text-xs text-gray-500 dark:text-gray-400">No categories</span>}
-  </div>
-}
 
 function Schedule({ assessment: a }) {
   return <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
@@ -117,7 +108,7 @@ export default function AssessmentLibrary({ assessments, stats, batches, onOpen 
       <div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessments</h1><p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Manage assessments, batches, and competency settings.</p></div>
       <div className="flex flex-wrap gap-2"><Link to="/instructor/assessments/archives" className={`${control} inline-flex items-center`}>Assessment archives</Link><Link to="/instructor/assessment/create" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"><PlusIcon size={15} />Create assessment</Link></div>
     </header>
-    <DataSection url={ASSESSMENTS_URL} layout="stats" count={4}>
+    <DataSection url={ASSESSMENTS_URL} layout="library-stats" count={4}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Assessment totals">{[
         ['Total assessments', stats.total, <ReportIcon size={19} />], ['Active', stats.active, <UserIcon size={19} />], ['Questions', stats.questions, <ListIcon size={19} />], ['Submissions', stats.submissions, <SkillIcon size={19} />],
       ].map(([name, value, icon]) => <div key={name} className={`${surface} flex items-center gap-4 px-4 py-4 sm:px-5`}><span aria-hidden="true" className={`rounded-lg p-2.5 ${name === 'Active' ? 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-400' : 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>{icon}</span><div><strong className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{value}</strong><p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{name}</p></div></div>)}</div>
@@ -139,7 +130,7 @@ export default function AssessmentLibrary({ assessments, stats, batches, onOpen 
         ['availability', 'Availability', availability.map(value => [value, readable(value)])],
       ].map(([key, name, options]) => <label key={key} className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">{name}<select aria-label={name} value={filters[key]} onChange={e => set(key, e.target.value)} className={`${control} mt-1.5 w-full`}><option value="all">All</option>{options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>)}</div></div>
       {active.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs">{active.map(([key, value]) => <button type="button" key={key} aria-label={`Remove ${filterNames[key]} filter`} onClick={() => set(key, DEFAULT_FILTERS[key])} className="max-w-full cursor-pointer break-words rounded-lg bg-green-50 px-2.5 py-1.5 text-left text-green-800 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-green-600 dark:bg-green-950 dark:text-green-300 dark:hover:bg-green-900">{filterNames[key]}: {selectedLabel(key, value)} <span aria-hidden="true">×</span></button>)}</div>}
-      <DataSection url={ASSESSMENTS_URL} layout={view === 'grid' ? 'cards' : 'table'} count={4}>
+      <DataSection url={ASSESSMENTS_URL} layout={view === 'grid' ? 'assessment-cards' : 'assessment-table'} count={view === 'grid' ? 3 : 4}>
         {total ? <><AssessmentCards records={records} view={view} onOpen={onOpen} />{view === 'list' && <AssessmentList records={records} total={total} onOpen={onOpen} />}<Pagination total={total} page={page} pageSize={PAGE_SIZE} onPage={value => dispatch({ type: 'page', value })} /></> : <div className={`${surface} px-6 py-12 text-center`}><h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{assessments.length ? 'No assessments match your filters' : 'No assessments yet'}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create your first assessment using the button above.'}</p></div>}
       </DataSection>
     </section>

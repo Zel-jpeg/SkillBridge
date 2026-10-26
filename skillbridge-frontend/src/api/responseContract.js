@@ -52,7 +52,9 @@ export function validateApiResponse(response) {
       ['students', 'required_complete', 'approved', 'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining'].every(key => Number.isSafeInteger(data.summary[key]) && data.summary[key] >= 0) &&
       ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
       data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons) && object(row.scores) && object(row.attempt_states)) &&
-      ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key]))
+      ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key])) &&
+      (data.activity_days === undefined || (Array.isArray(data.activity_days) && data.activity_days.every(row =>
+        object(row) && /^\d{4}-\d{2}-\d{2}$/.test(row.date) && Number.isFinite(Date.parse(row.date)) && Number.isSafeInteger(row.submissions) && row.submissions >= 0)))
   } else if (method === 'get' && path === '/api/management/assessment-reports/') {
     valid = object(data) && Array.isArray(data.rows) && typeof data.generated_at === 'string' && Number.isFinite(Date.parse(data.generated_at))
   } else if (method === 'get' && /^\/api\/instructor\/assessments\/\d+\/questions\/$/.test(path)) {

@@ -94,7 +94,7 @@ def run(browser, playwright, role, identity):
         original_cutoff = result['attempt_timing']['deadline_at']
         dialog = open_staff(page, role, title)
         if role == 'admin': dialog.get_by_role('tab', name='Settings', exact=True).click()
-        duration_label = 'Duration' if role == 'instructor' else 'Duration · minutes'
+        duration_label = 'Duration'
         expect(dialog.get_by_label(duration_label, exact=True)).to_be_disabled()
         publication = dialog.get_by_role('combobox', name='Publication state', exact=True)
         expect(publication).to_be_disabled()
@@ -106,7 +106,9 @@ def run(browser, playwright, role, identity):
             expect(page.get_by_role('dialog', name='Save all changes?', exact=True)).to_contain_text('Existing attempt cutoffs stay unchanged')
             page.get_by_role('button', name='Confirm Save', exact=True).click()
         else:
-            dialog.get_by_label('Due at · Asia/Manila', exact=True).fill('')
+            expect(dialog.get_by_role('button', name=re.compile('^Available at:'))).to_be_disabled()
+            dialog.get_by_role('button', name=re.compile('^Due at:')).click()
+            page.get_by_role('dialog', name='Due at date and time', exact=True).get_by_role('button', name='Clear', exact=True).click()
             expect(dialog.get_by_role('region', name='Effect of assessment changes', exact=True)).to_contain_text('Existing attempt cutoffs stay unchanged')
             dialog.get_by_role('button', name='Review & save', exact=True).click()
             page.get_by_role('dialog', name='Save assessment changes?', exact=True).get_by_role('button', name='Save', exact=True).click()

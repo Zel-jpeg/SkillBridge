@@ -1,6 +1,7 @@
 import { queryStore as cache } from './queryStore.js'
 import { createPreparationQueue } from './preparationQueue.js'
 import { preloadPage } from '../router/preloadPage.js'
+import { waitForDashboard } from './dashboardReadiness.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
 export const DESTINATION_QUERIES = {
@@ -57,6 +58,7 @@ export function loadDestination(pathname) {
   if (!pathname.startsWith(`/${role}/`)) return
   const result = role === 'student' && pathname.match(/^\/student\/assessments\/(\d+)\/results$/)
   const urls = result ? [`/api/student/results/?assessment_id=${result[1]}`] : PAGE_QUERIES[pathname] ?? []
+  queue.prioritize(urls)
   urls.forEach(url => {
     const entry = cache.read(url)
     if (!entry || Date.now() - entry.fetchedAt >= 30_000) {
@@ -66,6 +68,7 @@ export function loadDestination(pathname) {
 }
 
 const queue = createPreparationQueue({
+  concurrency: 2,
   identity,
   visible: () => document.visibilityState === 'visible',
   ready: cache.foregroundReady,
@@ -90,6 +93,34 @@ const queue = createPreparationQueue({
 })
 let detach = null
 
+export function prepareDashboard(pathname, { signal, userId } = {}) {
+  const role = localStorage.getItem('sb-role')
+  if (!pathname.endsWith('/dashboard')) return Promise.resolve({ reason: signal?.aborted ? 'cancelled' : 'skipped' })
+  let storedUser
+  try { storedUser = JSON.parse(localStorage.getItem('sb-user')) } catch { return Promise.resolve({ reason: 'cancelled' }) }
+  if (!localStorage.getItem('sb-token') || storedUser?.role !== role || pathname !== `/${role}/dashboard`) return Promise.resolve({ reason: 'cancelled' })
+  const sessionId = localStorage.getItem('sb-session-id')
+  const account = storedUser.id
+  if (userId !== undefined && account !== userId) return Promise.resolve({ reason: 'cancelled' })
+  // Missing optional preparation metadata must not introduce a new sign-in gate.
+  // Existing destination rules and the backend still decide account access.
+  if (!identity()) return Promise.resolve({ reason: signal?.aborted ? 'cancelled' : 'skipped' })
+  const isCurrent = () => {
+    let user
+    try { user = JSON.parse(localStorage.getItem('sb-user')) } catch { return false }
+    return !!localStorage.getItem('sb-token') && localStorage.getItem('sb-session-id') === sessionId &&
+      localStorage.getItem('sb-role') === role && user?.id === account
+  }
+  const urls = PAGE_QUERIES[pathname]
+  return waitForDashboard({ signal, isCurrent,
+    loadCode: () => preloadPage(pathname),
+    loadData: () => Promise.all(urls.map(url => {
+      const entry = cache.read(url)
+      return entry && Date.now() - entry.fetchedAt < 30_000 ? Promise.resolve() : cache.fetch(url)
+    })),
+  })
+}
+
 export function prepareNavigation(role, pathname) {
   if (!identity() || !pathname.startsWith(`/${role}/`)) return () => {}
   const changedIdentity = () => queue.reset()
@@ -110,6 +141,12 @@ export function prepareNavigation(role, pathname) {
 }
 
 export function promoteDestination(pathname) {
+  const role = localStorage.getItem('sb-role')
+  if (!identity() || document.visibilityState !== 'visible' || !pathname.startsWith(`/${role}/`)) return
+  // A user's hover/focus is stronger intent than optional background reads.
+  // Start code now, even while the current API is slow. Importing the module
+  // does not mount the page or request its data; GETs retain their bounded queue.
+  preloadPage(pathname)
   queue.enqueue(DESTINATION_QUERIES[pathname] ?? [], true)
 }
 

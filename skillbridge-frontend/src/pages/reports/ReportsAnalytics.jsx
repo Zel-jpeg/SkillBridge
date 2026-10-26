@@ -1,9 +1,10 @@
+import { AnalyticsSkeleton, InsightsSkeleton } from '../../components/loading/Skeletons'
 import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { useSSE } from '../../hooks/useSSE'
 import { useToast } from '../../context/ToastContext'
-import DataSection, { ContentSkeleton } from '../../components/DataSection'
+import DataSection from '../../components/DataSection'
 import DialogShell from '../../components/DialogShell'
 import StudentModal from '../../components/instructor/StudentModal'
 import Pagination from '../../components/Pagination'
@@ -16,8 +17,10 @@ import ActivityDateFilter from '../../components/analytics/ActivityDateFilter'
 import AssessmentProgressPanels from '../../components/analytics/AssessmentProgressPanels'
 import { BriefcaseIcon, ChevronDown, ReportIcon, SearchIcon, SkillIcon } from '../../components/Icons'
 import { ActivityLine, ChartPanel } from '../../components/analytics/AnalyticsCharts'
-import { ANALYTICS_URL, analyticsCsv, analyticsFilterText, analyticsSelectionLabel, analyticsTable, analyticsUrl, selectAnalyticsStudents } from '../../utils/analytics'
+import { analyticsCsv, analyticsFilterText, analyticsSelectionLabel, analyticsTable, selectAnalyticsStudents } from '../../utils/analytics'
 import { normalizeStudent } from '../../utils/managementStudent'
+import { activityPeriodLabel } from '../../utils/activityPeriods'
+import { activityReport, analyticsSourceUrl } from '../../utils/analyticsActivity'
 import { manilaDateTime } from '../../utils/assessmentDates'
 
 const AssessmentReportPanel = lazy(() => import('../../components/AssessmentReportPanel'))
@@ -60,7 +63,7 @@ function StudentDetails({ row, onClose, restoreFocusRef, role }) {
   const url = `/api/instructor/batches/${row.batch_id}/students/`
   const { data } = useApi(url)
   const record = data?.students?.find(student => student.id === row.id)
-  if (!record) return <DialogShell title={row.name} description="Loading authorized student details" onClose={onClose} restoreFocusRef={restoreFocusRef}><DataSection url={url} layout="panel"><p className="p-5 text-xs">Student is no longer in this roster. Refresh the report.</p></DataSection></DialogShell>
+  if (!record) return <DialogShell title={row.name} description="Loading authorized student details" onClose={onClose} restoreFocusRef={restoreFocusRef}><DataSection url={url} layout="student-detail"><p className="p-5 text-xs">Student is no longer in this roster. Refresh the report.</p></DataSection></DialogShell>
   const student = { ...normalizeStudent(record), batch: { id: row.batch_id, name: row.batch }, instructor: row.instructor }
   return <StudentModal student={student} readOnly isArchived={row.batch_status === 'archived'} instructorName={row.instructor} onClose={onClose} restoreFocusRef={restoreFocusRef} footer={<Link className={button} to={`/${role}/${role === 'admin' ? 'batches' : 'students'}?batch_id=${row.batch_id}`}>Open batch management</Link>} />
 }
@@ -75,10 +78,18 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   const [params, setParams] = useSearchParams()
   const tab = ['assessments', 'skills', 'placements'].includes(params.get('tab')) ? params.get('tab') : 'assessments'
   const group = params.get('group') || ''
-  const url = analyticsUrl(params)
-  const { data, updating, error, denied, previous, retry } = useAnalyticsData(url)
-  const { data: initial } = useApi(ANALYTICS_URL)
-  const options = data?.options ?? initial?.options
+  const url = analyticsSourceUrl(params)
+  const { data: source, updating, error: sourceError, denied, previous, retry } = useAnalyticsData(url)
+  const activity = useMemo(() => activityReport(source, params), [source, params])
+  const { data } = activity
+  const error = sourceError || activity.error
+  const options = source?.options ?? { batches: [], instructors: [], courses: [], assessments: [], companies: [], positions: [], areas: [] }
+  const [requestedScope, setRequestedScope] = useState(null)
+  // Only user-requested scope changes need a visible busy state. Polling/SSE
+  // revalidation silently replaces the current authorized snapshot when ready.
+  const scopeUpdating = updating && requestedScope === url
+  if (requestedScope === url && !updating) setRequestedScope(null)
+  function retryReport() { setRequestedScope(url); retry() }
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [student, setStudent] = useState(null)
@@ -97,6 +108,8 @@ export default function ReportsAnalytics({ role = 'admin' }) {
     // query so a rapid second action cannot restore filters just cleared by Reset.
     const next = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(changes)) { if (value) next.set(key, value); else next.delete(key) }
+    const nextUrl = analyticsSourceUrl(next)
+    if (nextUrl !== url) setRequestedScope(nextUrl)
     if (clearGroup) next.delete('group')
     if (!preserveRecords) { setSearch(''); setPage(1); setStudent(null); setSorting([]) }
     setParams(next, { preventScrollReset: true })
@@ -123,14 +136,14 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   function openStudent(record, element) { opener.current = element; setStudent(record) }
   const scopeText = data ? `Batches: ${data.scope.batch_ids.map(id => data.options.batches.find(batch => batch.id === id)?.name || id).join(', ') || 'none'}; ${data.scope.batch_status}; course: ${data.scope.course || 'all'}` : ''
   async function download(type) {
-    if (!data || !table || pending.current || updating || error || previous) return
+    if (!data || !table || pending.current || scopeUpdating || error || previous) return
     pending.current = true; setDownloading(true)
     const snapshot = { ...table, rows: orderedRecords.map(row => row.values) }
     const metadata = { Generated: manilaDateTime(data.generated_at), Scope: scopeText,
       Filters: analyticsFilterText(data),
       Records: `${selectionLabel}; search=${search || 'none'}`, Sort: sorting.length ? `${table.columns[Number(sorting[0].id)]} ${sorting[0].desc ? 'descending' : 'ascending'}` : 'Original record order', Unit: data.scope.cohort_unit,
       'Student status scope': tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Selected students; company, position and area filters do not narrow this status view.' : 'Current report and record filters.',
-      Capacity: data.scope.capacity_scope, Activity: `${data.scope.date_from} to ${data.scope.date_to}; ${data.scope.activity_note}` }
+      Capacity: data.scope.capacity_scope, Activity: `${activityPeriodLabel(data.scope.activity_period)}; ${data.scope.date_from} to ${data.scope.date_to}; grouped by ${data.scope.activity_interval || 'day'}; ${data.scope.activity_note}` }
     try {
       if (type === 'csv') {
         const objectUrl = URL.createObjectURL(new Blob([analyticsCsv(snapshot, metadata)], { type: 'text/csv;charset=utf-8' }))
@@ -155,28 +168,29 @@ export default function ReportsAnalytics({ role = 'admin' }) {
       <p className="max-w-3xl text-xs leading-5 text-gray-600 dark:text-gray-400">{role === 'admin' ? 'Understand assessment progress, student skills and OJT placements across your batches.' : 'Understand assessment progress, student skills and OJT placements in your batches.'}</p>
     </header>
 
-    {options && <section aria-label="Report scope" className={panel}>
+    <section aria-label="Report scope" className={panel}>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div><h2 className="text-sm font-semibold text-gray-900 dark:text-white">Report scope</h2><p className="mt-1 text-xs leading-6 text-gray-500 dark:text-gray-400">Choose the students and batches to include. Changes apply to every report section.</p></div>
-        <button type="button" className={button} onClick={() => { setParams({ tab }); setPage(1); setSearch(''); setStudent(null); setSorting([]) }}>Reset analytics filters</button>
+        <button type="button" className={button} onClick={() => { const next = new URLSearchParams({ tab }); if (analyticsSourceUrl(next) !== url) setRequestedScope(analyticsSourceUrl(next)); setParams(next, { preventScrollReset: true }); setPage(1); setSearch(''); setStudent(null); setSorting([]) }}>Reset analytics filters</button>
       </div>
-      <div className={`grid gap-5 sm:grid-cols-2 ${role === 'admin' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+      <fieldset disabled={!source} aria-busy={!source} className={`grid gap-5 sm:grid-cols-2 ${role === 'admin' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
         <SelectFilter label="Batch status" value={params.get('batch_status') || 'active'} onChange={value => update({ batch_status: value, batch_id: '', assessment_id: '' }, true)}><option value="active">Active batches</option><option value="archived">Archived history</option><option value="all">Active and archived history</option></SelectFilter>
         <SelectFilter label="Batch" value={params.get('batch_id') || ''} onChange={value => update({ batch_id: value, assessment_id: '' }, true)}><option value="">{role === 'admin' ? 'Current batches in scope' : 'Current batch / latest in history'}</option>{options.batches.filter(batch => (!params.get('batch_status') ? batch.status === 'active' : params.get('batch_status') === 'all' || batch.status === params.get('batch_status')) && (!params.get('instructor_id') || String(batch.instructor_id) === params.get('instructor_id'))).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</SelectFilter>
         {role === 'admin' && <SelectFilter label="Instructor" value={params.get('instructor_id') || ''} onChange={value => update({ instructor_id: value, batch_id: '', assessment_id: '' }, true)}><option value="">All instructors</option>{options.instructors.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</SelectFilter>}
         <SelectFilter label="Course" value={params.get('course') || ''} onChange={value => update({ course: value }, true)}><option value="">All courses</option>{options.courses.map(course => <option key={course}>{course}</option>)}</SelectFilter>
-      </div>
+      </fieldset>
+      {!source && !error && <p role="status" className="mt-3 text-xs text-gray-500 dark:text-gray-400">Loading available report filters…</p>}
       {data && <div className="mt-5 space-y-1 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500 dark:border-gray-800 dark:text-gray-400"><p>{scopeText}</p><p>Each student is counted once, using their latest selected enrollment.{data.scope.batch_status !== 'active' ? ' Archived records are read-only; their final results may be locked.' : ''}</p></div>}
-    </section>}
+    </section>
 
     <nav className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-800" aria-label="Analytics sections">{sections.map(({ key, label, description, icon }) => <button type="button" key={key} aria-label={label} aria-pressed={tab === key} onClick={() => { setExportsOpen(false); setFullColumns(false); update({ tab: key, group: '', assessment_id: key === 'assessments' ? params.get('assessment_id') : '', company_id: key === 'placements' ? params.get('company_id') : '', position_id: key === 'placements' ? params.get('position_id') : '', area: key === 'placements' ? params.get('area') : '' }) }} className={`-mb-px flex min-h-16 items-center justify-center gap-3 border-b-2 px-1 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-green-600 sm:justify-start sm:px-5 ${tab === key ? 'border-green-700 text-green-800 dark:border-green-400 dark:text-green-400' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}>
       <span aria-hidden="true" className="hidden sm:block">{icon}</span><span><span className="block text-xs font-semibold sm:text-sm">{label}</span><span className="mt-1 hidden text-xs text-gray-500 lg:block dark:text-gray-400">{description}</span></span>
     </button>)}</nav>
 
-    <section aria-label="Report results" aria-busy={updating} className="space-y-8">
-      {error && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><p className="font-semibold">{denied ? 'This report is unavailable or you no longer have access.' : 'The report could not be updated.'}</p><p className="mt-1">{error}</p>{data && <p className="mt-1">Showing the last successfully loaded report. The new filters have not been applied to these results.</p>}<button type="button" disabled={updating} className={`${button} mt-3`} onClick={retry}>Retry report</button></div>}
-      {updating && data && <p role="status" className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-5 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">Updating report in the background… The current report stays visible until the new results are ready.</p>}
-      {!data && !error && <ContentSkeleton layout="panel" label="Loading authorized analytics" />}
+    <section aria-label="Report results" aria-busy={scopeUpdating} className="space-y-8">
+      {error && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><p className="font-semibold">{denied ? 'This report is unavailable or you no longer have access.' : 'The report could not be updated.'}</p><p className="mt-1">{error}</p>{data && <p className="mt-1">Showing the last successfully loaded report.{previous ? ' The new filters have not been applied to these results.' : ''}</p>}<button type="button" disabled={updating} className={`${button} mt-3`} onClick={retryReport}>Retry report</button></div>}
+      <div className="pointer-events-none fixed top-20 left-1/2 z-20 m-0! w-max max-w-[calc(100%-32px)] -translate-x-1/2" aria-live="polite">{scopeUpdating && data && <p role="status" className="mx-auto w-fit max-w-full rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-5 text-green-900 shadow-sm dark:border-green-900 dark:bg-green-950 dark:text-green-200">Applying report filters… The current report stays visible until the new results are ready.</p>}</div>
+      {!data && !error && <><div><h2 className="text-lg font-semibold">{section.title}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{section.intro}</p></div><AnalyticsSkeleton tab={tab} /></>}
       {data && <>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div><h2 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">{section.title}</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600 dark:text-gray-400">{section.intro}</p></div>
@@ -188,12 +202,12 @@ export default function ReportsAnalytics({ role = 'admin' }) {
           <div className="max-w-xl"><SelectFilter label="Assessment analysis (does not change student totals)" value={params.get('assessment_id') || ''} onChange={value => update({ assessment_id: value }, true)}><option value="">All assigned assessments</option>{options.assessments.map(assessment => <option key={assessment.id} value={assessment.id}>{assessment.name}</option>)}</SelectFilter></div>
           <AssessmentProgressPanels key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id, data.scope.assessment_id])} data={data} onSelect={select} selection={group} />
           <ChartPanel title="Recorded submission activity" description="Valid submissions by Philippine date, including saved prior retakes. Only retained submission records are included; this is activity, not a historical completion rate.">
-            <ActivityDateFilter key={`${data.scope.date_from}:${data.scope.date_to}`} scope={data.scope} onApply={range => update(range, false, true)} />
-            <ActivityLine rows={data.activity} onSelect={() => select('activity')} />
+            <ActivityDateFilter scope={data.scope} updating={scopeUpdating} error={error} onRetry={retryReport} onApply={range => { update(range, false, true); if (group === 'activity') setPage(1) }} />
+            <div aria-label="Submission activity graph" role="group" aria-busy={scopeUpdating}><ActivityLine rows={data.activity} interval={data.scope.activity_interval} onSelect={() => select('activity')} /></div>
           </ChartPanel>
         </>}
 
-        {tab === 'skills' && <Suspense fallback={<ContentSkeleton layout="panel" label="Loading skill insights" />}><SkillsInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id])} data={data} selection={group} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>}
+        {tab === 'skills' && <Suspense fallback={<InsightsSkeleton tab="skills" />}><SkillsInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id])} data={data} selection={group} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>}
 
         {tab === 'placements' && <>
           <section aria-label="Placement filters" className={panel}>
@@ -205,13 +219,13 @@ export default function ReportsAnalytics({ role = 'admin' }) {
               <SelectFilter label="Company area (not student residence)" value={params.get('area') || ''} onChange={value => update({ area: value }, true)}><option value="">All company areas</option>{options.areas.map(area => <option key={area}>{area}</option>)}</SelectFilter>
             </div>
           </section>
-          <Suspense fallback={<ContentSkeleton layout="panel" label="Loading placement insights" />}><PlacementInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id, data.scope.company_id, data.scope.position_id, data.scope.area])} data={data} selection={group} onClearArea={() => update({ area: '' }, true)} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>
+          <Suspense fallback={<InsightsSkeleton tab="placements" />}><PlacementInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id, data.scope.company_id, data.scope.position_id, data.scope.area])} data={data} selection={group} onClearArea={() => update({ area: '' }, true)} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>
         </>}
 
         <section id="analytics-records" aria-label="Analytics records" className={`${panel} analytics-records scroll-mt-24 space-y-5`}>
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div><p className="mb-2 text-xs font-medium text-green-700 dark:text-green-400">Detailed records</p><h2 ref={recordsHeading} tabIndex={-1} className="rounded text-xl font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green-600 dark:text-white">{table.title}</h2><p className="mt-2 wrap-break-word text-xs leading-6 text-gray-600 dark:text-gray-400" role="status">{selectionLabel} · {table.rows.length} records</p></div>
-            <div className="flex flex-wrap gap-3"><button type="button" className={button} disabled={downloading || updating || !!error || previous} onClick={() => download('csv')}>Download displayed CSV</button><button type="button" className={button} disabled={downloading || updating || !!error || previous} onClick={() => download('pdf')}>Download displayed PDF</button></div>
+            <div className="flex flex-wrap gap-3"><button type="button" className={button} disabled={downloading || scopeUpdating || !!error || previous} onClick={() => download('csv')}>Download displayed CSV</button><button type="button" className={button} disabled={downloading || scopeUpdating || !!error || previous} onClick={() => download('pdf')}>Download displayed PDF</button></div>
           </div>
           {group && studentTable && <div role="region" aria-label="Active record filter" className="analytics-record-filter">
             <div><span>Active record filter</span><strong>{selectionLabel}</strong><p>{group.startsWith('batch:') ? 'Showing all students in this batch. Their required completion status may vary.' : group.startsWith('attempt:') ? 'Showing students with this current attempt status for the selected assessment.' : 'Showing only the records matching this selection.'} {tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Student scope filters apply; company, position and area filters do not narrow this status view.' : 'Report scope filters still apply.'}</p></div>

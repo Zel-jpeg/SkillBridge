@@ -1,5 +1,23 @@
 # Instructor assessment library
 
+## Shared admin presentation — 26 October 2026
+
+Admin assessment cards and list rows now reuse
+[AssessmentCategoryPills](../skillbridge-frontend/src/components/assessment/AssessmentCategoryPills.jsx)
+with the instructor library: three neutral pills initially, `+N more` to reveal
+the remainder inline, and Show less to collapse. The native toggle has a unique
+controlled region and expanded state; it stays independent of card activation.
+Admin cards adopt the same quiet border, batch pill and grouped metadata while
+retaining admin instructor identity, authoritative activity counts and pagination.
+
+The admin management dialog opts into the instructor's modal settings/policy
+variants and calendar, preserving its four oversight sections and confirmed-save
+workflow. Publication, duration and display order use aligned 44px controls to
+match the shared modern dropdown minimum height in both editors. The calendar
+portals into its owning native dialog when present, keeping its controls above
+the modal and interactive; other callers retain their existing portal behavior.
+See [admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md) for verification.
+
 25 October analytics reuse: `ScheduleDateTimePicker` also supports an optional
 date-only mode for Reports & Analytics activity ranges. Its assessment default
 still includes time selection and the same Manila save payload; see the
@@ -88,9 +106,8 @@ It also exposes the selected view through `aria-pressed`.
   shared embedded report section also receives those labeled controls.
 
 The existing editor, API permissions, questions, scoring and recommendation gates
-are preserved. The admin assessment library retains its existing presentation;
-its category summary is unchanged. Instructor cards/list show three category
-pills initially and reveal the others inline on demand.
+are preserved. Both instructor and admin cards/list show three category pills
+initially and reveal the others inline on demand.
 
 ## Instructor editor header
 
@@ -149,8 +166,8 @@ above settings explains restrictions; the question toolbar retains its type coun
 The title and save/cancel footer remain visible while settings and questions share
 one scrolling body, including on narrow or short screens.
 
-This layout is an opt-in `modal` variant of AssessmentSettings. Admin settings,
-creation and shared authoring forms retain the default layout. The existing
+This layout is an opt-in `modal` variant of AssessmentSettings. Admin management
+settings now opt in as well; creation and shared authoring forms retain the default layout. The existing
 state setters, validation, attempt locks and save/confirmation flow are unchanged.
 
 ### Custom calendar and time selection

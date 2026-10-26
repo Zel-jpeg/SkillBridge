@@ -1,3 +1,4 @@
+import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
 import { validPin } from '../../utils/recommendationResults'
 import MapStatus from '../../components/MapStatus'
@@ -720,7 +721,7 @@ export default function InstructorCompanies() {
         />
       )}
 
-      <DataSection url="/api/instructor/companies/" layout="cards"><section className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5">
 
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -737,31 +738,11 @@ export default function InstructorCompanies() {
           </div>
         </div>
 
+        <DataSection url="/api/instructor/companies/" skeleton={<div className="space-y-5"><ContentSkeleton layout="map" label="Loading company locations" /><ContentSkeleton layout="company-cards" label="Loading partner companies" /></div>}>
         {/* Overview Map */}
         {!loading && companies.length > 0 && (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-1 shadow-sm">
             <CompaniesMap companies={companies} />
-          </div>
-        )}
-
-        {/* Loading skeletons */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 animate-pulse flex flex-col gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
-                  <div className="flex-1 flex flex-col gap-2 mt-1">
-                    <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/2" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-full w-24" />
-                  <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-full w-20" />
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
@@ -782,7 +763,8 @@ export default function InstructorCompanies() {
             ))}
           </div>
         )}
-      </section></DataSection>
+        </DataSection>
+      </section>
 
       <style>{`
         @keyframes sheetUp {

@@ -1,3 +1,5 @@
+import AuthBackground from '../../components/auth/AuthBackground'
+import { useLoginPreparation } from '../../hooks/useLoginPreparation'
 import { useToast } from '../../context/ToastContext'
 // src/pages/auth/AdminLogin.jsx
 //
@@ -24,6 +26,8 @@ export default function AdminLogin() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const { establishSession } = useSession()
+  const { beginPreparation, completePreparation, isCurrentPreparation } = useLoginPreparation()
+  const [preparing, setPreparing] = useState(false)
 
   const [username,   setUsername]   = useState('')
   const [password,   setPassword]   = useState('')
@@ -41,6 +45,8 @@ export default function AdminLogin() {
     if (!password)        { setError('Password is required.'); return }
 
     setLoading(true)
+    setPreparing(false)
+    const preparation = beginPreparation()
     // Retire the prior identity before the exchange, as Google sign-in does.
     // A late old-session 401 must not expire the new sign-in attempt.
     resetSessionData()
@@ -49,11 +55,16 @@ export default function AdminLogin() {
 
     try {
       const res = await api.post('/api/auth/login/', { email: username, password })
+      if (preparation.signal.aborted) return
       const user = establishSession(res.data)
+      setPreparing(authDestination(user).endsWith('/dashboard'))
+      const destination = await completePreparation(user, preparation)
+      if (!destination) return
       showToast('Signed in successfully.')
 
-      navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
+      navigate(destination, { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
     } catch (err) {
+      if (preparation.signal.aborted) return
       const msg = err.response?.data?.error
 
       if (msg === 'pending') {
@@ -64,7 +75,10 @@ export default function AdminLogin() {
         setError(msg || (err.response?.status === 401 ? 'Invalid username or password.' : 'Sign-in is unavailable. Please try again.'))
       }
     } finally {
-      setLoading(false)
+      if (isCurrentPreparation(preparation)) {
+        setLoading(false)
+        setPreparing(false)
+      }
     }
   }
 
@@ -75,8 +89,8 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-10">
+    <AuthBackground>
+      <div className="sb-auth-card w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 sm:p-10">
 
         {/* Logo + school name */}
         <div className="flex items-center gap-3 mb-8">
@@ -204,7 +218,7 @@ export default function AdminLogin() {
                 <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/>
                 </svg>
-                Signing in…
+                <span role="status">{preparing ? 'Preparing your dashboard…' : 'Signing in…'}</span>
               </>
             ) : 'Sign in'}
           </button>
@@ -226,6 +240,6 @@ export default function AdminLogin() {
         </div>
 
       </div>
-    </div>
+    </AuthBackground>
   )
 }

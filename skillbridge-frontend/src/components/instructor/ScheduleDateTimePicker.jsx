@@ -26,6 +26,7 @@ export default function ScheduleDateTimePicker({ label, value, onChange, error, 
   const trigger = useRef(null)
   const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false)
   const [open, setOpen] = useState(false)
+  const [portalContainer, setPortalContainer] = useState(undefined)
   const [date, setDate] = useState(null)
   const [time, setTime] = useState(new Time(9))
   let currentDate = null
@@ -34,6 +35,9 @@ export default function ScheduleDateTimePicker({ label, value, onChange, error, 
   function changeOpen(next) {
     if (disabled && next) return
     if (next) {
+      // A body portal sits behind a native modal and becomes inert. Keep the
+      // calendar in the owning dialog's top layer, including compact overlays.
+      setPortalContainer(trigger.current?.closest('dialog[open]') || undefined)
       // A focused field can move offscreen after resizing or a chart refresh.
       // Position the popup only after its anchor is back in the viewport.
       trigger.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
@@ -74,7 +78,7 @@ export default function ScheduleDateTimePicker({ label, value, onChange, error, 
       <Button ref={trigger} isDisabled={disabled} aria-label={`${label}: ${disabled && !value ? 'Not set' : valueLabel}${disabled ? ' (locked)' : ''}`} aria-describedby={error ? `${id}-error` : describedBy} aria-invalid={!!error || invalid} className={`scroll-mt-24 scroll-mb-4 flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 text-left text-xs outline-none transition-colors enabled:hover:border-green-400 focus-visible:ring-2 focus-visible:ring-green-600 disabled:cursor-not-allowed disabled:bg-gray-50 dark:bg-gray-800 dark:disabled:bg-gray-800/60 ${error || invalid ? 'border-rose-500' : 'border-gray-200 dark:border-gray-700'}`}>
         <span aria-hidden="true" className="shrink-0 text-gray-400">{disabled ? <LockIcon size={15} /> : <CalendarIcon size={15} />}</span><span className={`min-w-0 flex-1 truncate ${value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{disabled && !value ? 'Not set' : valueLabel}</span><span aria-hidden="true" className="shrink-0 text-gray-400">{disabled ? <CalendarIcon size={15} /> : <ChevronDown size={13} open={open} />}</span>
       </Button>
-      {compact ? <ModalOverlay isDismissable className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-3"><Modal className={`max-h-[calc(100dvh-24px)] w-[304px] max-w-full ${pickerSurface}`}>{content}</Modal></ModalOverlay> : <Popover placement="bottom start" offset={6} containerPadding={12} className={`z-[100] max-h-[calc(100dvh-24px)] w-[min(304px,calc(100vw-24px))] ${pickerSurface}`}>{content}</Popover>}
+      {compact ? <ModalOverlay UNSTABLE_portalContainer={portalContainer} isDismissable className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-3"><Modal className={`max-h-[calc(100dvh-24px)] w-[304px] max-w-full ${pickerSurface}`}>{content}</Modal></ModalOverlay> : <Popover UNSTABLE_portalContainer={portalContainer} placement="bottom start" offset={6} containerPadding={12} className={`z-[100] max-h-[calc(100dvh-24px)] w-[min(304px,calc(100vw-24px))] ${pickerSurface}`}>{content}</Popover>}
     </DialogTrigger>
     {error && <p id={`${id}-error`} role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
   </div></I18nProvider>

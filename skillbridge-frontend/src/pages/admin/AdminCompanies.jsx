@@ -760,7 +760,35 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
 // mode='edit' → pre-filled from initialData, "Save Changes" submit
 //   categories prop comes from hook (already loaded, no internal fetch needed)
 // ════════════════════════════════════════════════════════════════════════════
-function PositionModal({ mode = 'add', companyName, initialData = null, categories, onClose, onSubmit }) {
+function PositionModal(props) {
+  const { mode, companyName, onClose } = props
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {mode === 'edit' ? 'Edit Position' : 'Add Position'}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{companyName}</p>
+          </div>
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <XIcon size={16}/>
+          </button>
+        </div>
+
+        <DataSection url="/api/categories/" layout="settings" label="Loading position requirements">
+          <PositionForm {...props} />
+        </DataSection>
+      </div>
+    </div>
+  )
+}
+
+function PositionForm({ mode = 'add', initialData = null, categories, onClose, onSubmit }) {
   const isEdit = mode === 'edit'
   const savePending = useRef(false)
 
@@ -835,23 +863,7 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {isEdit ? 'Edit Position' : 'Add Position'}
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{companyName}</p>
-          </div>
-          <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <XIcon size={16}/>
-          </button>
-        </div>
-
+    <>
         {error && (
           <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 border border-rose-100 dark:border-rose-900 rounded-lg px-3 py-2">
             {error}
@@ -939,8 +951,7 @@ function PositionModal({ mode = 'add', companyName, initialData = null, categori
               : isEdit ? 'Save Changes' : 'Add Position'}
           </button>
         </div>
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -1004,24 +1015,24 @@ export default function AdminCompanies() {
       )}
 
       {addPositionFor && (
-        <DataSection url="/api/categories/" layout="panel" count={1}><PositionModal
+        <PositionModal
           mode="add"
           companyName={addPositionFor.name}
           categories={categories}
           onClose={() => setAddPositionFor(null)}
           onSubmit={pos => handleAddPosition(addPositionFor, pos)}
-        /></DataSection>
+        />
       )}
 
       {editPositionFor && (
-        <DataSection url="/api/categories/" layout="panel" count={1}><PositionModal
+        <PositionModal
           mode="edit"
           companyName={editPositionFor.company.name}
           initialData={editPositionFor.position}
           categories={categories}
           onClose={() => setEditPositionFor(null)}
           onSubmit={pos => handleSavePosition(editPositionFor.company.id, pos)}
-        /></DataSection>
+        />
       )}
 
       {confirmDeleteComp && (
