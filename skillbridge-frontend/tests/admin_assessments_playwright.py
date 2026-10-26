@@ -55,6 +55,7 @@ class Fixture:
         self.context.route('**/*', self.route)
         self.page = self.context.new_page()
         self.page.set_default_timeout(10000)
+        self.page.set_default_navigation_timeout(30000)
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
         self.retake_allowed = False
 
@@ -121,6 +122,13 @@ class Fixture:
             return route.fulfill(json=USER)
         if path == '/api/admin/users/':
             return route.fulfill(json={'students': [], 'instructors': [], 'pending_instructors': []})
+        if path == '/api/management/analytics/':
+            return route.fulfill(json={
+                'generated_at': '2026-10-26T00:00:00Z', 'role': 'admin', 'scope': {},
+                'summary': {key: 0 for key in ['students', 'required_complete', 'approved', 'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining', 'pending_instructors']},
+                'options': {key: [] for key in ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas']},
+                **{key: [] for key in ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity']},
+            })
         return route.fulfill(json={} if path.endswith(('/stats/', '/reports/')) else [])
 
     def open(self):
@@ -132,6 +140,8 @@ class Fixture:
         self.page.evaluate('(urls) => window.dispatchEvent(new CustomEvent("sse:data_changed", {detail:{urls}}))', list(urls) or [API])
 
     def shot(self, name):
+        while self.page.get_by_role('button', name='Dismiss notification', exact=True).count():
+            self.page.get_by_role('button', name='Dismiss notification', exact=True).first.click()
         self.page.screenshot(path=str(ARTIFACTS / (name + '.png')), full_page=False)
 
     def close(self):
@@ -177,10 +187,11 @@ with sync_playwright() as p:
         expect(page.locator('dialog[open]')).to_have_count(1)
         page.keyboard.press('Escape')
         expect(card_button).to_be_focused()
-    card.locator('summary').click()
+    card.get_by_role('button', name='Show 2 more categories', exact=True).click()
     expect(card.get_by_text('Security', exact=True)).to_be_visible()
     expect(page.locator('dialog[open]')).to_have_count(0)
-    card.locator('summary').press('Space')
+    expect(card.get_by_role('button', name='Show fewer categories')).to_have_attribute('aria-expanded', 'true')
+    card.get_by_role('button', name='Show fewer categories').press('Space')
     expect(card.get_by_text('Security', exact=True)).not_to_be_visible()
     expect(page.locator('dialog[open]')).to_have_count(0)
     checks.append('Whole-card click, native Enter/Space activation, card focus restoration, independent category disclosure and no View details text')
@@ -213,13 +224,19 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Clear all', exact=True).click()
     page.get_by_role('button', name=re.compile('More filters')).click()
     fixture.shot('desktop-list')
-    page.locator('summary').first.click()
+    page.locator('tbody tr').first.get_by_role('button', name='Show 2 more categories', exact=True).click()
     expect(page.locator('tbody').get_by_text('Security', exact=True).first).to_be_visible()
     checks.append('Both views: pagination, stable ordering, live clamping, combined filters, global counts, batch deduplication, category disclosure')
 
     open_button = page.get_by_role('button', name='View details for Assessment 27 — Database foundations')
     open_button.click()
     expect(details(page).get_by_role('heading', name='Assessment 27 — Database foundations')).to_be_visible()
+    details(page).get_by_role('button', name='Show 2 more categories', exact=True).click()
+    expect(details(page).get_by_text('Security', exact=True)).to_be_visible()
+    details(page).get_by_role('button', name='Show fewer categories').click()
+    expect(details(page).get_by_text('Security', exact=True)).not_to_be_visible()
+    expect(details(page).get_by_text('All settings saved', exact=True)).to_be_visible()
+    fixture.shot('modal-overview')
     assert not any(path.endswith(('/students/', '/questions/')) for _, path in fixture.calls)
     page.keyboard.press('Escape')
     expect(open_button).to_be_focused()
@@ -227,9 +244,24 @@ with sync_playwright() as p:
     open_button.click()
     tab(page, 'Settings')
     title = details(page).get_by_label('Title', exact=True)
+    details(page).get_by_role('button', name=re.compile('^Due at:')).click()
+    picker = page.get_by_role('dialog', name='Due at date and time', exact=True)
+    expect(picker).to_be_visible()
+    picker.get_by_role('button', name='Cancel', exact=True).click()
+    details(page).get_by_role('button', name=re.compile('^Due at:')).click()
+    page.keyboard.press('Escape')
+    expect(page.locator('dialog[open]')).to_have_count(1)
+    expect(picker).not_to_be_visible()
+    expect(details(page).get_by_text('All settings saved', exact=True)).to_be_visible()
     title.fill('')
+    details(page).get_by_label('Duration', exact=True).fill('0')
     details(page).get_by_role('button', name='Review & save').click()
     expect(details(page).get_by_text('Enter an assessment title.', exact=True)).to_be_visible()
+    expect(details(page).get_by_label('Duration', exact=True)).to_have_attribute('aria-invalid', 'true')
+    assert details(page).get_by_label('Duration', exact=True).get_attribute('aria-describedby')
+    details(page).get_by_label('Duration', exact=True).fill('30')
+    expect(details(page).get_by_role('region', name='Assessment schedule')).to_be_visible()
+    expect(details(page).get_by_text('Asia/Manila · UTC+08', exact=True)).to_be_visible()
     title.fill('Unsaved local title')
     fixture.records[-1]['title'] = 'Server title changed'
     fixture.records[-1]['completion_rate'] = 65
@@ -248,7 +280,7 @@ with sync_playwright() as p:
     fixture.save_fail = True
     details(page).get_by_role('button', name='Review & save').click()
     page.locator('dialog[open]').last.get_by_role('button', name='Save', exact=True).click()
-    expect(details(page).get_by_text('Synthetic save conflict', exact=True)).to_be_visible()
+    expect(details(page).locator('[role="alert"]:not(.sb-toast-message)').get_by_text('Synthetic save conflict', exact=True)).to_be_visible()
     fixture.save_fail = False
     fixture.hold_save = True
     details(page).get_by_role('button', name='Review & save').click()
@@ -311,8 +343,7 @@ with sync_playwright() as p:
     expect(details(page).get_by_text('Key: SYNTHETIC KEY', exact=True)).to_have_count(0)
     checks.append('Lazy roster/key loading, bounded student/question lists, retry states, exact assessment retake and refreshed attempt approval')
 
-    page.wait_for_timeout(4100)  # Let expected failure toasts expire before visual captures.
-    for width in [375, 768, 1440]:
+    for width in [320, 375, 768, 1024, 1440]:
         for dark in [False, True]:
             page.set_viewport_size({'width': width, 'height': 900})
             page.evaluate('(dark) => document.documentElement.classList.toggle("dark", dark)', dark)
@@ -322,6 +353,21 @@ with sync_playwright() as p:
             if width == 375:
                 tab(page, 'Overview')
                 fixture.shot('mobile-modal-' + ('dark' if dark else 'light'))
+            tab(page, 'Settings')
+            pub = details(page).get_by_label('Publication state', exact=True).bounding_box()
+            order = details(page).get_by_label('Student display order', exact=True).bounding_box()
+            assert abs(pub['width'] - order['width']) < 2 and abs(pub['y'] - order['y']) < 2
+            assert abs(pub['height'] - order['height']) < 2
+            fixture.shot(f'{width}-settings-' + ('dark' if dark else 'light'))
+            details(page).get_by_role('button', name=re.compile('^Due at:')).click()
+            picker = page.get_by_role('dialog', name='Due at date and time', exact=True)
+            apply = picker.get_by_role('button', name='Apply', exact=True)
+            expect(apply).to_be_enabled()
+            assert apply.evaluate('n => {const r=n.getBoundingClientRect(); return n.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}')
+            fixture.shot(f'{width}-calendar-' + ('dark' if dark else 'light'))
+            apply.click()
+            expect(picker).not_to_be_visible()
+            expect(details(page).get_by_text('All settings saved', exact=True)).to_be_visible()
     tab(page, 'Overview')
     details(page).get_by_role('tab', name='Overview', exact=True).focus()
     page.keyboard.press('ArrowRight')
@@ -374,6 +420,24 @@ with sync_playwright() as p:
     assert page.get_by_label('Global assessment totals').count() == 0
     fixture.close()
     checks.append('Definitive 403 access loss removes cached assessment details and editing controls, even with a dirty draft')
+
+    fixture = Fixture(browser)
+    fixture.records[-1].update(questions_locked=True, unfinished_attempt_count=1, due_at=None)
+    page = fixture.open()
+    page.get_by_role('button', name='View details for Assessment 27 — Database foundations').click()
+    tab(page, 'Settings')
+    expect(details(page).get_by_label('Duration', exact=True)).to_be_disabled()
+    expect(details(page).get_by_label('Publication state', exact=True)).to_be_disabled()
+    expect(details(page).get_by_text('Some settings are locked', exact=True)).to_be_visible()
+    rules = details(page).locator('summary').filter(has_text='View editing rules')
+    rules.press('Space')
+    expect(details(page).get_by_text('A new deadline cannot be introduced.', exact=True)).to_be_visible()
+    expect(details(page).get_by_text('All settings saved', exact=True)).to_be_visible()
+    fixture.shot('modal-locked-settings')
+    page.keyboard.press('Escape')
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    fixture.close()
+    checks.append('Shared modal settings, inline category expansion, duration errors, aligned controls and locked-setting disclosure without dirtying the draft')
 
     for fail, empty in [(True, False), (False, True)]:
         fixture = Fixture(browser, fail=fail, empty=empty)

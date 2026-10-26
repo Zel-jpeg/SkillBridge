@@ -1,5 +1,7 @@
+import { ContentSkeleton } from '../loading/Skeletons'
 import Pagination from '../Pagination'
 import { WarnIcon } from '../Icons'
+import AssessmentCategoryPills from '../assessment/AssessmentCategoryPills'
 
 export function AssessmentStatus({ status }) {
   const tone = status === 'published' ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300' : status === 'draft' ? 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
@@ -7,12 +9,7 @@ export function AssessmentStatus({ status }) {
 }
 
 export function CategorySummary({ categories = [] }) {
-  const badge = 'max-w-full break-words rounded-md bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-  return <div className="flex flex-wrap items-start gap-1">
-    {categories.slice(0, 2).map(name => <span key={name} className={badge}>{name}</span>)}
-    {categories.length > 2 && <details className="max-w-full"><summary className={`${badge} cursor-pointer focus-visible:outline-2 focus-visible:outline-green-600`} aria-label={`Show ${categories.length - 2} more categories`}>+{categories.length - 2}</summary><ul className="mt-1 space-y-1 text-xs text-gray-600 dark:text-gray-300">{categories.slice(2).map(name => <li key={name} className="break-words">{name}</li>)}</ul></details>}
-    {!categories.length && <span className="text-xs text-gray-500 dark:text-gray-400">No categories</span>}
-  </div>
+  return <AssessmentCategoryPills categories={categories} />
 }
 
 export function AssessmentProgress({ assessment: a }) {
@@ -35,13 +32,8 @@ export function AssessmentPagination({ total, page, onPage, pageSize = 10, noun 
   </nav>
 }
 
-export function AssessmentSkeleton({ layout = 'grid', count = 6 }) {
-  return <div role="status" aria-label="Loading assessments" aria-busy="true" className={layout === 'stats' ? 'grid grid-cols-2 gap-3 lg:grid-cols-5' : layout === 'grid' ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-3' : 'space-y-0'}>
-    {Array.from({ length: count }, (_, i) => <div aria-hidden="true" key={i} className={`motion-safe:animate-pulse rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 ${layout === 'list' ? 'flex gap-5 rounded-none border-x-0' : ''}`}>
-      <div className="flex-1"><div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" /><div className="mt-3 h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-800" />{layout === 'grid' && <><div className="my-6 h-2 rounded bg-gray-100 dark:bg-gray-800" /><div className="mt-4 h-3 w-3/4 rounded bg-gray-100 dark:bg-gray-800" /><div className="mt-4 h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-800" /></>}</div>
-      {layout === 'list' && <div className="hidden w-2/3 grid-cols-4 gap-5 sm:grid">{[0, 1, 2, 3].map(n => <div key={n} className="h-3 rounded bg-gray-100 dark:bg-gray-800" />)}</div>}
-    </div>)}<span className="sr-only">Loading assessments…</span>
-  </div>
+export function AssessmentSkeleton({ layout = 'grid', count }) {
+  return <ContentSkeleton layout={layout === 'stats' ? 'assessment-stats' : layout === 'grid' ? 'assessment-cards' : 'assessment-table'} count={count ?? (layout === 'stats' ? 5 : layout === 'grid' ? 3 : 4)} columns={layout === 'list' ? 7 : 3} label="Loading assessments" />
 }
 
 export function AssessmentRetry({ onRetry, children = 'Could not load assessments. Please try again.' }) {

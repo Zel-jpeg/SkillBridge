@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../DataSection'
+import ConfirmModal from '../admin/ConfirmModal'
 import { GridIcon, ListIcon, XIcon } from '../Icons'
 import { confirmationText, downloadStudentTemplate, editReviewRow, parseStudentFile, resultText, statusLabel } from '../../utils/studentEnrollmentImport'
 
@@ -14,7 +15,7 @@ const counts = { total: 'Total parsed', ready: 'Ready to enroll', existing_stude
   already_enrolled: 'Already enrolled', unsupported: 'Unsupported', duplicate: 'Duplicate', invalid: 'Invalid', conflict: 'Conflict' }
 const PAGE_SIZE = 25
 
-export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled }) {
+export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, requireConfirmation = false }) {
   const dialog = useRef(null)
   const reviewDialog = useRef(null)
   const fileRef = useRef(null)
@@ -38,6 +39,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   const [verified, setVerified] = useState(false)
   const [spreadsheetReview, setSpreadsheetReview] = useState(false)
   const [fileRows, setFileRows] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const enrollmentPending = useRef(false)
 
   useEffect(() => {
     dialog.current.showModal()
@@ -90,7 +93,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
   }
 
   async function confirm() {
-    if (!review || !verified || dirty || busy) return
+    if (!review || !verified || dirty || busy || enrollmentPending.current) return
+    enrollmentPending.current = true
     setBusy(true); setError('')
     try {
       const { data } = await api.post(`/api/instructor/batches/${target}/enroll/`, { students: rows, review_token: review.review_token })
@@ -100,12 +104,20 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
       const enrolled = data.summary?.enrolled ?? 0
       showToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
       onEnrolled?.(data)
+      setConfirming(false)
     } catch (err) {
       invalidateReview()
       const message = requestErrorMessage(err, { mutation: true })
       setError(message)
       showToast(message, 'error')
-    } finally { setBusy(false) }
+      setConfirming(false)
+    } finally { enrollmentPending.current = false; setBusy(false) }
+  }
+
+  function reviewConfirmation() {
+    if (!review || !verified || dirty || busy || enrollmentPending.current) return
+    if (requireConfirmation) setConfirming(true)
+    else confirm()
   }
 
   function edit(index, field, value) {
@@ -271,7 +283,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     {!fileRows ? <footer className="enrollment-footer">
       {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
         {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={reviewConfirmation}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
       </>}
     </footer> : <footer className="enrollment-footer enrollment-actions">
       <button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>
@@ -293,8 +305,10 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled })
     <footer className="enrollment-footer">
       {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
         {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={confirm}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={reviewConfirmation}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
       </>}
     </footer>
-  </dialog></>
+  </dialog>
+  {confirming && <ConfirmModal tone="confirm" title="Confirm student enrollment?" message={`Enroll ${review?.summary.ready ?? 0} verified students in ${selectedBatch?.name || 'the selected batch'} with ${selectedBatch?.instructor_name || 'its assigned instructor'}? ${confirmationText(review?.summary || {})} Existing records and other batch memberships are preserved.`} confirmLabel="Enroll students" onCancel={() => setConfirming(false)} onConfirm={confirm} />}
+  </>
 }

@@ -3,14 +3,14 @@ export function createPreparationQueue({ identity, visible, ready, read, fetch, 
   schedule = callback => setTimeout(callback, 0), cancel = clearTimeout, concurrency = 1,
   now = Date.now, ttl = 30_000 }) {
   let owner = null, enabled = false, timer = null, generation = 0
-  const queued = new Map(), active = new Set(), attempted = new Set()
+  const queued = new Map(), active = new Map(), attempted = new Set()
 
   function reset() {
     generation += 1
     enabled = false
     queued.clear()
     attempted.clear()
-    active.forEach(abort)
+    for (const url of active.keys()) abort(url)
     active.clear()
     if (timer !== null) cancel(timer)
     timer = null
@@ -25,7 +25,7 @@ export function createPreparationQueue({ identity, visible, ready, read, fetch, 
   function pump() {
     if (!enabled) return
     if (!owner || identity() !== owner) { reset(); return }
-    if (!visible() || !ready()) return
+    if (!visible() || !ready(active.keys())) return
     while (active.size < concurrency && queued.size) {
       const url = queued.keys().next().value
       queued.delete(url)
@@ -35,7 +35,8 @@ export function createPreparationQueue({ identity, visible, ready, read, fetch, 
       const code = prepare?.(url)
       if (fresh && !code) continue
       attempted.add(url)
-      active.add(url)
+      const job = {}
+      active.set(url, job)
       const epoch = generation
       const requestOwner = owner
       // Deadline applies only to speculative list GETs, not operations or SSE.
@@ -43,7 +44,7 @@ export function createPreparationQueue({ identity, visible, ready, read, fetch, 
         fresh ? Promise.resolve() : fetch(url, { timeout: 15_000, canContinue: () => visible() && identity() === requestOwner }),
         code,
       ]).catch(() => {}).finally(() => {
-        if (epoch !== generation) return
+        if (epoch !== generation || active.get(url) !== job) return
         active.delete(url)
         wake()
       })
@@ -70,14 +71,31 @@ export function createPreparationQueue({ identity, visible, ready, read, fetch, 
       enabled = true
       // A new page has mounted its subscriptions. Keep adopted requests and
       // abort obsolete speculative traffic before scheduling more work.
-      active.forEach(url => { if (abort(url)) active.delete(url) })
+      for (const url of active.keys()) {
+        if (abort(url)) { active.delete(url); attempted.delete(url); queued.set(url, true) }
+      }
       enqueue(urls)
     },
     enqueue, wake, reset,
+    prioritize(urls) {
+      const needed = new Set(urls)
+      for (const url of active.keys()) {
+        // A mounted/adopted request is protected by abortUnobserved.
+        if (!needed.has(url) && abort(url)) {
+          active.delete(url)
+          attempted.delete(url)
+          queued.set(url, true)
+        }
+      }
+      const keys = [...queued.keys()]
+      queued.clear()
+      keys.filter(url => needed.has(url)).concat(keys.filter(url => !needed.has(url)))
+        .forEach(url => queued.set(url, true))
+    },
     pause({ abortActive = false } = {}) {
       enabled = false
       if (abortActive) {
-        active.forEach(abort)
+        for (const url of active.keys()) abort(url)
         active.clear()
         generation += 1
       }

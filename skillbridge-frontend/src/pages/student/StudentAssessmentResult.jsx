@@ -61,7 +61,7 @@ export default function StudentAssessmentResult() {
 
     <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <button onClick={() => navigate('/student/assessments')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400 focus-visible:outline-2">← Skills Assessments</button>
-      <DataSection urls={resultUrl ? [resultUrl] : []} layout="stats"><div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-7">
+      <DataSection urls={resultUrl ? [resultUrl] : []} layout="result-summary"><div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">Assessment Result</p>
         {(!validId || error) && <div role="alert" className="mt-4 text-sm text-rose-700 dark:text-rose-300">{!validId ? 'Invalid assessment link.' : error === 'Finalized attempt not found' ? 'There is no completed attempt to show yet.' : 'This assessment result is unavailable for your batch.'}</div>}
         {loading && <p role="status" className="mt-4 text-sm text-gray-600 dark:text-gray-300">Loading your result…</p>}
@@ -88,7 +88,7 @@ export default function StudentAssessmentResult() {
         {scores.length ? <SkillCategoryList scores={scores} showRaw showTags={false} colorful={false} /> : <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">No scored answers were recorded.</p>}
       </section>}
 {data?.assessment && !loading && !error && !stopped && <div className="mt-6"><CompetencyInsights scores={scores} scope="individual" audience="student" /></div>}
-<DataSection urls={data?.assessment && reviewUrl ? [reviewUrl] : []} layout="table" label="Loading submitted answers">
+<DataSection urls={data?.assessment && reviewUrl ? [reviewUrl] : []} layout="answers" label="Loading submitted answers">
       {data?.assessment && !loading && !error && (reviewPending ? <p role="status" className="mt-5 text-sm text-gray-600 dark:text-gray-300">Loading submitted answers…</p> : reviewError ? <p role="alert" className="mt-5 text-sm text-rose-700 dark:text-rose-300">Submitted answers could not be loaded. Your score is still available above.</p> : <AnswerReview questions={review?.questions} answers={review?.answers} />)}
 
 </DataSection>

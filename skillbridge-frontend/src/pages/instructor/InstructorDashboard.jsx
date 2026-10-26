@@ -1,3 +1,5 @@
+import { getCachedData } from '../../hooks/useApi'
+import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
 import { useRef } from 'react'
 // src/pages/instructor/InstructorDashboard.jsx  (SLIMMED — 937 → ~200 lines)
@@ -115,9 +117,8 @@ export default function InstructorDashboard() {
 
         <DashboardOverview role="instructor" />
 
-<DataSection url="/api/instructor/students/recommendations/" layout="table">
         {/* No active batch banner */}
-        {!loading && studentsList.length === 0 && (
+        {!loading && getCachedData("/api/instructor/students/recommendations/") != null && studentsList.length === 0 && (
           <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-5 flex items-start gap-4">
             <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-amber-600">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
@@ -130,7 +131,7 @@ export default function InstructorDashboard() {
           </div>
         )}
 
-        <DashboardHighlights students={studentsList} onSelectStudent={selectStudent} />
+        <DashboardHighlights loadingUrl="/api/instructor/students/recommendations/" students={studentsList} onSelectStudent={selectStudent} />
 
         {/* Student table */}
         <div className="flex flex-col gap-4">
@@ -152,9 +153,10 @@ export default function InstructorDashboard() {
                 ))}
               </div>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{displayed.length} students</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{loading ? 'Loading students…' : `${displayed.length} students`}</p>
           </div>
 
+          <DataSection url="/api/instructor/students/recommendations/" skeleton={<CollectionSkeleton view={view} />}>
           {displayed.length === 0 ? (
             <EmptyState message="No students match your search." onClear={() => { setSearch(''); setFilter('all') }} />
           ) : (
@@ -315,6 +317,8 @@ export default function InstructorDashboard() {
             </>
           )}
 
+          </DataSection>
+
           {/* Score legend */}
           <div className="flex flex-wrap items-center gap-3 px-1 pb-4">
             <p className="text-xs text-gray-400 dark:text-gray-600 mr-1">Score key:</p>
@@ -324,7 +328,7 @@ export default function InstructorDashboard() {
           </div>
         </div>
 
-</DataSection>
+
       </section>
     </div>
   )

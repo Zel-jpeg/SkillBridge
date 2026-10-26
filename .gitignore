@@ -9,6 +9,11 @@ build/
 __pycache__/
 *.py[cod]
 
+# Local report downloads and UI verification previews; source design concepts stay tracked.
+/outputs/report-previews-*/
+/outputs/report-previews-*.zip
+/outputs/ui-previews/
+
 # Private environment variants; keep safe setup templates publishable.
 .env.*
 !.env.example

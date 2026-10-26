@@ -1,5 +1,32 @@
 # Authentication, route loading and background preparation
 
+26 October dashboard-first follow-up: approved sign-ins prepare dashboard code
+and essential reads together for at most 1.5 seconds. They then hand off to ready
+content or matching loaders while the same reads continue. Optional preparation
+now uses two slots, with foreground/adopted reads protected. Pending/setup routes
+bypass the dashboard wait. See [dashboard-first loading](DASHBOARD_FIRST_LOADING.md).
+This supersedes the earlier immediate handoff/single-slot measurements below.
+
+26 October skeleton refinement: route code loading uses a destination-specific skeleton;
+initial data placeholders match section layouts and card/list breakpoints. Page
+headings, search/view controls and dialog frames remain visible. Background data
+refresh continues to retain loaded content. See [section loading presentation](SKELETON_LOADING_UI.md)
+for coverage, semantics and verification.
+
+First-visit follow-up: navigation hover/focus starts the selected page's module
+download immediately, including Reports, Placements and New Assessment. It no
+longer waits for the optional GET queue's foreground-read readiness. Optional data
+preparation remains bounded and role-scoped. Direct navigation starts route
+data/code concurrently; sign-in adds the bounded dashboard preparation above.
+Cold-code browser probes distinguish this code-preparation improvement from
+unmeasured live API, database and provider latency.
+
+26 October analytics refinement: date/period switches now reuse authorized loaded
+submission-day counts, without extra GETs. Scope-changing filters retain backend
+aggregation and cached-scope reuse. Forms/graphs stay mounted, explicit loading
+feedback avoids layout shifts, and routine SSE/poll refreshes stay silent. See
+[analytics implementation](ANALYTICS_IMPLEMENTATION.md).
+
 20 October analytics filter refinement: Reports & Analytics retains its rendered
 last-good report across filter keys, with an explicit background-update status.
 Dates apply as a validated pair. Server/network errors offer retry without
@@ -69,9 +96,10 @@ there is no deployment evidence justifying a notification/query rewrite.
 
 ## Runtime sequence
 
-1. Successful authentication resets old session work, stores the session and
-   immediately selects the existing role/approval/setup destination. Page-data
-   failures execute outside the authentication handler.
+1. Successful authentication resets old session work and stores the session.
+   Dashboard code and essential data start together; a 1.5-second maximum handoff
+   window releases ready content or existing loaders/retry states. Approval/setup
+   destinations bypass the wait. Page-data failure does not fail authentication.
 2. `PrivateRoute` checks token/role and known pending approval before mounting
    protected content. The shell stays available while the page module loads.
    Current-route essential GETs start concurrently with that module download.
@@ -81,8 +109,8 @@ there is no deployment evidence justifying a notification/query rewrite.
    have explicit retry controls. Transient background failures retain content;
    definitive 403/404 responses remove inaccessible data.
 4. After the page has mounted and outstanding shared reads have settled, the
-   queue prepares one likely destination at a time. Code and a needed GET can
-   load together in that slot; fresh GET data is reused without another request.
+   queue prepares up to two likely destinations together. Code and a needed GET
+   share each slot; fresh GET data is reused without another request.
    Hover/focus promotes queued destinations, and foreground navigation never
    waits for the optional queue. A mounted page adopts a matching in-flight GET.
 5. SSE invalidation, the existing 30-second visible-query fallback and tab-return
@@ -284,8 +312,8 @@ All frontend paths below are relative to `skillbridge-frontend/`.
 | `src/hooks/instructor/useEnrolledStudents.js` | Guard first batch/roster hydration while retaining subsequent live/optimistic content |
 | `src/hooks/instructor/useInstructorAssessments.js` | Shared restricted GETs, retryable question errors and obsolete-selection guard |
 | `src/hooks/usePlacements.js` | Expose independent readiness for safe rendering/actions |
-| `src/pages/auth/LoginPage.jsx` | Shared Axios auth request; immediate success routing; remove role-prefetch wait |
-| `src/pages/auth/AdminLogin.jsx` | Immediate shared routing and distinct unavailable/credential errors |
+| `src/pages/auth/LoginPage.jsx` | Shared Axios auth; bounded dashboard-first handoff; approval/setup bypass |
+| `src/pages/auth/AdminLogin.jsx` | Bounded dashboard preparation and distinct unavailable/credential errors |
 | `src/pages/admin/AdminDashboard.jsx` | Independent statistics and recommendation states |
 | `src/pages/admin/AdminUsers.jsx` | Guard list/counts while loading or failed |
 | `src/pages/admin/AdminAssessments.jsx` | Guard list/counts, selected roster and authorized questions independently |

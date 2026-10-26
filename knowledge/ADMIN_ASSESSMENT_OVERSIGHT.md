@@ -1,5 +1,44 @@
 # Admin assessment oversight
 
+## Card and management dialog consistency — 26 October 2026
+
+The admin library now shares the instructor's category pill component. Cards,
+list rows and the overview initially show three categories; `+N more` expands
+all remaining categories inline and Show less collapses them. Reading categories
+does not open the assessment or dirty its settings. Cards use a neutral rounded
+surface, blue batch pill, grouped configuration and separate progress/schedule.
+Admin instructor identity and submission/completion/integrity meanings remain.
+
+The responsive management dialog has an assessment icon, saved status and batch,
+responsible instructor, grouped overview facts, and the instructor editor's
+settings and schedule presentation. Existing attempt locks are explained in one
+expandable notice; changed-setting effects remain visible. Reuse/archive actions
+sit below the active section. The title input stays in Settings; the fixed footer
+retains review/save, reset and dirty-close confirmation behavior. Ten-record
+pagination, live draft reconciliation, lazy roster/key loading, assessment-specific
+retakes and backend access boundaries are unchanged.
+
+The shared calendar uses its owning native dialog as the portal container. This
+fixes a popup that otherwise appeared behind the admin dialog and was inert.
+The existing calendar draft, Apply/Cancel/Clear and Manila conversion are reused.
+No API, scoring, timing policy, dependency or backend data changes are required.
+
+Verification passed frontend lint/build, all 167 discovered JavaScript tests,
+the nine-group admin assessment browser suite, and all 11 instructor assessment
+browser groups with zero page errors. Admin checks include inline expansion in
+cards/list/overview, duration validation, dirty/save/retry and access-loss flows,
+lazy rosters/keys, retakes, keyboard focus, aligned settings controls, and calendar
+Apply/Cancel/Escape in the native dialog. Five widths (320, 375, 768, 1024 and
+1440px) were checked in light and dark themes. Desktop cards, overview/settings
+and narrow light/dark calendars were visually reviewed. All browser data is
+synthetic and API requests are intercepted; live backend writes, authorization
+and device-specific screen readers were not exercised. The real-API timing
+browser test's selectors now match the shared calendar, but that database-backed
+suite was not run for this presentation change.
+
+Previews are in `outputs/ui-previews/admin-assessments-2026-10-26/`; the full
+browser screenshots remain in ignored `tests/artifacts/admin-assessments/`.
+
 25 October timing follow-up: [assessment editing and timing](ASSESSMENT_LIFECYCLE_AND_TIMING.md)
 adds shared used-assessment locks, settings-impact review, Duplicate as draft and
 audited Grant extra time in actionable student details. Backend rules apply to

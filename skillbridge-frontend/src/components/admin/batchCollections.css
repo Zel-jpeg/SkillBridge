@@ -1,0 +1,76 @@
+.admin-batches { min-width: 0; width: 100%; color: #1f2937; }
+.admin-batches > section { min-width: 0; }
+.admin-batches button:enabled { cursor: pointer; }
+.admin-batches button:disabled { cursor: not-allowed; }
+.batch-grid, .batch-roster-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.batch-card { display: flex; flex-direction: column; gap: 18px; min-width: 0; padding: 22px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; text-align: left; transition: border-color .15s, box-shadow .15s; }
+.batch-card:hover { border-color: #86d7a4; box-shadow: 0 3px 12px #14532d0b; }
+.batch-card:focus-visible, .admin-batches button:focus-visible, .batch-table-wrap:focus-visible { outline: 2px solid #15803d; outline-offset: 2px; }
+.batch-card-title { display: flex; align-items: center; gap: 10px; }
+.batch-card h2 { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 14px; font-weight: 650; }
+.batch-symbol { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #ecfdf5; color: #15803d; }
+.batch-status, .batch-student-status { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; padding: 4px 9px; border-radius: 999px; font-size: 11px; line-height: 1.5; font-weight: 500; background: #f1f5f9; color: #475569; }
+.batch-status.is-active, .batch-student-status.is-complete { background: #dcfce7; color: #166534; }
+.batch-student-status.is-progress { background: #fef3c7; color: #92400e; }
+.batch-student-status.is-flagged { background: #ffe4e6; color: #9f1239; }
+.batch-instructor, .batch-student-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.batch-instructor > div:last-child, .batch-student-identity > div:last-child { min-width: 0; }
+.batch-instructor strong { display: block; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.batch-instructor span, .batch-student-identity p, .batch-creator { display: block; margin-top: 3px; font-size: 11px; color: #64748b; overflow-wrap: anywhere; }
+.batch-student-count { display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #f1f5f9; color: #475569; font-size: 14px; }
+.batch-student-count strong { color: #111827; }
+.batch-card .batch-creator { margin-top: -10px; }
+.batch-card-link { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid #f1f5f9; color: #15803d; font-size: 12px; font-weight: 600; }
+.batch-table-wrap { position: relative; width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px; }
+.batch-table { width: 100%; min-width: 640px; text-align: left; font-size: 12px; }
+.batch-table th { padding: 12px 16px; background: #f8fafc; color: #64748b; font-weight: 500; }
+.batch-table td { padding: 14px 16px; border-top: 1px solid #f1f5f9; overflow-wrap: anywhere; }
+.batch-table tbody tr { cursor: pointer; transition: background-color .15s; }
+.batch-table tbody tr:hover, .batch-table tbody tr:focus-within { background: #f0fdf4; }
+.batch-table [data-row-open] { min-height: 32px; text-align: left; font-weight: 600; }
+.batch-table td:last-child { width: 30px; color: #94a3b8; }
+.batch-student-table { min-width: 790px; }
+.batch-student-table td:first-child { width: 30%; }
+.batch-required { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #64748b; }
+.batch-required [role="progressbar"] { flex: 1; min-width: 54px; max-width: 180px; height: 6px; border-radius: 99px; overflow: hidden; background: #e2e8f0; }
+.batch-required [role="progressbar"] span { display: block; height: 100%; border-radius: inherit; background: #16a34a; }
+.batch-unenroll { position: relative; z-index: 1; min-height: 36px; padding: 6px 9px; border-radius: 7px; color: #be123c; font-size: 12px; font-weight: 500; }
+.batch-unenroll:hover:enabled { background: #fff1f2; }
+.batch-unenroll:disabled { opacity: .5; }
+.batch-roster-card { position: relative; min-width: 0; padding: 20px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; }
+.batch-roster-card:hover { border-color: #86d7a4; }
+.batch-card-open { text-align: left; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.batch-card-open::after { position: absolute; inset: 0; content: ''; border-radius: 14px; }
+.batch-card-open:focus-visible { outline: none !important; }
+.batch-card-open:focus-visible::after { outline: 2px solid #15803d; outline-offset: 2px; }
+.batch-roster-card > .batch-student-status { margin-top: 14px; }
+.batch-roster-card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 16px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.batch-roster-card-footer > span { display: flex; align-items: center; gap: 5px; color: #15803d; font-size: 11px; }
+.batch-range { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e5e7eb; color: #64748b; font-size: 12px; }
+.dark .admin-batches { color: #e5e7eb; }
+.dark .batch-card, .dark .batch-roster-card { background: #111827; border-color: #374151; }
+.dark .batch-card:hover, .dark .batch-roster-card:hover { border-color: #15803d; }
+.dark .batch-symbol { background: #052e16; color: #86efac; }
+.dark .batch-status, .dark .batch-student-status { background: #334155; color: #e2e8f0; }
+.dark .batch-status.is-active, .dark .batch-student-status.is-complete { background: #14532d; color: #bbf7d0; }
+.dark .batch-student-status.is-progress { background: #451a03; color: #fde68a; }
+.dark .batch-student-status.is-flagged { background: #4c0519; color: #fecdd3; }
+.dark .batch-instructor span, .dark .batch-student-identity p, .dark .batch-creator, .dark .batch-required, .dark .batch-range { color: #94a3b8; }
+.dark .batch-student-count strong { color: #f3f4f6; }
+.dark .batch-card-link, .dark .batch-roster-card-footer > span { color: #86efac; }
+.dark .batch-student-count, .dark .batch-card-link, .dark .batch-table td, .dark .batch-roster-card-footer, .dark .batch-range { border-color: #374151; }
+.dark .batch-table-wrap { border-color: #374151; }
+.dark .batch-table th { background: #1f2937; color: #94a3b8; }
+.dark .batch-table tbody tr:hover, .dark .batch-table tbody tr:focus-within { background: #052e1666; }
+.dark .batch-required [role="progressbar"] { background: #334155; }
+.dark .batch-unenroll { color: #fda4af; }
+.dark .batch-unenroll:hover:enabled { background: #4c0519; }
+@media (max-width: 1100px) { .batch-grid, .batch-roster-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 639px) {
+  .batch-grid, .batch-roster-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .batch-desktop-table { display: none; }
+  .batch-card { padding: 18px; }
+  .batch-unenroll { min-height: 44px; }
+}
+@media (min-width: 640px) { .batch-mobile-cards { display: none; } }
+@media (prefers-reduced-motion: reduce) { .admin-batches * { transition: none !important; } }

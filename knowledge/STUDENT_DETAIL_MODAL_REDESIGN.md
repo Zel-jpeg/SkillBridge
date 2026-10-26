@@ -1,5 +1,44 @@
 # Student detail modal redesign
 
+## Admin instructor profile consistency — 26 October 2026
+
+The instructor path in [UserDetailModal](../skillbridge-frontend/src/components/admin/UserDetailModal.jsx)
+now uses the same profile/card vocabulary as student details: a round green avatar,
+eyebrow and identity header, explicit Instructor and Active/Archived badges, and
+rounded department/course cards. Its dedicated
+[styles](../skillbridge-frontend/src/components/admin/instructorDetail.css) keep a
+compact content-sized desktop dialog and stacked phone cards with an independently
+scrolling body and reachable account-action footer. Long labels wrap; both themes,
+reduced motion and short landscape viewports are supported.
+
+Edit instructor opens the existing five account fields in a responsive form.
+The first field receives focus, Cancel restores the current account values and
+returns focus to Edit, and Enter or Save changes calls the existing update handler.
+Pending requests retain the existing duplicate-write guard and close protection;
+the form and footer actions disable while saving. Rejected/uncertain saves keep
+the draft and show the existing error. Remove, its separate confirmation, and
+Restore account retain their existing admin handlers. Student modal content,
+assessment actions and backend permissions are unchanged.
+
+Approved/archived instructor normalization now preserves missing department and
+course values instead of substituting an assumed department or courses. The
+profile shows Not provided. This changes presentation defaults only; it does not
+write replacement values to stored accounts.
+
+The [synthetic instructor checks](../skillbridge-frontend/tests/instructor_detail_playwright.py)
+exercise the actual Admin Users page at 320/375px phones, 768px tablet, 1366px
+desktop and 812x375 landscape in both themes, plus edit/cancel/focus, long/missing
+fields, archived restoration controls and failed Enter-submitted edits. The existing
+[account recovery checks](../skillbridge-frontend/tests/admin_account_recovery_playwright.py)
+cover failed/confirmed saves, duplicate activation, archive confirmation failures
+and restore. No real accounts or services are mutated by these checks.
+
+Verification: 13 instructor-profile browser groups and both existing account
+recovery groups pass, with no page errors. Desktop, phone and dark-theme profile
+and edit screenshots were reviewed. These tests use intercepted synthetic API
+responses; live services, physical devices and screen-reader announcements are
+outside this verification.
+
 ## Approved visual implementation — 25 October 2026
 
 Dashboard follow-up: selecting a student from a skill leaderboard now leaves the

@@ -5,7 +5,7 @@ import { createCacheStore } from './cacheStore.js'
 import { authDestination } from './authDestination.js'
 
 const tick = async () => { for (let i = 0; i < 12; i++) await Promise.resolve() }
-function fixture() {
+function fixture(concurrency = 1) {
   let identity = 'admin:1', visible = true, ready = false
   const tasks = [], starts = [], pending = new Map(), aborted = []
   const cache = createCacheStore((url, options) => {
@@ -16,7 +16,7 @@ function fixture() {
       options.signal.addEventListener('abort', () => { aborted.push(key); reject({ code: 'ERR_CANCELED' }) })
     })
   }, undefined, () => identity)
-  const queue = createPreparationQueue({ identity: () => identity, visible: () => visible,
+  const queue = createPreparationQueue({ concurrency, identity: () => identity, visible: () => visible,
     ready: () => ready, read: cache.read, fetch: cache.fetch, abort: cache.abortUnobserved,
     schedule: fn => { tasks.push(fn); return fn }, cancel: fn => { const i = tasks.indexOf(fn); if (i >= 0) tasks.splice(i, 1) },
   })
@@ -148,4 +148,50 @@ test('a failed optional GET does not release the slot while its code is still pr
   assert.deepEqual(started, ['/a']); assert.equal(frames.length, 0)
   finishCode(); await tick(); frames.shift()(); await tick()
   assert.deepEqual(started, ['/a', '/b']); queue.reset()
+})
+
+test('two optional slots refill as either request finishes and stop behind foreground work', async () => {
+  const f = fixture(2); f.ready(true)
+  f.queue.start(['/a', '/b', '/c', '/d']); f.frame()
+  assert.deepEqual(f.starts, ['/a', '/b'])
+  await f.finish('/a'); f.frame()
+  assert.deepEqual(f.starts, ['/a', '/b', '/c'])
+  f.ready(false)
+  await f.finish('/b'); f.frame()
+  assert.deepEqual(f.starts, ['/a', '/b', '/c'])
+  f.ready(true); f.queue.wake(); f.frame()
+  assert.deepEqual(f.starts, ['/a', '/b', '/c', '/d'])
+  f.queue.reset()
+})
+
+test('priority preserves an adopted target, aborts unrelated reads and can warm them later', async () => {
+  const f = fixture(2); f.ready(true)
+  f.queue.start(['/target', '/other', '/later']); f.frame()
+  const unsubscribe = f.cache.subscribe('/target', () => {})
+  const adopted = f.cache.fetch('/target')
+  f.ready(false); f.queue.prioritize(['/target'])
+  assert.deepEqual(f.aborted, ['/other'])
+  await f.finish('/target', []); await adopted; f.frame()
+  assert.deepEqual(f.cache.read('/target').data, [])
+  assert.equal(f.starts.filter(url => url === '/target').length, 1)
+  unsubscribe()
+  f.ready(true); f.queue.wake(); f.frame()
+  assert.ok(f.starts.includes('/later'))
+  assert.equal(f.starts.filter(url => url === '/other').length, 2)
+  f.queue.reset()
+})
+
+test('optional readiness ignores its two active reads but protects mounted and new foreground reads', async () => {
+  const f = fixture(2)
+  const a = f.cache.fetch('/a'), b = f.cache.fetch('/b')
+  assert.equal(f.cache.foregroundReady(new Map([['/a', true], ['/b', true]]).keys()), true)
+  const unsubscribe = f.cache.subscribe('/a', () => {})
+  assert.equal(f.cache.foregroundReady(['/a', '/b']), false)
+  await f.finish('/a', []); await a
+  assert.equal(f.cache.foregroundReady(['/b']), true)
+  const c = f.cache.fetch('/foreground')
+  assert.equal(f.cache.foregroundReady(['/b']), false)
+  await f.finish('/foreground', []); await c
+  await f.finish('/b', []); await b
+  unsubscribe()
 })

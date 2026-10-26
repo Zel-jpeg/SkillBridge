@@ -73,7 +73,7 @@ function formatTime(secs) {
 
 // ── Loading screen ────────────────────────────────────────────────
 function AssessmentLoading() {
-  return <div className="mx-auto max-w-4xl p-6"><ContentSkeleton layout="profile" label="Loading assessment" /></div>
+  return <div className="mx-auto max-w-4xl p-6"><ContentSkeleton layout="assessment" label="Loading assessment" /></div>
 }
 
 function AssessmentError({ message, retry = false }) {

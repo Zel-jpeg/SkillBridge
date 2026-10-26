@@ -1,3 +1,5 @@
+import AuthBackground from '../../components/auth/AuthBackground'
+import { useLoginPreparation } from '../../hooks/useLoginPreparation'
 import { useToast } from '../../context/ToastContext'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -18,6 +20,8 @@ export default function LoginPage() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const { establishSession } = useSession()
+  const { beginPreparation, completePreparation, isCurrentPreparation } = useLoginPreparation()
+  const [preparing, setPreparing] = useState(false)
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -27,6 +31,8 @@ export default function LoginPage() {
     onSuccess: async (tokenResponse) => {
       setError('')
       setLoading(true)
+      setPreparing(false)
+      const preparation = beginPreparation()
 
       // Stop work belonging to the previous session before exchanging auth.
       resetSessionData()
@@ -39,12 +45,17 @@ export default function LoginPage() {
           { token: tokenResponse.access_token }
         )
 
+        if (preparation.signal.aborted) return
         const user = establishSession(res.data)
+        setPreparing(authDestination(user).endsWith('/dashboard'))
+        const destination = await completePreparation(user, preparation)
+        if (!destination) return
         showToast('Signed in successfully.')
 
-        navigate(authDestination(user), { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
+        navigate(destination, { replace: true, state: user.role === 'student' && user.is_approved === false ? { type: 'student_waiting' } : undefined })
 
       } catch (err) {
+        if (preparation.signal.aborted) return
         const code = err.response?.data?.error
 
         if (code === 'not_dnsc') {
@@ -73,7 +84,10 @@ export default function LoginPage() {
           setError(`Login failed. (${code ?? err.message})`)
         }
       } finally {
-        setLoading(false)
+        if (isCurrentPreparation(preparation)) {
+          setLoading(false)
+          setPreparing(false)
+        }
       }
     },
     onError: () => {
@@ -82,8 +96,8 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-10">
+    <AuthBackground>
+      <div className="sb-auth-card w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 sm:p-10">
 
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 shrink-0">
@@ -133,7 +147,7 @@ export default function LoginPage() {
               <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="9" stroke="#aaa" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/>
               </svg>
-              Signing in…
+              <span role="status">{preparing ? 'Preparing your dashboard…' : 'Signing in…'}</span>
             </>
           ) : (
             <>
@@ -171,6 +185,6 @@ export default function LoginPage() {
           <p className="text-xs text-gray-400">{SCHOOL_LOCATION}</p>
         </div>
       </div>
-    </div>
+    </AuthBackground>
   )
 }

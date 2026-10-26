@@ -1,5 +1,5 @@
 export const ANALYTICS_URL = '/api/management/analytics/'
-export const FILTER_KEYS = ['batch_id', 'instructor_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to']
+export const FILTER_KEYS = ['batch_id', 'instructor_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
 
 export function analyticsUrl(params) {
   const filters = new URLSearchParams()
@@ -65,7 +65,7 @@ export function analyticsTable(data, tab, group, students) {
     rows: data.capacity.map(row => [row.company, row.name, row.area, row.total, row.occupied, row.remaining]) }
   if (group === 'assessments') return { title: 'Assessment completion', columns: ['Assessment', 'Batch', 'Publication', 'Assigned', 'Valid submitted', 'In progress', 'Not started', 'Stopped / flagged', 'Retakes approved'],
     rows: data.assessments.map(row => [row.name, row.batch, row.publication_status, row.assigned, row.submitted, row.in_progress, row.not_started, row.stopped, row.retake_approved]) }
-  if (group === 'activity') return { title: 'Recorded submission activity', columns: ['Philippine date', 'Valid submitted attempts'], rows: data.activity.map(row => [row.date, row.submissions]) }
+  if (group === 'activity') return { title: 'Recorded submission activity', columns: [data.scope?.activity_interval === 'month' ? 'Philippine month' : data.scope?.activity_interval === 'year' ? 'Philippine year' : 'Philippine date', 'Valid submitted attempts'], rows: data.activity.map(row => [data.scope?.activity_interval === 'month' ? row.date.slice(0, 7) : data.scope?.activity_interval === 'year' ? row.date.slice(0, 4) : row.date, row.submissions]) }
   if (group === 'skills') return { title: 'Combined skill distribution', columns: ['Category', 'Students with evidence', 'Missing / locked', 'Strong', 'Fair', 'Needs work', 'Mean of final student percentages'], rows: data.skills.map(row => [row.name, row.sample, row.missing, row.strong, row.fair, row.needs_work, row.average]) }
   return { title: tab === 'placements' ? 'Placement records' : tab === 'skills' ? 'Student competency records' : 'Student progress and follow-up',
     columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved company', 'Approved position', 'Best current match %', 'Follow-up reasons', 'Top recommended position', 'Top recommended company', ...(tab === 'skills' ? data.skills.map(row => `${row.name} %`) : [])],

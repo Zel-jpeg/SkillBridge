@@ -3,14 +3,14 @@ import { createPortal } from 'react-dom'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useSession } from '../../context/SessionContext'
 import { ROLE_METADATA, ROLE_NAVIGATION, activeNavigationPath, readSidebarPreference, persistSidebarPreference } from '../../navigation/navigation'
-import { BriefcaseIcon, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon, XIcon } from '../Icons'
+import { BriefcaseIcon, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon, UsersIcon, XIcon } from '../Icons'
 import ProfileMenu from './ProfileMenu'
 import NotificationMenu from './NotificationMenu'
 import StudentNotificationMenu from './StudentNotificationMenu'
 import ModalLayer from './ModalLayer'
 import { promoteDestination } from '../../api/prefetch.js'
 
-const NAV_ICONS = { dashboard: GridIcon, assessments: ListIcon, skills: SkillIcon, users: UserIcon, create: PlusIcon, companies: CompanyIcon, placements: BriefcaseIcon, reports: ReportIcon }
+const NAV_ICONS = { dashboard: GridIcon, assessments: ListIcon, skills: SkillIcon, users: UserIcon, batches: UsersIcon, create: PlusIcon, companies: CompanyIcon, placements: BriefcaseIcon, reports: ReportIcon }
 
 function Brand({ role, compact = false }) {
   return <div className="sb-brand"><img src="/SB-logov1.png" alt="SkillBridge" />{!compact && <div><p>SkillBridge</p><span>{ROLE_METADATA[role].label}</span></div>}</div>

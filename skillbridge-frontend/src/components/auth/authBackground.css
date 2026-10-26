@@ -1,0 +1,43 @@
+.sb-auth-page {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: #163f2c;
+}
+
+.sb-auth-background, .sb-auth-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sb-auth-background { z-index: 0; }
+.sb-auth-background img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 56% 58%;
+}
+
+.sb-auth-overlay {
+  z-index: 1;
+  background: linear-gradient(110deg, rgb(5 45 34 / 89%) 0%, rgb(17 62 34 / 82%) 52%, rgb(65 85 24 / 81%) 100%);
+}
+
+.sb-auth-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.sb-auth-card { box-shadow: 0 24px 80px rgb(0 25 12 / 24%); }
+
+@media (min-width: 640px) {
+  .sb-auth-page { padding: 32px 24px; }
+}

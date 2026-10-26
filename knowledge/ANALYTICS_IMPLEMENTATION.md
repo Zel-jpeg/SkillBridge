@@ -10,6 +10,111 @@ historical trends limited to evidence actually retained by the application.
 
 ## Delivered
 
+### Local activity filtering and quiet refresh — 26 October 2026
+
+Activity dates/periods now filter an authorized loaded snapshot in the browser.
+The analytics response adds `activity_days`: sparse Philippine-date/count pairs
+for all retained valid submissions in that exact student/assessment scope. It
+contains no answer data or additional student identities. The existing current/
+prior-attempt deduplication and flagged/foreign exclusions still happen on the
+server before aggregation. Direct API date/period filtering remains supported;
+out-of-range events are excluded from its requested `activity` series.
+
+Reports reads one shared scope cache key without activity date/period parameters,
+reusing the ordinary report/notification/preparation cache. `analyticsActivity`
+resolves calendar presets and custom validation, builds bounded day/month/year
+buckets and changes only the derived activity/scope fields. Summary/student
+objects remain unchanged. Loaded date/period switches and Apply dates make no
+extra analytics GET. Scope-changing batch/instructor/course/assessment/company/
+area filters still use the authorized backend aggregates, because they can change
+selected enrollments, current evidence and shared capacity semantics. Returning
+to a fresh cached scope reuses it. The report's redundant initial options GET is
+removed; options come from the same authorized snapshot.
+
+The date form no longer remounts when applied dates change. Its focused controls,
+calendar draft and graph container remain present, and applying a range resets
+only activity-table pagination. Loading feedback is beside the activity controls
+and in a fixed status card for explicit server-backed filter changes, avoiding
+the extra layout spacing caused by inserting an in-flow update message. The
+current results stay visible on a slow request, with a clear warning and retry
+after failure. Old cached envelopes without complete daily counts require a
+report reload rather than being misrepresented as complete history.
+
+Routine SSE/poll/focus refreshes are silent: no updating card, graph busy state,
+remount or scroll jump. They publish the new authorized snapshot when ready.
+Snapshot downloads remain available during routine refresh, retaining the actual
+displayed data and generation timestamp; they remain blocked for a pending new
+scope, errors or definitive access loss. User-triggered retry has visible progress.
+
+The configured fallback is **30 seconds while visible**, with an additional
+focus/visibility revalidation after a minimum five-second age. Supported app
+mutations publish recipient-scoped events after commit; the existing SSE server
+checks the event log about once per second and the browser coalesces changes
+before refetching. New supported app data therefore need not wait for the fallback
+timer, but arrival also depends on mutation completion, delivery and fetch time.
+Direct SQL/external writes that emit no application event wait for a subsequent
+fallback/focus refresh. No refresh interval, authorization, ranking, database
+schema or mutation behavior changed in this follow-up.
+
+Verification passed 19 backend analytics/calendar tests on in-memory SQLite and
+all 173 frontend tests. The focused real-API browser suite passed 14 groups for
+both roles with zero page errors, including exact preset/API totals, no new
+browser analytics GET for date changes, stable DOM/focus/scroll, delayed scope
+requests, failure/retry, silent event refresh with newly supplied counts before
+the timer, enabled displayed-snapshot downloads during that refresh and definitive
+access-loss clearing. Twenty light/dark responsive layouts were retained. Across
+54 local automated period switches, selection-to-applied controls measured
+101–258 ms (including browser automation; not a production latency guarantee).
+The surrounding analytics test's obsolete date-network expectations now check
+local requests/retained controls instead; that full stress suite was not rerun.
+No live data or hosted deployment was used.
+
+### Submission activity periods — 26 October 2026
+
+The previous activity default was the last 56 inclusive days (`today - 55`),
+which made October 26 start on September 1. Both staff roles now default to
+Monthly: the first of the current Manila calendar month through today.
+The shared activity filter adds Daily (today), Weekly (Monday through today),
+Monthly, Yearly (January 1 through today), All time and Custom dates. Presets
+apply immediately and remove explicit date parameters; editing either calendar
+switches the draft to Custom dates, which still requires Apply dates. Existing
+date-only URLs are treated as custom ranges. Custom validation retains the
+366-inclusive-day limit, ordered dates and no future end date.
+
+The API accepts `activity_period` and returns its resolved period, interval and
+date bounds in scope. All time starts at the first retained valid submission in
+the authorized student/assessment scope; an empty scope shows zero for today.
+Current/history deduplication and flagged/foreign exclusions are preserved.
+Yearly uses month buckets; All time uses day buckets up to one year, month buckets
+for longer ranges up to 30 years, and year buckets beyond that. Zero buckets and
+the exact submission total are preserved without creating an unbounded daily
+series. Counts still describe submission activity, never historical completion.
+
+The applied-range note, chart ticks/tooltips, linked activity table and CSV/PDF
+snapshot metadata describe the actual period, dates and bucket unit. Selecting
+periods changes activity only, preserving student denominators, other report
+scope, record selection and authorized access. The custom assessment-style
+calendar, retained reports during refresh and existing query-race handling remain.
+No migrations or production data changes are needed.
+
+Verification for this follow-up passed lint/build, all 169 frontend JavaScript
+tests, and 18 backend analytics/calendar cases on in-memory SQLite. Tests cover
+month/week/leap-year boundaries, legacy date URLs, custom validation, bounded
+long histories, empty activity, exact totals and current/history deduplication
+without foreign or flagged events. The focused real-API browser suite passed
+eight groups for both staff roles with zero page errors: all presets, Monthly
+default, unchanged authorized student totals, monthly table/CSV units and range
+metadata, custom calendar validation, reload and twenty responsive light/dark
+layouts in a New York browser timezone. Desktop and narrow dark screenshots were
+visually reviewed. The full surrounding analytics stress suite was not rerun.
+
+Run the focused browser workflow with the project Python environment:
+`python skillbridge-frontend/tests/run_admin_management.py --analytics --activity-periods`.
+It starts hidden local servers and a disposable SQLite database. Screenshots are
+in ignored `tests/artifacts/analytics/*activity-period*`; selected previews are in
+`outputs/ui-previews/activity-periods-2026-10-26/`. No live accounts or records were
+used. Physical devices, screen readers and hosted deployment remain unverified.
+
 ### Placement analysis and simpler terminology — 26 October 2026
 
 Implemented the approved [placement concept, version 2](../outputs/ui-concepts/placement-analytics-2026-10-26/DESIGN_BRIEF.md)

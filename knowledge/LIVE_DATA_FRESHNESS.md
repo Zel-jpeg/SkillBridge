@@ -1,5 +1,23 @@
 # Live data freshness
 
+26 October dashboard-first follow-up: sign-in may prepare authorized dashboard
+reads before navigation, within a 1.5-second handoff budget. The same cache owns
+ongoing requests and later mounted consumers. Optional warming now has two slots;
+it yields to foreground data, pauses new work while hidden and retains existing
+session isolation. SSE and visible refresh intervals are unchanged. See
+[dashboard-first loading](DASHBOARD_FIRST_LOADING.md).
+
+26 October analytics refinement: automatic SSE/poll/focus revalidation is silent;
+visible updating feedback is reserved for explicit server-scope filters/retry.
+Submission activity dates/periods filter authorized loaded daily counts locally,
+preserving graph/control identity, focus and scroll without extra analytics GETs.
+True scope changes still fetch server aggregates. Current snapshot downloads stay
+available during routine background revalidation; pending new scopes and errors
+remain blocked. The existing event-log check (~1 second) and visible fallback
+(30 seconds) are unchanged. Direct database writes without an application event
+are discovered by later fallback/focus refresh. See
+[analytics implementation](ANALYTICS_IMPLEMENTATION.md) for verification.
+
 20 October analytics filter refinement: date ranges apply together after local
 validation. Analytics keeps its last successful authorized report visible while a
 new filter URL fetches, then replaces it on success. Transient failures show a

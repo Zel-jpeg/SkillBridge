@@ -202,26 +202,6 @@ function NearbyMap({ companies, studentPin, initialCenter }) {
 // ════════════════════════════════════════════════════════════════
 // LOADING SKELETON — shown while GET /api/students/me/ is in flight
 // ════════════════════════════════════════════════════════════════
-function DashboardSkeleton() {
-  const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl animate-pulse'
-  return (
-    <div className="min-w-0">
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className={`${tile} px-5 py-4 sm:col-span-2 h-16`} />
-          <div className={`${tile} p-5 h-36`} />
-          <div className={`${tile} p-5 h-36`} />
-          <div className={`${tile} p-5 sm:col-span-2 h-48`} />
-          <div className={`${tile} sm:col-span-2 h-72`} />
-        </div>
-      </section>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ════════════════════════════════════════════════════════════════
 export default function StudentDashboard() {
   const [companySelection, setCompanySelection] = useState(null)
   const navigate = useNavigate()
@@ -362,7 +342,7 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sb-bento">
 
           {/* ── GREETING ─────────────────────────────────────── */}
-          <DataSection url="/api/students/me/" layout="panel" count={1} className="sb-greeting sm:col-span-2"><div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
+          <DataSection url="/api/students/me/" layout="greeting" className="sb-greeting sm:col-span-2"><div className={`sb-greeting ${tile} px-5 py-4 sm:col-span-2 flex items-center justify-between gap-4`}>
             <div>
               <h1 className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                 <span>{greeting}, {givenNames}</span>
@@ -383,7 +363,7 @@ export default function StudentDashboard() {
           </div></DataSection>
 
           {/* ── STATUS ───────────────────────────────────────── */}
-          <DataSection urls={['/api/assessments/', '/api/student/results/combined/']} layout="panel" count={1} className="sb-status"><div className="sb-status">
+          <DataSection urls={['/api/assessments/', '/api/student/results/combined/']} layout="status" className="sb-status"><div className="sb-status">
             {!hasTakenAssessment ? (
               <div className="h-full bg-green-600 rounded-2xl p-5 flex flex-col justify-between gap-4 min-h-140px">
                 <div>
@@ -427,7 +407,7 @@ export default function StudentDashboard() {
           </div></DataSection>
 
           {/* ── TOP MATCHES ──────────────────────────────────── */}
-          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
+          <DataSection url="/api/student/results/combined/" layout="matches" className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Top companies for you</p>
             <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Based on each company's best position match</p>
             {hasTakenAssessment ? (
@@ -475,7 +455,7 @@ export default function StudentDashboard() {
 
           {/* ── SKILL PROFILE ────────────────────────────────── */}
           {/* Spans 2 rows on desktop via grid-area "skills" */}
-          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-skills relative min-h-0 sm:col-span-2"><div className={`sb-student-skill-card ${tile} p-5`}>
+          <DataSection url="/api/student/results/combined/" layout="skills" className="sb-skills relative min-h-0 sm:col-span-2"><div className={`sb-student-skill-card ${tile} p-5`}>
             <div className="flex shrink-0 items-center justify-between mb-4">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill profile</p>
               {hasTakenAssessment && (
@@ -607,7 +587,7 @@ export default function StudentDashboard() {
           </div></DataSection>
 
           {/* ── NEAREST / QUICK ACTIONS ──────────────────────── */}
-          <DataSection url="/api/student/results/combined/" layout="panel" count={1} className="sb-nearest sm:col-span-2"><div className={`sb-nearest ${tile} p-5 sm:col-span-2`}>
+          <DataSection url="/api/student/results/combined/" layout="matches" className="sb-nearest sm:col-span-2"><div className={`sb-nearest ${tile} p-5 sm:col-span-2`}>
             {hasTakenAssessment && studentPin ? (
               /* Nearest 3 companies */
               <>

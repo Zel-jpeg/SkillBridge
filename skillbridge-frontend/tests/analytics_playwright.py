@@ -725,63 +725,33 @@ with sync_playwright() as p:
         tomorrow = (clock_now + timedelta(days=1)).strftime('%Y-%m-%d')
         records.evaluate('node => node.dataset.preserved = "yes"')
         page.evaluate('window.analyticsDocumentSentinel = "preserved"')
-        held = []
-        def take_held():
-            deadline = time.monotonic() + 5
-            while not held and time.monotonic() < deadline:
-                page.wait_for_timeout(20)
-            assert len(held) == 1
-            return held.pop()
-        def hold_dates(route):
-            if 'date_from=' in urlparse(route.request.url).query:
-                held.append(route)
-            else:
-                route.fallback()
-        page.route('**/api/management/analytics/**', hold_dates)
+        local_requests = []
+        def observe_activity_request(request):
+            if urlparse(request.url).path == '/api/management/analytics/':
+                local_requests.append(request.url)
+        page.on('request', observe_activity_request)
         set_activity_date(page, 'Activity from', tomorrow)
         set_activity_date(page, 'Activity through', today)
         date_form.get_by_role('button', name='Apply dates', exact=True).click()
         expect(date_form.get_by_role('alert')).to_have_text('The start date must be on or before the end date.')
-        assert not held
-        set_activity_date(page, 'Activity from', first_date)
-        date_form.get_by_role('button', name='Apply dates', exact=True).click()
-        expect(page.get_by_text('Updating report in the background…', exact=False)).to_be_visible()
-        expect(records).to_have_attribute('data-preserved', 'yes')
-        expect(page.get_by_label('Loading authorized analytics', exact=True)).to_have_count(0)
-        expect(records.get_by_role('button', name='Download displayed CSV', exact=True)).to_be_disabled()
-        old_request = take_held()
-        set_activity_date(page, 'Activity from', last_date)
-        date_form.get_by_role('button', name='Apply dates', exact=True).click()
-        # Wait for the second intercepted request without depending on a fixed sleep.
-        expect_activity_date(page, 'Activity from', last_date)
-        latest = take_held()
-        parsed = urlparse(latest.request.url)
-        latest.fulfill(response=latest.fetch(url=API + parsed.path + '?' + parsed.query))
-        expect(page.get_by_text(f'Showing {last_date} to {today}.', exact=False)).to_be_visible()
-        parsed = urlparse(old_request.request.url)
-        old_request.fulfill(response=old_request.fetch(url=API + parsed.path + '?' + parsed.query))
-        expect_activity_date(page, 'Activity from', last_date)
-        expect(records).to_have_attribute('data-preserved', 'yes')
+        for chosen in [first_date, last_date, error_date]:
+            set_activity_date(page, 'Activity from', chosen)
+            button = date_form.get_by_role('button', name='Apply dates', exact=True)
+            button.focus()
+            scroll_before = page.evaluate('scrollY')
+            control = button.element_handle()
+            button.click()
+            expect_activity_date(page, 'Activity from', chosen)
+            expect(date_form.get_by_label('Activity period', exact=True)).to_have_value('custom')
+            expect(records).to_have_attribute('data-preserved', 'yes')
+            assert control.evaluate('node => node.isConnected && node === document.activeElement')
+            assert abs(page.evaluate('scrollY') - scroll_before) < 3
+        assert not local_requests, local_requests
         assert page.evaluate('window.analyticsDocumentSentinel') == 'preserved'
-        set_activity_date(page, 'Activity from', error_date)
-        date_form.get_by_role('button', name='Apply dates', exact=True).click()
-        expect(page.get_by_text('Updating report in the background…', exact=False)).to_be_visible()
-        take_held().fulfill(status=503, json={'error': 'Private internal diagnostic must not appear'})
-        expect(page.get_by_text('The report could not be updated.', exact=True)).to_be_visible()
-        expect(page.get_by_text('Server is unavailable. Check your connection.', exact=True).first).to_be_visible()
-        expect(page.get_by_text('Private internal diagnostic must not appear', exact=True)).to_have_count(0)
-        expect(records).to_have_attribute('data-preserved', 'yes')
-        page.get_by_role('button', name='Retry report', exact=True).click()
-        expect(page.get_by_text('Updating report in the background…', exact=False)).to_be_visible()
-        latest = take_held()
-        parsed = urlparse(latest.request.url)
-        latest.fulfill(response=latest.fetch(url=API + parsed.path + '?' + parsed.query))
-        expect(page.get_by_text(f'Showing {error_date} to {today}.', exact=False)).to_be_visible()
-        expect(page.get_by_text('The report could not be updated.', exact=True)).to_have_count(0)
-        page.unroute('**/api/management/analytics/**', hold_dates)
+        page.remove_listener('request', observe_activity_request)
         page.get_by_role('button', name='Reset analytics filters', exact=True).click()
-        expect(page.get_by_text(f'Showing {error_date} to {today}.', exact=False)).to_have_count(0)
-        checks.append(f'{role}: activity validation, retained DOM, background refresh, latest-filter wins and safe 503/retry recovery')
+        expect(date_form.get_by_label('Activity period', exact=True)).to_have_value('monthly')
+        checks.append(f'{role}: local activity validation, retained DOM/focus/scroll, latest date selection and no extra analytics requests')
 
         for tab in ['Assessments', 'Skills', 'Placements']:
             page.get_by_role('button', name=tab, exact=True).click()

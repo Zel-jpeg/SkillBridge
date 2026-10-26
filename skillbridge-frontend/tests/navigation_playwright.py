@@ -142,7 +142,7 @@ async def run_case(browser, role, google=False, approved=True, setup=False, fail
               'expiry_during_oauth': oauth_expiry,
               'requests': events, 'page_errors': errors}
     if not BASELINE:
-        assert nav_at-auth_at < .8, result
+        assert nav_at-auth_at < (2.2 if approved and not setup and not failure else .8), result
         assert not errors, errors
         assert not await page.get_by_text('Session Expired', exact=True).count()
         if approved and not setup and not failure:
@@ -150,7 +150,7 @@ async def run_case(browser, role, google=False, approved=True, setup=False, fail
             assert not any('/review/' in e['path'] for e in events)
     if approved and not setup and not failure:
         optional = {'admin': ['/api/instructor/assessments/', '/api/admin/skills/', '/api/admin/companies/'],
-                    'instructor': ['/api/instructor/batches/', '/api/instructor/companies/'], 'student': []}[role]
+                    'instructor': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/instructor/companies/'], 'student': []}[role]
         if not BASELINE:
             for _ in range(500):
                 if all(any(e['path'] == key and e['end_ms'] is not None for e in events) for key in optional):
@@ -169,7 +169,12 @@ async def run_case(browser, role, google=False, approved=True, setup=False, fail
         result['max_landing_get_concurrency'] = maximum
         if not BASELINE and optional:
             intervals = [e for e in completed if e['path'] in optional]
-            assert all(first['end_ms'] <= second['start_ms'] for first, second in zip(intervals, intervals[1:]))
+            pool = sorted([(event['start_ms'], 1) for event in intervals] + [(event['end_ms'], -1) for event in intervals])
+            active = maximum = 0
+            for _, change in pool:
+                active += change
+                maximum = max(maximum, active)
+            assert maximum <= 2
             result['optional_preparation_duration_ms'] = max(e['end_ms'] for e in intervals) - min(e['start_ms'] for e in intervals)
         # A genuinely cold data visit, followed by a cache-warmed client navigation.
         await page.wait_for_load_state('networkidle')
