@@ -25,6 +25,7 @@ test('due-today wording uses Manila dates and exact cutoff becomes overdue witho
   assert.equal(expired.title, 'Assessment deadline passed')
   assert.equal(expired.to, '/student/assessments')
   assert.equal(expired.urgent, true)
+  assert.equal(expired.severity, 'danger')
   assert.match(expired.description, /\(Manila\)/)
 })
 
@@ -32,6 +33,7 @@ test('submitted work clears its deadline; an approved retake of a flagged attemp
   assert.deepEqual(entries(assessment({ attempt_status: 'submitted' })), [])
   const items = entries(assessment({ attempt_status: 'stopped', is_flagged: true, retake_allowed: true }))
   assert.equal(items.filter(item => item.kind === 'retake').length, 1)
+  assert.equal(items.find(item => item.kind === 'retake').severity, 'success')
   assert.equal(items.find(item => item.kind === 'retake').to, '/student/assessments/1/take')
   assert.equal(items.filter(item => item.kind === 'deadline').length, 1)
   assert.deepEqual(entries(assessment({ attempt_status: 'stopped' })).map(item => item.kind), ['assessment'])
@@ -48,6 +50,7 @@ test('retake approval does not override upcoming or closed availability', () => 
   for (const availability_status of ['upcoming', 'closed', 'overdue']) {
     const item = entries(assessment({ retake_allowed: true, availability_status })).find(item => item.kind === 'retake')
     assert.equal(item.to, '/student/assessments')
+    assert.equal(item.severity, 'warning')
     assert.match(item.description, /not currently open/)
   }
 })
@@ -62,6 +65,7 @@ test('only approved placements generate a company notification; ranking and inte
   assert.match(item.description, /Sample Institution as IT Intern/)
   assert.equal(item.description.includes('INTERNAL_SENTINEL'), false)
   assert.equal(item.to, '/student/results')
+  assert.equal(item.severity, 'success')
 })
 
 test('final-results notice respects the final evidence lock and notification building does not mutate inputs', () => {

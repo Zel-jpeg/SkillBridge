@@ -1,0 +1,20 @@
+.student-map-actions { position: absolute; z-index: 1000; top: 10px; left: 10px; max-width: calc(100% - 20px); }
+.student-map-actions button { display: flex; align-items: center; gap: 6px; min-height: 44px; border: 1px solid #dbe3ed; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1d4ed8; box-shadow: 0 2px 8px #0f172a1a; font-size: 12px; font-weight: 600; cursor: pointer; }
+.student-map-actions button:hover { background: #eff6ff; }
+.student-map-actions button:disabled { color: #64748b; cursor: default; }
+.student-map-route { position: absolute; z-index: 1000; bottom: 23px; left: 10px; width: calc(100% - 68px); max-width: 340px; border: 1px solid #dbe3ed; border-radius: 10px; padding: 6px 10px; background: #fffffff5; color: #475569; box-shadow: 0 2px 8px #0f172a15; font-size: 11px; line-height: 1.5; }
+.student-map-route-heading { display: flex; align-items: center; gap: 4px; }
+.student-map-route-heading strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #111827; }
+.student-map-route-heading button { display: grid; place-items: center; min-width: 28px; min-height: 32px; border-radius: 6px; cursor: pointer; }
+.student-map-route-heading button:hover { background: #eff6ff; }
+.student-map-route small { display: block; margin-top: 2px; font-size: 10px; }
+.student-map-route a { display: inline-block; margin-top: 3px; font-size: 10px; color: #2563eb; text-decoration: underline; }
+.student-map-retry { min-height: 32px; font-weight: 600; color: #1d4ed8; text-decoration: underline; cursor: pointer; }
+.student-map-actions button:focus-visible, .student-map-route button:focus-visible, .student-map-route a:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.student-pin-highlight svg { animation: student-pin-glow .75s ease-in-out 4 alternate; }
+@keyframes student-pin-glow { from { filter: drop-shadow(0 0 2px #2563eb); } to { filter: drop-shadow(0 0 12px #60a5fa); } }
+.dark .student-map-actions button, .dark .student-map-route { background: #111827f5; border-color: #475569; color: #cbd5e1; }
+.dark .student-map-actions button, .dark .student-map-route a, .dark .student-map-retry { color: #93c5fd; }
+.dark .student-map-route-heading strong { color: #f1f5f9; }
+.dark .student-map-actions button:hover, .dark .student-map-route-heading button:hover { background: #1e3a5f; }
+@media (prefers-reduced-motion: reduce) { .student-pin-highlight svg { animation: none; filter: drop-shadow(0 0 8px #2563eb); } }

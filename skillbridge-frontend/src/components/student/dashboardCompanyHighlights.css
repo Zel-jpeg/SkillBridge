@@ -1,0 +1,47 @@
+.student-company-highlights { container-type: inline-size; min-width: 0; }
+.student-company-list { display: grid; gap: 8px; list-style: none; }
+.student-company-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 10px; align-items: center; column-gap: 7px; row-gap: 5px; width: 100%; padding: 8px; border: 1px solid #edf0f3; border-radius: 10px; background: #f8fafb; color: #111827; text-align: left; cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s; }
+.student-company-row.is-first { background: #f1fbf5; border-color: #a7dfb9; }
+.is-nearest .student-company-row.is-first { background: #eff6ff; border-color: #bfdbfe; }
+.student-company-row:hover { border-color: #86c99c; box-shadow: 0 2px 8px #0f172a0a; background: #ecf9f0; }
+.is-nearest .student-company-row:hover { border-color: #93bdf6; background: #eaf3ff; }
+.student-company-row:focus-visible, .student-company-footer button:focus-visible { outline: 2px solid #15803d; outline-offset: 3px; }
+.student-company-avatar { width: 28px; height: 28px; border-radius: 8px; }
+.student-company-identity { min-width: 0; }
+.student-company-name { display: flex; align-items: baseline; gap: 4px; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.student-company-name > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.student-company-rank { flex-shrink: 0; font-size: 10px; font-weight: 600; color: #64748b; }
+.is-ranked .is-first .student-company-rank { color: #15803d; }
+.student-company-position { display: block; margin-top: 1px; font-size: 11px; line-height: 1.5; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.student-company-metric { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.is-ranked .student-company-metric { width: 56px; gap: 2px; }
+.student-company-score { font-size: 12px; font-weight: 600; line-height: 1.35; }
+.score-strong { color: #15803d; }
+.score-fair { color: #b45309; }
+.score-low { color: #be3451; }
+.score-unavailable { color: #64748b; }
+.student-company-match-label { display: block; color: #64748b; font-size: 10px; font-weight: 400; }
+.is-nearest .student-company-score { font-size: 11px; }
+.is-nearest .student-company-match-label { display: inline; margin-left: 3px; }
+.student-company-distance { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: #2563eb; }
+.student-company-chevron { color: #94a3b8; }
+.student-company-track { width: 100%; height: 3px; overflow: hidden; border-radius: 9px; background: #e8edf0; }
+.student-company-track > span { display: block; height: 100%; border-radius: inherit; background: currentColor; }
+.student-company-footer { margin-top: 6px; border-top: 1px solid #eef1f4; }
+.student-company-footer button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; width: 100%; font-size: 12px; font-weight: 500; color: #15803d; text-align: center; cursor: pointer; }
+.student-company-footer button:hover { text-decoration: underline; }
+.student-company-footer p, .student-company-empty { font-size: 11px; line-height: 1.5; color: #64748b; }
+.dark .student-company-row { background: #17202e; border-color: #293548; color: #f1f5f9; }
+.dark .student-company-row.is-first { background: #102e21; border-color: #256440; }
+.dark .is-nearest .student-company-row.is-first { background: #122a46; border-color: #31577c; }
+.dark .student-company-row:hover { background: #143a29; border-color: #3b8656; }
+.dark .is-nearest .student-company-row:hover { background: #193451; border-color: #507da8; }
+.dark .student-company-row:focus-visible, .dark .student-company-footer button:focus-visible { outline-color: #4ade80; }
+.dark .student-company-position, .dark .student-company-rank, .dark .student-company-match-label, .dark .student-company-footer p, .dark .student-company-empty, .dark .score-unavailable { color: #a8b5c7; }
+.dark .score-strong, .dark .is-ranked .is-first .student-company-rank, .dark .student-company-footer button { color: #4ade80; }
+.dark .score-fair { color: #fbbf24; }
+.dark .score-low { color: #fda4af; }
+.dark .student-company-distance { color: #93c5fd; }
+.dark .student-company-track { background: #303d4e; }
+.dark .student-company-footer { border-color: #293548; }
+@media (prefers-reduced-motion: reduce) { .student-company-row { transition: none; } }

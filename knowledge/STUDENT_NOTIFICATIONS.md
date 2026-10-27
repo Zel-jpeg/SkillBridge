@@ -28,7 +28,16 @@ There is one stable deadline item per assessment, updated as time passes rather
 than three accumulating daily messages. Submitted work clears its deadline unless
 a new retake is approved. Missing/invalid/no deadline, archived/draft work, and
 closed-work deadlines do not invent a countdown. Due-today/overdue entries have
-stronger icon color; exact wording does not depend on color alone.
+stronger icon color; exact wording does not depend on color alone. Problems and
+deadlines within one day use red, upcoming deadlines use amber, approved placement,
+open retakes and ready results use green. Retakes outside their schedule use amber.
+The bell badge follows the highest severity of its unread updates.
+
+The badge counts unread updates rather than all current notices. Clicking a notice
+or choosing **Mark all as read** clears that version's unread state. Notices stay
+accessible with a Read label while they remain current. Merely opening the bell
+does not mark them read. A new deadline day window, changed approval or changed
+notice content can become unread again. Identical background refreshes do not.
 
 ## Sources, privacy and refresh
 
@@ -43,9 +52,14 @@ The taking route remains outside the authenticated shell and has no bell.
 The [pure presentation helper](../skillbridge-frontend/src/utils/studentNotifications.js)
 does not grade, start attempts, approve retakes, assign placements, or change
 backend access. The existing backend still checks the exact assessment and student.
-No new endpoint, schema, migration, worker, external message or storage operation
-is introduced. These are current in-app notices, with no unread/history tracking,
-email dispatch or browser push while the app is closed.
+No new endpoint, schema, migration, worker or external message is introduced.
+Read tracking uses the shared account/role-scoped browser store described in
+[staff notifications](STAFF_NOTIFICATIONS.md), with opaque fingerprints rather
+than student/company names or notification text. It survives reload/sign-in in
+this browser and synchronizes tabs, but not devices. These remain current in-app
+notices, without a durable event history, email dispatch or browser push while
+the app is closed. New events with identical available presentation cannot be
+distinguished without a server event/version contract.
 
 The current student API exposes finalized approved placement only. Removal clears
 the obsolete approval notice, and a replacement displays its new approved company.
@@ -72,6 +86,12 @@ See [capacity meanings](CAPACITY_AND_AREAS.md) and
 [placement workflow](PLACEMENT_DRAFT_IMPLEMENTATION.md).
 
 ## Verification
+
+26 October read/severity update: the full 189 frontend tests and lint/build pass.
+Shared [read-state browser checks](../skillbridge-frontend/tests/notification_reads_playwright.py)
+verify click-to-read, mark-all, reload, new placement/deadline updates, cross-tab
+synchronization and responsive severity/read labels. The existing 17 student
+browser groups pass again with synthetic payloads and no API writes.
 
 - Seven pure student-notification tests cover 72/48/24-hour boundaries, Manila
   date rollover, exact cutoff, completed/retake/stopped/flagged states, missing

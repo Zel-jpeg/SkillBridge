@@ -21,11 +21,27 @@ rules. It introduces no separate polling loop, backend endpoint or database tabl
 
 The [grouping helper](../skillbridge-frontend/src/utils/notifications.js) preserves
 all supplied current reason groups and avoids repeated reasons within a student.
-The badge counts **reminder groups**, not distinct students or unread messages.
-Student counts can overlap. Reading a reminder does not clear the underlying
-issue; the card disappears when current authorized data no longer reports it.
-There are no fabricated timestamps, read receipts, notification history, browser
-push requests or email dispatches. Student-role reminders are now implemented
+The badge counts **unread updates**, while each reminder's count still describes
+affected students. Student counts can overlap. Clicking a reminder or choosing
+**Mark all as read** clears its unread state; cards remain available until current
+authorized data no longer reports them. Opening the bell alone does not mark items
+read. Changed counts or reason/placement-review group membership produce an unread
+update, while identical polling responses preserve read state.
+
+Read state is per account and role in this browser, retained across navigation,
+reload and sign-in. Other tabs synchronize through storage events. Only opaque
+presentation fingerprints and read times are stored under the versioned
+`sb-notifications-read:v1:` key, bounded to 500 versions/90 days. Blocked storage
+falls back to live memory. It is not a server inbox and does not synchronize across
+devices or store private notification text. Backend access is unchanged.
+
+Red indicates integrity/overdue problems; amber indicates assessment setup or
+placement review; blue indicates pending instructor-account updates. The numeric
+badge uses the highest severity among unread items; read items do not keep it red.
+Text labels describe both severity and read status, independently of color.
+
+There are no fabricated timestamps, server read receipts, notification history,
+browser push requests or email dispatches. Student-role reminders are implemented
 separately using [student-owned assessment/placement data](STUDENT_NOTIFICATIONS.md).
 Additional
 event notifications require a defined source and lifecycle rather than inference
@@ -45,6 +61,13 @@ are distinguished. API failure does not report that everything is caught up.
 Retry invalidates the existing shared query. Empty queues have no numeric badge.
 
 ## Verification
+
+26 October read/severity update: six read-store tests and the complete 189-test
+frontend suite pass. [Read-state browser checks](../skillbridge-frontend/tests/notification_reads_playwright.py)
+cover student/instructor/admin click-to-read, mark-all, reload persistence,
+unchanged refresh, severity colors, keyboard dismissal and 24 responsive/theme
+layouts. Student coverage also checks cross-tab read synchronization and renewed
+deadline alerts. Frontend lint/build pass; no backend/API write is introduced.
 
 Synthetic Node tests cover overlapping reasons, role-specific links, admin-only
 approvals, and absent/empty data. Dashboard browser checks cover the shared

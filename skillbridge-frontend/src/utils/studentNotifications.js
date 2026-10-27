@@ -16,12 +16,12 @@ export function studentNotifications(assessments, profile, now) {
     const to = canAnswer ? `/student/assessments/${item.id}/take` : '/student/assessments'
 
     if (item.retake_allowed) entries.push({
-      id: `retake:${item.id}`, title: 'Retake approved', kind: 'retake', to,
+      id: `retake:${item.id}`, title: 'Retake approved', kind: 'retake', severity: available ? 'success' : 'warning', to,
       description: available ? `${title}: you can start your approved retake. Your earlier attempt stays on record.`
         : `${title}: a retake is approved, but the assessment is not currently open. Check its schedule or contact your coordinator.`,
     })
     else if (item.attempt_status === 'stopped' || item.is_flagged) entries.push({
-      id: `review:${item.id}`, title: 'Assessment needs review', kind: 'assessment', to: '/student/assessments',
+      id: `review:${item.id}`, title: 'Assessment needs review', kind: 'assessment', severity: 'danger', to: '/student/assessments',
       description: `${title}: contact your instructor or administrator about the recorded attempt and retake approval.`,
     })
 
@@ -33,19 +33,20 @@ export function studentNotifications(assessments, profile, now) {
     const sameDay = remaining > 0 && manilaDate.format(due) === manilaDate.format(now)
     const heading = remaining <= 0 ? 'Assessment deadline passed' : sameDay ? 'Assessment due today'
       : `Assessment due in ${days} day${days === 1 ? '' : 's'}`
-    entries.push({ id: `deadline:${item.id}`, title: heading, kind: 'deadline', urgent: remaining <= DAY, to: remaining <= 0 ? '/student/assessments' : to,
+    entries.push({ id: `deadline:${item.id}`, title: heading, kind: 'deadline', urgent: remaining <= DAY,
+      severity: remaining <= DAY ? 'danger' : 'warning', to: remaining <= 0 ? '/student/assessments' : to,
       dueAt: due, description: `${title}${item.is_required ? ' · Required' : ' · Optional'}. Due ${manilaDateTime.format(due)} (Manila). ${remaining <= 0 ? 'Contact your coordinator if you still need to complete this work.' : item.availability_status === 'upcoming' ? 'Check the assessment opening schedule.' : 'Complete your work before the deadline.'}`,
     })
   }
   entries.sort((a, b) => (b.urgent === true) - (a.urgent === true) || (a.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.dueAt ?? Number.MAX_SAFE_INTEGER))
   if (profile?.placement?.status === 'approved') {
     const { placement } = profile
-    entries.push({ id: `placement:${placement.id}`, title: 'OJT placement approved', kind: 'placement', to: '/student/results',
+    entries.push({ id: `placement:${placement.id}`, title: 'OJT placement approved', kind: 'placement', severity: 'success', to: '/student/results',
       description: `Your approved placement is at ${placement.company?.name || 'your assigned company or institution'}${placement.position?.title ? ` as ${placement.position.title}` : ''}. View your placement details and contact your coordinator for next steps.`,
     })
   }
   if (profile?.all_required_completed && profile?.recommendations_locked === false) entries.push({
-    id: 'results-ready', title: 'Your final results are ready', kind: 'results', to: '/student/results',
+    id: 'results-ready', title: 'Your final results are ready', kind: 'results', severity: 'success', to: '/student/results',
     description: 'View your combined competency results and current OJT recommendations. Recommendations are separate from placement approval.',
   })
   return entries

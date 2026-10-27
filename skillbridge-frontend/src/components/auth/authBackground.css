@@ -26,7 +26,7 @@
 
 .sb-auth-overlay {
   z-index: 1;
-  background: linear-gradient(110deg, rgb(5 45 34 / 89%) 0%, rgb(17 62 34 / 82%) 52%, rgb(65 85 24 / 81%) 100%);
+  background: linear-gradient(110deg, rgb(5 45 34 / 94%) 0%, rgb(17 62 34 / 91%) 52%, rgb(65 85 24 / 90%) 100%);
 }
 
 .sb-auth-content {
@@ -37,6 +37,15 @@
 }
 
 .sb-auth-card { box-shadow: 0 24px 80px rgb(0 25 12 / 24%); }
+
+.sb-login-card { border-radius: 20px; }
+.sb-login-footer {
+  margin: 16px 0 0;
+  color: #e2eee6;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.75;
+}
 
 @media (min-width: 640px) {
   .sb-auth-page { padding: 32px 24px; }
