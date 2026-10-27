@@ -1,6 +1,3 @@
-import { escapeHtml } from '../../utils/escapeHtml'
-import { loadLeaflet } from '../../utils/externalServices'
-import MapStatus from '../../components/MapStatus'
 import { HighestScoringAreas } from '../../components/CompetencyInsights'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentDashboard.jsx
@@ -12,10 +9,11 @@ import DataSection from '../../components/DataSection'
 //   - Shows a loading skeleton while the API call is in flight
 //   - studentPin follows the shared student profile (local fallback during load)
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
+import NearbyMap from '../../components/student/NearbyMap'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
-import CompanyImage from '../../components/CompanyImage'
+import DashboardCompanyHighlights from '../../components/student/DashboardCompanyHighlights'
 import StudentCompanyDetails from '../../components/StudentCompanyDetails'
 import SkillCategoryList from '../../components/SkillCategoryList'
 import { useApi } from '../../hooks/useApi'
@@ -31,177 +29,6 @@ function getCachedUser() {
 }
 
 
-// ── Haversine distance ────────────────────────────────────────────
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-// ── Leaflet singleton ─────────────────────────────────────────────
-
-
-function makeCompanyIcon(L, name, isTopMatch = false) {
-  const pinFill = isTopMatch ? '#f59e0b' : '#16a34a'
-  const labelBg = isTopMatch ? '#f59e0b' : '#111827'
-
-  return L.divIcon({
-    className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -42],
-    html: `
-      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none"
-           style="position:relative;z-index:${isTopMatch ? 9999 : 100}">
-        <div style="
-          position:absolute;bottom:40px;white-space:nowrap;
-          background:${labelBg};color:white;
-          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
-          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
-          pointer-events:none;transition:all .18s;
-          transform:translateX(-50%);left:50%;
-        ">
-          ${isTopMatch ? '⭐ ' : ''}${escapeHtml(name)}
-          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
-            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
-            border-top:6px solid ${labelBg}"></div>
-        </div>
-        <div style="transition:transform .18s" class="group-hover:scale-110">
-          <svg xmlns="http://www.w3.org/2000/svg" width="${isTopMatch ? 32 : 26}" height="${isTopMatch ? 40 : 34}" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));display:block">
-            <path fill="${pinFill}" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-            <circle fill="white" cx="14" cy="13" r="5"/>
-          </svg>
-        </div>
-      </div>`,
-  })
-}
-
-function makeStudentIcon(L) {
-  return L.divIcon({
-    className: '', iconSize: [32, 40], iconAnchor: [16, 40], popupAnchor: [0, -44],
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-      <path fill="#2563eb" stroke="white" stroke-width="2.5"
-        d="M16 1C8.8 1 3 6.8 3 14c0 10.5 13 26 13 26S29 24.5 29 14C29 6.8 23.2 1 16 1z"/>
-      <circle fill="white" cx="16" cy="14" r="7"/>
-      <text x="16" y="18" text-anchor="middle" fill="#2563eb" font-size="8" font-weight="700" font-family="sans-serif">YOU</text>
-    </svg>`,
-  })
-}
-
-// ════════════════════════════════════════════════════════════════
-// NearbyMap — fills its container height, no fixed px height
-// ════════════════════════════════════════════════════════════════
-function NearbyMap({ companies, studentPin, initialCenter }) {
-  const elRef  = useRef(null)
-  const mapRef = useRef(null)
-  const [ready, setReady] = useState(false)
-  const framed = useRef(false)
-  const openMarker = useRef(null)
-  const initialView = useRef(initialCenter)
-
-  const [mapStatus, setMapStatus] = useState('loading')
-  const [mapAttempt, setMapAttempt] = useState(0)
-  function retryMap() { setReady(false); framed.current = false; setMapStatus('loading'); setMapAttempt(value => value + 1) }
-
-  useEffect(() => {
-    let alive = true
-    loadLeaflet().then(L => {
-      if (!alive || !elRef.current || mapRef.current) return
-
-      // Center on student's pinned location if available, otherwise Panabo City
-      const center = initialView.current
-        ? [initialView.current.lat, initialView.current.lng]
-        : [7.3072, 125.6839]
-      const zoom = initialView.current ? 13 : 11
-
-      const map = L.map(elRef.current).setView(center, zoom)
-      mapRef.current = map
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
-      map.zoomControl.setPosition('bottomright')
-      setTimeout(() => map.invalidateSize(), 150)
-
-      mapRef.current = map
-      setReady(true)
-      setMapStatus('ready')
-    }).catch(() => {
-      if (alive) {
-        mapRef.current?.remove()
-        mapRef.current = null
-        setMapStatus('error')
-      }
-    })
-    return () => {
-      alive = false
-      mapRef.current?.remove()
-      mapRef.current = null
-    }
-  }, [mapAttempt]) // intentional
-  useEffect(() => {
-    if (!ready || !mapRef.current || !window.L) return
-    const map = mapRef.current
-    const L = window.L
-    const allMarkers = []
-
-    // Company pins — add in reverse so top match (highest rank) renders last = on top
-    const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
-    ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
-      if (co.lat == null) return
-      const isTopMatch = idx === 0
-      const distTxt = studentPin
-        ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
-        : ''
-      const mk = L.marker([co.lat, co.lng], {
-        icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
-        zIndexOffset: isTopMatch ? 1000 : idx * -10,
-      })
-        .addTo(map)
-        .bindPopup(`
-          <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.company ?? co.name ?? 'Company')}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
-            <div style="display:flex;gap:8px;font-size:11px;margin:0">
-              <span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% match</span>
-              ${distTxt ? '· ' + distTxt : ''}
-            </div>
-          </div>`)
-      mk._freshnessKey = co.companyKey ?? `company:${co.id ?? idx}`
-      if (openMarker.current === mk._freshnessKey) mk.openPopup()
-      allMarkers.push(mk)
-    })
-
-    if (studentPin) {
-      const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
-        .addTo(map)
-        .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
-      mk._freshnessKey = 'student'
-      if (openMarker.current === 'student') mk.openPopup()
-      allMarkers.push(mk)
-    }
-
-    if (!framed.current && allMarkers.length > 1) {
-      map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
-    } else if (!framed.current && allMarkers.length === 1) {
-      map.setView(allMarkers[0].getLatLng(), 13)
-    }
-    if (allMarkers.length) framed.current = true
-    return () => {
-      openMarker.current = allMarkers.find(marker => marker.isPopupOpen())?._freshnessKey ?? null
-      allMarkers.forEach(marker => marker.remove())
-    }
-  }, [ready, companies, studentPin])
-
-
-  // Fill 100% of parent — parent must have an explicit height or use flex-1
-  return <div className="relative w-full h-full" style={{ isolation: 'isolate' }}>
-    <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" />
-    <MapStatus status={mapStatus} onRetry={retryMap} />
-  </div>
-}
-
-// ════════════════════════════════════════════════════════════════
-// LOADING SKELETON — shown while GET /api/students/me/ is in flight
-// ════════════════════════════════════════════════════════════════
 export default function StudentDashboard() {
   const [companySelection, setCompanySelection] = useState(null)
   const navigate = useNavigate()
@@ -409,34 +236,9 @@ export default function StudentDashboard() {
           {/* ── TOP MATCHES ──────────────────────────────────── */}
           <DataSection url="/api/student/results/combined/" layout="matches" className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Top companies for you</p>
-            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Based on each company's best position match</p>
+            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Best position match per company</p>
             {hasTakenAssessment ? (
-              <div className="flex flex-col gap-2">
-                {topMatches.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No eligible company positions are currently available.</p>}
-                {topMatches.map((m, idx) => (
-                  <button type="button" key={m.companyKey} onClick={() => setCompanySelection(m.company_id != null ? { companyId: m.company_id } : { positionId: m.position_id })}
-                    aria-label={`View company details for ${m.company}, ${m.position}`} aria-haspopup="dialog"
-                    className="flex items-center justify-between border border-transparent bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 text-left hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-all">
-                    <CompanyImage name={m.company} imageUrl={m.company_image_url} className="w-8 h-8 rounded-lg mr-2" />
-                    <div className="min-w-0 mr-2">
-                      <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{m.company}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">#{idx + 1} · {m.position}</p>
-                    </div>
-                    <span className={`text-xs font-semibold shrink-0 ${
-                      m.match >= 80 ? 'text-green-600 dark:text-green-400'
-                      : m.match >= 60 ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-gray-500'}`}>
-                      {m.match}%
-                    </span>
-                  </button>
-                ))}
-                <button
-                  onClick={() => navigate('/student/results')}
-                  className="mt-1 text-xs text-green-600 dark:text-green-400 hover:underline text-center"
-                >
-                  See all matches →
-                </button>
-              </div>
+              <DashboardCompanyHighlights companies={topMatches} onSelect={setCompanySelection} onSeeAll={() => navigate('/student/results')} />
             ) : (
               <div className="flex flex-col gap-2">
                 {[1, 2, 3].map(i => (
@@ -591,34 +393,9 @@ export default function StudentDashboard() {
             {hasTakenAssessment && studentPin ? (
               /* Nearest 3 companies */
               <>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Nearest to you</p>
-                <div className="flex flex-col gap-1.5">
-                  {nearestThree.map(c => (
-                    <button type="button" key={c.companyKey} onClick={() => setCompanySelection(c.company_id != null ? { companyId: c.company_id } : { positionId: c.position_id })}
-                      aria-label={`View nearby company details for ${c.company}, ${c.position}`} aria-haspopup="dialog"
-                      className="flex items-center justify-between border border-transparent bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2 text-left hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-all">
-                      <div className="min-w-0 mr-2">
-                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{c.company}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.position}</p>
-                      </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                          {c.distKm.toFixed(1)} km
-                        </span>
-                        <span className={`text-xs font-semibold ${
-                          c.match >= 80 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                          {c.match}%
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => navigate('/student/results')}
-                    className="mt-1 text-xs text-green-600 dark:text-green-400 hover:underline text-center"
-                  >
-                    See full hybrid score details →
-                  </button>
-                </div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Nearest to you</p>
+                <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Approximate distance · nearest first</p>
+                <DashboardCompanyHighlights companies={nearestThree} nearest onSelect={setCompanySelection} onSeeAll={() => navigate('/student/results')} />
               </>
             ) : hasTakenAssessment ? (
               /* Assessment done but no pin yet */

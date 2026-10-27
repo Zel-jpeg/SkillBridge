@@ -12,6 +12,79 @@ The dashboard Top companies for you, Nearest to you and both student maps also
 use one entry per company. Nearest sorts those company entries by distance while
 retaining the highest-scoring position as each company's representative.
 
+The dashboard's two company highlights use compact, aligned rows within the
+existing bento grid. Top companies shows a separate rank, company logo/initials,
+position, match percentage and a slim score bar beside the score. Nearest shows
+blue approximate distance as the main metric and match as secondary information;
+its first row has a blue tint rather than the top-match card's green tint. Matches
+at 80%+ use green, 60–<80% amber and below 60% rose in these two cards. Ranking and
+score values are unchanged. Single-line company/position previews have native
+title text, full accessible button names and the existing full company dialog.
+Footer actions open Skill Profile and Matches; no extra footer captions stretch
+the compact cards. A completed profile with no located recommendations has an
+explicit nearest-companies empty state.
+
+26 October dashboard refresh: lint/build and the six recommendation grouping
+tests pass. The [compact-card browser check](../skillbridge-frontend/tests/student_dashboard_company_cards_playwright.py)
+passes at 320/375/768/1024/1440px, including dark mode, three-company ranking and
+distance order, row heights below 60px, empty/locked states, both footer actions,
+company dialogs and keyboard focus. The existing four-viewport company-details
+regression passes again with no page errors. These checks use synthetic API/map
+data and do not change recommendation or placement logic.
+
+## Dashboard saved-location and road routes
+
+The dashboard [NearbyMap](../skillbridge-frontend/src/components/student/NearbyMap.jsx)
+has a **Show my location** control that centers/zooms to the existing saved profile
+pin, opens its popup and briefly highlights it. It never requests device GPS or
+updates the profile. Company markers remain clickable and keyboard-activatable
+with Enter/Space. Selecting a company draws an estimated driving route along mapped
+roads, with road distance, approximate driving time, Clear route and explicit retry
+after an unavailable/no-route result. No fabricated straight-line route is drawn.
+
+[Road route reads](../skillbridge-frontend/src/utils/roadRoutes.js) use the
+[OSRM Route API](https://project-osrm.org/docs/v5.24.0/api/#route-service), with
+GeoJSON geometry and a maximum 1.5km snap radius per endpoint. The two saved pins
+are sent to `router.project-osrm.org` only after company selection; names, addresses,
+SkillBridge identity, credentials and referrer are omitted. The existing bounded
+external JSON helper supplies an eight-second timeout and abort support. Request
+starts are queued at least 1.1 seconds apart per tab to honor the
+[public demo policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server).
+There is no polling, eager route warming or automatic retry. Up to 20 successful
+routes live only in that map instance and are cleared on teardown; they are not
+persisted in browser storage. A late response cannot replace a newer selection.
+
+Changing/removing the saved pin or selected destination invalidates the displayed
+route; leaving the page aborts pending work and removes layers. Map/tile recovery
+retains its existing controls. Missing profile pins disable centering and explain
+how to enable routes. Road distance/time are display-only: company grouping,
+straight-line proximity, recommendation scores and placement eligibility do not
+change. Estimates connect nearby mapped roads and do not include live traffic.
+
+The public routing demo is best-effort with no uptime/data-freshness guarantee.
+For institution-scale production use, choose an appropriately operated routing
+service and update the narrow CSP origin alongside it. The current policy adds
+only the OSRM origin to `connect-src`; other resource allowances stay unchanged.
+
+Verification on 26 October: all 192 frontend tests, lint and build pass. The
+[production-map browser check](../skillbridge-frontend/tests/student_map_routes_playwright.py)
+uses real Leaflet 1.9.4 with synthetic tiles/API/routing data at 320/375/768/1440px
+and in dark mode. It covers centering/highlight, keyboard pin activation, turned
+polylines, route reuse, rapid selection and stale responses, no-route/retry/clear,
+saved-pin removal/change, teardown during a pending request, narrow-layout fit,
+anonymous routing headers and the exact production CSP. Six compact-card and four
+existing company-dialog browser scenarios pass again with no page errors.
+One live OSRM probe with public synthetic city coordinates returned `Ok` and a
+38-point road geometry; this verifies that request at that time, not future uptime.
+No real student pin or account data was sent to an external service during checks.
+
+The map check requires cached CDN `leaflet.min.js`/`leaflet.min.css` as
+`tests/artifacts/student-map-routes/leaflet.js` and `leaflet.css`. Build with
+`VITE_API_URL` set to the existing API origin allowed by the policy, then run
+`python tests/student_map_routes_playwright.py` using the backend test environment.
+It serves `dist` locally, intercepts the API/provider requests and shuts down its
+server after the run. The downloaded assets/screenshots remain ignored artifacts.
+
 Recommendation cards and company cards open a read-only company dialog. Student
 dashboard Top companies for you and Nearest to you entries open the same dialog. The dialog
 shows the company location, all listed positions, full skill requirements, listed

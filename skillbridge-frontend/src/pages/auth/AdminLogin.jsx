@@ -19,7 +19,7 @@ import { useSession } from '../../context/SessionContext'
 // ================================================================
 const SYSTEM_NAME     = "SkillBridge"
 const SCHOOL_NAME     = "Davao del Norte State College"
-const SCHOOL_LOCATION = "Panabo City, Davao del Norte · Institute of Computing"
+const SCHOOL_FOOTER   = "DNSC · Institute of Computing · 2026"
 // ================================================================
 
 export default function AdminLogin() {
@@ -90,10 +90,10 @@ export default function AdminLogin() {
 
   return (
     <AuthBackground>
-      <div className="sb-auth-card w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 sm:p-10">
+      <div className="sb-auth-card sb-login-card w-full bg-white rounded-2xl border border-gray-100 p-6 sm:p-7">
 
         {/* Logo + school name */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex flex-col items-center gap-2 mb-5 text-center">
           <div className="w-12 h-12 shrink-0">
             <img 
               src="/SB-logov1.png" 
@@ -102,22 +102,16 @@ export default function AdminLogin() {
             />
           </div>
           <div>
-            <p className="text-lg font-bold text-gray-900 leading-tight">{SYSTEM_NAME}</p>
-            <p className="text-xs text-gray-500">{SCHOOL_NAME}</p>
+            <p className="text-xl font-bold text-gray-900 leading-tight">{SYSTEM_NAME}</p>
+            <p className="text-xs text-gray-500 mt-1.5">{SCHOOL_NAME}</p>
           </div>
         </div>
 
-        {/* Badge */}
-        <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
-          Admin Access
-        </span>
-
         {/* Heading */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1.5">Admin sign in</h1>
+        <div className="mb-5 text-center">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1.5">Admin sign in</h1>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Enter your administrator credentials to continue.
+            Sign in with your administrator account.
           </p>
         </div>
 
@@ -145,11 +139,15 @@ export default function AdminLogin() {
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">
               Email Address
             </label>
             <input
+              id="admin-email"
               type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
               value={username}
               onChange={e => { setUsername(e.target.value); setError('') }}
               placeholder="Enter your admin email (e.g. admin@dnsc.edu.ph)"
@@ -160,24 +158,26 @@ export default function AdminLogin() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">
               Password
             </label>
             <div className="relative">
               <input
+                id="admin-password"
                 type={showPass ? 'text' : 'password'}
                 value={password}
                 onChange={e => { setPassword(e.target.value); setError('') }}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm outline-none focus:border-green-500 transition-colors placeholder:text-gray-400"
+                className="w-full px-4 py-3 pr-14 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm outline-none focus:border-green-500 transition-colors placeholder:text-gray-400"
               />
               {/* Show / hide toggle */}
               <button
                 type="button"
                 onClick={() => setShowPass(p => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                tabIndex={-1}
+                className="absolute right-1 top-1/2 -translate-y-1/2 min-h-11 min-w-11 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 transition-colors focus-visible:outline-2 focus-visible:outline-green-600"
+                aria-label={showPass ? 'Hide password' : 'Show password'}
+                aria-pressed={showPass}
               >
                 {showPass ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -196,11 +196,11 @@ export default function AdminLogin() {
             </div>
 
             {/* Forgot password */}
-            <div className="flex justify-end mt-1.5">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-xs text-green-600 hover:text-green-800 hover:underline transition-colors"
+                className="min-h-11 text-xs text-green-700 hover:text-green-800 hover:underline transition-colors focus-visible:outline-2 focus-visible:outline-green-600"
               >
                 Forgot password?
               </button>
@@ -211,7 +211,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors mt-1 flex items-center justify-center gap-2"
+            className="w-full min-h-12 py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
           >
             {loading ? (
               <>
@@ -226,20 +226,18 @@ export default function AdminLogin() {
         </form>
 
         {/* Back to main login */}
-        <p className="text-center mt-5">
+        <p className="border-t border-gray-100 mt-4 pt-2 text-center">
           <button
+            type="button"
             onClick={() => navigate('/login')}
-            className="text-xs text-gray-400 hover:text-gray-600 hover:underline transition-colors"
+            className="min-h-11 text-xs text-green-700 hover:text-green-800 hover:underline transition-colors focus-visible:outline-2 focus-visible:outline-green-600"
           >
             ← Back to student / instructor login
           </button>
         </p>
 
-        <div className="border-t border-gray-100 mt-6 pt-6 text-center">
-          <p className="text-xs text-gray-400">{SCHOOL_LOCATION}</p>
-        </div>
-
       </div>
+      <p className="sb-login-footer">{SCHOOL_FOOTER}</p>
     </AuthBackground>
   )
 }

@@ -8,6 +8,21 @@ It uses the user-provided DNSC campus photo with a fixed full-screen crop and
 green gradient overlay behind the existing white sign-in card. The card remains
 in normal document flow so narrow/short screens and expanded help can scroll.
 
+The Google login card uses centered branding, a single primary Google action,
+inline recovery help and a separated administrator link. The OJT label is omitted;
+the footer below the card reads `DNSC · Institute of Computing · 2026`.
+The heading is 20px on phones and 24px on larger screens, with tighter card
+spacing and a 90–94% green overlay to keep the campus photo subdued.
+The administrator card uses the same centered identity, card padding, heading
+scale and external footer, with its existing email/password authentication and
+assisted recovery. Form labels and the keyboard-accessible password toggle have
+explicit accessible names.
+Admin presentation checks passed for six phone/tablet/desktop light/dark layouts,
+keyboard password visibility, assisted recovery and return navigation. The 12
+existing mocked provider/password sign-in outcomes and frontend lint/build passed.
+The card refresh was checked at 320/360/768/1440px, including short screens and
+dark appearance, with working help, Google cancellation recovery and admin navigation.
+
 The source JPG is not copied into the application or modified. Its optimized
 WebP derivatives are [desktop](../skillbridge-frontend/public/images/dnsc-campus.webp)
 (1920×1230, quality 74, 153,138 bytes) and

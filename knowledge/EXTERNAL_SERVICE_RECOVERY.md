@@ -3,6 +3,14 @@
 E02 was verified locally with synthetic data and mocked providers. This does not
 establish live provider availability, credentials, quotas or hosted policy.
 
+The 26 October dashboard road-route addition is documented in
+[student company browsing](STUDENT_COMPANY_BROWSING.md#dashboard-saved-location-and-road-routes).
+Its public OSRM reads are explicit-selection-only, bounded to eight seconds,
+rate-limited, abortable and cached only for the current map. No-route/provider
+failure retains all map pins and offers Retry route; it does not substitute an
+invented road line. Clear route and page teardown remove route layers, and saved
+pin changes cannot keep an obsolete route visible.
+
 Browser address/geocode requests have an eight-second deadline and abort support.
 Address errors identify the failed level and offer an explicit retry without
 discarding unrelated fields. Parent changes cancel obsolete child requests;
