@@ -4,8 +4,8 @@ import { ROLE_NAVIGATION, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPa
 
 const expected = {
   student: ['dashboard', 'assessments', 'results'],
-  instructor: ['dashboard', 'students', 'assessments', 'assessment/create', 'companies', 'placements', 'reports'],
-  admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'assessment/create', 'batches', 'reports'],
+  instructor: ['dashboard', 'students', 'assessments', 'retake-requests', 'assessment/create', 'companies', 'placements', 'reports'],
+  admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'reports'],
 }
 
 for (const [role, destinations] of Object.entries(expected)) {
@@ -13,6 +13,7 @@ for (const [role, destinations] of Object.entries(expected)) {
     const links = ROLE_NAVIGATION[role]
     assert.deepEqual(links.map(item => item.path), destinations.map(path => `/${role}/${path}`))
     assert.equal(new Set(links.map(item => item.path)).size, links.length)
+    if (role !== 'student') assert.notEqual(links.find(item => item.path.endsWith('/retake-requests')).icon, links.find(item => item.path.endsWith('/assessments')).icon)
     for (const item of links) {
       assert.ok(item.label && item.icon)
       assert.equal(activeNavigationPath(role, item.path), item.path)

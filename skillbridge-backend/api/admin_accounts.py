@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .change_events import notify_changes
 from .models import User
+from .management_access import record_action
 
 
 def instructor_payload(user):
@@ -27,6 +28,7 @@ def admin_account_detail(request, user_id):
                 user = User.objects.select_for_update().get(pk=user_id, role__in=['student', 'instructor'])
             except User.DoesNotExist:
                 return Response({'error': 'Account not found'}, status=404)
+            was_active = user.is_active
             if request.method == 'DELETE':
                 user.is_active = False
                 user.save(update_fields=['is_active'])
@@ -64,6 +66,8 @@ def admin_account_detail(request, user_id):
                     setattr(user, field, value)
                 if changes:
                     user.save(update_fields=list(changes))
+            if user.role == 'student' and was_active != user.is_active:
+                record_action(request.user, 'account.restore' if user.is_active else 'account.archive', 'student', user.id)
     except IntegrityError:
         return Response({'error': 'Email or institutional ID conflicts with an existing account.'}, status=409)
     return Response(instructor_payload(user) if user.role == 'instructor' else

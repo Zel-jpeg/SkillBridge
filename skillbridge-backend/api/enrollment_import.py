@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.db.models.functions import Lower
 
-from .models import Batch, BatchEnrollment, User
+from .models import Batch, BatchEnrollment, ManagementAction, User
 from .name_formatting import format_person_name
 
 logger = logging.getLogger(__name__)
@@ -216,6 +216,12 @@ def confirm_rows(items, batch, notify):
                     update_fields.extend(['school_id', 'course'])
                     student.save(update_fields=update_fields)
                 enrollment, created = BatchEnrollment.objects.get_or_create(batch=locked_batch, student=student)
+                if created and ManagementAction.objects.filter(action='enrollment.remove', target_type='student',
+                                                              target_id=student.pk, batch_id_snapshot=locked_batch.pk).exists():
+                    # Reconcile retained evidence through the usual gates, never
+                    # reset attempts or directly force a finalized/current flag.
+                    from .combined_competency import ensure_combined
+                    ensure_combined(student, locked_batch)
                 row.update(status='enrolled' if created else 'already_enrolled', id=student.pk, enrollment_id=enrollment.pk)
                 if created:
                     def after_commit(result=row, person=student, record_id=enrollment.pk):

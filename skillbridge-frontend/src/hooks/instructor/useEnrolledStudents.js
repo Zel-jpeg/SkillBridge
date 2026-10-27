@@ -109,6 +109,7 @@ export function useEnrolledStudents() {
 
   // ── Modal / UI state ──────────────────────────────────────────────
   const [search,          setSearch]          = useState('')
+  const [accountStatus, setAccountStatus] = useState('all')
   const [course,          setCourse]          = useState('all')
   const [status,          setStatus]          = useState('all')
   const [view,            setView]            = useState('grid')
@@ -304,6 +305,7 @@ export function useEnrolledStudents() {
       setStudents(rows => rows.filter(row => row.id !== student.id))
       setConfirmRemove(null)
       invalidateCache('/api/instructor/batches/')
+      invalidateCache(`/api/instructor/batches/${activeBatchId}/unenrolled/`)
       showToast(`${student.name} has been unenrolled from this batch. Assessment history is preserved.`)
       return { ok: true }
     } catch (error) {
@@ -326,7 +328,7 @@ export function useEnrolledStudents() {
 
   // ── Filters ───────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let list = [...students]
+    let list = students.filter(student => accountStatus === 'all' || (accountStatus === 'archived' ? student.archived : !student.archived))
     if (course !== 'all') list = list.filter(s => s.course === course)
     if (status === 'unlocked') list = list.filter(s => !s.recommendationsLocked)
     else if (status === 'retake') list = list.filter(s => s.assessmentResults.some(a => a.retake_allowed))
@@ -342,7 +344,7 @@ export function useEnrolledStudents() {
       )
     }
     return list
-  }, [search, course, status, students])
+  }, [search, course, status, students, accountStatus])
 
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
   const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
@@ -365,6 +367,7 @@ export function useEnrolledStudents() {
     selectedStudent, setSelectedStudent,
     confirmRemove, setConfirmRemove,
     // Search / filter
+    accountStatus, setAccountStatus: value => { setAccountStatus(value); setPage(1) },
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     course, setCourse: (v) => { setCourse(v); setPage(1) },
     status, setStatus: (v) => { setStatus(v); setPage(1) },

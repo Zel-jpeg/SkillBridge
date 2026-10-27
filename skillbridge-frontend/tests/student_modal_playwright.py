@@ -287,10 +287,10 @@ with sync_playwright() as p:
     record("Dashboard explicitly read-only without incorrectly marking student archived")
 
     fixture(page, mode="admin")
-    expect(page.get_by_role("button", name="Remove student")).to_be_visible()
+    expect(page.get_by_role("button", name="Archive student account")).to_be_visible()
     select_tab(page, "Assessments")
-    expect(page.get_by_role("button", name="Remove student")).to_be_visible()
-    page.get_by_role("button", name="Remove student").click()
+    expect(page.get_by_role("button", name="Archive student account")).to_be_visible()
+    page.get_by_role("button", name="Archive student account").click()
     expect(page.locator("output")).to_have_text("remove")
     fixture(page, mode="admin-instructor")
     expect(page.get_by_role("tab")).to_have_count(0)

@@ -40,6 +40,8 @@ from .catalog_validation import company_fields, position_data, invalid, tags_val
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
 from .attempt_timing import check_attempt_identity, timing, snapshot_timing, mark_expired_for_review, EXPIRY_REVIEW_REASON, EXPIRY_REVIEW_MESSAGE
+from .retake_requests import request_snapshot, summary as retake_summary, request_eligible
+from .assessment_interruptions import state as interruption_state
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
 from .assessment_archives import archive_metadata
 from .combined_competency import (
@@ -53,6 +55,7 @@ from .recommendation_nlp import (
 
 
 INTEGRITY_REASON_DISPLAYS = {
+    'interruption_review': 'Repeated or prolonged assessment interruptions require instructor review.',
     'window_lost_focus': 'Assessment window lost focus.',
     'tab_hidden': 'Assessment tab or app was hidden.',
     'fullscreen_exited': 'Fullscreen mode was exited.',
@@ -75,6 +78,7 @@ def serialize_attempt_integrity(response_obj):
             'retake_allowed': False,
         }
     return {
+        'retake_request': retake_summary(response_obj),
         'assessment_id': response_obj.assessment_id,
         'attempt_status': response_obj.status,
         'is_flagged': response_obj.is_flagged,
@@ -998,6 +1002,10 @@ def _enrollment_request(request, batch_id, preview=False):
     batches = Batch.objects.filter(status='active')
     if request.user.role == 'instructor':
         batches = batches.filter(instructor=request.user)
+    if not preview:
+        # Keep authorization/activity stable through the confirmed write, even
+        # if another admin archives or reassigns the target batch concurrently.
+        batches = batches.select_for_update(of=('self',))
     batch = batches.select_related('instructor').filter(pk=batch_id).first()
     if batch is None:
         return Response({'error': 'Active batch not found'}, status=404)
@@ -1118,12 +1126,16 @@ def instructor_student_retake(request, student_id):
     if request.user.role == 'instructor' and attempt.assessment.batch.instructor_id != request.user.id:
         return Response({'error': 'Assessment is not in your batch'}, status=403)
     assessment = Assessment.objects.select_for_update().get(pk=attempt.assessment_id)
-    if assessment.is_archived:
+    if not User.objects.select_for_update().filter(pk=student_id, is_active=True).exists():
+        return Response({'error': 'Archived student accounts are read-only. An admin must restore the account first.'}, status=409)
+    if assessment.is_archived or assessment.batch.status != 'active':
         return Response({'error': 'Archived assessments are read-only. Restore this assessment before changing retakes.'}, status=409)
     attempt = attempts.select_for_update(of=('self',)).filter(pk=attempt.pk).first()
     if attempt is None:
         return Response({'error': 'The attempt changed. Refresh before updating retake approval.'}, status=409)
     if retake_allowed is not None:
+        if attempt.retake_request_status == 'pending':
+            return Response({'error': 'Review the pending student request in Retake requests before changing approval.'}, status=409)
         attempt.retake_allowed = retake_allowed
         attempt.save(update_fields=['retake_allowed'])
         record_action(request.user, 'attempt.retake', 'student', student_id, attempt.assessment.batch_id,
@@ -1231,6 +1243,12 @@ def instructor_batch_students(request, batch_id):
         s    = e.student
         resp = response_map.get(s.id)
         combined_state, unlocked = combined_states[s.id]
+        if not s.is_active:
+            unlocked = False
+            combined_state = {**combined_state, 'recommendations_locked': True,
+                              'combined_category_scores': serialize_combined_scores(s, batch),
+                              'combined_competency_profile': serialize_combined_profile(
+                                  CombinedCompetencyProfile.objects.filter(student=s, batch=batch).first())}
         students.append({
             'id':             s.id,
             'name':           s.name,
@@ -1238,6 +1256,8 @@ def instructor_batch_students(request, batch_id):
             'school_id':      s.school_id,
             'course':         s.course,
             'photo_url':      s.photo_url,
+            'is_active':      s.is_active,
+            'historical_evidence': not s.is_active,
             'has_submitted': unlocked,
             **combined_state,
             'retake_allowed': resp.retake_allowed if resp else False,
@@ -2174,7 +2194,7 @@ def assessment_list(request):
                        .order_by('display_order', 'created_at', 'id'))
     responses = {r.assessment_id: r for r in StudentResponse.objects.filter(
         student=request.user, assessment__in=assessments,
-    )}
+    ).select_related('assessment__batch')}
     items = []
     for assessment in assessments:
         response = responses.get(assessment.id)
@@ -2204,6 +2224,8 @@ def assessment_list(request):
             'started_at': response.started_at if response else None,
             'submitted_at': response.submitted_at if response else None,
             'retake_allowed': response.retake_allowed if response else False,
+            'retake_request': retake_summary(response) if response else {},
+            'can_request_retake': bool(response and request_eligible(response)),
             'is_flagged': response.is_flagged if response else False,
             'action': attempt_action(assessment, response),
         })
@@ -2314,6 +2336,8 @@ def assessment_start(request, assessment_id):
             # Snapshot its finalized evidence before starting the next attempt.
             AssessmentAttemptHistory.objects.create(
                 response=response_obj,
+                interruption_events=response_obj.interruption_events,
+                retake_request=request_snapshot(response_obj),
                 attempt_number=response_obj.prior_attempts.count() + 1,
                 status=response_obj.status,
                 started_at=response_obj.started_at,
@@ -2360,10 +2384,25 @@ def assessment_start(request, assessment_id):
             response_obj.violation_count = 0
             response_obj.violation_events = []
             response_obj.is_flagged = False
+            response_obj.draft_answers = []
+            response_obj.draft_revision = 0
+            response_obj.interruption_events = []
+            response_obj.retake_request_status = ''
+            response_obj.retake_request_id = ''
+            response_obj.retake_explanation = ''
+            response_obj.retake_no_image_reason = ''
+            response_obj.retake_image_key = ''
+            response_obj.retake_requested_at = None
+            response_obj.retake_reviewed_at = None
+            response_obj.retake_reviewed_by = None
+            response_obj.retake_review_note = ''
             response_obj.save(update_fields=[
                 'started_at', 'duration_seconds', 'expires_at', 'due_at_snapshot', 'extra_time_seconds', 'submitted_at', 'retake_allowed', 'question_layout',
                 'status', 'stopped_reason', 'stopped_reason_display', 'stopped_at',
                 'violation_count', 'violation_events', 'is_flagged',
+                'draft_answers', 'draft_revision', 'interruption_events', 'retake_request_status', 'retake_request_id',
+                'retake_explanation', 'retake_no_image_reason', 'retake_image_key', 'retake_requested_at',
+                'retake_reviewed_at', 'retake_reviewed_by', 'retake_review_note',
             ])
         else:
             update_fields = []
@@ -2401,6 +2440,9 @@ def assessment_start(request, assessment_id):
         'started_at':     response_obj.started_at,
         'time_limit_sec': response_obj.duration_seconds,
         'questions':      q_list,
+        'draft_answers': response_obj.draft_answers,
+        'draft_revision': response_obj.draft_revision,
+        'interruption': interruption_state(response_obj),
         'status':         response_obj.status,
         **timing(response_obj),
     })
@@ -2453,10 +2495,17 @@ def assessment_submit(request, assessment_id):
         if request.data.get('auto_submit') is True and current_timing['remaining_seconds'] > 0:
             return Response({'error': 'This attempt still has time remaining.', 'code': 'attempt_time_remaining',
                              'status': response_obj.status, **current_timing}, status=409)
-        review_required = current_timing['review_required']
+        interruption_review = interruption_state(response_obj)['review_required']
+        if interruption_state(response_obj)['open_event'] and not interruption_review:
+            return Response({'error': 'Return to the assessment and recover the interruption before submitting.', 'code': 'interruption_open'}, status=409)
+        review_required = current_timing['review_required'] or interruption_review
         score_results = score_submission(response_obj, answers_data, categories)
         if review_required:
             mark_expired_for_review(response_obj, now)
+            if interruption_review and not current_timing['review_required']:
+                response_obj.stopped_reason = 'interruption_review'
+                response_obj.stopped_reason_display = INTEGRITY_REASON_DISPLAYS['interruption_review']
+                response_obj.save(update_fields=['stopped_reason', 'stopped_reason_display'])
         else:
             response_obj.submitted_at = now
             response_obj.status = StudentResponse.STATUS_SUBMITTED

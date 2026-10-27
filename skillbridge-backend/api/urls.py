@@ -1,6 +1,7 @@
 from django.urls import path
 from .placement_drafts import placement_draft
 from .admin_accounts import admin_account_detail
+from .student_records import previously_unenrolled, archived_student_history
 from .analytics import management_analytics
 from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
 from .evaluation_views import admin_nlp_model_comparison
@@ -8,10 +9,19 @@ from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_n
 from . import views
 from .assessment_archives import assessment_archive
 from .assessment_lifecycle import assessment_duplicate, assessment_attempt_timing, assessment_extra_time
+from .assessment_interruptions import assessment_interruption
+from .retake_requests import student_request, request_queue, review_request, evidence
 from .sse import admin_events, instructor_events, student_events
 from .health import health
 
 urlpatterns = [
+    path('instructor/batches/<int:batch_id>/unenrolled/', previously_unenrolled, name='previously_unenrolled'),
+    path('admin/users/<int:student_id>/history/', archived_student_history, name='archived_student_history'),
+    path('assessments/<int:assessment_id>/interruption/', assessment_interruption, name='assessment_interruption'),
+    path('assessments/<int:assessment_id>/retake-request/', student_request, name='student_retake_request'),
+    path('retake-requests/', request_queue, name='retake_request_queue'),
+    path('assessments/<int:assessment_id>/retake-requests/<int:student_id>/review/', review_request, name='review_retake_request'),
+    path('assessments/<int:assessment_id>/retake-requests/<int:student_id>/evidence/', evidence, name='retake_request_evidence'),
     path('admin/batch-instructors/', admin_batch_instructors, name='admin_batch_instructors'),
     path('admin/batches/<int:batch_id>/', admin_batch_detail, name='admin_batch_detail'),
     path('admin/management-actions/', admin_management_actions, name='admin_management_actions'),

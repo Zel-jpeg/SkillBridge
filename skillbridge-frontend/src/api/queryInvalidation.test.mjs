@@ -8,6 +8,16 @@ test('shared analytics refreshes for capacity consumption in another batch and r
   assert.equal(queryAffected('/api/management/analytics/', { topics: ['unknown'] }), false)
 })
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
+
+test('student recovery reads observe lifecycle changes and respect batch pruning', () => {
+  const previous = '/api/instructor/batches/4/unenrolled/'
+  assert.equal(queryAffected(previous, { topics: ['students'], batch_ids: [4] }), true)
+  assert.equal(queryAffected(previous, { topics: ['students'], batch_ids: [5] }), false)
+  assert.equal(queryAffected(previous, { topics: ['batches'], batch_ids: [4] }), true)
+  assert.equal(queryAffected(previous, { resync: true }), true)
+  assert.equal(queryAffected('/api/admin/users/3/history/', { topics: ['results'] }), true)
+  assert.equal(queryAffected('/api/admin/users/3/history/', { resync: true }), true)
+})
 import { createCacheStore } from './cacheStore.js'
 
 test('shared draft observes all cohort inputs and shared capacity without regenerating it', () => {

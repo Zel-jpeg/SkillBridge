@@ -60,6 +60,40 @@ and [capacity definitions](CAPACITY_AND_AREAS.md).
 
 ## Company position review
 
+### Suggestion choice feedback — 27 October 2026
+
+Choosing **Suggest this instead** now publishes the server-confirmed draft
+response to the shared cache immediately. The open candidate dialog follows the
+returned proposal ID, so its position, company, score components, capacity and
+explicit approval target agree with the new current suggestion. A dialog closed
+during the write stays closed. While saving, the chosen option says **Saving
+suggestion…** and choice/decision actions are disabled; duplicate activation sends
+one write.
+
+Related suggestion and history reads reconcile in the background. This path
+does not reread the complete draft already supplied by the successful write.
+Read successes publish independently through the shared store's version checks;
+an older in-flight read cannot replace the confirmed draft. General explicit
+refresh and approval/removal/manual-assignment refreshes still include the draft.
+
+A failed write retains the original selection and shows an error. A successful
+write followed by failed background reads retains the saved choice and shows a
+specific in-dialog **Suggestion saved, but related placement data could not
+refresh** notice. **Retry refresh** repeats reads only and never resubmits the
+choice. No backend, schema, allocation, ranking, eligibility or authorization
+changes are included.
+
+The focused synthetic browser regression is
+[placement_choice_playwright.py](../skillbridge-frontend/tests/placement_choice_playwright.py).
+It covers both staff roles, phone/desktop layouts, pending and duplicate saves,
+the exact approval payload target, failed refresh/read-only retry, rejected or
+unconfirmed writes, an older in-flight draft read and closing during save.
+These intercepted-response checks do not measure production database latency.
+Verification passed: 12 focused browser groups, all 30 existing placement
+collection groups, 24 shared cache/invalidation/response-contract tests, frontend
+lint, production build and `git diff --check`. Browser checks reported no page
+errors. No normal/live database operations were performed for this fix.
+
 The approved [position-review concept](../outputs/ui-concepts/placement-position-workspace-2026-10-25/DESIGN_BRIEF.md)
 is implemented through the shared `PositionReviewWorkspace` component. A company
 identity row leads into position navigation and a candidate panel. Position cards

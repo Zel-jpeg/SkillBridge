@@ -17,6 +17,8 @@ export function normalizeStudent(s) {
 
   return {
     id:                  s.id,
+    archived:            s.is_active === false,
+    historicalEvidence:  s.historical_evidence === true,
     name:                s.name,
     studentId:           s.school_id || '',
     email:               s.email,

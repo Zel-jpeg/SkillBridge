@@ -11,6 +11,8 @@ import Pagination from '../../components/Pagination'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { BatchCollection, BatchStatus, BatchStudentCollection, CollectionRange } from '../../components/admin/BatchCollections'
 import StudentEnrollmentModal from '../../components/enrollment/StudentEnrollmentModal'
+import PreviouslyUnenrolled, { EnrollmentRecoveryFilters } from '../../components/enrollment/EnrollmentRecovery'
+import { matchesAccount } from '../../utils/studentAccount'
 import StudentModal from '../../components/instructor/StudentModal'
 import { normalizeStudent } from '../../utils/managementStudent'
 import { requestErrorMessage } from '../../api/requestErrors'
@@ -81,6 +83,8 @@ export default function AdminBatches() {
   const [studentPage, setStudentPage] = useState(1)
   const [studentSearch, setStudentSearch] = useState('')
   const [studentView, setStudentView] = useState('list')
+  const [enrollment, setEnrollment] = useState('enrolled')
+  const [accountStatus, setAccountStatus] = useState('all')
   const batchOpener = useRef(null)
   const batchHeading = useRef(null)
   const batchCollectionRef = useRef(null)
@@ -105,7 +109,7 @@ export default function AdminBatches() {
   const auditUrl = showAudit && selected ? `/api/admin/management-actions/?batch_id=${selected.id}&offset=${(auditPage - 1) * 50}` : null
   const { data: audit } = useApi(auditUrl)
   const students = useMemo(() => (roster?.students || []).map(normalizeStudent), [roster])
-  const studentRows = students.filter(student => `${student.name} ${student.studentId} ${student.email}`.toLowerCase().includes(studentSearch.trim().toLowerCase()))
+  const studentRows = students.filter(student => matchesAccount(student, accountStatus) && `${student.name} ${student.studentId} ${student.email}`.toLowerCase().includes(studentSearch.trim().toLowerCase()))
   const visibleStudentPage = Math.min(studentPage, Math.ceil(studentRows.length / 10) || 1)
   const currentStudent = students.find(student => student.id === studentId)
   const leaderboardStudents = students.map(student => ({ ...student,
@@ -114,9 +118,9 @@ export default function AdminBatches() {
   }))
   const leaderCategories = [...new Set(leaderboardStudents.filter(student => student.status === 'completed').flatMap(student => Object.keys(student.scores)))].sort()
   function refresh() {
-    [BATCHES, '/api/instructor/assessments/', '/api/admin/users/', '/api/admin/stats/', '/api/admin/management-actions/', rosterUrl].filter(Boolean).forEach(invalidateCache)
+    [BATCHES, '/api/instructor/assessments/', '/api/admin/users/', '/api/admin/stats/', '/api/admin/management-actions/', rosterUrl, selected ? `${BATCHES}${selected.id}/unenrolled/` : null].filter(Boolean).forEach(invalidateCache)
   }
-  function choose(batch, opener) { opener?.focus(); batchOpener.current = batch.id; setSelectedId(batch.id); setStudentId(null); setLeaderCategory(''); setStudentPage(1); setStudentSearch(''); setShowAudit(false); setAuditPage(1); setFeedback(null); requestAnimationFrame(() => { batchHeading.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'instant' }) }) }
+  function choose(batch, opener) { opener?.focus(); batchOpener.current = batch.id; setSelectedId(batch.id); setStudentId(null); setLeaderCategory(''); setStudentPage(1); setStudentSearch(''); setEnrollment('enrolled'); setAccountStatus('all'); setShowAudit(false); setAuditPage(1); setFeedback(null); requestAnimationFrame(() => { batchHeading.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'instant' }) }) }
   function backToBatches() { setSelectedId(null); setStudentId(null); setLeaderCategory(''); setShowAudit(false); setFeedback(null); requestAnimationFrame(() => [...(batchCollectionRef.current?.querySelectorAll(`[data-batch-id="${batchOpener.current}"]`) || [])].find(node => node.getClientRects().length)?.focus({ preventScroll: true })) }
   function openStudent(student, opener) { opener?.focus(); setStudentId(student.id) }
   async function mutate(endpoint, method = 'post', payload) {
@@ -169,12 +173,13 @@ export default function AdminBatches() {
         <div className="grid items-end gap-4 md:grid-cols-[1.2fr_1fr_auto]"><label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Search students<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><SearchIcon size={16} /></span><input aria-label="Search batch students" className={`${field} pl-9`} placeholder="Name, ID or email…" value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setStudentPage(1) }} /></span></label>
         <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Skill leaderboard<select aria-label="Open skill leaderboard" className={`${field} mt-2`} value={leaderCategory} onChange={event => setLeaderCategory(event.target.value)} disabled={!leaderCategories.length}><option value="">{leaderCategories.length ? 'Choose a combined skill category' : 'No unlocked combined competency available'}</option>{leaderCategories.map(category => <option key={category} value={category}>{category}</option>)}</select></label>
         <button className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-green-800 underline underline-offset-4 dark:text-green-300" aria-expanded={showAudit} onClick={() => setShowAudit(value => !value)}><ReportIcon size={16} />{showAudit ? 'Hide action history' : 'View action history'}</button></div>
-        <DataSection url={rosterUrl} skeleton={<CollectionSkeleton kind="batch-student" view={studentView} />} >
+        <EnrollmentRecoveryFilters enrollment={enrollment} onEnrollment={value => { setEnrollment(value); setStudentPage(1) }} account={accountStatus} onAccount={value => { setAccountStatus(value); setStudentPage(1) }} />
+        {enrollment === 'unenrolled' ? <PreviouslyUnenrolled key={selected.id} batch={selected} search={studentSearch} account={accountStatus} view={studentView} onChanged={refresh} /> : <DataSection url={rosterUrl} skeleton={<CollectionSkeleton kind="batch-student" view={studentView} />} >
           {studentSearch && <p className="mb-3 text-xs text-gray-500 dark:text-gray-400" role="status">{studentRows.length} matching students</p>}
-          <BatchStudentCollection students={studentRows.slice((visibleStudentPage - 1) * 10, visibleStudentPage * 10)} view={studentView} busy={busy} onOpen={openStudent} onUnenroll={student => setConfirm({ type: 'unenroll', student })} />
+          <BatchStudentCollection students={studentRows.slice((visibleStudentPage - 1) * 10, visibleStudentPage * 10)} view={studentView} busy={busy} onOpen={openStudent} onUnenroll={selected.status === 'active' ? student => setConfirm({ type: 'unenroll', student }) : undefined} />
           {!studentRows.length && <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">{students.length ? 'No students match your search.' : 'No students enrolled in this batch.'}</p>}
           <CollectionRange total={studentRows.length} page={visibleStudentPage} onPage={setStudentPage} noun="students" />
-        </DataSection>
+        </DataSection>}
         {showAudit && <section aria-label="Batch action history" className="border-t border-gray-100 pt-4 dark:border-gray-800"><h3 className="mb-3 text-sm font-semibold">Action history</h3><DataSection url={auditUrl} layout="timeline" label="Loading batch action history"><ol className="space-y-3 text-xs">{audit?.results.map(row => <li key={row.id} className="border-t border-gray-100 pt-3 dark:border-gray-800"><strong>{row.action}</strong> · {row.actor_name}<p className="mt-1 text-gray-500 dark:text-gray-400">{new Date(row.created_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} · {row.target_type} #{row.target_id}</p></li>)}</ol>{audit?.count === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No recorded actions yet. Historical actions before this feature are not backfilled.</p>}<Pagination total={audit?.count || 0} page={auditPage} onPage={setAuditPage} pageSize={50} /></DataSection></section>}
       </section>
     </>}
@@ -182,6 +187,6 @@ export default function AdminBatches() {
     {selected && enrolling && <StudentEnrollmentModal requireConfirmation batchId={selected.id} onClose={() => setEnrolling(false)} onEnrolled={refresh} />}
     {selected && currentStudent && <StudentModal student={{ ...currentStudent, batchLabel: selected.name }} instructorName={selected.instructor_name} isArchived={selected.status === 'archived'} onClose={() => setStudentId(null)} onToggleRetake={retake} />}
     {selected && leaderCategory && <Suspense fallback={<p role="status">Loading skill leaderboard…</p>}><SkillLeaderboardModal skill={{ category: leaderCategory }} allStudents={leaderboardStudents} onClose={() => setLeaderCategory('')} onSelectStudent={student => { setLeaderCategory(''); setStudentId(student.id) }} /></Suspense>}
-    {selected && confirm && <ConfirmModal title={confirm.type === 'unenroll' ? 'Unenroll from this batch?' : confirm.type === 'archive' ? 'Archive this batch?' : 'Reactivate this batch?'} message={confirm.type === 'unenroll' ? `Remove ${confirm.student.name} from ${selected.name}? Other enrollments, the student account and recorded history are preserved.` : `${confirm.type === 'archive' ? 'Archive' : 'Reactivate'} ${selected.name}? This changes assessment availability and final recommendation access for its students. Existing memberships, results and history are preserved.`} confirmLabel={confirm.type === 'unenroll' ? 'Unenroll student' : confirm.type === 'archive' ? 'Archive batch' : 'Reactivate batch'} tone={confirm.type === 'unarchive' ? 'confirm' : 'danger'} onCancel={() => setConfirm(null)} onConfirm={() => confirm.type === 'unenroll' ? mutate(`/api/instructor/students/${confirm.student.id}/?batch_id=${selected.id}`, 'delete') : mutate(`${BATCHES}${selected.id}/${confirm.type}/`)} />}
+    {selected && confirm && <ConfirmModal title={confirm.type === 'unenroll' ? 'Unenroll from this batch?' : confirm.type === 'archive' ? 'Archive this batch?' : 'Reactivate this batch?'} message={confirm.type === 'unenroll' ? `Unenroll ${confirm.student.name} from ${selected.name}? Their account, assessment results, retake history and placement history will be preserved. Access to this batch's assessments and current recommendations will be removed. Other batch memberships remain unchanged.` : `${confirm.type === 'archive' ? 'Archive' : 'Reactivate'} ${selected.name}? This changes assessment availability and final recommendation access for its students. Existing memberships, results and history are preserved.`} confirmLabel={confirm.type === 'unenroll' ? 'Unenroll student' : confirm.type === 'archive' ? 'Archive batch' : 'Reactivate batch'} tone={confirm.type === 'unarchive' ? 'confirm' : 'danger'} onCancel={() => setConfirm(null)} onConfirm={() => confirm.type === 'unenroll' ? mutate(`/api/instructor/students/${confirm.student.id}/?batch_id=${selected.id}`, 'delete') : mutate(`${BATCHES}${selected.id}/${confirm.type}/`)} />}
   </div>
 }

@@ -1,5 +1,10 @@
 # Accepted local browser matrix
 
+The fullscreen-stop behavior below records the earlier strict policy. The
+[27 October recovery implementation](ASSESSMENT_RECOVERY_AND_RETAKES.md) now
+allows interruption recovery and adds retake requests; its new verification and
+physical-device limits are documented separately.
+
 The user accepted desktop Chrome and Edge at1280×900, and Chrome tablet768×1024
 and phone390×844 emulation. These are installed headless browsers and emulated
 touch/viewport profiles, not physical phones/tablets or Safari/Firefox acceptance.

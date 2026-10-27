@@ -1,9 +1,9 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
   users: [/^\/api\/admin\/(users|stats|batch-instructors)\/$/, /^\/api\/auth\/me\/$/],
-  management: [/^\/api\/admin\/management-actions\/$/],
-  students: [/^\/api\/admin\/(users|stats|reports|students\/recommendations)\/$/, /^\/api\/instructor\/(students\/recommendations|batches\/\d+\/students|companies)\/$/, /^\/api\/students\/me\/$/, /^\/api\/nlp\/students\/\d+\/text\/$/],
-  batches: [/^\/api\/instructor\/batches\/(?:\d+\/students\/)?$/, /^\/api\/admin\/(stats|reports|users)\/$/, /^\/api\/students\/me\/$/],
+  management: [/^\/api\/admin\/management-actions\/$/, /^\/api\/retake-requests\/$/, /^\/api\/assessments\/\d+\/retake-request\/$/],
+  students: [/^\/api\/admin\/(users|stats|reports|students\/recommendations)\/$/, /^\/api\/instructor\/(students\/recommendations|batches\/\d+\/(?:students|unenrolled)|companies)\/$/, /^\/api\/students\/me\/$/, /^\/api\/nlp\/students\/\d+\/text\/$/],
+  batches: [/^\/api\/instructor\/batches\/(?:\d+\/(?:students|unenrolled)\/)?$/, /^\/api\/admin\/(stats|reports|users)\/$/, /^\/api\/students\/me\/$/],
   assessments: [/^\/api\/assessments\/(?:active\/)?$/, /^\/api\/instructor\/assessments\/(?:\d+\/questions\/)?$/, /^\/api\/admin\/(stats|reports)\/$/],
   results: [/^\/api\/student\/(results\/(?:combined\/|review\/)?|companies\/)$/, /^\/api\/admin\/(reports|students\/recommendations|stats)\/$/, /^\/api\/instructor\/(students\/recommendations|companies)\/$/, /^\/api\/nlp\/students\/\d+\/text\/$/],
   catalog: [/^\/api\/(?:admin|instructor|student)\/companies\/$/, /^\/api\/nlp\/positions\/\d+\/text\/$/, /^\/api\/admin\/(stats|reports)\/$/],
@@ -16,6 +16,7 @@ const paths = {
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
+  if (/^\/api\/admin\/users\/\d+\/history\/$/.test(path) && (change.resync || change.topics?.some(topic => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(topic)))) return true
   if (path === '/api/placements/draft/' && change.topics?.some(topic => ['students', 'batches', 'assessments', 'results', 'catalog', 'taxonomy', 'configuration'].includes(topic))) return true
   // Analytics includes shared capacity as well as scoped cohort data. A foreign
   // placement may consume a visible slot, so do not prune it by cohort IDs.

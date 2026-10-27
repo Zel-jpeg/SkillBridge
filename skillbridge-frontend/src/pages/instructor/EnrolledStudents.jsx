@@ -4,6 +4,8 @@ import DataSection from '../../components/DataSection'
 // All data + logic now in useEnrolledStudents.js
 // Modals now in components/instructor/ and components/admin/
 
+import { useState } from 'react'
+import PreviouslyUnenrolled, { EnrollmentRecoveryFilters } from '../../components/enrollment/EnrollmentRecovery'
 import { useNavigate }         from 'react-router-dom'
 import StudentModal            from '../../components/instructor/StudentModal'
 import StudentPerformanceCard from '../../components/StudentPerformanceCard'
@@ -39,6 +41,7 @@ function avg(scores) {
 
 export default function EnrolledStudents() {
   const navigate = useNavigate()
+  const [enrollment, setEnrollment] = useState('enrolled')
   const {
     instructor,
     batches, activeBatchId, setActiveBatchId, initialBatchPending, initialRosterPending,
@@ -50,7 +53,7 @@ export default function EnrolledStudents() {
     showModal, setShowModal,
     selectedStudent, setSelectedStudent,
     confirmRemove, setConfirmRemove,
-    search, setSearch, course, setCourse, status, setStatus,
+    search, setSearch, course, setCourse, status, setStatus, accountStatus, setAccountStatus,
     view, setView, page, setPage,
     filtered, paginated,
     PAGE_SIZE,
@@ -68,9 +71,9 @@ export default function EnrolledStudents() {
       {/* Modals */}
       {confirmRemove && (
         <ConfirmModal
-          title="Remove student?"
-          message={`Unenroll ${confirmRemove.name} (${confirmRemove.studentId}) from this batch? Assessment scores and placement history are preserved.`}
-          confirmLabel="Remove"
+          title="Unenroll from this batch?"
+          message={`Unenroll ${confirmRemove.name} (${confirmRemove.studentId}) from ${viewedBatch?.name}? Their account, assessment results, retake history and placement history will be preserved. Access to this batch’s assessments and current recommendations will be removed. Other memberships remain unchanged.`}
+          confirmLabel="Unenroll student"
           onConfirm={() => handleRemove(confirmRemove)}
           onCancel={() => setConfirmRemove(null)}
         />
@@ -231,26 +234,27 @@ export default function EnrolledStudents() {
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${course===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          {enrollment === 'enrolled' && <div className="flex flex-wrap items-center gap-1.5">
             {[{v:'all',l:'All'},{v:'completed',l:'Complete'},{v:'pending',l:'In progress'},{v:'stopped',l:'Stopped / flagged'},{v:'retake',l:'Retake approved'},{v:'unlocked',l:'Recommendations unlocked'},{v:'unplaced',l:'Unplaced'},{v:'placed',l:'Placed'}].map(f => (
               <button key={f.v} onClick={() => { setStatus(f.v); setPage(1) }}
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${status===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
-          </div>
+          </div>}
           <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-auto">
             {[{v:'grid',Icon:GridIcon},{v:'list',Icon:ListIcon}].map(vi => (
               <button key={vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} students`}</p>
+          {enrollment === 'enrolled' && <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} students`}</p>}
         </div>
 
-<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
+<EnrollmentRecoveryFilters enrollment={enrollment} onEnrollment={value => { setEnrollment(value); setStatus('all') }} account={accountStatus} onAccount={setAccountStatus} />
+{enrollment === 'unenrolled' && viewedBatch ? <PreviouslyUnenrolled key={activeBatchId} batch={viewedBatch} search={search} course={course} account={accountStatus} view={view} onChanged={handleEnroll} /> : <DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
         {/* Empty state */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-16 flex flex-col items-center gap-3">
             <p className="text-sm font-medium text-gray-400 dark:text-gray-600">No students match your search.</p>
-            <button onClick={() => { setSearch(''); setCourse('all'); setStatus('all') }} className="text-xs text-green-600 dark:text-green-400 hover:underline">Clear filters</button>
+            <button onClick={() => { setSearch(''); setCourse('all'); setStatus('all'); setAccountStatus('all') }} className="text-xs text-green-600 dark:text-green-400 hover:underline">Clear filters</button>
           </div>
         ) : (
           <>
@@ -282,7 +286,7 @@ export default function EnrolledStudents() {
                           <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
                           <div><p className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p></div>
                         </div></td>
-                        <td className="px-3 py-4"><StatusBadge status={s.status} /></td>
+                        <td className="px-3 py-4"><StatusBadge status={s.status} />{s.archived && <p className="text-xs text-amber-800 dark:text-amber-300">Account archived</p>}</td>
                         <td className="px-3 py-4 text-xs text-gray-600 dark:text-gray-300">{s.completedRequiredCount}/{s.totalRequiredCount}<br />{s.recommendationsLocked ? 'Recommendations locked' : 'Unlocked'}</td>
                         <td className="px-3 py-4 min-w-36"><PlacementStatusCard placement={s.placement} audience="instructor" compact /></td>
                         <td className="px-3 py-4 max-w-xs">
@@ -304,7 +308,7 @@ export default function EnrolledStudents() {
                         <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{s.top_recommendations[0].company}<br/><span className="font-normal text-gray-400">{s.top_recommendations[0].match_score}%</span></span> : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
                         <td className="px-4 py-4 text-center"><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall!==null?`${overall}%`:'—'}</span></td>
                         <td className="px-3 py-4 text-center">
-                          {!isArchived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Remove"><TrashIcon /></button>}
+                          {!isArchived && !s.archived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Unenroll from this batch" aria-label={`Unenroll ${s.name} from this batch`}><TrashIcon /></button>}
                         </td>
                       </tr>
                     )})}
@@ -318,7 +322,7 @@ export default function EnrolledStudents() {
         )}
 
 
-</DataSection>
+</DataSection>}
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-3 px-1 pb-4">
           <p className="text-xs text-gray-400 dark:text-gray-600 mr-1">Score key:</p>

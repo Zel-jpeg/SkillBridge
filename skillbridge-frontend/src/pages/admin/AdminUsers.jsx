@@ -124,9 +124,10 @@ export default function AdminUsers() {
       )}
       {confirmRemoveStudent && (
         <ConfirmModal
-          title="Archive student?"
-          message={`This will archive ${confirmRemoveStudent.name} and remove their access.`}
-          confirmLabel="Archive"
+          title="Archive student account?"
+          archive
+          message={`Archive ${confirmRemoveStudent.name} (${confirmRemoveStudent.studentId})? This disables their SkillBridge access. Their profile, enrollments, assessment answers and scores, retake history, and placement history will be preserved. An admin can restore this account later.`}
+          confirmLabel="Archive account"
           onConfirm={confirmDeleteStudent}
           onCancel={() => setConfirmRemoveStudent(null)}
         />

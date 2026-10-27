@@ -97,6 +97,7 @@ export function useAdminUsers() {
   function publishAccount(account, role) {
     const next = reconcileAccountCollection(getCachedData('/api/admin/users/'), account, role)
     if (next) updateCachedData('/api/admin/users/', next)
+    if (role === 'student') invalidateCache(`/api/admin/users/${account.id}/history/`)
     invalidateCache('/api/admin/users/')
   }
   const normalized = useMemo(() => normalizeUsers(usersData), [usersData])
@@ -122,7 +123,7 @@ export function useAdminUsers() {
   const [confirmRejectPending, setConfirmRejectPending] = useState(null)
 
   // ── Table state ───────────────────────────────────────────────────
-  const [activeTab,        setActiveTab]     = useState(() => new URLSearchParams(window.location.search).get('tab') === 'pending' ? 'pending' : 'students')
+  const [activeTab,        setActiveTab]     = useState(() => ['pending', 'archived'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'students')
   const [search,           setSearch]        = useState('')
   const [filterStatus,     setFilterStatus]  = useState('all')
   const [filterCourse,     setFilterCourse]  = useState('all')

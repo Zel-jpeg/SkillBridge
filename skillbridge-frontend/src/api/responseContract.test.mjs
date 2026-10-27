@@ -3,6 +3,23 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('retake request and review mutations must confirm their saved state', () => {
+  const requestConfig = { method: 'post', url: '/api/assessments/2/retake-request/' }
+  const reviewConfig = { method: 'post', url: '/api/assessments/2/retake-requests/3/review/' }
+  for (const config of [requestConfig, reviewConfig]) {
+    assert.throws(() => validateApiResponse({ data: {}, config, status: 200 }))
+  }
+  assert.doesNotThrow(() => validateApiResponse({ data: { request: { request_id: 'confirmed', status: 'pending' } }, config: requestConfig, status: 201 }))
+  assert.doesNotThrow(() => validateApiResponse({ data: { request: { status: 'approved' }, retake_allowed: true }, config: reviewConfig, status: 200 }))
+})
+
+test('student recovery endpoints reject malformed reads before caching', () => {
+  const configs = [{ url: '/api/instructor/batches/4/unenrolled/', method: 'get' }, { url: '/api/admin/users/3/history/', method: 'get' }]
+  for (const config of configs) assert.throws(() => validateApiResponse({ data: { students: 'bad', records: {} }, status: 200, config }))
+  assert.doesNotThrow(() => validateApiResponse({ data: { batch: { id: 4 }, students: [] }, status: 200, config: configs[0] }))
+  assert.doesNotThrow(() => validateApiResponse({ data: { student_id: 3, read_only: true, records: [] }, status: 200, config: configs[1] }))
+})
+
 test('archive and restore require a confirmed lifecycle state before publishing success', () => {
   for (const action of ['archive', 'restore']) {
     const config = { url: `/api/instructor/assessments/3/${action}/`, method: 'post' }

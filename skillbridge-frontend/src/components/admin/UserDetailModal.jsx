@@ -4,6 +4,7 @@ import DialogShell from '../DialogShell'
 import StudentDetailModal from '../StudentDetailModal'
 import { ArchiveIcon, CompanyIcon, SkillIcon, UserIcon } from '../Icons'
 import './instructorDetail.css'
+import ArchivedStudentHistory from './ArchivedStudentHistory'
 
 const instructorFields = ['name', 'instructorId', 'email', 'department', 'courses']
 
@@ -27,7 +28,7 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
   const student = type === 'student'
   const accountAction = user.archived && onRestore
     ? <button type="button" disabled={saving} className="sb-detail-action min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-green-700" onClick={() => save(() => onRestore(user))}>Restore account</button>
-    : onRemove && <button type="button" disabled={saving} className="sb-detail-action sb-detail-action--danger min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-rose-800 dark:text-rose-300" onClick={() => onRemove(user)}>Remove {student ? 'student' : 'instructor'}</button>
+    : onRemove && <button type="button" disabled={saving} className="sb-detail-action sb-detail-action--danger min-h-11 rounded-lg px-3 py-2 text-xs font-semibold text-rose-800 dark:text-rose-300" onClick={() => onRemove(user)}><ArchiveIcon size={14} />{student ? 'Archive student account' : 'Remove instructor'}</button>
   function cancelEdit() {
     setDraft({ ...user, roleType: type }); setEditing(false); setError('')
     requestAnimationFrame(() => editButton.current?.focus())
@@ -39,6 +40,7 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
       <button type="submit" form={formId} disabled={saving} className="instructor-detail-button instructor-detail-button--primary">{saving ? 'Saving…' : 'Save changes'}</button>
     </> : <button type="button" ref={editButton} className="instructor-detail-button instructor-detail-button--primary" onClick={() => setEditing(true)}>Edit instructor</button>}</div></div>}
   </div>
+  if (student && user.archived) return <ArchivedStudentHistory student={user} onClose={onClose} footer={footer} />
   if (student) return <StudentDetailModal student={user} onClose={onClose} onToggleRetake={onToggleRetake} footer={footer} />
   return <DialogShell size="instructor" eyebrow="Instructor profile" title={user.name || 'Instructor details'} description="Instructor enrollment and account details." onClose={() => { if (!pending.current) onClose() }} footer={footer}
     avatar={<Avatar name={user.name} photoUrl={user.photoUrl} tone="neutral" className="instructor-detail-avatar h-12 w-12 rounded-full text-lg sm:h-16 sm:w-16 sm:text-xl" />}

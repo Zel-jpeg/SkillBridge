@@ -9,7 +9,18 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (path === '/api/students/me/' || path === '/api/students/me/profile/') {
+  if (method === 'post' && /^\/api\/assessments\/\d+\/retake-request\/$/.test(path)) {
+    valid = object(data) && object(data.request) && typeof data.request.request_id === 'string' &&
+      ['pending', 'approved', 'declined'].includes(data.request.status)
+  } else if (method === 'post' && /^\/api\/assessments\/\d+\/retake-requests\/\d+\/review\/$/.test(path)) {
+    valid = object(data) && object(data.request) && ['approved', 'declined'].includes(data.request.status) && typeof data.retake_allowed === 'boolean'
+  } else if (method === 'get' && /^\/api\/instructor\/batches\/\d+\/unenrolled\/$/.test(path)) {
+    valid = object(data) && object(data.batch) && id(data.batch.id) && Array.isArray(data.students) &&
+      data.students.every(row => object(row) && id(row.id) && typeof row.name === 'string' && typeof row.is_active === 'boolean')
+  } else if (method === 'get' && /^\/api\/admin\/users\/\d+\/history\/$/.test(path)) {
+    valid = object(data) && id(data.student_id) && data.read_only === true && Array.isArray(data.records) &&
+      data.records.every(row => object(row) && Array.isArray(row.assessment_results) && Array.isArray(row.placement_history) && Array.isArray(row.combined_category_scores))
+  } else if (path === '/api/students/me/' || path === '/api/students/me/profile/') {
     valid = object(data) && id(data.id) && data.role === 'student' && typeof data.name === 'string'
   } else if (method === 'get' && path === '/api/student/results/combined/') {
     valid = object(data) && typeof data.recommendations_locked === 'boolean' &&

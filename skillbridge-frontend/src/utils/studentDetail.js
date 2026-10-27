@@ -6,11 +6,11 @@ export function studentDetailState(student) {
   const total = student.totalRequiredCount ?? student.total_required_count ?? 0
   const remaining = student.remainingRequiredCount ?? student.remaining_required_count ?? 0
   return {
-    results, locked, completed, total, remaining,
+    results, locked, completed, total, remaining, historical: student.historicalEvidence === true, placementHistory: student.placementHistory || [],
     percentage: total > 0 ? Math.min(100, Math.max(0, Math.round(completed / total * 100))) : 0,
     completionLabel: total === 0 ? 'No required assessments' : remaining > 0 ? 'Required assessments in progress' : 'Required assessments complete',
-    combined: locked ? [] : student.combinedCategoryScores ?? student.combined_category_scores ?? [],
-    profile: locked ? null : student.combinedCompetencyProfile ?? student.combined_competency_profile ?? null,
+    combined: locked && !student.historicalEvidence ? [] : student.combinedCategoryScores ?? student.combined_category_scores ?? [],
+    profile: locked && !student.historicalEvidence ? null : student.combinedCompetencyProfile ?? student.combined_competency_profile ?? null,
     recommendations: locked ? [] : (student.top_recommendations ?? []).filter(rec => rec.is_current !== false),
     historyCount: results.reduce((count, result) => count + (result.prior_attempts?.length ?? 0), 0),
   }

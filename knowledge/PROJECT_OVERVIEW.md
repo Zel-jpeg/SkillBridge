@@ -61,6 +61,23 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [27 October branch integration review](BRANCH_REVIEW_2026_10_27.md): Full
+  assessment/retake/profile/placement/student-recovery scope, fixes found during
+  review, PostgreSQL/browser checks and hosted rollout limits.
+
+- [Student account and enrollment plan](STUDENT_ACCOUNT_AND_ENROLLMENT_PLAN.md):
+  Implemented archive/unenroll confirmations, preserved read-only history,
+  account-status and previously unenrolled filters, scoped re-enrollment and
+  local browser/PostgreSQL verification; no new tables, columns or migration.
+
+- [Student profile layout](STUDENT_PROFILE_LAYOUT.md): Approved compact personal
+  details/travel panels, address/map layout, preserved save and single-pin
+  contracts, responsive checks and synthetic provider/recovery verification.
+
+- [Assessment recovery and retake requests](ASSESSMENT_RECOVERY_AND_RETAKES.md):
+  Neutral interruption recovery, draft preservation, assessment-specific student
+  requests, private WebP evidence, scoped staff review and rollout requirements.
+
 - [Dashboard-first loading](DASHBOARD_FIRST_LOADING.md): Bounded dashboard
   preparation after authentication, two-slot background warming, foreground
   priority, session-safe cancellation and synthetic verification.
