@@ -47,6 +47,7 @@ function AssessmentCard({ item }) {
         {!item.is_required && <p>Optional work does not block final results.</p>}
         {item.attempt_status === 'stopped' && <p className="text-rose-700 dark:text-rose-300">{item.stopped_reason_display || 'Completed answers were recorded.'}</p>}
         {item.retake_allowed && <p className="text-blue-700 dark:text-blue-300">Your next attempt will replace this assessment’s current score. Your earlier attempt remains on record.</p>}
+        {item.retake_request?.status && <p className="font-medium">Retake request: {item.retake_request.status}</p>}
       </div>
       <div className="mt-auto pt-5">
         <button
@@ -57,6 +58,10 @@ function AssessmentCard({ item }) {
             : `/student/assessments/${item.id}/take`)}
           className="w-full min-h-11 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-600 dark:disabled:bg-gray-800 dark:disabled:text-gray-300"
         >{action.label}</button>
+        {(item.is_flagged && item.can_request_retake || item.retake_request?.status) && <button type="button"
+          onClick={() => navigate(`/student/assessments/${item.id}/retake-request`)} className="mt-3 min-h-11 w-full cursor-pointer rounded-xl border border-green-700 px-4 py-2 text-sm font-semibold text-green-800 transition-colors hover:border-green-800 hover:bg-green-50 hover:text-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:border-green-500 dark:text-green-300 dark:hover:border-green-400 dark:hover:bg-green-950 dark:hover:text-green-200">
+          {item.retake_request?.status ? 'View retake request' : 'Request retake'}
+        </button>}
       </div>
     </article>
   )

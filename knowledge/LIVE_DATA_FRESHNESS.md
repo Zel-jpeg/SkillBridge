@@ -1,5 +1,13 @@
 # Live data freshness
 
+27 October student recovery follow-up: current admin account archive/restore
+uses the persisted `admin/users/:id/` API (DELETE sets inactive; PATCH restores).
+This supersedes the older audit's frontend-only account-operation limitation
+below. Authorized student/batch invalidations include the new previously
+unenrolled reads and admin-only saved-history reads. Confirmed re-enrollment
+updates the previous list before related reads reconcile. See
+[student recovery](STUDENT_ACCOUNT_AND_ENROLLMENT_PLAN.md) for verification.
+
 26 October dashboard-first follow-up: sign-in may prepare authorized dashboard
 reads before navigation, within a 1.5-second handoff budget. The same cache owns
 ongoing requests and later mounted consumers. Optional warming now has two slots;

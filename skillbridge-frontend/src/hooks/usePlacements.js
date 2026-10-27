@@ -85,27 +85,33 @@ export function usePlacements(historyUrl = HISTORY_URL) {
     }
   }, [approvedPlacements, companies.length, positions, students])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ includeDraft = true, silentError = false } = {}) => {
     setRefreshing(true)
     invalidateCache(SUGGESTIONS_URL)
     invalidateCache('/api/placements/')
-    invalidateCache(DRAFT_URL)
+    if (includeDraft) invalidateCache(DRAFT_URL)
     PLACEMENT_DEPENDENT_URLS.forEach(invalidateCache)
     try {
-      const [suggestions, history, draft] = await Promise.all([
+      const results = await Promise.allSettled([
         fetchWithDedup(SUGGESTIONS_URL),
         fetchWithDedup(historyUrl),
-        fetchWithDedup(DRAFT_URL),
+        ...(includeDraft ? [fetchWithDedup(DRAFT_URL)] : []),
       ])
-      suggestionsApi.setData(suggestions.data)
-      historyApi.setData(history.data)
-      draftApi.setData(draft.data)
-    } catch {
-      showToast('Could not refresh placement data.', 'error')
+      // Each successful read publishes through the shared store, whose version
+      // checks prevent an older read from replacing a newer mutation response.
+      const ok = results.every(result => result.status === 'fulfilled')
+      if (!ok && !silentError) showToast('Could not refresh placement data.', 'error')
+      return { ok }
     } finally {
       setRefreshing(false)
     }
-  }, [draftApi, historyApi, historyUrl, showToast, suggestionsApi])
+  }, [historyUrl, showToast])
+
+  const draftAction = async payload => {
+    const result = await mutationApi.request('post', DRAFT_URL, payload, { silentError: true })
+    if (result.ok) updateCachedData(DRAFT_URL, result.data)
+    return result
+  }
 
   const mutate = useCallback(async (endpoint, payload, successMessage) => {
     const result = await mutationApi.request('post', endpoint, payload, { silentError: true })
@@ -128,7 +134,7 @@ export function usePlacements(historyUrl = HISTORY_URL) {
     approvedPlacements,
     historyCount: historyApi.data?.count ?? placements.length,
     historyUrl,
-    draftAction: (payload) => mutationApi.request('post', DRAFT_URL, payload, { silentError: true }),
+    draftAction,
     suggestionsReady: suggestionsApi.data != null,
     historyReady: historyApi.data != null,
     loading: suggestionsApi.loading || historyApi.loading,

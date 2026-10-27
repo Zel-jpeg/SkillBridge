@@ -41,6 +41,8 @@ const AdminAssessments = lazy(() => import('./pages/admin/AdminAssessments'))
 const AdminBatches = lazy(() => import('./pages/admin/AdminBatches'))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
 const AdminPlacements = lazy(() => import('./pages/admin/AdminPlacements'))
+const StudentRetakeRequest = lazy(() => import('./pages/student/StudentRetakeRequest'))
+const RetakeRequests = lazy(() => import('./pages/RetakeRequests'))
 
 function PreparedPage({ children }) {
   const { pathname } = useLocation()
@@ -74,6 +76,11 @@ function AssessmentResultRoute() {
   return <StudentAssessmentResult key={assessmentId} />
 }
 
+function RetakeRequestRoute() {
+  const { assessmentId } = useParams()
+  return <StudentRetakeRequest key={assessmentId} />
+}
+
 function App() {
   return (
     <Routes>
@@ -90,6 +97,7 @@ function App() {
         <Route path="/student/assessment" element={<Navigate to="/student/assessments" replace />} />
         <Route path="/student/assessments" element={<Page><StudentAssessments /></Page>} />
         <Route path="/student/assessments/:assessmentId/results" element={<Page><AssessmentResultRoute /></Page>} />
+        <Route path="/student/assessments/:assessmentId/retake-request" element={<Page><RetakeRequestRoute /></Page>} />
         <Route path="/student/results" element={<Page><StudentResults /></Page>} />
         <Route path="/student/profile" element={<Page><StudentProfile /></Page>} />
       </Route>
@@ -99,6 +107,7 @@ function App() {
         <Route path="/instructor/reports" element={<Page><ReportsAnalytics role="instructor" /></Page>} />
         <Route path="/instructor/students" element={<Page><EnrolledStudents /></Page>} />
         <Route path="/instructor/assessments" element={<Page><InstructorAssessments /></Page>} />
+        <Route path="/instructor/retake-requests" element={<Page><RetakeRequests /></Page>} />
         <Route path="/instructor/assessments/archives" element={<Page><AssessmentArchives role="instructor" /></Page>} />
         <Route path="/instructor/assessment/create" element={<Page><InstructorUpload /></Page>} />
         <Route path="/instructor/companies" element={<Page><InstructorCompanies /></Page>} />
@@ -112,6 +121,7 @@ function App() {
         <Route path="/admin/placements" element={<Page><AdminPlacements /></Page>} />
         <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />
         <Route path="/admin/assessments" element={<Page><AdminAssessments /></Page>} />
+        <Route path="/admin/retake-requests" element={<Page><RetakeRequests /></Page>} />
         <Route path="/admin/assessments/archives" element={<Page><AssessmentArchives role="admin" /></Page>} />
         <Route path="/admin/assessment/create" element={<Page><InstructorUpload role="admin" /></Page>} />
         <Route path="/admin/batches" element={<Page><AdminBatches /></Page>} />

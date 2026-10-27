@@ -10,6 +10,7 @@ class AttemptSnapshotMigrationTests(TransactionTestCase):
         old_target = [('api', '0023_assessment_archives')]
         new_target = [('api', '0024_attempt_timing_snapshots')]
         executor = MigrationExecutor(connection)
+        latest_targets = executor.loader.graph.leaf_nodes()
         executor.migrate(old_target)
         try:
             old = executor.loader.project_state(old_target).apps
@@ -38,4 +39,4 @@ class AttemptSnapshotMigrationTests(TransactionTestCase):
             self.assertIsNone(finished.expires_at)
             self.assertEqual(finished.submitted_at, started + timedelta(minutes=10))
         finally:
-            MigrationExecutor(connection).migrate(new_target)
+            MigrationExecutor(connection).migrate(latest_targets)

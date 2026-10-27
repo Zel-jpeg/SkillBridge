@@ -25,7 +25,7 @@ export default function StudentPerformanceCard({ student, categories = EMPTY_CAT
         <div><h3><button type="button" className="sp-card-open" aria-haspopup="dialog" aria-label={`View student ${student.name}`} onClick={event => onOpen(student, event.currentTarget)}>{student.name}</button></h3><p>{student.studentId || 'No student ID'} · {student.course || 'Course not provided'}</p></div>
       </div>
       <div className="sp-card-status"><StatusBadge status={student.archived ? 'archived' : stopped ? 'stopped' : student.status} />
-        {onRemove && !student.archived && <button type="button" className="sp-card-remove" aria-label={`Remove ${student.name}`} title="Remove student" onClick={() => onRemove(student)}><TrashIcon size={15} /></button>}
+        {onRemove && !student.archived && <button type="button" className="sp-card-remove" aria-label={`Unenroll ${student.name} from this batch`} title="Unenroll from this batch" onClick={() => onRemove(student)}><TrashIcon size={15} /></button>}
       </div>
     </header>
     <div className="sp-card-placement">{student.placement ? <PlacementStatusCard placement={student.placement} audience="instructor" compact /> : <span>Placement not provided</span>}</div>

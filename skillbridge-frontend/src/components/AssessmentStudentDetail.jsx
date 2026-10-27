@@ -92,15 +92,16 @@ function Overview({ student, state, instructorName, compact, onTab }) {
     </> : <p className="mt-3 text-sm">No required assessments are assigned to this batch.</p>}
     </section>
     <div className="sb-detail-summary">
-      <section className="sb-detail-surface"><div className="sb-detail-section-title"><h3 className="sb-detail-heading">Profile &amp; enrollment</h3>{state.profile && <span className="sb-detail-status sb-detail-status--success">Finalized</span>}</div><dl className="sb-detail-facts">
+      <section className="sb-detail-surface"><div className="sb-detail-section-title"><h3 className="sb-detail-heading">Profile &amp; enrollment</h3>{state.profile && <span className="sb-detail-status sb-detail-status--success">{state.historical ? 'Saved historical evidence' : 'Finalized'}</span>}</div><dl className="sb-detail-facts">
         <dt>Recommendations</dt><dd>{state.locked ? 'Locked' : 'Unlocked'}</dd>
-        <dt>Combined profile</dt><dd>{state.profile ? 'Finalized' : 'Awaiting completion'}</dd>
+        <dt>Combined profile</dt><dd>{state.profile ? state.historical ? 'Saved historical evidence' : 'Finalized' : 'Awaiting completion'}</dd>
         <dt>Finalized</dt><dd>{state.profile?.finalized_at ? manilaDateTime(state.profile?.finalized_at) : 'Not finalized'}</dd>
         <dt>Batch</dt><dd>{student.batch?.name || student.batchLabel || 'No active batch'}</dd>
         <dt>Instructor</dt><dd>{student.instructor || instructorName || 'Instructor not provided'}</dd>
       </dl>{state.locked && <p className="sb-detail-muted mt-4 leading-relaxed">{lockExplanation(state)}</p>}</section>
       <section className="sb-detail-surface sb-detail-placement"><h3 className="sb-detail-heading mb-4">OJT placement</h3>{student.placementKnown === false ? <p className="sb-detail-muted">Placement status is not included in this dashboard. View Placements for the current decision.</p> : student.placement?.status === 'approved' || compact ? <PlacementStatusCard placement={student.placement} audience="instructor" detail={!compact} compact={compact} /> : <div className="sb-detail-unplaced"><span className="sb-detail-status sb-detail-status--amber">Unplaced</span><span className="sb-detail-placement-icon" aria-hidden="true"><BriefcaseIcon size={28} /></span><h4 className="sb-detail-heading">No approved placement yet</h4><p className="sb-detail-muted">Placement approval is separate from recommendation ranking.</p>{!state.locked && <TabLink onClick={() => onTab(3)}>View recommendations</TabLink>}</div>}</section>
     </div>
+    {state.placementHistory.length > 0 && <section className="sb-detail-surface mt-4"><h3 className="sb-detail-heading">Recorded placement history</h3><ul>{state.placementHistory.map(item => <li key={item.id} className="sb-detail-snapshot"><div><strong>{item.position?.title} · {item.company?.name}</strong><p className="sb-detail-muted">{attemptLabel(item.status)} · Score at decision: {percentLabel(item.match_score_at_assignment)}</p><p className="sb-detail-muted">{item.remarks || 'No decision note recorded.'}</p></div></li>)}</ul></section>}
     {!compact && state.results.length > 0 && <section className="sb-detail-surface mt-4">
       <div className="sb-detail-section-title"><div><h3 className="sb-detail-heading">Assessment snapshot</h3><p className="sb-detail-muted">First {Math.min(3, state.results.length)} of {state.results.length} assigned assessments.</p></div><TabLink onClick={() => onTab(1)}>View assessments</TabLink></div>
       <ul>{state.results.slice(0, 3).map(result => <li key={result.id} className="sb-detail-snapshot"><span className="sb-detail-tile" aria-hidden="true"><ReportIcon size={22} /></span><div className="min-w-0 flex-1"><strong>{result.title}</strong>{['submitted', 'stopped'].includes(result.attempt_status) && <p className="sb-detail-muted"><AttemptDate attempt={result} /></p>}</div><span className="sb-detail-status">{attemptLabel(result.attempt_status)}{result.is_flagged ? ' · Flagged' : ''}</span></li>)}</ul>
@@ -129,11 +130,12 @@ function Assessments({ student, state, canRetake, onRetake, archived, retakeAsse
 }
 
 function CombinedCompetency({ state }) {
-  if (state.locked) return <EmptyDetail title="Combined competency is locked" locked>{lockExplanation(state)}</EmptyDetail>
+  if (state.locked && !state.historical) return <EmptyDetail title="Combined competency is locked" locked>{lockExplanation(state)}</EmptyDetail>
   const sourceIds = [...new Set(state.combined.flatMap(score => score.source_assessment_ids || []))]
   const included = state.results.filter(result => sourceIds.includes(result.id))
   return <div>
-    <PanelTitle title="Combined competency" badge={state.profile && <span className="sb-detail-status sb-detail-status--success">Finalized</span>}>Combined results from eligible assessment evidence.</PanelTitle>
+    {state.historical && <p className="sb-detail-muted mb-4">Saved combined evidence for historical review. It does not establish current eligibility or unlock recommendations.</p>}
+    <PanelTitle title="Combined competency" badge={state.profile && <span className="sb-detail-status sb-detail-status--success">{state.historical ? 'Saved historical evidence' : 'Finalized'}</span>}>Combined results from eligible assessment evidence.</PanelTitle>
     <CompetencyInsights scores={state.combined} profile={state.profile} />
     <div className="sb-detail-combined-grid"><section className="sb-detail-surface"><h4 className="sb-detail-heading">Combined category scores</h4><p className="sb-detail-muted">For each category: total earned points ÷ total maximum points across eligible assessments in this batch. These scores inform placement recommendations.</p><ScoreRows scores={state.combined} /></section>
     <aside className="sb-detail-surface"><h4 className="sb-detail-heading">Evidence included</h4>{included.length ? <ul className="sb-detail-evidence">{included.map(result => <li key={result.id}><ReportIcon size={20} /><span>{result.title}</span><span className="sb-detail-status sb-detail-status--success">Included</span></li>)}</ul> : <p className="sb-detail-muted">Source assessment details were not provided.</p>}

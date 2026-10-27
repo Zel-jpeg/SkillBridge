@@ -46,9 +46,13 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   const [decisionId, setDecisionId] = useState(null)
   const [action, setAction] = useState(null)
   const [manual, setManual] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [savingId, setSavingId] = useState(null)
+  const busy = savingId !== null
+  const [savedStudentId, setSavedStudentId] = useState(null)
+  const [choiceRefreshError, setChoiceRefreshError] = useState(false)
   const [error, setError] = useState('')
   const pending = useRef(false)
+  const refreshAttempt = useRef(0)
   const overviewScroll = useRef(0)
   const companyHeading = useRef(null)
   const companyTrigger = useRef(null)
@@ -107,15 +111,27 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   const areas = [...new Set(data.companies.map(item => address(item.address)).filter(Boolean))].sort()
   function filter(setter, value) { setter(value); setPage(1); setCompanyPage(1); setHistoryPage(1) }
   function changeTab(value) { setTab(value); setCompanyId(null); setPositionId(null); setPage(1) }
+  async function refreshChoice() {
+    const attempt = ++refreshAttempt.current
+    setChoiceRefreshError(false)
+    const result = await data.refresh({ includeDraft: false, silentError: true })
+    if (attempt === refreshAttempt.current) setChoiceRefreshError(!result.ok)
+  }
   async function draftAction(payload) {
     if (pending.current) return
-    pending.current = true; setBusy(true); setError('')
+    pending.current = true; setSavingId(payload.recommendation_id); setError(''); setSavedStudentId(null)
+    setChoiceRefreshError(false)
+    ++refreshAttempt.current
     try {
       const result = await data.draftAction(payload)
       if (!result.ok) { setError(result.message || 'Suggestion update was not saved. Refresh before retrying.'); return }
-      await data.refresh()
+      const proposal = result.data.students.find(item => item.student.id === payload.student_id)?.proposal
+      // Follow the confirmed choice without reopening a dialog closed during save.
+      setReviewId(current => current === reviewId ? (proposal?.id ?? current) : current)
+      setSavedStudentId(payload.student_id)
+      void refreshChoice()
     } catch { setError('The update could not be confirmed. Refresh before retrying.') }
-    finally { pending.current = false; setBusy(false) }
+    finally { pending.current = false; setSavingId(null) }
   }
   async function decide(current, remarks) {
     const result = current.type === 'approve' ? await data.approve(current.suggestion.recommendation_id, remarks) : current.type === 'remove' ? await data.remove({ placementId: current.suggestion.placement_id, remarks }) : await data.reject({ recommendationId: current.suggestion.recommendation_id, remarks })
@@ -131,7 +147,7 @@ export default function PlacementWorkspace({ role = 'admin' }) {
       <strong>{index != null ? `#${index + 1} · ` : ''}{option.position}</strong>
       <span>{option.company} · {score(option.match_score)}</span>
       <span>{target ? `${Math.max(0, target.remaining_slots - (counts[target.id] || 0))} available for suggestions · ${target.slots_available} total slots` : 'Capacity unavailable'}</span>
-      {selected ? <span className="pl-status pl-current-suggestion">Current suggestion</span> : <button type="button" className="pl-button" disabled={busy || data.syncing || draft?.stale || !draft?.generated} onClick={() => draftAction({ action: 'choose', student_id: review.suggestion.student.id, recommendation_id: option.id, revision: draft.revision })}>Suggest this instead</button>}
+      {selected ? <span className="pl-status pl-current-suggestion">Current suggestion</span> : <button type="button" className="pl-button" aria-busy={savingId === option.id} disabled={busy || data.mutating || data.syncing || draft?.stale || !draft?.generated} onClick={() => draftAction({ action: 'choose', student_id: review.suggestion.student.id, recommendation_id: option.id, revision: draft.revision })}>{savingId === option.id ? 'Saving suggestion…' : 'Suggest this instead'}</button>}
     </div>
   }
 
@@ -166,7 +182,7 @@ export default function PlacementWorkspace({ role = 'admin' }) {
     {awaitingDetail && <AllocationDetails item={awaitingDetail} role={role} onClose={() => setAwaitingId(null)} onReview={setReviewId} />}
     {decisionDetail && <DecisionDetails item={decisionDetail} onClose={() => setDecisionId(null)} />}
 
-    {review && <DialogShell title="Review suggested placement" description="Review evidence, alternatives and capacity before deciding." size="placement" onClose={() => setReviewId(null)} closeLabel="Close candidate review" footer={<div className="pl-dialog-actions"><button className="pl-button" onClick={() => setReviewId(null)}>Close</button><button className="pl-button pl-danger" disabled={!actionable(review.suggestion)} onClick={() => setAction({ ...review, type: 'reject' })}>Decline suggestion</button><button className="pl-button pl-primary" disabled={!actionable(review.suggestion) || review.position.remaining_slots <= 0 || draft?.stale || data.syncing || data.mutating} onClick={() => setAction({ ...review, type: 'approve' })}>Approve placement</button></div>}><div className="pl-dialog-body"><Identity student={review.suggestion.student} batch={review.suggestion.batch} /><div className="pl-target"><h3>{review.position.title}</h3><p>{review.company.name}</p><Capacity position={review.position} held={counts[review.position.id] || 0} /><p className="pl-muted">{reviewing?.proposal?.id === reviewId ? 'Current suggested position' : 'Alternative / ranked candidate'}{reviewing?.coordinator_choice ? ' · Coordinator chosen' : ''}</p></div>{review.suggestion.match_score < 60 && <p className="pl-notice">Low match. Review the evidence and alternatives carefully; this is not an automatic rejection.</p>}{draft?.stale && <p className="pl-notice">The shared suggestions need updating before approval.</p>}<div className="pl-score-grid">{[['Hybrid match', review.suggestion.match_score], ['Category fit', review.suggestion.category_score_component], ['NLP fit', review.suggestion.nlp_score_component], ['Location fit', review.suggestion.location_score_component]].map(([label, value]) => <div key={label}><strong>{score(value)}</strong><ScoreLabel label={label} /></div>)}</div><p className="pl-muted">Scores support your judgment; they do not guarantee suitability.</p>{reviewing?.proposal && reviewing.alternatives[0]?.id !== reviewing.proposal.id && <p className="pl-notice">Highest match: {reviewing.alternatives[0]?.position} at {reviewing.alternatives[0]?.company} ({score(reviewing.alternatives[0]?.match_score)}). The proposed placement balances shared slots and other students’ alternatives, or reflects a coordinator choice.</p>}<details className="pl-more"><summary>Position requirements and tags</summary><p className="pl-muted">Role requirements and descriptive tags; these are not independently assessed student skills.</p><p>{reviewing?.alternatives.find(item => item.id === reviewId)?.tags?.join(', ') || 'Not available for this suggestion.'}</p></details><h3 className="pl-subheading">Top three position matches</h3>{reviewing?.proposal && <p className="pl-muted">Current suggestion: {reviewing.proposal.position} at {reviewing.proposal.company} ({score(reviewing.proposal.match_score)}).</p>}<p className="pl-muted">Alternatives reserve no slots. Shared allocation considers other students and available capacity.</p><div className="pl-alternatives">{reviewing?.alternatives.slice(0, 3).map(alternative)}</div>{reviewing?.alternatives.length > 3 && <details className="pl-more"><summary>All other matches ({reviewing.alternatives.length - 3})</summary>{reviewing.alternatives.slice(3).map(option => alternative(option))}</details>}{error && <p role="alert" className="pl-error">{error}</p>}</div></DialogShell>}
+    {review && <DialogShell title="Review suggested placement" description="Review evidence, alternatives and capacity before deciding." size="placement" onClose={() => setReviewId(null)} closeLabel="Close candidate review" footer={<div className="pl-dialog-actions"><button className="pl-button" onClick={() => setReviewId(null)}>Close</button><button className="pl-button pl-danger" disabled={busy || data.mutating || data.syncing || !actionable(review.suggestion)} onClick={() => setAction({ ...review, type: 'reject' })}>Decline suggestion</button><button className="pl-button pl-primary" disabled={busy || !actionable(review.suggestion) || review.position.remaining_slots <= 0 || draft?.stale || data.syncing || data.mutating} onClick={() => setAction({ ...review, type: 'approve' })}>Approve placement</button></div>}><div className="pl-dialog-body">{savedStudentId === review.suggestion.student.id && (choiceRefreshError ? <div role="alert" className="pl-notice"><p>Suggestion saved, but related placement data could not refresh. Retry the refresh; you do not need to submit the choice again.</p><button type="button" className="pl-button" disabled={data.refreshing} onClick={refreshChoice}>{data.refreshing ? 'Refreshing…' : 'Retry refresh'}</button></div> : <p role="status" className="pl-notice">Suggestion saved. Review the updated position before approving.</p>)}<Identity student={review.suggestion.student} batch={review.suggestion.batch} /><div className="pl-target"><h3>{review.position.title}</h3><p>{review.company.name}</p><Capacity position={review.position} held={counts[review.position.id] || 0} /><p className="pl-muted">{reviewing?.proposal?.id === reviewId ? 'Current suggested position' : 'Alternative / ranked candidate'}{reviewing?.coordinator_choice ? ' · Coordinator chosen' : ''}</p></div>{review.suggestion.match_score < 60 && <p className="pl-notice">Low match. Review the evidence and alternatives carefully; this is not an automatic rejection.</p>}{draft?.stale && <p className="pl-notice">The shared suggestions need updating before approval.</p>}<div className="pl-score-grid">{[['Hybrid match', review.suggestion.match_score], ['Category fit', review.suggestion.category_score_component], ['NLP fit', review.suggestion.nlp_score_component], ['Location fit', review.suggestion.location_score_component]].map(([label, value]) => <div key={label}><strong>{score(value)}</strong><ScoreLabel label={label} /></div>)}</div><p className="pl-muted">Scores support your judgment; they do not guarantee suitability.</p>{reviewing?.proposal && reviewing.alternatives[0]?.id !== reviewing.proposal.id && <p className="pl-notice">Highest match: {reviewing.alternatives[0]?.position} at {reviewing.alternatives[0]?.company} ({score(reviewing.alternatives[0]?.match_score)}). The proposed placement balances shared slots and other students’ alternatives, or reflects a coordinator choice.</p>}<details className="pl-more"><summary>Position requirements and tags</summary><p className="pl-muted">Role requirements and descriptive tags; these are not independently assessed student skills.</p><p>{reviewing?.alternatives.find(item => item.id === reviewId)?.tags?.join(', ') || 'Not available for this suggestion.'}</p></details><h3 className="pl-subheading">Top three position matches</h3>{reviewing?.proposal && <p className="pl-muted">Current suggestion: {reviewing.proposal.position} at {reviewing.proposal.company} ({score(reviewing.proposal.match_score)}).</p>}<p className="pl-muted">Alternatives reserve no slots. Shared allocation considers other students and available capacity.</p><div className="pl-alternatives">{reviewing?.alternatives.slice(0, 3).map(alternative)}</div>{reviewing?.alternatives.length > 3 && <details className="pl-more"><summary>All other matches ({reviewing.alternatives.length - 3})</summary>{reviewing.alternatives.slice(3).map(option => alternative(option))}</details>}{error && <p role="alert" className="pl-error">{error}</p>}</div></DialogShell>}
     {liveAction && <ActionModal key={`${liveAction.type}-${liveAction.suggestion.recommendation_id || liveAction.suggestion.placement_id}`} action={liveAction} busy={data.mutating || data.syncing} onClose={() => setAction(null)} onSubmit={decide} />}
     {manual && <ManualAssignmentModal students={data.students} positions={data.positions} approvedByStudent={approvedByStudent} initialPositionId={manual.positionId} busy={data.mutating || data.syncing} onClose={() => setManual(null)} onSubmit={data.manualAssign} />}
 

@@ -1,5 +1,10 @@
 # Admin batch collection and student roster
 
+27 October recovery follow-up: selected rosters now include independent Enrollment
+and Account status filters, an audited Previously unenrolled collection and
+prefilled verified re-enrollment. Archived batch actions remain restricted.
+See [student account and enrollment recovery](STUDENT_ACCOUNT_AND_ENROLLMENT_PLAN.md).
+
 26 October 2026: implements the approved batch-overview and selected-student
 concepts while retaining existing admin management APIs and access boundaries.
 

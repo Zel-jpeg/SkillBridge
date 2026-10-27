@@ -114,6 +114,7 @@ SUPABASE_STORAGE_URL = os.getenv('SUPABASE_STORAGE_URL', '')
 SUPABASE_STORAGE_SERVICE_KEY = os.getenv('SUPABASE_STORAGE_SERVICE_KEY', '')
 COMPANY_IMAGE_BUCKET = os.getenv('COMPANY_IMAGE_BUCKET', 'company-branding')
 COMPANY_IMAGE_PREFIX = 'companies'
+RETAKE_EVIDENCE_BUCKET = os.getenv('RETAKE_EVIDENCE_BUCKET', 'retake-evidence')
 
 # CORS — allow React frontend to call the API
 CORS_ALLOWED_ORIGINS = [

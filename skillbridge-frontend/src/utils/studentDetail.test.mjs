@@ -2,6 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { isCurrentPlacement, lockExplanation, percentLabel, studentDetailState, suggestionText } from './studentDetail.js'
 
+test('explicit historical evidence stays readable while current recommendations remain locked', () => {
+  const state = studentDetailState({ archived: true, historicalEvidence: true, recommendationsLocked: true,
+    combinedCompetencyProfile: { orientation_label: 'Saved profile' }, combinedCategoryScores: [{ percentage: 42 }],
+    top_recommendations: [{ match_score: 99 }] })
+  assert.equal(state.locked, true)
+  assert.equal(state.historical, true)
+  assert.equal(state.profile.orientation_label, 'Saved profile')
+  assert.equal(state.combined[0].percentage, 42)
+  assert.deepEqual(state.recommendations, [])
+})
+
 test('missing lock defaults closed and hides all final data, including stale profile', () => {
   const state = studentDetailState({ combinedCompetencyProfile: { orientation_label: 'SECRET' }, combinedCategoryScores: [{ percentage: 99 }], top_recommendations: [{ match_score: 99 }] })
   assert.equal(state.locked, true)

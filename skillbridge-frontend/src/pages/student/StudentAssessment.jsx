@@ -26,12 +26,15 @@ import { useApi, invalidateCache, fetchWithDedup } from '../../hooks/useApi'
 import { remainingAttemptSeconds } from '../../utils/assessmentClock'
 import { manilaDateTime } from '../../utils/assessmentDates'
 import { attemptStorageKey } from '../../utils/attemptStorage'
+import { useAssessmentInterruptions } from '../../hooks/student/useAssessmentInterruptions'
+import AssessmentInactivityReminder from '../../components/AssessmentInactivityReminder'
 
 const WARN_AT_SECS = 5 * 60
 // Grading and first-use recommendation model loading can exceed the shared 30s timeout.
 const SUBMISSION_TIMEOUT_MS = 120000
 
 const STOP_REASON_TEXT = {
+  interruption_review: 'Repeated or prolonged interruptions require instructor review. Your recorded answers are preserved.',
   window_lost_focus: 'The assessment window lost focus.',
   tab_hidden: 'The assessment tab or app was hidden.',
   fullscreen_exited: 'Fullscreen mode was exited.',
@@ -118,13 +121,13 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
   const navigate = useNavigate()
   const mobile = isMobileLikeDevice()
   const rules = [
-    'Do not switch tabs or apps, minimize the browser, or leave this assessment screen.',
+    'Stay on the assessment screen. Interruptions are recorded without assuming their cause.',
     mobile
-      ? 'Backgrounding the browser, switching apps, or hiding the page stops the attempt.'
-      : 'The assessment opens in fullscreen. Exiting fullscreen stops the attempt.',
-    'Do not refresh or close the page while the attempt is active.',
+      ? 'If a call or system alert interrupts you, return and use Resume assessment.'
+      : 'The assessment opens in fullscreen. Restore fullscreen after an interruption to resume.',
+    'Your timer continues during interruptions or reloads. Return using the same device and browser.',
     'Copy, paste, cut, print, save, find, refresh, and developer-tool shortcuts are restricted.',
-    'On the first integrity rule trigger, answered items are submitted and recorded immediately.',
+    'Focus interruptions of 2 seconds, or hidden/fullscreen interruptions of 10 seconds, count as incidents. Three incidents or 60 total interrupted seconds require review.',
     'A retake requires approval from an instructor, OJT coordinator, or administrator.',
   ]
 
@@ -146,7 +149,7 @@ function IntegrityAgreement({ assessment, student, accepted, onAcceptedChange, o
           </div>
           <div className="px-6 sm:px-8 py-6">
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-              Browser monitoring supports assessment integrity, but it cannot completely prevent OS-level actions. Any browser-detected rule below will stop this attempt.
+              Browser monitoring cannot identify calls, system alerts or every overlay. Charge your device, close chat bubbles and consider Do Not Disturb with emergency exceptions before starting.
             </p>
             <ul className="space-y-3 mb-6">
               {rules.map(rule => (
@@ -201,6 +204,7 @@ function AssessmentStopped({ reason, assessmentId, saving = false, saveError = f
           <button onClick={onRetry} className="w-full mt-4 py-3 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">Retry saving now</button>
         )}
         <button onClick={() => navigate(assessmentId ? `/student/assessments/${assessmentId}/results` : '/student/assessments')} disabled={saving || saveError} className="w-full mt-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50">View recorded attempt</button>
+        {assessmentId && !saving && !saveError && <button onClick={() => navigate(`/student/assessments/${assessmentId}/retake-request`)} className="mt-3 min-h-11 w-full text-sm font-semibold text-green-700 dark:text-green-300">Request a retake</button>}
       </div>
     </div>
   )
@@ -304,6 +308,7 @@ export default function StudentAssessment() {
   const [startError,   setStartError]   = useState(null)
   const [starting,     setStarting]     = useState(false)
   const [started,      setStarted]      = useState(false)
+  const [interruptionSeed, setInterruptionSeed] = useState(null)
   const [agreementAccepted, setAgreementAccepted] = useState(false)
   const [stoppedAttempt, setStoppedAttempt] = useState(null)
   const [initialSecs,  setInitialSecs]  = useState(3600) // fallback 60 min
@@ -338,6 +343,7 @@ export default function StudentAssessment() {
   const integrityArmedRef = useRef(false)
   const finalizingRef = useRef(false)
   const fullscreenRequiredRef = useRef(false)
+  const interruptedRef = useRef(false)
 
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { assessmentIdRef.current = assessmentId }, [assessmentId])
@@ -433,7 +439,12 @@ export default function StudentAssessment() {
 
       const answerKey = attemptKey('answers', id)
       let restoredAnswers = {}
-      try { restoredAnswers = JSON.parse(localStorage.getItem(answerKey) || '{}') || {} } catch { /* ignore malformed autosave */ }
+      restoredAnswers = Object.fromEntries((res.data.draft_answers || []).map(answer => [answer.question_id, answer]))
+      try {
+        const savedMarker = JSON.parse(localStorage.getItem(attemptKey('integrity_active', id)) || '{}')
+        if (savedMarker.attempt_started_at === res.data.attempt_started_at) restoredAnswers = JSON.parse(localStorage.getItem(answerKey) || 'null') || restoredAnswers
+      } catch { /* server draft remains available */ }
+      setInterruptionSeed(res.data.interruption || null)
       setAnswers(restoredAnswers)
       answersRef.current = restoredAnswers
 
@@ -443,7 +454,10 @@ export default function StudentAssessment() {
       deadlineRef.current = performance.now() + timer * 1000
       setAttemptCutoff(res.data.deadline_at || null)
       autoSubmitAttemptedRef.current = false
+      let priorInterruption
+      try { priorInterruption = JSON.parse(localStorage.getItem(attemptKey('integrity_active', id)) || '{}') } catch { /* fresh marker */ }
       localStorage.setItem(attemptKey('integrity_active', id), JSON.stringify({
+        interruption: priorInterruption?.attempt_started_at === res.data.attempt_started_at ? priorInterruption.interruption : null,
         response_id: res.data.response_id,
         started_at: res.data.started_at,
         attempt_started_at: res.data.attempt_started_at,
@@ -540,88 +554,29 @@ export default function StudentAssessment() {
     }
   }
 
-  // If a page was closed or refreshed before its keepalive request completed,
-  // the durable local marker finalizes it on the next visit.
+  // A confirmed finalized list response makes a leftover local marker obsolete.
+  // Active attempts still recover through the neutral interruption flow below.
   useEffect(() => {
-    if (!activeInfo?.id || started || stoppedAttempt) return
-    if (['submitted', 'stopped'].includes(activeInfo.attempt_status)) {
-      clearAttemptStorage(activeInfo.id)
-      return
-    }
-    const markerKey = attemptKey('integrity_active', activeInfo.id)
-    let marker = null
-    try { marker = JSON.parse(localStorage.getItem(markerKey)) } catch { /* ignore malformed marker */ }
-    if (!marker) return
+    if (activeInfo?.id && !started && !starting && !activeInfo.retake_allowed &&
+        ['submitted', 'stopped'].includes(activeInfo.attempt_status)) clearAttemptStorage(activeInfo.id)
+  }, [activeInfo, started, starting]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    let savedAnswers = {}
-    try { savedAnswers = JSON.parse(localStorage.getItem(attemptKey('answers', activeInfo.id)) || '{}') || {} } catch { /* ignore malformed autosave */ }
-    setAssessmentId(activeInfo.id)
-    assessmentIdRef.current = activeInfo.id
-    setResponseId(marker.response_id)
-    responseIdRef.current = marker.response_id
-    attemptIdentityRef.current = marker.attempt_started_at || marker.started_at
-    setAnswers(savedAnswers)
-    answersRef.current = savedAnswers
-    integrityArmedRef.current = true
-    submitIntegrityStop('page_closed', 'Recovered after the assessment page was left')
-  }, [activeInfo]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Integrity listeners are active only while questions are live.
-  useEffect(() => {
-    if (!started || submitting || stoppedAttempt) return
-
-    const onVisibilityChange = () => {
-      if (document.hidden) submitIntegrityStop('tab_hidden')
-    }
-    const onBlur = () => {
-      setTimeout(() => {
-        if (!document.hidden && !document.hasFocus()) submitIntegrityStop('window_lost_focus')
-      }, 50)
-    }
-    const onFullscreenChange = () => {
-      if (fullscreenRequiredRef.current && !getFullscreenElement()) {
-        submitIntegrityStop('fullscreen_exited')
-      }
-    }
-    const onKeyDown = event => {
-      const key = event.key.toLowerCase()
-      const modifier = event.ctrlKey || event.metaKey
-      let shortcut = ''
-      if (event.key === 'F12') shortcut = 'F12'
-      else if (event.key === 'F5') shortcut = 'F5'
-      else if (modifier && event.shiftKey && ['i', 'j', 'c'].includes(key)) shortcut = `${event.metaKey ? 'Meta' : 'Ctrl'}+Shift+${key.toUpperCase()}`
-      else if (modifier && ['c', 'v', 'x', 'p', 's', 'f', 'r'].includes(key)) shortcut = `${event.metaKey ? 'Meta' : 'Ctrl'}+${key.toUpperCase()}`
-      if (!shortcut) return
-      event.preventDefault()
-      event.stopPropagation()
-      submitIntegrityStop('restricted_shortcut', shortcut)
-    }
-    const onContextMenu = event => event.preventDefault()
-    const onPageExit = () => submitIntegrityStop('page_closed', '', { unloading: true })
-    const onPopState = () => submitIntegrityStop('page_closed')
-
-    document.addEventListener('visibilitychange', onVisibilityChange)
-    window.addEventListener('blur', onBlur)
-    document.addEventListener('fullscreenchange', onFullscreenChange)
-    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
-    window.addEventListener('keydown', onKeyDown, true)
-    document.addEventListener('contextmenu', onContextMenu)
-    window.addEventListener('beforeunload', onPageExit)
-    window.addEventListener('pagehide', onPageExit)
-    window.addEventListener('popstate', onPopState)
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      window.removeEventListener('blur', onBlur)
-      document.removeEventListener('fullscreenchange', onFullscreenChange)
-      document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
-      window.removeEventListener('keydown', onKeyDown, true)
-      document.removeEventListener('contextmenu', onContextMenu)
-      window.removeEventListener('beforeunload', onPageExit)
-      window.removeEventListener('pagehide', onPageExit)
-      window.removeEventListener('popstate', onPopState)
-    }
-  }, [started, submitting, stoppedAttempt]) // eslint-disable-line react-hooks/exhaustive-deps
+  const recovery = useAssessmentInterruptions({
+    active: started && !submitting && !stoppedAttempt,
+    assessmentId, responseId, identity: attemptIdentityRef.current,
+    markerKey: assessmentId ? attemptKey('integrity_active', assessmentId) : null,
+    seed: interruptionSeed, answers: answersArrayFrom,
+    requireFullscreen: () => fullscreenRequiredRef.current,
+    fullscreenElement: getFullscreenElement, enterFullscreen,
+    onStop: submitIntegrityStop,
+    onTiming: data => {
+      deadlineRef.current = performance.now() + Math.max(0, data.remaining_seconds) * 1000
+      setTimeLeft(Math.ceil(Math.max(0, data.remaining_seconds))); setAttemptCutoff(data.deadline_at)
+      autoSubmitAttemptedRef.current = false
+    },
+    onWarning: text => showToast(text, 'info', 6000),
+  })
+  useEffect(() => { interruptedRef.current = Boolean(recovery.interruption) }, [recovery.interruption])
 
   // Read-only synchronization applies explicit staff extensions without
   // restarting an attempt, resetting integrity, or replacing local answers.
@@ -662,7 +617,7 @@ export default function StudentAssessment() {
         warningShown.current = true
         setShowWarning(true)
       }
-      if (next <= 0 && !autoSubmitAttemptedRef.current) {
+      if (next <= 0 && !autoSubmitAttemptedRef.current && !interruptedRef.current) {
         autoSubmitAttemptedRef.current = true
         // Check once at the old cutoff so an extension granted just before it
         // cannot be missed between regular timing reads.
@@ -699,6 +654,7 @@ export default function StudentAssessment() {
   // ── Submit ─────────────────────────────────────────────────────
   async function handleSubmit(options = {}) {
     const automatic = options?.automatic === true
+    if (interruptedRef.current) return
     if (finalizingRef.current) return
     finalizingRef.current = true
     integrityArmedRef.current = false
@@ -790,6 +746,16 @@ export default function StudentAssessment() {
       error={startError}
     />
   )
+  if (started && recovery.interruption) return <div className="min-h-screen bg-gray-50 px-4 py-12 text-gray-900 dark:bg-gray-950 dark:text-white">
+    <section className="mx-auto max-w-lg rounded-2xl border border-amber-200 bg-white p-6 dark:border-amber-900 dark:bg-gray-900" aria-labelledby="interruption-title">
+      <h1 id="interruption-title" className="text-xl font-bold">Assessment interrupted</h1>
+      <p className="mt-4 text-sm">Your answers are preserved. The timer continues while you are away. A call, system alert or app change can cause an interruption; this does not establish cheating.</p>
+      <p className="mt-3 text-sm">Remaining time: {formatTime(timeLeft)} · Interrupted for about {recovery.interruption.elapsed || 0} seconds</p>
+      <p className="mt-3 text-sm">Return within 10 seconds where possible. Three counted incidents or 60 cumulative interrupted seconds require instructor review.</p>
+      {recovery.error && <p role="alert" className="mt-4 text-sm text-rose-700 dark:text-rose-300">{recovery.error}</p>}
+      <button type="button" disabled={recovery.busy} onClick={recovery.recover} className="mt-5 min-h-11 rounded-xl bg-green-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{recovery.busy ? 'Checking recovery…' : 'Resume assessment'}</button>
+    </section>
+  </div>
   if (started && TOTAL === 0)     return <AssessmentError message="empty_assessment" />
 
   // ── Timer display ──────────────────────────────────────────────
@@ -810,6 +776,7 @@ export default function StudentAssessment() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col relative">
+      {!showConfirm && !showWarning && !showNavPanel && timeLeft > 0 && <AssessmentInactivityReminder key={`${assessmentId}-${attemptIdentityRef.current}`} />}
 
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">

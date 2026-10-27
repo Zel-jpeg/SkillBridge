@@ -215,6 +215,19 @@ class StudentResponse(models.Model):
     violation_events        = models.JSONField(default=list, blank=True)
     is_flagged              = models.BooleanField(default=False)
 
+    draft_answers = models.JSONField(default=list, blank=True)
+    draft_revision = models.BigIntegerField(default=0)
+    interruption_events = models.JSONField(default=list, blank=True)
+    retake_request_status = models.CharField(max_length=12, default='', blank=True, db_index=True)
+    retake_request_id = models.CharField(max_length=36, default='', blank=True)
+    retake_explanation = models.CharField(max_length=500, default='', blank=True)
+    retake_no_image_reason = models.TextField(default='', blank=True)
+    retake_image_key = models.CharField(max_length=180, default='', blank=True)
+    retake_requested_at = models.DateTimeField(null=True, blank=True)
+    retake_reviewed_at = models.DateTimeField(null=True, blank=True)
+    retake_reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='reviewed_retakes')
+    retake_review_note = models.TextField(default='', blank=True)
+
     class Meta:
         unique_together = ('student', 'assessment')
 
@@ -264,6 +277,8 @@ class AssessmentAttemptHistory(models.Model):
     answers = models.JSONField(default=list, blank=True)
     category_scores = models.JSONField(default=list, blank=True)
     archived_at = models.DateTimeField(auto_now_add=True)
+    interruption_events = models.JSONField(default=list, blank=True)
+    retake_request = models.JSONField(default=dict, blank=True)
 
     class Meta:
         unique_together = ('response', 'attempt_number')

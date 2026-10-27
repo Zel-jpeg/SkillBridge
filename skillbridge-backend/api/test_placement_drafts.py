@@ -306,6 +306,7 @@ class MigrationPreservationTests(TransactionTestCase):
         old = [('api', '0021_batch_created_by_managementaction')]
         new = [('api', '0022_placement_active_suggestion')]
         executor = MigrationExecutor(connection)
+        latest_targets = executor.loader.graph.leaf_nodes()
         executor.migrate(old)
         try:
             apps = executor.loader.project_state(old).apps
@@ -325,7 +326,7 @@ class MigrationPreservationTests(TransactionTestCase):
             self.assertTrue(all(not row.is_active_suggestion and row.match_score_at_assignment == 72.345
                                 and row.remarks == 'Preserve legacy decision' for row in rows))
         finally:
-            MigrationExecutor(connection).migrate(new)
+            MigrationExecutor(connection).migrate(latest_targets)
 
 
 # These are real independent connections, deliberately skipped by SQLite.

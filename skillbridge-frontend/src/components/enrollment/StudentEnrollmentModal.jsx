@@ -15,7 +15,7 @@ const counts = { total: 'Total parsed', ready: 'Ready to enroll', existing_stude
   already_enrolled: 'Already enrolled', unsupported: 'Unsupported', duplicate: 'Duplicate', invalid: 'Invalid', conflict: 'Conflict' }
 const PAGE_SIZE = 25
 
-export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, requireConfirmation = false }) {
+export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, requireConfirmation = false, initialStudent = null }) {
   const dialog = useRef(null)
   const reviewDialog = useRef(null)
   const fileRef = useRef(null)
@@ -28,8 +28,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
-  const [tab, setTab] = useState('excel')
-  const [manual, setManual] = useState(emptyStudent)
+  const [tab, setTab] = useState(initialStudent ? 'manual' : 'excel')
+  const [manual, setManual] = useState(() => initialStudent ? { ...emptyStudent, ...initialStudent, school_id: initialStudent.school_id || initialStudent.studentId || '' } : emptyStudent)
   const [filter, setFilter] = useState('all')
   const [view, setView] = useState('list')
   const [editingIndex, setEditingIndex] = useState(null)
@@ -101,6 +101,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       setResult(data); setRows(data.rows); setReview(null); setFilter('all'); setPage(0)
       invalidateCache('/api/admin/users/')
       invalidateCache('/api/instructor/batches/')
+      invalidateCache(`/api/instructor/batches/${target}/students/`)
+      invalidateCache(`/api/instructor/batches/${target}/unenrolled/`)
       const enrolled = data.summary?.enrolled ?? 0
       showToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
       onEnrolled?.(data)
@@ -173,7 +175,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
               <span>{row.course || '—'}{row.year_level ? ` · Year ${row.year_level}` : ''}</span>
               <span className="enrollment-list-email" title={row.email || undefined}>{row.email || 'Email missing'}</span>
               <span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span>
-              <button type="button" className="enrollment-button" aria-expanded={editingIndex === index} disabled={busy}
+              <button type="button" className="enrollment-button" aria-expanded={editingIndex === index} disabled={busy || (Boolean(initialStudent) && !result)}
                 onClick={() => editingIndex === index && !result ? finishEditing() : setEditingIndex(current => current === index ? null : index)}>
                 {editingIndex === index ? (result ? 'Hide' : busy ? 'Saving…' : 'Done') : result ? 'Details' : 'Edit'}
               </button>
@@ -217,7 +219,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       <button type="button" aria-label="Close enrollment" disabled={busy} onClick={onClose} className="enrollment-close"><XIcon size={16} /></button>
     </header>
 
-    {!result && <div className="enrollment-tabs" aria-label="Enrollment method">
+    {!result && !initialStudent && <div className="enrollment-tabs" aria-label="Enrollment method">
       {[{ key: 'excel', label: 'Upload Excel / CSV' }, { key: 'manual', label: 'Manual entry' }].map(item =>
         <button type="button" key={item.key} aria-pressed={tab === item.key} onClick={() => {
           setTab(item.key); setRows([]); setFileRows(false); setReview(null); setVerified(false); setError(''); setNote('')
@@ -258,20 +260,20 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       </> : <form className="enrollment-manual" onSubmit={e => { e.preventDefault(); preview([{ ...manual, source_row: 1, worksheet: 'Manual' }]) }}>
         <p className="enrollment-caption">Add one student at a time. Review the details before enrollment.</p>
         <label className="enrollment-field">DNSC Email
-          <input type="email" value={manual.email} disabled={busy} placeholder="e.g. villanueva.azel@dnsc.edu.ph"
+          <input type="email" value={manual.email} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. villanueva.azel@dnsc.edu.ph"
             onChange={e => setManual(current => ({ ...current, email: e.target.value }))} />
         </label>
         <label className="enrollment-field">Full Name
-          <input type="text" value={manual.name} disabled={busy} placeholder="e.g. Azel Villanueva"
+          <input type="text" value={manual.name} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. Azel Villanueva"
             onChange={e => setManual(current => ({ ...current, name: e.target.value }))} />
         </label>
         <label className="enrollment-field">Student ID
-          <input type="text" value={manual.school_id} disabled={busy} placeholder="e.g. 2026-01982"
+          <input type="text" value={manual.school_id} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. 2026-01982"
             onChange={e => setManual(current => ({ ...current, school_id: e.target.value }))} />
         </label>
         <div className="enrollment-field"><span>Course</span><div className="enrollment-course-options">
           {['BSIT', 'BSIS'].map(course => <button type="button" key={course} aria-pressed={manual.course === course}
-            disabled={busy} onClick={() => setManual(current => ({ ...current, course }))}>{course}</button>)}
+            disabled={busy || Boolean(initialStudent)} onClick={() => setManual(current => ({ ...current, course }))}>{course}</button>)}
         </div></div>
         <button className="enrollment-primary" disabled={busy || !selectedBatch}>Preview student</button>
       </form>)}
@@ -309,6 +311,6 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       </>}
     </footer>
   </dialog>
-  {confirming && <ConfirmModal tone="confirm" title="Confirm student enrollment?" message={`Enroll ${review?.summary.ready ?? 0} verified students in ${selectedBatch?.name || 'the selected batch'} with ${selectedBatch?.instructor_name || 'its assigned instructor'}? ${confirmationText(review?.summary || {})} Existing records and other batch memberships are preserved.`} confirmLabel="Enroll students" onCancel={() => setConfirming(false)} onConfirm={confirm} />}
+  {confirming && <ConfirmModal tone="confirm" title={initialStudent ? "Re-enroll student?" : "Confirm student enrollment?"} message={initialStudent ? `Enroll ${initialStudent.name} (${initialStudent.school_id}) back into ${selectedBatch?.name}? Existing assessment records and other batch memberships will be preserved. ${confirmationText(review?.summary || {})}` : `Enroll ${review?.summary.ready ?? 0} verified students in ${selectedBatch?.name || 'the selected batch'} with ${selectedBatch?.instructor_name || 'its assigned instructor'}? ${confirmationText(review?.summary || {})} Existing assessment records and other batch memberships are preserved.`} confirmLabel={initialStudent ? "Re-enroll student" : "Enroll students"} onCancel={() => setConfirming(false)} onConfirm={confirm} />}
   </>
 }

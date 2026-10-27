@@ -94,6 +94,11 @@ with sync_playwright() as p:
                     # before the user's subsequent focus-loss signal arrived.
                     record.update(attempt_status='submitted', submitted_at=IDENTITY)
                     return route.fulfill(status=409, json={'error': 'Assessment attempt is already finalized.'})
+                if path == '/api/assessments/1/interruption/':
+                    # The recovery policy now decides when to stop; one raw
+                    # focus/visibility signal alone is no longer a stop command.
+                    return route.fulfill(json={'review_required': mode == 'stop_conflict',
+                        'remaining_seconds': 600, 'open_event': None})
                 if path == '/api/student/results/':
                     return route.fulfill(json={'assessment': record, 'skill_scores': [],
                         'recommendations_locked': True, 'completed_required_count': 1,

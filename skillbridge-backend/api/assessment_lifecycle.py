@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from .attempt_timing import check_attempt_identity, snapshot_timing, timing
 from .change_events import notify_changes
 from .management_access import managed_assessments, managed_batches, record_action
-from .models import Assessment, AnswerChoice, ManagementAction, Question, StudentResponse
+from .models import Assessment, AnswerChoice, ManagementAction, Question, StudentResponse, User
 
 
 def request_id(data):
@@ -102,6 +102,8 @@ def assessment_extra_time(request, assessment_id, student_id):
         student_id=student_id, assessment=assessment, student__enrollments__batch_id=assessment.batch_id).first()
     if response is None:
         return Response({'error': 'Attempt not found in the assessment batch'}, status=404)
+    if not User.objects.select_for_update().filter(pk=student_id, is_active=True).exists():
+        return Response({'error': 'Archived student accounts are read-only.'}, status=409)
     check_attempt_identity(response, request.data)
     nonce, minutes, reason = request_id(request.data), request.data.get('minutes'), request.data.get('reason')
     if nonce is None or type(minutes) is not int or not 1 <= minutes <= 180 or not isinstance(reason, str) or not reason.strip() or len(reason.strip()) > 500:

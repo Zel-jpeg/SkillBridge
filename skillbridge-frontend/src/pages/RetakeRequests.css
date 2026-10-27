@@ -1,0 +1,77 @@
+.retake-status { display: inline-flex; align-items: center; border-radius: 7px; padding: 3px 9px; font-size: 11px; font-weight: 600; line-height: 18px; text-transform: capitalize; background: #f3f4f6; color: #4b5563; }
+.retake-status[data-status=pending] { background: #fffbeb; color: #92400e; }
+.retake-status[data-status=approved] { background: #ecfdf5; color: #166534; }
+.retake-status[data-status=declined] { background: #fff1f2; color: #9f1239; }
+.dark .retake-status[data-status=pending] { background: #451a03; color: #fcd34d; }
+.dark .retake-status[data-status=approved] { background: #052e16; color: #86efac; }
+.dark .retake-status[data-status=declined] { background: #4c0519; color: #fda4af; }
+.sb-detail-dialog--retake { width: min(940px, calc(100% - 24px)); height: fit-content; max-height: calc(100dvh - 24px); border-radius: 16px; }
+.sb-detail-dialog--retake .sb-detail-header { align-items: center; }
+.retake-review-symbol { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 48px; height: 48px; border-radius: 12px; color: #15803d; background: #ecfdf5; }
+.dark .retake-review-symbol { color: #86efac; background: #052e16; }
+.retake-review-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; }
+.retake-review-body h3 { font-size: 13px; font-weight: 650; color: #111827; }
+.dark .retake-review-body h3 { color: #f3f4f6; }
+.retake-review-body .retake-muted { color: #6b7280; font-weight: 400; }
+.dark .retake-review-body .retake-muted { color: #9ca3af; }
+.retake-review-identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #e5e7eb; }
+.retake-review-student { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.retake-review-assessment { grid-column: 1 / -1; grid-row: 2; min-width: 0; overflow-wrap: anywhere; }
+.retake-review-identity > .retake-status { grid-column: 2; grid-row: 1; }
+.retake-review-columns { display: grid; min-width: 0; gap: 24px; padding-top: 24px; }
+.retake-review-evidence, .retake-review-decision { min-width: 0; }
+.retake-review-evidence img { display: block; width: 100%; max-height: 260px; object-fit: contain; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc; }
+.dark .retake-review-evidence img { background: #030712; border-color: #374151; }
+.retake-review-evidence a > span { display: inline-block; padding: 10px 0; color: #15803d; font-weight: 600; text-decoration: none; }
+.retake-review-evidence a > span::before { content: '↗︎'; padding-right: 8px; }
+.retake-review-evidence a:hover > span { text-decoration: underline; }
+.dark .retake-review-evidence a > span { color: #86efac; }
+.retake-review-body a:focus-visible { outline: 2px solid #15803d; outline-offset: 3px; }
+.retake-records-heading { display: none; }
+.retake-records-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; text-align: left; font-weight: 600; cursor: pointer; }
+.retake-records-toggle:hover { background: #f9fafb; }
+.dark .retake-records-toggle { border-color: #374151; }
+.dark .retake-records-toggle:hover { background: #1f2937; }
+.retake-records-content { display: none; padding-top: 12px; }
+.retake-records-content.is-open { display: block; }
+.retake-records-mobile-total { margin-bottom: 12px; }
+.retake-timeline { margin-left: 5px; }
+.retake-timeline li { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; position: relative; padding: 0 0 20px 20px; border-left: 1px solid #d1d5db; overflow-wrap: anywhere; }
+.retake-timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.retake-timeline li::before { content: ''; position: absolute; width: 10px; height: 10px; border: 2px solid #94a3b8; border-radius: 50%; background: #fff; left: -5.5px; top: 4px; }
+.dark .retake-timeline li { border-left-color: #4b5563; }
+.dark .retake-timeline li:last-child { border-left-color: transparent; }
+.dark .retake-timeline li::before { background: #111827; }
+.retake-duration { flex-shrink: 0; border-radius: 7px; padding: 2px 9px; background: #f3f4f6; color: #374151; }
+.retake-duration.is-unknown { flex-shrink: 1; max-width: 106px; font-size: 11px; }
+.dark .retake-duration { color: #d1d5db; background: #1f2937; }
+.retake-review-note { border-top: 1px solid #e5e7eb; padding-top: 20px; }
+.retake-review-info { display: flex; align-items: flex-start; gap: 10px; margin-top: 24px; padding: 12px 14px; border-radius: 8px; color: #4b5563; background: #f9fafb; }
+.retake-review-info > span { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 17px; height: 17px; border-radius: 50%; color: #fff; background: #64748b; font-weight: 700; }
+.dark .retake-review-info { color: #d1d5db; background: #1f2937; }
+.retake-review-footer { display: flex; flex-direction: column; gap: 12px; }
+.retake-review-footer > div { flex-shrink: 0; }
+.dark .retake-review-identity, .dark .retake-review-note { border-color: #374151; }
+@media (min-width: 800px) {
+  .retake-review-identity { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto; }
+  .retake-review-assessment { grid-column: auto; grid-row: auto; border-left: 1px solid #e5e7eb; padding-left: 24px; }
+  .dark .retake-review-assessment { border-color: #374151; }
+  .retake-review-identity > .retake-status { grid-column: auto; grid-row: auto; }
+  .retake-review-columns { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); }
+  .retake-review-decision { border-left: 1px solid #e5e7eb; padding-left: 24px; }
+  .dark .retake-review-decision { border-color: #374151; }
+  .retake-records-heading { display: block; }
+  .retake-records-toggle, .retake-records-mobile-total { display: none; }
+  .retake-records-content { display: block; padding-top: 20px; }
+  .retake-review-footer { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; }
+}
+/* Match the dashboard's compact desktop toolbar; retain generous touch targets. */
+@media (pointer: coarse), (max-width: 639px) {
+  .retake-toolbar button, .retake-toolbar input { min-height: 44px; }
+  .retake-toolbar button { min-width: 44px; }
+}
+@media (max-width: 639px) {
+  .sb-detail-dialog--retake .sb-detail-header, .sb-detail-dialog--retake .sb-detail-footer, .retake-review-body { padding: 16px; }
+  .retake-review-symbol { width: 36px; height: 36px; border-radius: 9px; }
+  .sb-detail-dialog--retake .sb-detail-footer button { flex: 1; }
+}

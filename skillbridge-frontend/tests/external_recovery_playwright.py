@@ -98,7 +98,7 @@ with sync_playwright() as p:
         barangay.select_option('Second Barangay')
         expect(phone).to_have_value('09987654321')
         page.get_by_role('button', name='Save changes', exact=True).click()
-        expect(page.get_by_text('Profile saved successfully')).to_be_visible()
+        expect(page.get_by_text('Profile saved successfully', exact=True)).to_be_visible()
         assert mutations[-1]['pinLat'] == mutations[-1]['pinLng'] == 0
         assert mutations[-1]['homeCity'] == 'Second City'
         checks.append('Address denial/invalid envelopes/offline child request recover explicitly; obsolete city response ignored and other draft fields retained')

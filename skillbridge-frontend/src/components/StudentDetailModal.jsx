@@ -2,8 +2,9 @@ import Avatar from './Avatar'
 import DialogShell from './DialogShell'
 import AssessmentStudentDetail from './AssessmentStudentDetail'
 import { LockIcon, UserIcon } from './Icons'
+import DataSection from './DataSection'
 
-export default function StudentDetailModal({ student, instructorName, isArchived = false, readOnly = false, onClose, onToggleRetake, footer, restoreFocusRef }) {
+export default function StudentDetailModal({ student, instructorName, isArchived = false, readOnly = false, onClose, onToggleRetake, footer, restoreFocusRef, contextControls, historyUrl }) {
   const archived = isArchived || student.archived
   const viewOnly = readOnly || archived
   return <DialogShell title={student.name || 'Student details'} description="Student enrollment, assessment results, combined competency, recommendations and archived attempt history."
@@ -21,6 +22,7 @@ export default function StudentDetailModal({ student, instructorName, isArchived
         {archived && <span className="sb-detail-status">Archived</span>}
       </div>
     </>}>
-    <AssessmentStudentDetail student={student} instructorName={instructorName} variant="modal" isArchived={archived} onToggleRetake={readOnly ? undefined : onToggleRetake} />
+    {contextControls}
+    {historyUrl ? <DataSection url={historyUrl} layout="assessment-dialog"><AssessmentStudentDetail key={student.batch?.id ?? 'detached'} student={student} instructorName={instructorName} variant="modal" isArchived onToggleRetake={undefined} /></DataSection> : <AssessmentStudentDetail student={student} instructorName={instructorName} variant="modal" isArchived={archived} onToggleRetake={readOnly ? undefined : onToggleRetake} />}
   </DialogShell>
 }

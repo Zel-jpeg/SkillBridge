@@ -1,5 +1,12 @@
 # IAMS-compatible student enrollment
 
+27 October recovery follow-up: Previously unenrolled cards/rows can open manual
+review with a saved read-only identity and fixed batch. They still require
+preview, identity verification and named final confirmation. Confirmed prior
+removals reconcile retained evidence through the existing competency gates;
+accounts, attempts and other memberships are preserved. See
+[student recovery](STUDENT_ACCOUNT_AND_ENROLLMENT_PLAN.md) for guards and checks.
+
 The user confirmed on 18 October 2026 that the existing enrollment format is
 correct and came from official IAMS. Preserve this format and its importer.
 The development checklist's earlier assumption that its provenance was unknown
