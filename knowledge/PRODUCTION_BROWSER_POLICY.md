@@ -6,10 +6,13 @@ The user manages the existing Vercel/Railway release and subscription.
 
 26 October dashboard road-route preparation adds only
 `https://router.project-osrm.org` to `connect-src`. Route reads use anonymous,
-no-referrer, no-redirect fetches; they never use the authenticated Axios client.
+origin-only-referrer, no-redirect fetches; they never use the authenticated Axios client.
 The local map browser check serves the production build with these exact headers
 and the API origin configured to the existing allowed Railway host; API/tiles/OSRM
 are intercepted with synthetic data. Deployment and provider setup remain owner-run.
+The 27 October attribution cleanup also permits the exact canonical tile image
+origin `https://tile.openstreetmap.org`; the existing subdomain allowance remains
+for other map screens. No generic HTTPS/wildcard image access was added.
 
 The original policy blocked Nominatim requests, branding images from the configured
 project, and Google Identity Services connection/style paths. The correction adds:

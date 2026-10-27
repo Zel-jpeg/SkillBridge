@@ -1,6 +1,8 @@
 import CompetencyInsights from './CompetencyInsights'
 import GrantExtraTime from './assessment/GrantExtraTime'
 import { assessmentSummary, categoryPercentage, scorePercentage } from '../utils/assessmentSummary'
+import { developmentAdvice } from '../utils/developmentAdvice'
+import DevelopmentAdviceText from './DevelopmentAdviceText'
 import { useId, useRef, useState } from 'react'
 import ConfirmModal from './admin/ConfirmModal'
 import PlacementStatusCard from './placements/PlacementStatusCard'
@@ -39,11 +41,12 @@ function ScoreBar({ value }) {
 
 function IndividualInsights({ scores }) {
   const result = assessmentSummary(scores, { scope: 'individual' })
+  const suggestions = developmentAdvice(result.suggestions, { audience: 'staff' })
   const highest = result.leaders[0]?.percentage
   return <section className="sb-detail-individual-insights" aria-label="Individual assessment interpretation">
     <div className="sb-detail-highlight"><p className="sb-detail-eyebrow">{result.highestLabel}</p>{result.highestNames && <p className="sb-detail-heading">{result.highestNames}</p>}{highest > 0 && <strong className="sb-detail-big-score">{categoryPercentage(highest)}</strong>}<p className="sb-detail-muted">Category results in this individual assessment.</p></div>
     <h4 className="sb-detail-heading mt-5">Suggested development focus</h4>
-    {result.suggestions.length ? <ul className="sb-detail-focus-list">{result.suggestions.map((item, index) => <li key={index}><div><strong>{item.category}</strong><strong>{categoryPercentage(item.percentage)}</strong></div><p className="sb-detail-muted">{item.message}</p></li>)}</ul> : <p className="sb-detail-muted">Guidance needs assessed category evidence.</p>}
+    {suggestions.length ? <ul className="sb-detail-focus-list">{suggestions.map((item, index) => <li key={index}><div><strong>{item.category}</strong><strong>{categoryPercentage(item.percentage)}</strong></div><DevelopmentAdviceText item={item} className="sb-detail-muted" /></li>)}</ul> : <p className="sb-detail-muted">Guidance needs assessed category evidence.</p>}
     <details className="sb-detail-disclosure mt-3"><summary>Assessment summary<ChevronRightIcon size={16} /></summary><div><p>{result.summary}</p><p className="sb-detail-muted mt-3">Guidance reflects category scores. Category tags are examples of topics, not separately assessed skills. Review next steps with the student.</p></div></details>
   </section>
 }
@@ -131,7 +134,7 @@ function CombinedCompetency({ state }) {
   const included = state.results.filter(result => sourceIds.includes(result.id))
   return <div>
     <PanelTitle title="Combined competency" badge={state.profile && <span className="sb-detail-status sb-detail-status--success">Finalized</span>}>Combined results from eligible assessment evidence.</PanelTitle>
-    <CompetencyInsights scores={state.combined} />
+    <CompetencyInsights scores={state.combined} profile={state.profile} />
     <div className="sb-detail-combined-grid"><section className="sb-detail-surface"><h4 className="sb-detail-heading">Combined category scores</h4><p className="sb-detail-muted">For each category: total earned points ÷ total maximum points across eligible assessments in this batch. These scores inform placement recommendations.</p><ScoreRows scores={state.combined} /></section>
     <aside className="sb-detail-surface"><h4 className="sb-detail-heading">Evidence included</h4>{included.length ? <ul className="sb-detail-evidence">{included.map(result => <li key={result.id}><ReportIcon size={20} /><span>{result.title}</span><span className="sb-detail-status sb-detail-status--success">Included</span></li>)}</ul> : <p className="sb-detail-muted">Source assessment details were not provided.</p>}
     <div className="sb-detail-evidence-note"><h4 className="sb-detail-heading">Profile finalized</h4><p className="sb-detail-muted">{state.profile?.finalized_at ? manilaDateTime(state.profile.finalized_at) : 'Date not provided'}</p></div><p className="sb-detail-muted sb-detail-evidence-note">Category totals combine earned and maximum points from eligible evidence.</p></aside></div>

@@ -3,9 +3,9 @@ import { BAR_COLORS } from '../hooks/student/useStudentResults'
 import { categoryPercentage, scorePercentage } from '../utils/assessmentSummary'
 import './skillCategoryList.css'
 
-// The parent card owns its height; only this single-column list grows/scrolls.
-export default function SkillCategoryList({ scores, animated = true, showRaw = false, showTags = true, colorful = true }) {
-  return <div role="region" aria-label="Skill categories" tabIndex={0} className="sb-skill-category-list">
+// Bento cards scroll internally; document-style results can grow with their content.
+export default function SkillCategoryList({ scores, animated = true, showRaw = false, showTags = true, colorful = true, scrollable = true, id }) {
+  return <div id={id} role="region" aria-label="Skill categories" tabIndex={scrollable ? 0 : undefined} className={`sb-skill-category-list${scrollable ? '' : ' is-static'}`}>
     {scores.length ? <ul className="flex flex-col gap-4">
       {scores.map((score, index) => {
         const label = score.label ?? score.category
@@ -21,7 +21,7 @@ export default function SkillCategoryList({ scores, animated = true, showRaw = f
           <div className="flex items-center gap-2">
             {showTags && score.tag && <SkillTagBadge tag={score.tag} />}
             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              <div className={`h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none ${colorful ? BAR_COLORS[index % BAR_COLORS.length] : 'bg-green-600'}`}
+              <div className={`h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none ${colorful ? (score.barColor ?? BAR_COLORS[index % BAR_COLORS.length]) : 'bg-green-600'}`}
                 style={{ width: animated ? `${width}%` : '0%' }} />
             </div>
           </div>
