@@ -42,5 +42,5 @@ export async function requestRoadRoute(from, to, { signal, timeoutMs = 8000 } = 
   })
   starts = turn.catch(() => {})
   await turn
-  return parseRoadRoute(await externalJson(url, { signal, timeoutMs, credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error' }))
+  return parseRoadRoute(await externalJson(url, { signal, timeoutMs, credentials: 'omit', referrerPolicy: 'origin', redirect: 'error' }))
 }

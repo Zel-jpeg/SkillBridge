@@ -1,4 +1,6 @@
 import { assessmentSummary, categoryPercentage } from '../utils/assessmentSummary'
+import { developmentAdvice } from '../utils/developmentAdvice'
+import DevelopmentAdviceText from './DevelopmentAdviceText'
 import { ChevronRightIcon } from './Icons'
 
 export function HighestScoringAreas({ scores, audience = 'staff' }) {
@@ -10,8 +12,9 @@ export function HighestScoringAreas({ scores, audience = 'staff' }) {
 }
 
 /** Uses current category evidence, including for profiles saved before this UI. */
-export default function CompetencyInsights({ scores, scope = 'combined', audience = 'staff', locked = false }) {
+export default function CompetencyInsights({ scores, profile, scope = 'combined', audience = 'staff', locked = false }) {
   const result = assessmentSummary(scores, { scope, audience, locked })
+  const suggestions = developmentAdvice(result.suggestions, { profile, audience, scope })
   const content = <>
     <p className="font-semibold text-gray-900 dark:text-white">{result.highestLabel}</p>
     {result.highestNames && <p className="mt-1 break-words">{result.highestNames}</p>}
@@ -19,10 +22,10 @@ export default function CompetencyInsights({ scores, scope = 'combined', audienc
     <p className="mt-2 break-words">{result.summary}</p>
     <section className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
       <h3 className="text-base font-semibold text-gray-900 dark:text-white">Suggested development focus</h3>
-      {result.suggestions.length ? <ul className="mt-3 grid gap-3 md:grid-cols-2">
-        {result.suggestions.map((item, index) => <li key={index} className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+      {suggestions.length ? <ul className="mt-3 grid gap-3 md:grid-cols-2">
+        {suggestions.map((item, index) => <li key={index} className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
           <p className="break-words font-semibold text-gray-900 dark:text-white">{item.category}: <span className="whitespace-nowrap">{categoryPercentage(item.percentage)}</span></p>
-          <p className="mt-1 break-words">{item.message}</p>
+          <DevelopmentAdviceText item={item} className="mt-1" />
         </li>)}
       </ul> : <p className="mt-2">{locked ? 'Guidance is available when results are unlocked.' : 'Guidance needs assessed category evidence.'}</p>}
       {!locked && result.suggestions.length > 0 && <p className="mt-4">Guidance reflects category scores. Category tags are examples of topics, not separately assessed skills. {audience === 'student' ? 'Review your next steps with your instructor or OJT coordinator.' : 'Review next steps with the student.'}</p>}

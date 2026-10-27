@@ -301,7 +301,7 @@ export default function StudentDashboard() {
           */}
           <DataSection url="/api/student/results/combined/" layout="map" count={1} className="sb-map sm:col-span-2"><div className={`sb-map ${tile} overflow-hidden flex flex-col sm:col-span-2`}>
             {/* Tile header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center shrink-0">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -313,13 +313,13 @@ export default function StudentDashboard() {
                   <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Nearby Companies</p>
                   {hasTakenAssessment && studentPin && enrichedCompanies.length > 0 && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">
-                      Closest: {enrichedCompanies[0]?.company ?? enrichedCompanies[0]?.name} · {enrichedCompanies[0]?.distKm?.toFixed(1) ?? '?'} km
+                      Closest: {nearestThree[0]?.company ?? nearestThree[0]?.name} · {nearestThree[0]?.distKm?.toFixed(1) ?? '?'} km
                     </p>
                   )}
                 </div>
               </div>
               {studentPin && hasTakenAssessment && (
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">sorted by distance</span>
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Straight-line distance</span>
               )}
             </div>
 
@@ -394,7 +394,7 @@ export default function StudentDashboard() {
               /* Nearest 3 companies */
               <>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Nearest to you</p>
-                <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Approximate distance · nearest first</p>
+                <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Straight-line distance · nearest first</p>
                 <DashboardCompanyHighlights companies={nearestThree} nearest onSelect={setCompanySelection} onSeeAll={() => navigate('/student/results')} />
               </>
             ) : hasTakenAssessment ? (

@@ -23,7 +23,7 @@ def categories(total, tied=False):
     names = ['Database Management', 'Networking', 'Programming', 'Web Development']
     rows = []
     for index in range(total):
-        percentage = 100 if tied else [60, 50, 80, 100][index % 4] if index < 4 else 60
+        percentage = 100 if tied else [66.67, 50, 50, 100][index % 4] if index < 4 else 60
         category = names[index] if index < 4 else f'Synthetic category {index + 1} with a longer descriptive name'
         if index == 29:
             category = 'SyntheticUnbrokenCategoryNameForResponsiveWrappingVerification'
@@ -87,26 +87,54 @@ with sync_playwright() as playwright:
                 # The previous route's shared cache can contain the larger fixture.
                 page.evaluate('(url) => window.dispatchEvent(new CustomEvent("sse:data_changed", {detail: {urls: [url]}}))', api_url)
                 expect(region.locator('li')).to_have_count(4)
-                card = page.locator('.sb-student-skill-card')
+                if name != 'assessment':
+                    expect(region.locator('li > div:first-child > span:first-child')).to_have_text(['Web Development', 'Database Management', 'Networking', 'Programming'])
+                    expect(region.locator('li').first.locator('.bg-amber-500')).to_have_count(1)
+                card = page.locator('.sb-assessment-category-card' if name == 'assessment' else '.sb-student-skill-card')
                 baseline = card.bounding_box()['height']
+                if name == 'assessment':
+                    assert baseline < 400, 'Four categories must not leave a fixed-height empty card'
+                    expect(card.get_by_role('button')).to_have_count(0)
+                    card.screenshot(path=str(ARTIFACTS / f'assessment-compact-{width}.png'))
                 for tied in (False, True):
                     state['scores'] = categories(30, tied)
                     page.evaluate('(url) => window.dispatchEvent(new CustomEvent("sse:data_changed", {detail: {urls: [url]}}))', api_url)
+                    if name == 'assessment':
+                        expect(region.locator('li')).to_have_count(6)
+                        toggle = card.get_by_role('button', name='Show 24 more categories', exact=True)
+                        expect(toggle).to_have_attribute('aria-expanded', 'false')
+                        assert region.evaluate('el => el.scrollHeight <= el.clientHeight'), 'No nested category scrolling'
+                        toggle.focus(); page.keyboard.press('Enter')
+                        expect(card.get_by_role('button', name='Show less', exact=True)).to_have_attribute('aria-expanded', 'true')
+                        assert card.bounding_box()['height'] > baseline + 500, 'Expanded categories should flow down the page'
                     expect(region.locator('li')).to_have_count(30)
-                    assert abs(card.bounding_box()['height'] - baseline) < 1, (name, width, baseline, card.bounding_box()['height'])
+                    if name != 'assessment':
+                        expect(region.locator('li').first).to_contain_text('Database Management' if tied else 'Web Development')
+                        if not tied:
+                            expect(region.locator('li').nth(28)).to_contain_text('Networking')
+                            expect(region.locator('li').last).to_contain_text('Programming')
+                    if name != 'assessment':
+                        assert abs(card.bounding_box()['height'] - baseline) < 1, (name, width, baseline, card.bounding_box()['height'])
                     layout = region.locator('li').evaluate_all('(rows) => rows.map(el => ({x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y}))')
                     assert len({round(row['x']) for row in layout}) == 1, 'Categories formed multiple columns'
                     assert all(layout[i]['y'] < layout[i + 1]['y'] for i in range(len(layout) - 1))
-                    assert region.evaluate('el => el.scrollHeight > el.clientHeight'), 'Expected inner scroll'
-                    region.scroll_into_view_if_needed()
-                    region.focus()
-                    page.keyboard.press('End')
-                    page.wait_for_function('document.activeElement.scrollTop > 0')
+                    if name == 'assessment':
+                        assert region.evaluate('el => el.scrollHeight <= el.clientHeight'), 'Expanded categories must use page scrolling'
+                        region.locator('li').last.scroll_into_view_if_needed()
+                    else:
+                        assert region.evaluate('el => el.scrollHeight > el.clientHeight'), 'Expected inner scroll'
+                        region.scroll_into_view_if_needed()
+                        region.focus()
+                        page.keyboard.press('End')
+                        page.wait_for_function('document.activeElement.scrollTop > 0')
                     expect(region.locator('li').last).to_be_in_viewport(ratio=1)
                     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Page horizontal overflow'
                     assert region.evaluate('el => el.scrollWidth <= el.clientWidth'), 'Category horizontal overflow'
+                    if name == 'assessment':
+                        card.get_by_role('button', name='Show less', exact=True).click()
+                        expect(region.locator('li')).to_have_count(6)
                 page.screenshot(path=str(ARTIFACTS / f'{name}-{width}.png'))
-                checks.append(f'{name} at {width}px: one column, stable card height for 4/30 categories and ties, keyboard scrolling to final category, no overflow')
+                checks.append(f'{name} at {width}px: one column, '+('content-height card, six-category preview, keyboard expand/collapse and page scrolling' if name == 'assessment' else 'stable card height, score ordering and keyboard inner scrolling')+', 4/30 categories and ties, no overflow')
             context.close()
         assert not errors, errors
     finally:

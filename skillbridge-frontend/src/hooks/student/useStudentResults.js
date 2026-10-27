@@ -53,7 +53,7 @@ export function useStudentResults() {
       rawScore: s.raw_score,
       maxScore: s.max_score,
       barColor: BAR_COLORS[i % BAR_COLORS.length],
-    }))
+    })).sort((left, right) => (right.pct ?? -1) - (left.pct ?? -1))
   }, [data])
 
   const overallScore = data?.recommendations_locked === false ? data?.overall_percentage : null

@@ -50,6 +50,8 @@ with sync_playwright() as p:
         page.evaluate('(dark)=>document.documentElement.classList.toggle("dark",dark)',dark)
         ranked = page.locator('.student-company-highlights.is-ranked')
         nearest = page.locator('.student-company-highlights.is-nearest')
+        expect(page.get_by_text('Straight-line distance · nearest first',exact=True)).to_be_visible()
+        expect(page.get_by_text('Closest: Example City Institution · 2.7 km',exact=True)).to_have_count(1)
         expect(ranked.locator('.student-company-row')).to_have_count(3)
         expect(nearest.locator('.student-company-row')).to_have_count(3)
         expect(ranked.locator('.student-company-name').first).to_contain_text(recommendations[0]['company'])

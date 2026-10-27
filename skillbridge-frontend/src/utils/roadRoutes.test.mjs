@@ -20,14 +20,14 @@ test('road geometry preserves turns and converts GeoJSON into Leaflet latitude/l
   for (const data of [null, {}, { code:'NoRoute' }, { ...response, routes:[] }, { code:'Ok', routes:[{...response.routes[0], distance:-1}] }, { code:'Ok', routes:[{...response.routes[0], geometry:{type:'LineString',coordinates:[[500,7],[125,7]]}}] }]) assert.throws(() => parseRoadRoute(data))
 })
 
-test('route reads omit identity/credentials/referrer, abort before start, and bound a hung provider', async () => {
+test('route reads omit credentials/private referrer paths, abort before start, and bound a hung provider', async () => {
   const original = globalThis.fetch
   let calls = 0
   try {
     globalThis.fetch = async (_url, options) => {
       calls++
       assert.equal(options.credentials, 'omit')
-      assert.equal(options.referrerPolicy, 'no-referrer')
+      assert.equal(options.referrerPolicy, 'origin')
       assert.equal(options.redirect, 'error')
       assert.equal(options.headers, undefined)
       return { ok:true,json:async()=>response }

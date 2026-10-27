@@ -52,19 +52,89 @@ The documented `frontend-design` skill was unavailable in `.agents/skills/` and
 the local skill/plugin locations. Design follows the collection-UI reference
 and current SkillBridge components.
 
+## Student individual-result cards (27 October 2026)
+
+Release verification on 27 October: frontend lint/build, all 201 frontend Node
+tests, two database-free taxonomy checks and 47 synthetic browser configurations
+passed across assessment cards, skill lists, company browsing, real Leaflet maps
+with the production CSP, and shared staff guidance. No backend source or migration
+changed. These local checks do not verify live hosted APIs or external providers.
+
+The approved score-summary and insights concepts are implemented specifically for
+the student's individual assessment result page:
+
+- [Score summary](../skillbridge-frontend/src/components/student/AssessmentResultSummary.jsx):
+  an overall score ring, raw/correct/incorrect counts, recorded date, submitted or
+  stopped state, required-work completion and competency-inclusion information.
+  Correct/incorrect counts remain unavailable while the separate answer review
+  loads or fails. No scored maximum displays an unavailable overall percentage;
+  an assessed zero remains 0%. The two navigation actions have equal width/height
+  and fill the content row, stacking at narrow content widths. Final-results
+  navigation remains gated by the API's recommendation lock.
+- [Assessment insights](../skillbridge-frontend/src/components/student/AssessmentInsights.jsx):
+  a strongest-category strip, exact category percentages and text-only development
+  rows ordered from lower to higher score, preserving ties. Arbitrary instructor
+  category names need no icon mapping. The existing presentation helper handles
+  ties, missing scores and all-zero evidence; stopped attempts omit positive
+  insights. The full summary and methodology are available in a native disclosure.
+  Existing profile-based development guidance remains wired into the rows.
+  Development-focus cards separate the category/score header, the suggested
+  practice activity and neutral review-topic tags. Topics sit alongside the
+  activity when space permits and stack below it on narrow screens. Longer
+  review/practice/instructor guidance stays available through each card's
+  keyboard-accessible **View practice steps / Hide practice steps** disclosure.
+  The shared advice helper exposes these existing message parts separately;
+  its full message, category selection, score bands and topic evidence remain
+  unchanged for other views and exports. No category-specific icon is required.
+  This focus-card refinement passes lint/build, 24 summary/advice checks and the
+  four responsive student-result browser cases, including keyboard practice-step
+  disclosures, present/missing topic evidence and dark mode. Desktop and phone
+  screenshots were inspected.
+- [Submitted answers](../skillbridge-frontend/src/components/student/SubmittedAnswerReview.jsx):
+  questions start collapsed, with their question/category and correct, incorrect
+  or unanswered state visible. Each question uses a keyboard-accessible button
+  with expanded state and its controlled answer panel. Expand all opens the
+  current questions; once all are open the control becomes Collapse all. Closing
+  an individual question restores Expand all. Controls reuse already loaded data;
+  they do not fetch, save or change answers. MCQ/true-false selections and typed
+  answers retain their existing marking, and the answer key remains omitted.
+
+These student-specific components reuse the existing scoped GET endpoints and
+do not change grading, stored evidence, shared staff insights or exports. Styles
+live in [assessmentResult.css](../skillbridge-frontend/src/components/student/assessmentResult.css).
+The [navigation/card browser check](../skillbridge-frontend/tests/student_assessment_result_navigation_playwright.py)
+uses synthetic data at 320/375/768/1440px, including dark mode, independent review
+loading/retry, bulk/mixed/per-question keyboard toggles, unanswered and stopped
+states, full-width actions and repeated View Score navigation.
+Verification: lint/build, 22 focused summary/development-guidance checks, all four
+new result-card browser cases and the 15 existing skill-profile layout cases
+pass. Desktop/mobile/dark screenshots were inspected. These checks mock API data;
+they do not establish live backend or provider availability.
+
 ## Student skill-category cards (20 October 2026)
 
 The dashboard, final combined results and individual assessment results use a
 shared [SkillCategoryList](../skillbridge-frontend/src/components/SkillCategoryList.jsx).
-Categories stack in one column at every viewport width. Adding categories does
-not increase card height: the category region scrolls independently, supports
-keyboard focus/scrolling and wraps long names. Percentage precision, qualitative
+Categories stack in one column at every viewport width. Dashboard and combined
+results use an independently scrolling category region with keyboard access.
+Individual assessment cards fit their content and show six categories initially;
+**Show N more categories** expands all rows using page scrolling, and **Show less**
+returns to six. The toggle exposes its expanded state and controlled list, and is
+omitted for six or fewer categories. Long names wrap. Percentage precision, qualitative
 tags, bar colors and individual assessment raw/max scores are preserved.
+
+27 October: the dashboard and final-results skill profiles show combined skill
+categories from highest to lowest percentage. Equal scores retain their API order;
+unavailable percentages follow assessed scores, including zero. Sorting uses the
+shared student results hook's derived array, leaving cached API records unchanged,
+and updates with refreshed scores. Each category retains its assigned bar color.
+Individual assessment lists and staff/export ordering keep their existing behavior.
 
 The dashboard skill card fills its existing two-row desktop grid area without
 contributing category-list height to the grid's row sizing. Below 1024px it uses
-a 28rem card, as do the final-results and individual-results category cards at
-all widths. Headings stay outside the scrolling list. Highest-score summaries
+a 28rem card, as do the final-results category cards at all widths. The individual
+assessment card no longer inherits that fixed height or nested scrolling.
+Headings stay outside the scrolling list. Highest-score summaries
 are separately bounded/scrollable so a large tie list also cannot enlarge a card;
 all tied names remain accessible. Staff details and exports retain their existing
 layouts and scoring/interpretation logic.
@@ -72,7 +142,8 @@ layouts and scoring/interpretation logic.
 [Synthetic browser checks](../skillbridge-frontend/tests/student_skill_profile_playwright.py)
 compare four categories with 30 categories and 30 tied leaders on all three
 student views at 1440, 1024, 768, 375 and 320px. The checks cover stable card
-height, one-column geometry, keyboard scrolling to the last category, long names
+height for the two bento cards, content height and keyboard expand/collapse for
+individual assessment categories, one-column geometry, long names
 and no horizontal overflow; 320px uses dark mode. API/map responses are mocked
 and other external requests are blocked. Artifacts are saved under ignored
 `tests/artifacts/student-skill-profile/`. These checks do not verify live services.
@@ -104,6 +175,67 @@ text through `scoring.py`. Those fields, NLP inputs, text generation version and
 recommendation weights are unchanged. UI/exports derive factual summaries from
 score rows instead of displaying saved orientation or tag-based guidance fields.
 Legacy API fields remain for compatibility and NLP diagnostics.
+
+## Practical development advice (27 October 2026)
+
+Student individual/combined results and instructor/admin student details now use
+the display-only [development advice helper](../skillbridge-frontend/src/utils/developmentAdvice.js).
+The existing summary still selects every assessed category below 80%, or every
+assessed category when all scores are at least 80%. No category is dropped by the
+legacy backend's two-suggestion limit.
+
+- All 35 built-in categories in the existing
+  [suggestion taxonomy](../skillbridge-backend/api/skill_taxonomy.py) receive
+  concrete practice examples from the display-only
+  [activity catalog](../skillbridge-frontend/src/utils/developmentActivities.json).
+  The catalog also recognizes all 84 existing aliases (23 original matching-name
+  aliases and 61 authoring-suggestion aliases), including Photo Editing, Microsoft
+  Excel and Technical Writing. Case, whitespace and punctuation normalize for
+  activity lookup; custom or compound names without a defined alias retain the
+  course-material fallback. Topic evidence still matches the original category
+  name and score, so alias lookup does not borrow another category's topic evidence.
+  Examples are suggestions, not diagnoses of topic weaknesses. Financial, office
+  and record exercises use fictional/sample data; system tasks use practice labs.
+- Practice support follows the existing competency bands: below 60 uses worked
+  examples; 60–69.99 uses step-by-step repetition; 70–79.99 uses independent practice;
+  80–89.99 extends the activity with peer comparison; 90–100 adds complexity and
+  explanation of trade-offs. These do not add grading or placement thresholds.
+- Below-80 guidance asks students to review incorrect/unanswered questions and
+  discuss practice results with their instructor. Individual advice refers to
+  the individual assessment; combined advice refers to contributing assessments.
+  Staff wording supports reviewing the work with the student.
+- Existing `supporting_categories` topic tags appear separately as **Suggested
+  review topics**, limited to four nonempty, distinct strings. Matching uses the
+  category name and current percentage, allowing the saved profile's one-decimal
+  rounding. Missing, malformed or mismatched evidence omits the optional topics.
+  Staff individual results do not expose per-assessment topic profiles, so those
+  cards use the activity guidance without borrowing combined-profile topics.
+- Advice is derived directly from current props without additional requests,
+  saved-text regeneration, dependencies or database changes. Existing empty,
+  locked and stopped/flagged-result guards remain in place.
+
+This small change applies to on-screen advice. The shared factual summaries and
+existing PDF/CSV export guidance retain their previous contract. Backend saved
+suggestions, competency/NLP text, scoring and ranking are unchanged.
+
+Verification for this advice change: 31 focused Node checks passed (including
+seven new advice checks), frontend lint passed with no warnings and production
+build passed. Synthetic Chrome checks passed at 320, 375, 768 and 1440px, including
+dark mode, topic display/fallbacks, combined-result navigation and stopped-attempt
+suppression. Eight shared staff/component Edge combinations passed at 375/1280px
+in light/dark modes, including locked evidence and long category names. Browser
+checks used intercepted synthetic responses; desktop/phone advice screenshots
+were visually inspected. Live student services and export pagination were not tested.
+
+Full-category follow-up: 33 focused Node checks passed, including every category
+at all five score bands and all 84 aliases. Two database-free Python contract
+checks compare the activity catalog directly against the taxonomy constants using
+Python AST parsing. They fail if a category/alias is added or changed without a
+corresponding advice-catalog update. Run from `skillbridge-frontend/` with
+`../skillbridge-backend/venv/Scripts/python.exe -m unittest discover -s tests -p test_development_advice_coverage.py`.
+Frontend lint passed with no warnings and the production build passed. This
+follow-up changes activity data and lookup only; browser markup is unchanged,
+and the browser suites were not rerun for this data expansion.
 
 ## Verification
 

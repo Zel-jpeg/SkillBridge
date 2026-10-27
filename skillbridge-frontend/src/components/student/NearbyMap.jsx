@@ -50,13 +50,16 @@ function makeCompanyIcon(L, name, isTopMatch = false) {
 
 function makeStudentIcon(L) {
   return L.divIcon({
-    className: '', iconSize: [32, 40], iconAnchor: [16, 40], popupAnchor: [0, -44],
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-      <path fill="#2563eb" stroke="white" stroke-width="2.5"
-        d="M16 1C8.8 1 3 6.8 3 14c0 10.5 13 26 13 26S29 24.5 29 14C29 6.8 23.2 1 16 1z"/>
-      <circle fill="white" cx="16" cy="14" r="7"/>
-      <text x="16" y="18" text-anchor="middle" fill="#2563eb" font-size="8" font-weight="700" font-family="sans-serif">YOU</text>
-    </svg>`,
+    className: 'student-location-marker', iconSize: [28, 60], iconAnchor: [14, 60], popupAnchor: [0, -64],
+    html: `<span class="student-location-marker-content" aria-hidden="true">
+      <span class="student-location-label">You</span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 28 36">
+        <path fill="#2563eb" stroke="white" stroke-width="2"
+          d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
+        <circle fill="white" cx="14" cy="10" r="2.6"/>
+        <path fill="white" d="M9 20v-2a5 5 0 0 1 10 0v2z"/>
+      </svg>
+    </span>`,
   })
 }
 
@@ -89,6 +92,7 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
   useEffect(() => {
     let alive = true
     let invalidateTimer
+    let resizeObserver
     const cache = routeCache.current
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
@@ -101,13 +105,18 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
 
       const map = L.map(elRef.current).setView(center, zoom)
       mapRef.current = map
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      map.attributionControl?.setPrefix(false)
+      const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · <a href="https://project-osrm.org/">OSRM</a>',
         maxZoom: 19,
       }).addTo(map)
       tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
       invalidateTimer = setTimeout(() => map.invalidateSize(), 150)
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => map.invalidateSize())
+        resizeObserver.observe(elRef.current)
+      }
 
       mapRef.current = map
       setReady(true)
@@ -123,6 +132,7 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
       alive = false
       clearTimeout(invalidateTimer)
       clearTimeout(highlightTimer.current)
+      resizeObserver?.disconnect()
       cache.clear()
       mapRef.current?.remove()
       mapRef.current = null
@@ -140,7 +150,7 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
       if (co.lat == null) return
       const isTopMatch = idx === 0
       const distTxt = studentPin
-        ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km away</span>`
+        ? `<span style="color:#2563eb;font-weight:600">${haversineKm(studentPin.lat, studentPin.lng, co.lat, co.lng).toFixed(1)} km straight-line</span>`
         : ''
       const mk = L.marker([co.lat, co.lng], {
         icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
@@ -153,9 +163,9 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
           <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
             <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.company ?? co.name ?? 'Company')}</p>
             <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
-            <div style="display:flex;gap:8px;font-size:11px;margin:0">
+            <div style="font-size:11px;margin:0">
               <span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% match</span>
-              ${distTxt ? '· ' + distTxt : ''}
+              ${distTxt ? '<br/>' + distTxt : ''}
             </div>
           </div>`)
       mk._freshnessKey = co.companyKey ?? `company:${co.id ?? idx}`
@@ -235,7 +245,7 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
 
 
   // Fill 100% of parent — parent must have an explicit height or use flex-1
-  return <div className="relative w-full h-full" style={{ isolation: 'isolate' }}>
+  return <div className="student-nearby-map relative w-full h-full" style={{ isolation: 'isolate' }}>
     <div ref={elRef} className="w-full h-full rounded-xl overflow-hidden" />
     <MapStatus status={mapStatus} onRetry={retryMap} />
     {ready && mapStatus === 'ready' && <div className="student-map-actions">
@@ -249,7 +259,6 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
           : <><b>{routeView.distanceKm.toFixed(1)} km by road</b> · about {routeView.minutes} min driving</>}</div>
         {routeView.status === 'ready' && <small>Estimate between nearby mapped roads; not live traffic.</small>}
       </> : <span>{studentPin ? 'Select a company pin to see a road route.' : 'Set your profile pin to see road routes.'}</span>}
-      <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">Routes: OSRM</a>
     </div>}
   </div>
 }

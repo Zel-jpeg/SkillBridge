@@ -24,6 +24,14 @@ Footer actions open Skill Profile and Matches; no extra footer captions stretch
 the compact cards. A completed profile with no located recommendations has an
 explicit nearest-companies empty state.
 
+27 October distance labels distinguish **straight-line distance** in the nearest
+card, map pin popups and results company cards from **km by road** and estimated
+driving time in the selected route panel. Student distances consistently show one
+decimal place, including values above 10km. The map's Closest summary uses the
+nearest located company rather than the highest-scoring company; marker top-match
+highlighting continues to follow match/sort order. Ranking and distance formulas
+are unchanged. Map popup distance occupies its own line to fit narrow screens.
+
 26 October dashboard refresh: lint/build and the six recommendation grouping
 tests pass. The [compact-card browser check](../skillbridge-frontend/tests/student_dashboard_company_cards_playwright.py)
 passes at 320/375/768/1024/1440px, including dark mode, three-company ranking and
@@ -34,7 +42,7 @@ data and do not change recommendation or placement logic.
 
 ## Dashboard saved-location and road routes
 
-The dashboard [NearbyMap](../skillbridge-frontend/src/components/student/NearbyMap.jsx)
+The dashboard and student results page share [NearbyMap](../skillbridge-frontend/src/components/student/NearbyMap.jsx). It
 has a **Show my location** control that centers/zooms to the existing saved profile
 pin, opens its popup and briefly highlights it. It never requests device GPS or
 updates the profile. Company markers remain clickable and keyboard-activatable
@@ -42,11 +50,18 @@ with Enter/Space. Selecting a company draws an estimated driving route along map
 roads, with road distance, approximate driving time, Clear route and explicit retry
 after an unavailable/no-route result. No fabricated straight-line route is drawn.
 
+The saved student pin uses a 26×34px blue marker, matching ordinary company pins,
+with a white person symbol and a separate 10px **You** label above it. A white outline and shadow keep it distinct
+from map detail, green companies and amber top matches. Its anchor remains at the
+pin tip; accessible saved-location text, popup, focus and highlight are retained.
+
 [Road route reads](../skillbridge-frontend/src/utils/roadRoutes.js) use the
 [OSRM Route API](https://project-osrm.org/docs/v5.24.0/api/#route-service), with
 GeoJSON geometry and a maximum 1.5km snap radius per endpoint. The two saved pins
 are sent to `router.project-osrm.org` only after company selection; names, addresses,
-SkillBridge identity, credentials and referrer are omitted. The existing bounded
+SkillBridge identity and credentials are omitted. Referrer is limited to the app
+origin, without page paths or query strings, to identify the app to the provider.
+The existing bounded
 external JSON helper supplies an eight-second timeout and abort support. Request
 starts are queued at least 1.1 seconds apart per tab to honor the
 [public demo policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server).
@@ -64,7 +79,33 @@ change. Estimates connect nearby mapped roads and do not include live traffic.
 The public routing demo is best-effort with no uptime/data-freshness guarantee.
 For institution-scale production use, choose an appropriately operated routing
 service and update the narrow CSP origin alongside it. The current policy adds
-only the OSRM origin to `connect-src`; other resource allowances stay unchanged.
+the OSRM origin to `connect-src`. The canonical tile origin is allowed in
+`img-src`, alongside the existing tile-subdomain allowance used by other maps.
+
+27 October map cleanup removes Leaflet's optional prefix and the separate
+`Routes: OSRM` line from the route panel. One compact, visible attribution line
+retains OpenStreetMap contributors (linked to its copyright page) and OSRM at the
+map edge. Map-data credit is not hidden or placed behind a toggle, in accordance
+with the [tile policy](https://operations.osmfoundation.org/policies/tiles/).
+Both student maps request the canonical `https://tile.openstreetmap.org` tile
+URL. Routing behavior/cache size remains unchanged; server caching and a hosted
+road graph were discussed as future performance options, not implemented here.
+The cleanup passes lint/build, the three routing-helper tests and the five real
+Leaflet production-CSP/browser configurations. Checks confirm the optional
+Leaflet prefix and route-panel link are absent while the linked OSM/OSRM credit
+remains visible, and routing still omits credentials and private referrer paths.
+
+27 October results-map update replaces the separate results map with the shared
+component, including location highlight, company road routes, loading/retry/clear,
+per-map route caching and compact attribution. Its responsive height remains
+280–460px. Container resize invalidates Leaflet's dimensions on both pages, and
+the observer disconnects on teardown. Changing results sort mode updates company
+pin order/top highlighting without recreating the map, discarding cached routes
+or fetching the selected route again. Locked results retain their existing gate.
+Lint/build and all ten real-Leaflet browser configurations (five per page) pass,
+including result-sort route preservation, saved-pin removal/change and locked
+results. The existing four-viewport student company-details regression also
+passes with no page errors. Provider/API/tiles remain synthetic in these checks.
 
 Verification on 26 October: all 192 frontend tests, lint and build pass. The
 [production-map browser check](../skillbridge-frontend/tests/student_map_routes_playwright.py)

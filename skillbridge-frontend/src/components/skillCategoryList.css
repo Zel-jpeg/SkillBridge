@@ -1,4 +1,5 @@
 .sb-skill-category-list { flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 2px 6px 2px 2px; border-radius: 4px; }
+.sb-skill-category-list.is-static { flex: none; overflow: visible; overscroll-behavior-y: auto; scrollbar-gutter: auto; padding: 2px; }
 .sb-skill-category-list:focus-visible { outline: 2px solid #15803d; outline-offset: -2px; }
 .dark .sb-skill-category-list:focus-visible { outline-color: #4ade80; }
 .sb-student-skill-card, .sb-bento > .sb-skills > .sb-student-skill-card { display: flex; flex-direction: column; height: 28rem; min-height: 0; overflow: hidden; }

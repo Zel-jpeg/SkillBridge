@@ -1,6 +1,4 @@
-import { escapeHtml } from '../../utils/escapeHtml'
-import { loadLeaflet } from '../../utils/externalServices'
-import MapStatus from '../../components/MapStatus'
+import NearbyMap from '../../components/student/NearbyMap'
 import DataSection from '../../components/DataSection'
 // src/pages/student/StudentResults.jsx
 //
@@ -12,7 +10,7 @@ import DataSection from '../../components/DataSection'
 //   - Distance in km on each card
 //   - Sort modes: Best Match | Nearest | Combined
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
 import CompanyImage from '../../components/CompanyImage'
@@ -27,170 +25,6 @@ import { sortCompanyPositions } from '../../utils/recommendationResults'
 
 
 
-
-// ────────────────────────────────────────────────────────────────
-// Leaflet singleton
-// ────────────────────────────────────────────────────────────────
-
-
-function makeCompanyIcon(L, name, isTopMatch = false) {
-  const pinFill   = isTopMatch ? '#f59e0b' : '#16a34a'
-  const labelBg   = isTopMatch ? '#f59e0b' : '#111827'
-  const zClass    = isTopMatch ? 'z-[9999]' : 'z-[100]'
-
-  return L.divIcon({
-    className: '', iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -42],
-    html: `
-      <div class="group relative flex flex-col justify-end items-center cursor-pointer select-none ${zClass}" style="position:relative;z-index:${isTopMatch ? 9999 : 100}">
-        <div style="
-          position:absolute;bottom:40px;white-space:nowrap;
-          background:${labelBg};color:white;
-          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;
-          padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);
-          pointer-events:none;transition:all .18s;
-          transform:translateX(-50%);left:50%;
-        ">
-          ${isTopMatch ? '⭐ ' : ''}${escapeHtml(name)}
-          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
-            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
-            border-top:6px solid ${labelBg}"></div>
-        </div>
-        <div style="transition:transform .18s" class="group-hover:scale-125">
-          <svg xmlns="http://www.w3.org/2000/svg" width="${isTopMatch ? 32 : 26}" height="${isTopMatch ? 40 : 34}" viewBox="0 0 28 36" style="filter:drop-shadow(0 3px 5px rgba(0,0,0,0.4));display:block">
-            <path fill="${pinFill}" stroke="white" stroke-width="2" d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-            <circle fill="white" cx="14" cy="13" r="5"/>
-          </svg>
-        </div>
-      </div>`,
-  })
-}
-
-function makeStudentIcon(L) {
-  return L.divIcon({
-    className: '', iconSize: [32, 40], iconAnchor: [16, 40], popupAnchor: [0, -44],
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-      <path fill="#2563eb" stroke="white" stroke-width="2.5"
-        d="M16 1C8.8 1 3 6.8 3 14c0 10.5 13 26 13 26S29 24.5 29 14C29 6.8 23.2 1 16 1z"/>
-      <circle fill="white" cx="16" cy="14" r="7"/>
-      <text x="16" y="18" text-anchor="middle" fill="#2563eb" font-size="9" font-weight="700" font-family="sans-serif">YOU</text>
-    </svg>`,
-  })
-}
-
-// ════════════════════════════════════════════════════════════════
-// ResultsMap — student (blue) + company pins (green) on one map
-// ════════════════════════════════════════════════════════════════
-function ResultsMap({ companies, studentPin }) {
-  const elRef  = useRef(null)
-  const mapRef = useRef(null)
-  const [ready, setReady] = useState(false)
-  const framed = useRef(false)
-  const openMarker = useRef(null)
-
-  const [mapStatus, setMapStatus] = useState('loading')
-  const [mapAttempt, setMapAttempt] = useState(0)
-  function retryMap() { setReady(false); framed.current = false; setMapStatus('loading'); setMapAttempt(value => value + 1) }
-
-  useEffect(() => {
-    let alive = true
-    loadLeaflet().then(L => {
-      if (!alive || !elRef.current || mapRef.current) return
-
-      const map = L.map(elRef.current).setView([7.3072, 125.6839], 11)
-      mapRef.current = map
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
-      map.zoomControl.setPosition('bottomright')
-      setTimeout(() => map.invalidateSize(), 300)
-
-      mapRef.current = map
-      setReady(true)
-
-      // ── Resize observer: force Leaflet to recalculate when container changes ──
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => map.invalidateSize())
-        ro.observe(elRef.current)
-        mapRef.current._resizeObserver = ro
-      }
-      setMapStatus('ready')
-    }).catch(() => {
-      if (alive) {
-        mapRef.current?.remove()
-        mapRef.current = null
-        setMapStatus('error')
-      }
-    })
-    return () => {
-      alive = false
-      mapRef.current?._resizeObserver?.disconnect()
-      mapRef.current?.remove()
-      mapRef.current = null
-    }
-  }, [mapAttempt]) // intentional
-  useEffect(() => {
-    if (!ready || !mapRef.current || !window.L) return
-    const map = mapRef.current
-    const L = window.L
-    const allMarkers = []
-
-    // Company pins — add in reverse so top match renders last (on top)
-    const companiesWithIdx = companies.map((co, idx) => ({ co, idx }))
-    ;[...companiesWithIdx].reverse().forEach(({ co, idx }) => {
-      if (co.lat == null) return
-      const isTopMatch = idx === 0
-      // co.distKm is pre-computed by useStudentResults hook (no haversineKm needed here)
-      const dist    = co.distKm ?? null
-      const distTxt = dist != null ? `<span style="color:#2563eb;font-weight:600">${dist.toFixed(1)} km away</span>` : ''
-      const mk = L.marker([co.lat, co.lng], {
-        icon: makeCompanyIcon(L, co.company, isTopMatch),
-        zIndexOffset: isTopMatch ? 1000 : idx * -10,
-      })
-        .addTo(map)
-        .bindPopup(`
-          <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${isTopMatch ? '⭐ ' : ''}${escapeHtml(co.company)}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
-            <p style="font-size:11px;margin:0"><span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% hybrid match</span>${dist != null ? ' · ' + distTxt : ''}</p>
-          </div>`)
-      mk._freshnessKey = co.companyKey ?? `company:${co.id ?? idx}`
-      if (openMarker.current === mk._freshnessKey) mk.openPopup()
-      allMarkers.push(mk)
-    })
-
-    // Student pin
-    if (studentPin) {
-      const mk = L.marker([studentPin.lat, studentPin.lng], { icon: makeStudentIcon(L) })
-        .addTo(map)
-        .bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;font-weight:600;color:#2563eb">Your location</div>`)
-      mk._freshnessKey = 'student'
-      if (openMarker.current === 'student') mk.openPopup()
-      allMarkers.push(mk)
-    }
-
-    // Fit all markers
-    if (!framed.current && allMarkers.length > 1) {
-      map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.22))
-    } else if (!framed.current && allMarkers.length === 1) {
-      map.setView(allMarkers[0].getLatLng(), 13)
-    }
-    if (allMarkers.length) framed.current = true
-    return () => {
-      openMarker.current = allMarkers.find(marker => marker.isPopupOpen())?._freshnessKey ?? null
-      allMarkers.forEach(marker => marker.remove())
-    }
-  }, [ready, companies, studentPin])
-
-
-  return (
-    <div className="w-full relative" style={{ paddingBottom: 'clamp(280px, 45vw, 460px)', minHeight: 280 }}>
-      <div ref={elRef} className="absolute inset-0 rounded-2xl overflow-hidden" />
-      <MapStatus status={mapStatus} onRetry={retryMap} />
-    </div>
-  )
-}
 
 // ── Helpers ───────────────────────────────────────────────────────
 function distBadgeColor(km) {
@@ -307,7 +141,7 @@ export default function StudentResults() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Interactive Placement Map</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Top match highlighted per sort mode</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Select a company pin for driving distance</p>
                 </div>
               </div>
               {!hasPin ? (
@@ -324,7 +158,9 @@ export default function StudentResults() {
               {resultsLoading && !sorted.length ? (
                 <div className="w-full h-full bg-gray-50 dark:bg-gray-800 animate-pulse rounded-xl" style={{ minHeight: 280 }} />
               ) : (
-                <ResultsMap key={sortMode} companies={sorted} studentPin={studentPin} />
+                <div className="w-full" style={{ height: 'clamp(280px, 45vw, 460px)' }}>
+                  <NearbyMap companies={sorted} studentPin={studentPin} initialCenter={studentPin} />
+                </div>
               )}
             </div>
           </div>
@@ -344,7 +180,7 @@ export default function StudentResults() {
         </div>
 
         <div className="mb-8">
-          <CompetencyInsights scores={resultData.combined_category_scores} audience="student" />
+          <CompetencyInsights scores={resultData.combined_category_scores} profile={resultData.combined_competency_profile} audience="student" />
         </div>
 
         {/* ── COMPANY MATCHES — full width below ── */}
@@ -385,7 +221,7 @@ export default function StudentResults() {
                   ? (resultsLoading && !sorted.length ? 'Loading…' : `${sorted.length} compan${sorted.length === 1 ? 'y' : 'ies'} · ${recommendations.length} suggested position${recommendations.length !== 1 ? 's' : ''}`)
                   : (allCompLoading ? 'Loading…' : `${allCompanies.length} partner compan${allCompanies.length !== 1 ? 'ies' : 'y'} · ${allCompanies.reduce((n, c) => n + c.positions.length, 0)} position${allCompanies.reduce((n, c) => n + c.positions.length, 0) !== 1 ? 's' : ''}`)}
               </p>
-              {companyTab === 'recommended' && sorted.length > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sortMode === 'distance' ? 'Companies ordered by distance from your location.' : 'Companies ranked by their best position match.'}</p>}
+              {companyTab === 'recommended' && sorted.length > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sortMode === 'distance' ? 'Companies ordered by straight-line distance from your saved location.' : 'Companies ranked by their best position match.'}</p>}
             </div>
 
             {/* Sort toggle — only for recommended tab */}
@@ -531,8 +367,8 @@ export default function StudentResults() {
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
                       <>
-                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">from you</p>
+                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{r.distKm.toFixed(1)} km</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">straight-line</p>
                       </>
                     ) : (
                       <>
@@ -558,7 +394,7 @@ export default function StudentResults() {
                   {r.distKm != null && sortMode !== 'distance' && (
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${distBadgeColor(r.distKm)}`}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      {r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km
+                      {r.distKm.toFixed(1)} km straight-line
                     </span>
                   )}
 
@@ -586,7 +422,7 @@ export default function StudentResults() {
                     <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label="Category fit" /> {Math.round(r.category_score_component ?? 0)}%</span>
                     <span>· <ScoreLabel label="NLP fit" /> {Math.round(r.nlp_score_component ?? 0)}%</span>
                     <span>· <ScoreLabel label="Location fit" /> {Math.round(r.location_score_component ?? 0)}%</span>
-                    {r.distKm != null && <span>· {r.distKm < 10 ? r.distKm.toFixed(1) : Math.round(r.distKm)} km</span>}
+                    {r.distKm != null && <span>· {r.distKm.toFixed(1)} km straight-line</span>}
                     <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
                   </div>
                 )}

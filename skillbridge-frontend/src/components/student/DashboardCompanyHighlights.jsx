@@ -15,7 +15,7 @@ export default function DashboardCompanyHighlights({ companies, nearest = false,
           <CompanyImage name={company.company} imageUrl={company.company_image_url} className="student-company-avatar" />
           <span className="student-company-identity"><span className="student-company-name"><span className="student-company-rank">#{index + 1}</span><span title={company.company}>{company.company}</span></span><span className="student-company-position" title={company.position}>{company.position}</span></span>
           <span className="student-company-metric">
-            {nearest && <span className="student-company-distance"><PinIcon size={13} />{Number.isFinite(company.distKm) ? `${company.distKm.toFixed(1)} km` : 'Distance unavailable'}</span>}
+            {nearest && <span className="student-company-distance" title="Straight-line distance from your saved location"><PinIcon size={13} />{Number.isFinite(company.distKm) ? `${company.distKm.toFixed(1)} km` : 'Distance unavailable'}</span>}
             <span className={`student-company-score score-${tone}`}>{hasScore ? `${score}%` : 'No score'}<span className="student-company-match-label">{hasScore ? 'match' : 'available'}</span></span>
             {!nearest && hasScore && <span className={`student-company-track score-${tone}`} aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, score))}%` }} /></span>}
           </span>
