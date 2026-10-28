@@ -7,11 +7,27 @@ import { NOTIFICATION_LABELS, notificationSeverity, unreadSeverity } from '../..
 import { useNotificationReads } from '../../hooks/useNotificationReads'
 import { BellIcon, BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, ClockIcon, UserIcon, WarnIcon, XIcon } from '../Icons'
 import './notificationMenu.css'
+import { useToast } from '../../context/ToastContext'
+import { completedEmailGroup, emailProgressText } from '../../utils/emailProgress'
 
-const icons = { assessment: WarnIcon, placement: BriefcaseIcon, approval: UserIcon, deadline: ClockIcon, retake: CheckCircleIcon, results: CheckCircleIcon }
+const icons = { assessment: WarnIcon, placement: BriefcaseIcon, approval: UserIcon, deadline: ClockIcon, retake: CheckCircleIcon, results: CheckCircleIcon, email: ClockIcon, email_complete: CheckCircleIcon }
 
 export default function NotificationMenu({ role, ...props }) {
   const { data, loading, error } = useApi(ANALYTICS_URL)
+  const { showToast } = useToast()
+  const seen = useRef(new Map())
+  const announced = useRef(new Set())
+  useEffect(() => {
+    for (const group of data?.email_progress ?? []) {
+      const prior = seen.current.get(group.id)
+      const key = `${group.id}:${group.state}`
+      if (prior && prior !== group.state && completedEmailGroup(group) && !announced.current.has(key)) {
+        announced.current.add(key)
+        showToast(`${group.batch_name}: ${emailProgressText(group).detail}`)
+      }
+      seen.current.set(group.id, group.state)
+    }
+  }, [data, showToast])
   const entries = managementNotifications(data, role)
   return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(ANALYTICS_URL)} />
 }

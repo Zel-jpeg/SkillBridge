@@ -152,11 +152,11 @@ const components = [
 
 function Recommendations({ student, state }) {
   if (state.locked) return <EmptyDetail title="Placement recommendations are locked" locked>{lockExplanation(state)}</EmptyDetail>
-  if (!state.recommendations.length) return <EmptyDetail title="No eligible positions available">No eligible company positions are currently available for this finalized profile.</EmptyDetail>
+  if (!state.recommendations.length) return <EmptyDetail title="No eligible positions available">No eligible partner positions are currently available for this finalized profile.</EmptyDetail>
   return <div><PanelTitle title="Ranked placement recommendations">Fit scores support a placement decision. Rank does not grant placement approval.</PanelTitle>
     <ol>{state.recommendations.map((rec, i) => <li key={rec.id ?? i} className="sb-detail-recommendation">
       <span aria-label={`Rank ${i + 1}`} className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-sm font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">{i + 1}</span>
-      <div className="min-w-0"><div className="sb-detail-recommendation-main"><div className="sb-detail-company"><CompanyImage name={rec.company} imageUrl={rec.company_image_url} className="h-11 w-11 rounded-lg" /><div className="min-w-0"><h4 className="sb-detail-heading">{rec.company || 'Company not provided'}</h4><p>{rec.position || 'Position not provided'}</p></div></div><div className="sb-detail-hybrid"><div><ScoreLabel label="Hybrid match" /><strong>{percentLabel(rec.match_score)}</strong></div><ScoreBar value={rec.match_score} /></div></div>
+      <div className="min-w-0"><div className="sb-detail-recommendation-main"><div className="sb-detail-company"><CompanyImage name={rec.company} imageUrl={rec.company_image_url} className="h-11 w-11 rounded-lg" /><div className="min-w-0"><h4 className="sb-detail-heading">{rec.company || 'Partner not provided'}</h4><p>{rec.position || 'Position not provided'}</p></div></div><div className="sb-detail-hybrid"><div><ScoreLabel label="Hybrid match" /><strong>{percentLabel(rec.match_score)}</strong></div><ScoreBar value={rec.match_score} /></div></div>
         {isCurrentPlacement(rec, student.placement) && <span className="sb-detail-status mt-2">Current approved placement</span>}
         <dl className="sb-detail-components">{components.slice(1).map(([name, key]) => <div key={key}><dt><ScoreLabel label={name} /></dt><dd><strong>{percentLabel(rec[key])}</strong></dd></div>)}</dl>
         {rec.distance_km != null && <p className="sb-detail-muted mt-3">Distance: {Number(rec.distance_km).toFixed(1)} km</p>}

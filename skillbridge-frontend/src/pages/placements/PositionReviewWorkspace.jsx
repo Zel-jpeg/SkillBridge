@@ -40,12 +40,12 @@ export default function PositionReviewWorkspace({ company, position, counts, pro
   const studentById = new Map(students.map(row => [row.student.id, row]))
   return <div className="pl-position-review">
     <div className="pl-company-context">
-      <button type="button" className="pl-button pl-back" onClick={onBack}>← Back to companies</button>
+      <button type="button" className="pl-button pl-back" onClick={onBack}>← Back to partners</button>
       <div className="pl-identity"><CompanyImage name={company.name} imageUrl={company.image_url} className="h-11 w-11 rounded-xl" /><div><h2 ref={companyHeadingRef} tabIndex={-1}>{company.name}</h2><p className="pl-muted">{address || 'Address not provided'}</p></div></div>
       <p className="pl-muted">Slot counts: all batches · Students: selected scope</p>
     </div>
-    {!position ? <div className="pl-empty"><BriefcaseIcon size={28} /><h3>No positions listed</h3><p>This company has no positions available to review.</p></div> : <div className="pl-workspace pl-position-workspace">
-      <nav className="pl-positions pl-position-navigation" aria-label="Company positions"><h3>Positions <span>{company.positions.length}</span></h3>
+    {!position ? <div className="pl-empty"><BriefcaseIcon size={28} /><h3>No positions listed</h3><p>This partner has no positions available to review.</p></div> : <div className="pl-workspace pl-position-workspace">
+      <nav className="pl-positions pl-position-navigation" aria-label="Partner positions"><h3>Positions <span>{company.positions.length}</span></h3>
         {company.positions.map(item => <button type="button" key={item.id} aria-pressed={item.id === position.id} onClick={() => onPosition(item.id)}><strong>{item.title}</strong><PositionCapacity position={item} held={counts[item.id] || 0} compact /></button>)}
       </nav>
       <section className="pl-candidates pl-position-candidates" aria-label="Position candidates">
@@ -67,7 +67,7 @@ export default function PositionReviewWorkspace({ company, position, counts, pro
               {!approvedView && <td className="pl-candidate-rank" data-label="Position rank">{rank != null ? `#${rank}` : '—'}</td>}
               <td data-label="Student"><PlacementIdentity student={item.student} batch={item.batch} /></td>
               <td data-label={approvedView ? 'Score at approval' : 'Hybrid match'}>{approvedView ? <div className="pl-approved-score"><strong>{item.match_score_at_assignment == null ? 'Manual / no score' : `${item.match_score_at_assignment}%`}</strong><p className="pl-muted">Saved at approval</p></div> : <CandidateMatch value={item.match_score} distance={item.distance_km} />}</td>
-              <td data-label={approvedView ? 'Placement' : 'Current suggestion'}>{approvedView ? <span className="pl-status pl-decision-status pl-decision-status--approved">Approved</span> : proposal ? <div className="pl-current-position"><strong>{proposal.position}</strong><p className="pl-muted">{proposal.company || 'Company not provided'}</p>{proposal.position_id === position.id && <span className="pl-muted">This position</span>}</div> : <span className="pl-muted">No current suggestion</span>}</td>
+              <td data-label={approvedView ? 'Placement' : 'Current suggestion'}>{approvedView ? <span className="pl-status pl-decision-status pl-decision-status--approved">Approved</span> : proposal ? <div className="pl-current-position"><strong>{proposal.position}</strong><p className="pl-muted">{proposal.company || 'Partner not provided'}</p>{proposal.position_id === position.id && <span className="pl-muted">This position</span>}</div> : <span className="pl-muted">No current suggestion</span>}</td>
               <td className="pl-candidate-action">{approvedView ? <button type="button" className="pl-button pl-danger" onClick={() => onRemove(item)}>Remove placement</button> : <button type="button" className="pl-button pl-primary" onClick={() => onReview(item.recommendation_id)}>Review candidate</button>}</td>
             </tr>
           })}</tbody>

@@ -238,7 +238,7 @@ with sync_playwright() as p:
     expect(pos.get_by_text('≥30%', exact=True)).to_be_visible()
     expect(pos.get_by_role('button', name='Preview Position NLP Description')).to_have_attribute('aria-expanded', 'false')
     expect(toggle).to_have_attribute('aria-expanded', 'false')
-    search = page.get_by_role('textbox', name='Search companies')
+    search = page.get_by_role('textbox', name='Search partners')
     search.fill('Empty Partner')
     expect(page.get_by_role('article')).to_have_count(1)
     search.fill('')
@@ -268,8 +268,8 @@ with sync_playwright() as p:
     checks.append('Keyboard map reopen, preserved instance, resized viewport and marker popup after hidden background refresh')
 
     # All existing editors still receive complete records; draft is independent of SSE.
-    company(page).get_by_role('button', name='Edit company ' + NAME).click()
-    editor = page.get_by_role('dialog', name='Edit Company', exact=True)
+    company(page).get_by_role('button', name='Edit partner ' + NAME).click()
+    editor = page.get_by_role('dialog', name='Edit Partner', exact=True)
     editor.locator('#company-edit-name').fill('Unsaved company draft')
     f.refresh()
     expect(editor.locator('#company-edit-name')).to_have_value('Unsaved company draft')
@@ -285,8 +285,8 @@ with sync_playwright() as p:
     editor.get_by_role('button', name='Save Changes', exact=True).click()
     expect(editor).to_have_count(0)
     expect(company(page, 'Unsaved company draft')).to_be_visible()
-    company(page, 'Unsaved company draft').get_by_role('button', name='Edit company Unsaved company draft').click()
-    editor = page.get_by_role('dialog', name='Edit Company', exact=True)
+    company(page, 'Unsaved company draft').get_by_role('button', name='Edit partner Unsaved company draft').click()
+    editor = page.get_by_role('dialog', name='Edit Partner', exact=True)
     editor.get_by_role('button', name='Remove image', exact=True).click()
     editor.get_by_role('button', name='Save Changes', exact=True).click()
     expect(editor).to_have_count(0)
@@ -317,20 +317,20 @@ with sync_playwright() as p:
     checks.append('Company image replace/remove/undo and saved edit, dirty company draft during refresh, position edit/slots/all keywords, add validation and delete confirmation')
 
     # Existing two-step create and address/map-pinning flow.
-    page.get_by_role('button', name='+ Add Company', exact=True).click()
-    add_co = modal(page, 'Add Company / Institution')
+    page.get_by_role('button', name='+ Add Partner', exact=True).click()
+    add_co = modal(page, 'Add Partner')
     add_co.get_by_placeholder('e.g. Azeus Systems Philippines').fill('Synthetic Created Company')
     add_co.locator('select').nth(0).select_option('P1')
     add_co.locator('select').nth(1).select_option('C1')
     add_co.locator('select').nth(2).select_option(label='Synthetic Barangay')
     add_co.get_by_role('button', name=re.compile('Next')).click()
     add_co.locator('.leaflet-container').click(position={'x': 100, 'y': 100})
-    add_co.get_by_role('button', name='Add Company', exact=True).click()
+    add_co.get_by_role('button', name='Add Partner', exact=True).click()
     expect(company(page, 'Synthetic Created Company')).to_be_visible()
-    company(page, 'Synthetic Created Company').get_by_role('button', name='Delete company Synthetic Created Company').click()
-    page.get_by_role('dialog', name='Delete company?', exact=True).get_by_role('button', name='Cancel', exact=True).click()
-    company(page, 'Synthetic Created Company').get_by_role('button', name='Delete company Synthetic Created Company').click()
-    page.get_by_role('dialog', name='Delete company?', exact=True).get_by_role('button', name='Delete', exact=True).click()
+    company(page, 'Synthetic Created Company').get_by_role('button', name='Delete partner Synthetic Created Company').click()
+    page.get_by_role('dialog', name='Delete partner?', exact=True).get_by_role('button', name='Cancel', exact=True).click()
+    company(page, 'Synthetic Created Company').get_by_role('button', name='Delete partner Synthetic Created Company').click()
+    page.get_by_role('dialog', name='Delete partner?', exact=True).get_by_role('button', name='Delete', exact=True).click()
     expect(company(page, 'Synthetic Created Company')).to_have_count(0)
     checks.append('Two-step company creation, synthetic address selection, Leaflet pinning, company delete/cancel confirmation')
     page.wait_for_timeout(3200)  # Let expected success toasts finish before visual captures.
@@ -347,14 +347,14 @@ with sync_playwright() as p:
             company(page, 'Unsaved company draft').evaluate('el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72)')
             f.shot(f'expanded-{width}-' + ('dark' if dark else 'light'))
     search.fill('no-such-company')
-    expect(page.get_by_text('No companies match your search.', exact=True)).to_be_visible()
+    expect(page.get_by_text('No partners match your search.', exact=True)).to_be_visible()
     f.close()
     checks.append('Phone/tablet/desktop and dark mode, long text without overflow, independent card heights, all seven positions reachable, no-match state')
     for mode in ['empty', 'failure', 'loading']:
         f = Fixture(browser, empty=mode == 'empty', fail=mode == 'failure', hold=mode == 'loading')
         page = f.open()
         if mode == 'empty':
-            expect(page.get_by_text(re.compile('No companies yet'))).to_be_visible()
+            expect(page.get_by_text(re.compile('No partners yet'))).to_be_visible()
         elif mode == 'failure':
             expect(page.get_by_text('Could not load this section. Please try again.').first).to_be_visible()
             f.fail = False
@@ -365,7 +365,7 @@ with sync_playwright() as p:
             expect(page.get_by_text('Could not refresh. Showing the last loaded data.').first).to_be_visible()
             expect(page.get_by_role('article')).to_have_count(3)
         else:
-            expect(page.get_by_role('status', name='Loading companies and positions')).to_be_visible()
+            expect(page.get_by_role('status', name='Loading partners and positions')).to_be_visible()
             f.shot('loading-map-and-cards')
             f.hold = False
             f.pending.fulfill(json=f.records)

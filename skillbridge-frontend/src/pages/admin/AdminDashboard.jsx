@@ -91,7 +91,7 @@ export default function AdminDashboard() {
 
         <PageHeader
           title="Admin Dashboard"
-          subtitle="System-wide overview of students, companies, and recommendations."
+          subtitle="System-wide overview of students, partners, and recommendations."
           action={<>
             <button onClick={handleRerun} disabled={rerunning}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
               {rerunning ? 'Running…' : 'Re-run Recommendations'}
             </button>
             <button onClick={() => navigate('/admin/companies')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <IconCompany /> Manage Companies
+              <IconCompany /> Manage Partners
             </button>
             <button onClick={() => navigate('/admin/users')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
               <IconStudents /> Manage Users

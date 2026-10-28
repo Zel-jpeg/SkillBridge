@@ -37,15 +37,15 @@ class ImageStorageError(APIException):
     status_code = 503
 
     def __init__(self):
-        super().__init__({'error': 'Company image storage is unavailable. Your changes were not saved. Please retry.'})
+        super().__init__({'error': 'Partner image storage is unavailable. Your changes were not saved. Please retry.'})
 
 
 def convert_company_image(upload):
     if upload.size > MAX_INPUT_BYTES:
-        raise ImageValidationError('Company image must be at most 5 MiB.')
+        raise ImageValidationError('Partner image must be at most 5 MiB.')
     raw = upload.read(MAX_INPUT_BYTES + 1)
     if len(raw) > MAX_INPUT_BYTES:
-        raise ImageValidationError('Company image must be at most 5 MiB.')
+        raise ImageValidationError('Partner image must be at most 5 MiB.')
     if not features.check('webp'):
         raise ImageStorageError()
     try:
@@ -56,9 +56,9 @@ def convert_company_image(upload):
                     raise ImageValidationError('Use a static JPEG, PNG, or WebP image. SVG is not supported.')
                 width, height = source.size
                 if width * height > MAX_PIXELS or max(width, height) > MAX_INPUT_SIDE:
-                    raise ImageValidationError('Company image must be at most 20 megapixels and 10,000 pixels per side.')
+                    raise ImageValidationError('Partner image must be at most 20 megapixels and 10,000 pixels per side.')
                 if getattr(source, 'n_frames', 1) != 1 or getattr(source, 'is_animated', False):
-                    raise ImageValidationError('Animated or multiframe company images are not supported.')
+                    raise ImageValidationError('Animated or multiframe partner images are not supported.')
                 source.verify()
             with Image.open(BytesIO(raw)) as source:
                 source.load()
@@ -80,8 +80,8 @@ def convert_company_image(upload):
                 return encoded
     except (UnidentifiedImageError, OSError, ValueError, SyntaxError,
             Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ImageValidationError('Company image is corrupt or cannot be decoded safely.') from exc
-    raise ImageValidationError('Company image cannot fit within 200 KiB. Please choose a simpler image.')
+        raise ImageValidationError('Partner image is corrupt or cannot be decoded safely.') from exc
+    raise ImageValidationError('Partner image cannot fit within 200 KiB. Please choose a simpler image.')
 
 
 def company_data(request):
@@ -112,17 +112,17 @@ def company_data(request):
     else:
         data = request.data
     if not isinstance(data, dict):
-        raise ImageValidationError('Company details must be a JSON object.')
+        raise ImageValidationError('Partner details must be a JSON object.')
     data = dict(data)
     if {'image_key', 'image_url'} & data.keys():
-        raise ImageValidationError('Company image references are managed by the server.')
+        raise ImageValidationError('Partner image references are managed by the server.')
     if 'address' in data and data['address'] is not None and not isinstance(data['address'], dict):
         raise ImageValidationError('address must be a JSON object or null.')
     if 'positions' in data and (not isinstance(data['positions'], list) or
                                any(not isinstance(p, dict) for p in data['positions'])):
         raise ImageValidationError('positions must be a JSON array of objects.')
     if 'name' in data and (not isinstance(data['name'], str) or len(data['name']) > 255):
-        raise ImageValidationError('Company name must be text with at most 255 characters.')
+        raise ImageValidationError('Organization name must be text with at most 255 characters.')
     for field, limit in (('lat', 90), ('lng', 180)):
         if field in data and data[field] is not None:
             try:
@@ -164,7 +164,7 @@ def _storage_request(method, key=None, **kwargs):
     url = f'{base}/storage/v1/object/{quote(settings.COMPANY_IMAGE_BUCKET, safe="")}'
     if key:
         if not owned_key(key):
-            raise ImageValidationError('Invalid company image object key.')
+            raise ImageValidationError('Invalid partner image object key.')
         url += '/' + quote(key, safe='/')
     try:
         response = requests.request(method, url, headers={

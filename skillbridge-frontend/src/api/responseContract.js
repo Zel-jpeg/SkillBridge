@@ -1,5 +1,13 @@
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const id = value => Number.isSafeInteger(value) && value > 0
+const emailGroups = groups => Array.isArray(groups) && groups.every(group => object(group) &&
+  typeof group.id === 'string' && id(group.batch_id) && typeof group.batch_name === 'string' &&
+  typeof group.source === 'string' && typeof group.created_at === 'string' && Number.isFinite(Date.parse(group.created_at)) &&
+  id(group.total) && ['submitted', 'delivered', 'waiting', 'held', 'failed', 'uncertain', 'cancelled'].every(key =>
+    Number.isSafeInteger(group[key]) && group[key] >= 0 && group[key] <= group.total) &&
+  ['sending', 'paused', 'quota', 'held', 'submitted', 'delivered', 'attention', 'cancelled'].includes(group.state) &&
+  group.delivered <= group.submitted && (group.state !== 'submitted' || group.submitted === group.total && !group.failed && !group.uncertain && !group.cancelled) &&
+  (group.state !== 'delivered' || group.delivered === group.total))
 
 // Check the envelopes consumed as collections/profiles before they reach React
 // or persistent caches. Download payloads intentionally use a different contract.
@@ -9,7 +17,32 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (method === 'post' && /^\/api\/assessments\/\d+\/retake-request\/$/.test(path)) {
+  if (method === 'post' && /^\/api\/instructor\/batches\/\d+\/enroll\/(?:preview\/)?$/.test(path)) {
+    const preview = path.endsWith('/preview/')
+    valid = object(data) && Array.isArray(data.rows) && data.rows.every(row => object(row) &&
+      typeof row.name === 'string' && typeof row.email === 'string' && typeof row.status === 'string') &&
+      object(data.summary) && ['total', 'ready', 'enrolled', 'notifications_queued'].every(key =>
+        Number.isSafeInteger(data.summary[key]) && data.summary[key] >= 0) &&
+      data.summary.total === data.rows.length && (preview ? typeof data.review_token === 'string' :
+        data.summary.enrolled === data.rows.filter(row => row.status === 'enrolled').length)
+  } else if (method === 'get' && /^\/api\/instructor\/batches\/\d+\/email-progress\/$/.test(path)) {
+    valid = object(data) && typeof data.storage_ready === 'boolean' && emailGroups(data.groups)
+  } else if (/^\/api\/instructor\/batches\/\d+\/emails\/$/.test(path)) {
+    const emailStatus = value => ['held', 'queued', 'sending', 'quota', 'retry', 'accepted', 'provider_pending', 'delivered', 'failed', 'uncertain', 'cancelled', 'history_unavailable'].includes(value)
+    const emailTime = value => value == null || typeof value === 'string' && Number.isFinite(Date.parse(value))
+    const notice = value => object(value) && typeof value.id === 'string' && emailStatus(value.status) && typeof value.label === 'string' && typeof value.reason === 'string' && Number.isSafeInteger(value.attempts) && value.attempts >= 0 &&
+      ['created_at', 'updated_at', 'accepted_at', 'delivered_at', 'next_attempt'].every(key => emailTime(value[key])) &&
+      (value.attempt_history === undefined || Array.isArray(value.attempt_history) && value.attempt_history.every(item => object(item) && typeof item.label === 'string' && typeof item.reason === 'string' && emailTime(item.created_at)))
+    valid = method === 'get'
+      ? object(data) && object(data.batch) && id(data.batch.id) && ['active', 'archived'].includes(data.batch.status) && Array.isArray(data.rows) && typeof data.review_token === 'string' && object(data.service) && typeof data.service.worker_recent === 'boolean' && emailTime(data.service.next_allowance_check) && emailTime(data.service.allowance_checked_at) &&
+        data.rows.every(row => object(row) && id(row.student_id) && id(row.enrollment_id) && typeof row.name === 'string' && typeof row.email === 'string' && emailStatus(row.status) && typeof row.label === 'string' && typeof row.eligible === 'boolean' && (row.notice === null || notice(row.notice)) && Array.isArray(row.history) && row.history.every(notice)) &&
+        data.rows.every(row => row.photo_url == null || typeof row.photo_url === 'string') &&
+        (data.groups === undefined || emailGroups(data.groups)) &&
+        (data.service.waiting_count === undefined || Number.isSafeInteger(data.service.waiting_count) && data.service.waiting_count >= 0) &&
+        (data.service.diagnostics === undefined || object(data.service.diagnostics) && typeof data.service.diagnostics.worker_recent === 'boolean' &&
+          emailTime(data.service.diagnostics.next_allowance_check) && emailTime(data.service.diagnostics.allowance_checked_at))
+      : object(data) && Number.isSafeInteger(data.changed) && data.changed >= 0 && Number.isSafeInteger(data.skipped) && data.skipped >= 0 && typeof data.request_id === 'string'
+  } else if (method === 'post' && /^\/api\/assessments\/\d+\/retake-request\/$/.test(path)) {
     valid = object(data) && object(data.request) && typeof data.request.request_id === 'string' &&
       ['pending', 'approved', 'declined'].includes(data.request.status)
   } else if (method === 'post' && /^\/api\/assessments\/\d+\/retake-requests\/\d+\/review\/$/.test(path)) {
@@ -64,6 +97,9 @@ export function validateApiResponse(response) {
       ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
       data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons) && object(row.scores) && object(row.attempt_states)) &&
       ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key])) &&
+      (data.email_notifications === undefined || (Array.isArray(data.email_notifications) && data.email_notifications.every(row =>
+        object(row) && id(row.batch_id) && typeof row.batch_name === 'string' && ['quota', 'attention'].includes(row.kind) && id(row.count) && Array.isArray(row.revision)))) &&
+      (data.email_progress === undefined || emailGroups(data.email_progress)) &&
       (data.activity_days === undefined || (Array.isArray(data.activity_days) && data.activity_days.every(row =>
         object(row) && /^\d{4}-\d{2}-\d{2}$/.test(row.date) && Number.isFinite(Date.parse(row.date)) && Number.isSafeInteger(row.submissions) && row.submissions >= 0)))
   } else if (method === 'get' && path === '/api/management/assessment-reports/') {

@@ -1,5 +1,40 @@
 # Instructor assessment library
 
+## Compact assessment card design — 28 October 2026
+
+Both roles use the approved compact card concept in `AssessmentCollection`:
+title/publication header, batch/duration row, a requirement tag and competency
+label, separate availability/order row, expandable category pills, compact
+calendar summary, and balanced Questions/Submitted metrics. A muted integrity
+count and chevron finish the card; the existing native title button still opens
+the whole surface, with independent category controls. Missing opening/due dates
+share “No opening or due date set”; actual dates remain Manila-formatted.
+
+The style uses 18px card padding and 12px section gaps, without a fixed height or
+smaller body text. The four/two/one-column responsive grid and four-record page
+size remain. Admin additionally retains instructor identity, the submitted count
+out of assigned students, explicitly labelled completion rate and completed count.
+Completion stays separate from submitted totals. List views and dialogs are not
+redesigned by this change; the shared progress component's optional submission
+heading defaults to visible for all existing callers.
+
+Verification for this card refinement: lint/build, the 11-group instructor and
+nine-group admin browser suites, and 24 light/dark grid checks at 320–1920px
+pass. Checks include metric labels/values, absent versus real schedules, separate
+admin completion evidence, category disclosure, card/list navigation, filters,
+pagination, dialogs and no page/card overflow. Desktop/phone screenshots were
+reviewed. All browser data is synthetic; no live database or API writes occur.
+
+## Shared collection component — 28 October 2026
+
+Instructor cards and list rows now live in the shared
+[AssessmentCollection](../skillbridge-frontend/src/components/assessment/AssessmentCollection.jsx),
+also used by admin with additional instructor and completion evidence. Instructor
+summaries, filters, reports, four-record pagination and the existing editor stay
+unchanged. Both staff collections use the same compact view toggle, card metadata,
+category expansion, list-cell activation and responsive card fallback. See
+[admin assessment oversight](ADMIN_ASSESSMENT_OVERSIGHT.md) for retained admin scope.
+
 ## Shared admin presentation — 26 October 2026
 
 Admin assessment cards and list rows now reuse

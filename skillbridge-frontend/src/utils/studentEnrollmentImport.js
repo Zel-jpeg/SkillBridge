@@ -88,10 +88,11 @@ export function editReviewRow(row, field, value) {
   return next
 }
 
-export function confirmationText(summary) {
+export function confirmationText(summary, emailMode = 'now') {
+  if (emailMode === 'later') return `${summary.ready} students will be enrolled and their emails held until staff chooses to send. ${summary.total - summary.ready} rows will be skipped.`
   return `${summary.ready} students will be enrolled and ${summary.ready} notifications will be queued. ${summary.total - summary.ready} rows will be skipped.`
 }
 
 export function resultText(summary) {
-  return `${summary.enrolled} enrolled; ${summary.already_enrolled} already enrolled; ${summary.total - summary.enrolled - summary.already_enrolled} not enrolled. ${summary.notifications_queued} notifications queued.`
+  return `${summary.enrolled} enrolled; ${summary.already_enrolled} already enrolled; ${summary.total - summary.enrolled - summary.already_enrolled} not enrolled. ${summary.notifications_queued} notifications queued.${summary.notifications_held ? ` ${summary.notifications_held} emails held for later.` : ''}${summary.notifications_failed ? ` ${summary.notifications_failed} email requests need attention.` : ''}`
 }

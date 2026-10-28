@@ -12,8 +12,8 @@ import { matchesAccount } from '../../utils/studentAccount'
 const field = 'min-h-11 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900'
 const button = 'inline-flex min-h-11 items-center justify-center rounded-xl border border-green-700 px-3 py-2 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:text-green-300 dark:hover:bg-green-950'
 
-export function EnrollmentRecoveryFilters({ enrollment, onEnrollment, account, onAccount }) {
-  return <div className="flex flex-wrap gap-3">
+export function EnrollmentRecoveryFilters({ enrollment, onEnrollment, account, onAccount, className = '' }) {
+  return <div className={`flex flex-wrap gap-3 ${className}`}>
     <label className="flex min-w-0 flex-col gap-1 text-xs">Enrollment<select aria-label="Enrollment" className={field} value={enrollment} onChange={event => onEnrollment(event.target.value)}><option value="enrolled">Enrolled students</option><option value="unenrolled">Previously unenrolled</option></select></label>
     <label className="flex min-w-0 flex-col gap-1 text-xs">Account status<select aria-label="Account status" className={field} value={account} onChange={event => onAccount(event.target.value)}><option value="all">All accounts</option><option value="active">Active accounts</option><option value="archived">Archived accounts</option></select></label>
   </div>

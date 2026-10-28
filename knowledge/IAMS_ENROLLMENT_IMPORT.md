@@ -96,7 +96,11 @@ lists, ambiguous headers and unreadable files produce explicit errors.
    as `students` and its `review_token`. Tokens expire after 30 minutes and bind
    rows, actor and batch. Every eligible row is revalidated against current data.
    Rows blocked in preview never become eligible during confirmation without a
-   new preview. A retry after a lost response must start with preview.
+   new preview. Confirmation includes a frozen request UUID. With email storage
+   available, an explicit Check enrollment result retry reuses that UUID and
+   payload to recover the saved response without re-enrollment or duplicate email
+   jobs. Known validation errors still require a fresh preview. See
+   [progress and recovery](ENROLLMENT_EMAIL_DELIVERY.md#enrollment-group-progress-and-completion).
 7. Results distinguish enrolled, already_enrolled, unsupported, duplicate,
    invalid, conflict, skipped and failed, with separate notification statuses.
    A top-right completion toast is rendered in the dialog's browser top layer,
@@ -162,6 +166,14 @@ validation still uses SQLite via `core.test_settings`. PostgreSQL concurrent
 import behavior has not been stress tested.
 
 ## Email dispatch
+
+28 October 2026: the in-memory dispatcher described historically below has been
+replaced by a **durable database outbox** (migration 0027), Send now/later review,
+staff batch email controls, automatic allowance recovery and provider delivery
+tracking. The email intent is now saved inside the enrollment transaction; only
+the separate worker performs network delivery after commit. See
+[current email behavior and required worker/webhook setup](ENROLLMENT_EMAIL_DELIVERY.md).
+Earlier live-delivery checks below do not verify this new worker's hosted rollout.
 
 `api/email_service.py` replaces the unbounded per-email daemon-thread code with
 a bounded 1,000-item in-process queue and a single lazily started daemon worker.

@@ -1,5 +1,58 @@
 # Admin assessment oversight
 
+## Refined assessment cards — 28 October 2026
+
+The shared card now follows the approved compact
+[assessment card design](ASSESSMENT_LIBRARY_UI.md): clearer configuration rows,
+shorter schedule text and two aligned Questions/Submitted metrics. Admin cards
+keep instructor identity, assigned-student totals, completion rate/count and
+stopped/flagged evidence. The completion bar is explicitly labelled and still
+uses the API completion percentage; it is not derived from the new Submitted
+metric. Four-column desktop layout, filters, list view and management workflows
+remain. The progress helper only hides its repeated submission heading inside
+these cards; the existing dialog/list presentation is unchanged.
+
+## Shared instructor-style library — 28 October 2026
+
+Admin and instructor collections now render the same
+[AssessmentCollection](../skillbridge-frontend/src/components/assessment/AssessmentCollection.jsx).
+Both use four desktop cards per row, four assessments per page, the shared
+compact card/list toggle, neutral category disclosures, grouped metadata and a
+contained six-column list. Non-interactive list cells activate the assessment's
+native title button; keyboard activation and focus restoration still use that
+button. Category expansion stays independent of opening the assessment. Phones
+use cards even when the saved view is List.
+
+Admin retains all five global summary metrics, instructor identity and filtering,
+batch/publication/requirement/category/completion/inclusion/availability filters,
+active filter removal and reset, authoritative submitted/assigned counts,
+completion percentage/count, and stopped/flagged counts. Its progress bar measures
+completion, not submission rate. Header, tabs, spacing and control styling follow
+the instructor library without copying instructor-only summary meanings.
+Initial collection skeletons match the grid: four columns from 1280px, two from
+768px, and one on phones. This follows the user's four-column refinement; list
+view and four-record pagination are unchanged.
+The refinement passes lint/build and 24 synthetic layout checks across both
+roles at 320, 375, 768, 1024, 1440 and 1920px in light/dark mode, with no page/card
+overflow; category disclosure and list switching also pass.
+
+The admin management dialog is unchanged: Overview, Settings, Students & attempts,
+and Questions remain, including confirmed saves, dirty-draft protection, explicit
+authorized answer-key requests, assessment-specific retakes, authoring, archive
+and duplication. Backend scope/permissions, polling and scoring are unchanged.
+The four-record collection page size supersedes older ten-record library notes
+below; student/answer-key lists inside the admin dialog still use ten records.
+
+Local verification: frontend lint/build, 28 assessment utility tests, all nine
+admin browser groups and all 11 instructor browser groups pass. Browser checks
+use synthetic intercepted APIs and cover card/list pagination and live clamping,
+full-row opening and focus restoration, independent category disclosures, admin
+instructor/completion/inclusion/availability filters, save/retake/key workflows,
+loading/error/empty/access-loss states, and responsive light/dark layouts from
+320 to 1440px. Existing obsolete section-loader labels in the admin test were
+updated to the current enrolled-student and authorized-question labels. No live
+API writes, database tests or hosted deployment were performed for this UI change.
+
 ## Card and management dialog consistency — 26 October 2026
 
 The admin library now shares the instructor's category pill component. Cards,

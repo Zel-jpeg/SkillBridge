@@ -1,3 +1,5 @@
+import { completedEmailGroup, emailProgressText } from './emailProgress.js'
+
 const reasonDescriptions = {
   'Stopped / flagged': 'Review assessment integrity issues with the affected students.',
   'Overdue required work': 'Required assessment work is past its deadline.',
@@ -31,5 +33,21 @@ export function managementNotifications(data, role) {
     description: 'Instructor accounts are awaiting administrator approval.',
     to: '/admin/users?tab=pending', kind: 'approval', severity: 'info',
   })
+  for (const group of data.email_notifications ?? []) notifications.push({
+    id: `email:${group.batch_id}:${group.kind}`, title: group.kind === 'quota' ? 'Enrollment emails pending' : 'Enrollment emails need attention',
+    count: group.count, description: group.kind === 'quota'
+      ? `${group.batch_name}: daily email allowance reached. Students are enrolled; emails resume automatically when allowance is available.`
+      : `${group.batch_name}: review saved email problems. Enrollment stays unchanged.`,
+    to: role === 'admin' ? `/admin/batches?batch_id=${group.batch_id}&emails=1` : `/instructor/students?batch_id=${group.batch_id}&emails=1`,
+    kind: 'email', severity: 'warning', revision: group.revision,
+  })
+  for (const group of data.email_progress ?? []) {
+    if (!completedEmailGroup(group) || Date.parse(data.generated_at) - Date.parse(group.created_at) > 7 * 86_400_000) continue
+    const text = emailProgressText(group)
+    notifications.push({ id: `email-group:${group.id}`, title: text.title, count: group.total,
+      description: `${group.batch_name}: ${text.detail}`,
+      to: `/${role === 'admin' ? 'admin/batches' : 'instructor/students'}?${new URLSearchParams({ batch_id: group.batch_id, emails: '1', email_group: group.id })}`,
+      kind: 'email_complete', severity: 'success', revision: [group.id, group.state] })
+  }
   return notifications
 }

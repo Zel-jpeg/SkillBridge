@@ -2,11 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const explanations = {
-  'Best position match': 'The highest individual position match at this company, not an average of its roles. Each position uses 60% category fit, 25% NLP fit, and 15% location fit.',
+  'Best position match': 'The highest individual position match at this partner, not an average of its roles. Each position uses 60% category fit, 25% NLP fit, and 15% location fit.',
   'Hybrid match': 'Overall recommendation score computed from 60% category fit, 25% NLP fit, and 15% location fit.',
   'Category fit': 'How closely your assessment skill scores match the position’s required skill percentages.',
   'NLP fit': 'Text similarity between your generated competency profile and the position description using the selected NLP model.',
-  'Location fit': 'How close you are to the company location. Nearby companies receive a higher location score.',
+  'Location fit': 'How close you are to the partner location. Nearby partners receive a higher location score.',
 }
 
 // A portal keeps explanations visible inside cards, tables and scrollable modals.

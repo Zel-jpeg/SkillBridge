@@ -83,7 +83,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
       {(company || score != null || approvalDate) && (
         <div className={`mt-4 grid grid-cols-1 gap-3 text-xs ${detail ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
           <div>
-            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>Company location</p>
+            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>Partner location</p>
             <p className="mt-0.5 text-gray-700 dark:text-gray-300">{company?.address_text || 'Location not provided'}</p>
           </div>
           <div>

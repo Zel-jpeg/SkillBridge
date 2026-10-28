@@ -1,23 +1,26 @@
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import { useToast } from '../../context/ToastContext'
 import { lazy, Suspense, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../../components/DataSection'
 import DialogShell from '../../components/DialogShell'
+import ActionMenu from '../../components/ActionMenu'
+import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import Pagination from '../../components/Pagination'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { BatchCollection, BatchStatus, BatchStudentCollection, CollectionRange } from '../../components/admin/BatchCollections'
 import StudentEnrollmentModal from '../../components/enrollment/StudentEnrollmentModal'
+const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
 import PreviouslyUnenrolled, { EnrollmentRecoveryFilters } from '../../components/enrollment/EnrollmentRecovery'
 import { matchesAccount } from '../../utils/studentAccount'
 import StudentModal from '../../components/instructor/StudentModal'
 import { normalizeStudent } from '../../utils/managementStudent'
 import { requestErrorMessage } from '../../api/requestErrors'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
-import { ArchiveIcon, ChevronRightIcon, PlusIcon, ReportIcon, SearchIcon, UsersIcon } from '../../components/Icons'
+import { ArchiveIcon, ChevronRightIcon, MailIcon, MoreHorizontalIcon, PlusIcon, ReportIcon, SearchIcon, UsersIcon } from '../../components/Icons'
 
 const BATCHES = '/api/instructor/batches/'
 const OWNERS = '/api/admin/batch-instructors/'
@@ -66,6 +69,7 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
 }
 
 export default function AdminBatches() {
+  const emailLocation = useLocation()
   const { showToast } = useToast()
   const { data: batchData } = useApi(BATCHES)
   const { data: ownerData } = useApi(OWNERS)
@@ -90,6 +94,11 @@ export default function AdminBatches() {
   const batchCollectionRef = useRef(null)
   const [editor, setEditor] = useState(null)
   const [enrolling, setEnrolling] = useState(false)
+  const [showEmails, setShowEmails] = useState(false)
+  const [closedEmailKey, setClosedEmailKey] = useState(null)
+  const emailParams = new URLSearchParams(emailLocation.search)
+  const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
+  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0 && closedEmailKey !== emailLocation.key
   const [confirm, setConfirm] = useState(null)
   const [studentId, setStudentId] = useState(null)
   const [leaderCategory, setLeaderCategory] = useState('')
@@ -164,7 +173,15 @@ export default function AdminBatches() {
       <nav aria-label="Batch navigation" className="flex flex-wrap items-center gap-3 text-xs"><button disabled={busy} className="inline-flex min-h-11 items-center gap-2 font-medium text-green-800 dark:text-green-300" onClick={backToBatches}><span aria-hidden="true" className="rotate-180"><ChevronRightIcon size={16} /></span>Back to batches</button><span aria-hidden="true" className="text-gray-300">/</span><span className="text-gray-500 dark:text-gray-400">Batches & students</span><span aria-hidden="true" className="text-gray-300">/</span><span className="break-words font-medium">{selected.name}</span></nav>
       <section className={`${surface} p-5 sm:p-6`} aria-label="Selected batch">
         <header className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 items-start gap-3"><span className="batch-symbol h-12 w-12" aria-hidden="true"><UsersIcon size={23} /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-3"><h1 ref={batchHeading} tabIndex={-1} className="break-words text-xl font-bold outline-none">{selected.name}</h1><BatchStatus status={selected.status} /></div><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Responsible instructor · {selected.instructor_name || 'Instructor not assigned'}</p><p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{selected.student_count ?? 0} students</p></div></div>
-        <div className="flex flex-wrap gap-2"><button className={button} disabled={busy} onClick={() => setEditor({ batch: selected })}>Manage batch</button>{selected.status === 'active' && <><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} disabled={busy} onClick={() => setEnrolling(true)}><PlusIcon size={14} />Enroll students</button><Link className={button} to={`/admin/assessment/create?batch_id=${selected.id}`}>New assessment</Link></>}<button className={`${button} text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950`} disabled={busy} onClick={() => setConfirm({ type: selected.status === 'active' ? 'archive' : 'unarchive' })}><ArchiveIcon size={14} />{selected.status === 'active' ? 'Archive batch' : 'Reactivate batch'}</button></div></header>
+        <div className="flex flex-wrap gap-2">
+          <button className={button} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>
+          {selected.status === 'active' && <><Link className={button} to={`/admin/assessment/create?batch_id=${selected.id}`}><PlusIcon size={14} />New assessment</Link><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} disabled={busy} onClick={() => setEnrolling(true)}><PlusIcon size={14} />Enroll students</button></>}
+          <ActionMenu label="Batch actions" className={button} disabled={busy} items={[
+            { id: 'manage', label: 'Manage batch' },
+            { id: 'status', label: selected.status === 'active' ? 'Archive batch' : 'Reactivate batch', icon: <ArchiveIcon size={14} />, danger: selected.status === 'active' },
+          ]} onAction={action => action === 'manage' ? setEditor({ batch: selected }) : setConfirm({ type: selected.status === 'active' ? 'archive' : 'unarchive' })}><MoreHorizontalIcon /></ActionMenu>
+        </div></header>
+        <div className="mt-4"><BatchEmailProgress key={selected.id} batchId={selected.id} onView={() => setShowEmails(true)} /></div>
         {selected.status === 'archived' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">This batch is archived. Student assessment availability and final recommendations are locked. Reactivate it before enrolling students or starting assessments.</p>}
       </section>
       <section className={`${surface} space-y-5 p-4 sm:p-6`} aria-label="Batch students">
@@ -184,6 +201,7 @@ export default function AdminBatches() {
       </section>
     </>}
     {editor && <BatchEditor batch={editor.batch} owners={owners} onClose={() => setEditor(null)} onSaved={batch => { refresh(); setSelectedId(batch.id); setEditor(null); setFeedback({ text: 'Batch saved.' }) }} />}
+    {(showEmails || emailRouteOpen) && (emailRouteOpen || selected) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : selected.id} batchId={emailRouteOpen ? routeEmailId : selected.id} onClose={() => { setShowEmails(false); setClosedEmailKey(emailLocation.key) }} /></Suspense>}
     {selected && enrolling && <StudentEnrollmentModal requireConfirmation batchId={selected.id} onClose={() => setEnrolling(false)} onEnrolled={refresh} />}
     {selected && currentStudent && <StudentModal student={{ ...currentStudent, batchLabel: selected.name }} instructorName={selected.instructor_name} isArchived={selected.status === 'archived'} onClose={() => setStudentId(null)} onToggleRetake={retake} />}
     {selected && leaderCategory && <Suspense fallback={<p role="status">Loading skill leaderboard…</p>}><SkillLeaderboardModal skill={{ category: leaderCategory }} allStudents={leaderboardStudents} onClose={() => setLeaderCategory('')} onSelectStudent={student => { setLeaderCategory(''); setStudentId(student.id) }} /></Suspense>}

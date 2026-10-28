@@ -49,7 +49,7 @@ with sync_playwright() as p:
         expect(page.get_by_text('3 approved', exact=True)).to_have_count(2)
         checks.append('Both companies show configured five seats, three approved and two remaining')
         page.get_by_role('button', name='Download reports', exact=True).click()
-        expect(page.get_by_text('Company area / city / province', exact=True)).to_be_visible()
+        expect(page.get_by_text('Partner area / city / province', exact=True)).to_be_visible()
         page.screenshot(path=str(ARTIFACTS / 'companies.png'), full_page=True)
         page.goto('http://127.0.0.1:5178/admin/reports')
         page.wait_for_load_state('networkidle')

@@ -9,6 +9,7 @@ class RetakeMigrationTests(TransactionTestCase):
         executor = MigrationExecutor(connection)
         latest = executor.loader.graph.leaf_nodes()
         old = [('api', '0024_attempt_timing_snapshots')]
+        new = [('api', '0026_alter_studentresponse_retake_explanation')]
         try:
             executor.migrate(old)
             apps = executor.loader.project_state(old).apps
@@ -23,8 +24,12 @@ class RetakeMigrationTests(TransactionTestCase):
                 status='stopped', answers=[{'question_id': 123, 'text_answer': 'Synthetic retained answer'}],
                 category_scores=[{'category_id': category.pk, 'raw_score': 1, 'max_score': 3}])
             tables = set(connection.introspection.table_names())
-            MigrationExecutor(connection).migrate(latest)
-            from .models import StudentResponse, SkillScore, AssessmentAttemptHistory
+            executor = MigrationExecutor(connection)
+            executor.migrate(new)
+            migrated_apps = executor.loader.project_state(new).apps
+            StudentResponse, SkillScore, AssessmentAttemptHistory = [
+                migrated_apps.get_model('api', name)
+                for name in ['StudentResponse', 'SkillScore', 'AssessmentAttemptHistory']]
             saved = StudentResponse.objects.get(pk=response.pk)
             self.assertEqual(saved.status, 'submitted')
             self.assertEqual((saved.draft_answers, saved.interruption_events, saved.retake_request_status), ([], [], ''))
@@ -42,6 +47,7 @@ class RetakeMigrationTests(TransactionTestCase):
         executor = MigrationExecutor(connection)
         latest = executor.loader.graph.leaf_nodes()
         old = [('api', '0025_assessmentattempthistory_interruption_events_and_more')]
+        new = [('api', '0026_alter_studentresponse_retake_explanation')]
         response = None
         try:
             executor.migrate(old)
@@ -52,11 +58,12 @@ class RetakeMigrationTests(TransactionTestCase):
             assessment = Assessment.objects.create(title='Synthetic length guard', created_by=owner)
             response = Response.objects.create(student=student, assessment=assessment, retake_explanation='x'*501)
             with self.assertRaisesRegex(RuntimeError, 'nothing will be truncated'):
-                MigrationExecutor(connection).migrate(latest)
+                MigrationExecutor(connection).migrate(new)
             self.assertEqual(Response.objects.get(pk=response.pk).retake_explanation, 'x'*501)
             Response.objects.filter(pk=response.pk).update(retake_explanation='x'*500)
-            MigrationExecutor(connection).migrate(latest)
-            from .models import StudentResponse
+            executor = MigrationExecutor(connection)
+            executor.migrate(new)
+            StudentResponse = executor.loader.project_state(new).apps.get_model('api', 'StudentResponse')
             self.assertEqual(StudentResponse.objects.get(pk=response.pk).retake_explanation, 'x'*500)
         finally:
             if response:

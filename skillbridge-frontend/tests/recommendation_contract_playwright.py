@@ -79,10 +79,10 @@ with sync_playwright() as p:
                 expect(page.get_by_role('alert')).to_contain_text('Could not load this section')
                 failed[0] = False
                 page.get_by_role('button', name='Retry', exact=True).click()
-                expect(page.get_by_text('No eligible company positions are currently available.')).to_be_visible()
+                expect(page.get_by_text('No eligible partner positions are currently available.')).to_be_visible()
                 checks.append(scenario + ' read offers Retry; retry recovers empty results without a false match')
             else:
-                expect(page.get_by_text('No eligible company positions are currently available.')).to_be_visible()
+                expect(page.get_by_text('No eligible partner positions are currently available.')).to_be_visible()
                 expect(page.get_by_role('button', name='Browse all companies →')).to_be_visible()
                 checks.append('No candidates keeps profile and a browse-companies action')
             page.screenshot(path=str(ARTIFACTS / (scenario + '.png')), full_page=True)

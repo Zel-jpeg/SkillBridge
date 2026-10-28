@@ -79,8 +79,8 @@ with sync_playwright() as p:
         if width == 1440 and not dark:
             result['recommendations']=[]
             page.evaluate("window.dispatchEvent(new CustomEvent('sse:data_changed',{detail:{urls:['/api/student/results/combined/']}}))")
-            expect(ranked.get_by_text('No eligible company positions are currently available.',exact=True)).to_be_visible()
-            expect(nearest.get_by_text('No recommended companies with a known location are currently available.',exact=True)).to_be_visible()
+            expect(ranked.get_by_text('No eligible partner positions are currently available.',exact=True)).to_be_visible()
+            expect(nearest.get_by_text('No recommended partners with a known location are currently available.',exact=True)).to_be_visible()
             result['recommendations_locked']=True
             result['all_required_completed']=False
             page.evaluate("window.dispatchEvent(new CustomEvent('sse:data_changed',{detail:{urls:['/api/student/results/combined/']}}))")

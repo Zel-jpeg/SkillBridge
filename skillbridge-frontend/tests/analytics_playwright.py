@@ -156,30 +156,30 @@ def check_placement_insights(page, context, role, records):
         expect(records.get_by_role('status')).to_contain_text(f'{count} records')
         expect(records.get_by_role('region', name='Active record filter')).to_contain_text(label)
         records.get_by_role('button', name='Clear record selection', exact=True).click()
-    # Selecting a company area filters positions and comparisons, not selected students.
-    page.get_by_label('Company area (not student residence)', exact=True).select_option('Davao City')
+    # Selecting a partner area filters positions and comparisons, not selected students.
+    page.get_by_label('Partner area (not student residence)', exact=True).select_option('Davao City')
     expect(slots.locator('tbody tr')).to_have_count(2)
-    expect(slots.locator('tbody td[data-label="Company area"]')).to_have_text(['Davao City', 'Davao City'])
-    expect(slots.get_by_role('button', name='Clear company area filter: Davao City', exact=True)).to_be_visible()
+    expect(slots.locator('tbody td[data-label="Partner area"]')).to_have_text(['Davao City', 'Davao City'])
+    expect(slots.get_by_role('button', name='Clear partner area filter: Davao City', exact=True)).to_be_visible()
     expect(slots.locator('.pi-totals dd')).to_have_text(['25', '5', '20'])
     expect(progress.locator('.pi-progress-summary strong')).to_have_text(f"{snapshot['summary']['approved']} of {snapshot['summary']['students']}")
     company = snapshot['companies'][0]
     comparison.get_by_role('button', name=f"{company['name']}: {company['count']} approved placements", exact=True).click()
     expect(records.get_by_role('status')).to_contain_text(f"{company['count']} records")
     expect(records.get_by_role('region', name='Active record filter')).to_contain_text(company['name'])
-    comparison.get_by_role('button', name='Company area', exact=True).click()
+    comparison.get_by_role('button', name='Partner area', exact=True).click()
     comparison.get_by_role('button', name=f"Davao City: {snapshot['summary']['approved']} approved placements", exact=True).click()
     expect(records.get_by_role('status')).to_contain_text(f"{snapshot['summary']['approved']} records")
-    comparison.get_by_role('button', name='Company', exact=True).click()
+    comparison.get_by_role('button', name='Partner', exact=True).click()
     # No approvals in Panabo: honest empty comparison, three shared slots.
-    page.get_by_label('Company area (not student residence)', exact=True).select_option('Panabo City')
+    page.get_by_label('Partner area (not student residence)', exact=True).select_option('Panabo City')
     expect(slots.locator('tbody tr')).to_have_count(1)
     expect(slots.locator('.pi-totals dd')).to_have_text(['3', '0', '3'])
     expect(comparison.get_by_role('heading', name='No approved placements in this view', exact=True)).to_be_visible()
     unplaced = snapshot['summary']['unplaced']
     progress.get_by_role('button', name=f'Unplaced: {unplaced}', exact=True).click()
     expect(records.get_by_role('status')).to_contain_text(f'{unplaced} records')
-    expect(records.get_by_role('region', name='Active record filter')).to_contain_text('company, position and area filters do not narrow this status view')
+    expect(records.get_by_role('region', name='Active record filter')).to_contain_text('partner, position and area filters do not narrow this status view')
     expected = [s['name'] for s in snapshot['students'] if s['placement_status'] == 'unplaced']
     assert records.get_by_role('button', name=re.compile('^View details for ')).all_text_contents() == expected[:8]
     slots.get_by_role('button', name='View capacity records', exact=True).click()
@@ -191,10 +191,10 @@ def check_placement_insights(page, context, role, records):
     text = export.read_text(encoding='utf-8-sig')
     # User-owned batch names may still contain old wording; generated labels must not.
     assert 'Configured slots' in text and 'Panabo City' in text and 'seats' not in text.lower() and 'Active cohorts' not in text
-    page.get_by_role('button', name='Clear company area filter: Panabo City', exact=True).click()
+    page.get_by_role('button', name='Clear partner area filter: Panabo City', exact=True).click()
     expect(slots.locator('tbody tr')).to_have_count(4)
-    expect(page.get_by_label('Company area (not student residence)', exact=True)).to_have_value('')
-    checks.append(f'{role}: exact company-area filtering, all-batch slot totals, honest empty comparison, status counts independent of company filters and slots-only CSV')
+    expect(page.get_by_label('Partner area (not student residence)', exact=True)).to_have_value('')
+    checks.append(f'{role}: exact company-area filtering, all-batch slot totals, honest empty comparison, status counts independent of partner filters and slots-only CSV')
     for width, height in [(320, 568), (375, 812), (768, 1024), (1024, 768), (1440, 1000), (812, 375)]:
         page.set_viewport_size({'width': width, 'height': height})
         for dark in [False, True]:
@@ -220,7 +220,7 @@ def check_placement_insights(page, context, role, records):
     slots.get_by_role('navigation',name='Shared slots pages').get_by_role('button',name='3',exact=True).click()
     expect(slots.locator('tbody tr')).to_have_count(3)
     expect(slots.get_by_text('Above configured slots',exact=True)).to_be_visible()
-    comparison.get_by_role('navigation',name='Company approval pages').get_by_role('button',name='3',exact=True).click()
+    comparison.get_by_role('navigation',name='Partner approval pages').get_by_role('button',name='3',exact=True).click()
     expect(comparison.locator('.pi-comparison button')).to_have_count(3)
     page.set_viewport_size({'width':320,'height':568})
     page.wait_for_function('document.documentElement.scrollWidth<=innerWidth')
@@ -230,11 +230,11 @@ def check_placement_insights(page, context, role, records):
     payload=expanded
     refresh()
     expect(slots.get_by_role('navigation',name='Shared slots pages').get_by_role('button',name='1',exact=True)).to_have_attribute('aria-current','page')
-    expect(comparison.get_by_role('navigation',name='Company approval pages').get_by_role('button',name='1',exact=True)).to_have_attribute('aria-current','page')
+    expect(comparison.get_by_role('navigation',name='Partner approval pages').get_by_role('button',name='1',exact=True)).to_have_attribute('aria-current','page')
     payload={**expanded,'capacity':[],'companies':[],'summary':{**expanded['summary'],'students':0,'approved':0,'approved_other_batch':0,'unplaced':0,'placement_rate':None},'students':[],'placement_students':[]}
     refresh()
     expect(progress.locator('.pi-rate')).to_have_text('—')
-    expect(slots.get_by_role('heading',name='No positions match these company filters',exact=True)).to_be_visible()
+    expect(slots.get_by_role('heading',name='No positions match these partner filters',exact=True)).to_be_visible()
     expect(slots.locator('.pi-totals dd')).to_have_text(['0','0','0'])
     progress.get_by_role('button',name='Unplaced: 0',exact=True).click()
     expect(records.get_by_text('No records match this selection.',exact=True)).to_be_visible()
@@ -248,7 +248,7 @@ def check_placement_insights(page, context, role, records):
 
 def check_skills_insights(page, context, role, records):
     skills = page.get_by_role('region', name='Skill results by category', exact=True)
-    matches = page.get_by_role('region', name='Current company matches', exact=True)
+    matches = page.get_by_role('region', name='Current partner matches', exact=True)
     expect(skills.get_by_text('Numbers below count students, not average scores.', exact=False)).to_be_visible()
     snapshot = context.request.get(API + '/api/management/analytics/', headers={'Authorization': 'Bearer ' + AUTH[role]['token']}).json()
     banner = records.get_by_role('region', name='Active record filter', exact=True)
@@ -530,7 +530,7 @@ with sync_playwright() as p:
         assert sorted_matrix[student_header + 1][0] == last_student
         assert sorted_matrix[-1][0] == 'Synthetic Student 01'
         assert 'Top recommended position' in sorted_matrix[student_header]
-        assert 'Top recommended company' in sorted_matrix[student_header]
+        assert 'Top recommended partner' in sorted_matrix[student_header]
         assert any(row == ['Sort', 'Student descending'] for row in sorted_matrix)
         sort_name.click()
         geometry(page, f'{role}-initial-desktop')
@@ -689,7 +689,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Capacity table', exact=True).click()
         expect(records.get_by_role('cell', name='Developer Intern', exact=True)).to_have_count(0)
         page.get_by_role('button', name='Reset analytics filters', exact=True).click()
-        page.get_by_role('button', name='Residence / company areas', exact=True).click()
+        page.get_by_role('button', name='Residence / partner areas', exact=True).click()
         expect(records.get_by_role('cell', name='Tagum City', exact=True)).to_be_visible()
         expect(records.get_by_role('cell', name='Davao City', exact=True)).to_be_visible()
         page.get_by_role('button', name='Student records', exact=True).click()

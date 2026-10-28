@@ -142,7 +142,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
     const metadata = { Generated: manilaDateTime(data.generated_at), Scope: scopeText,
       Filters: analyticsFilterText(data),
       Records: `${selectionLabel}; search=${search || 'none'}`, Sort: sorting.length ? `${table.columns[Number(sorting[0].id)]} ${sorting[0].desc ? 'descending' : 'ascending'}` : 'Original record order', Unit: data.scope.cohort_unit,
-      'Student status scope': tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Selected students; company, position and area filters do not narrow this status view.' : 'Current report and record filters.',
+      'Student status scope': tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Selected students; partner, position and area filters do not narrow this status view.' : 'Current report and record filters.',
       Capacity: data.scope.capacity_scope, Activity: `${activityPeriodLabel(data.scope.activity_period)}; ${data.scope.date_from} to ${data.scope.date_to}; grouped by ${data.scope.activity_interval || 'day'}; ${data.scope.activity_note}` }
     try {
       if (type === 'csv') {
@@ -211,12 +211,12 @@ export default function ReportsAnalytics({ role = 'admin' }) {
 
         {tab === 'placements' && <>
           <section aria-label="Placement filters" className={panel}>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Company &amp; capacity filters</h3>
-            <p className="mt-2 text-xs leading-6 text-gray-600 dark:text-gray-400">Filters company approvals and shared slots. Student progress uses the selected batches.</p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Partner &amp; capacity filters</h3>
+            <p className="mt-2 text-xs leading-6 text-gray-600 dark:text-gray-400">Filters partner approvals and shared slots. Student progress uses the selected batches.</p>
             <div className="mt-5 grid gap-5 lg:grid-cols-3">
-              <SelectFilter label="Approved company / capacity" value={params.get('company_id') || ''} onChange={value => update({ company_id: value, position_id: '' }, true)}><option value="">All companies</option>{options.companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}</SelectFilter>
+              <SelectFilter label="Approved partner / capacity" value={params.get('company_id') || ''} onChange={value => update({ company_id: value, position_id: '' }, true)}><option value="">All partners</option>{options.companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}</SelectFilter>
               <SelectFilter label="Approved position / capacity" value={params.get('position_id') || ''} onChange={value => update({ position_id: value }, true)}><option value="">All positions</option>{options.positions.filter(position => !params.get('company_id') || String(position.company_id) === params.get('company_id')).map(position => <option key={position.id} value={position.id}>{position.name}</option>)}</SelectFilter>
-              <SelectFilter label="Company area (not student residence)" value={params.get('area') || ''} onChange={value => update({ area: value }, true)}><option value="">All company areas</option>{options.areas.map(area => <option key={area}>{area}</option>)}</SelectFilter>
+              <SelectFilter label="Partner area (not student residence)" value={params.get('area') || ''} onChange={value => update({ area: value }, true)}><option value="">All partner areas</option>{options.areas.map(area => <option key={area}>{area}</option>)}</SelectFilter>
             </div>
           </section>
           <Suspense fallback={<InsightsSkeleton tab="placements" />}><PlacementInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id, data.scope.company_id, data.scope.position_id, data.scope.area])} data={data} selection={group} onClearArea={() => update({ area: '' }, true)} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>
@@ -228,12 +228,12 @@ export default function ReportsAnalytics({ role = 'admin' }) {
             <div className="flex flex-wrap gap-3"><button type="button" className={button} disabled={downloading || scopeUpdating || !!error || previous} onClick={() => download('csv')}>Download displayed CSV</button><button type="button" className={button} disabled={downloading || scopeUpdating || !!error || previous} onClick={() => download('pdf')}>Download displayed PDF</button></div>
           </div>
           {group && studentTable && <div role="region" aria-label="Active record filter" className="analytics-record-filter">
-            <div><span>Active record filter</span><strong>{selectionLabel}</strong><p>{group.startsWith('batch:') ? 'Showing all students in this batch. Their required completion status may vary.' : group.startsWith('attempt:') ? 'Showing students with this current attempt status for the selected assessment.' : 'Showing only the records matching this selection.'} {tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Student scope filters apply; company, position and area filters do not narrow this status view.' : 'Report scope filters still apply.'}</p></div>
+            <div><span>Active record filter</span><strong>{selectionLabel}</strong><p>{group.startsWith('batch:') ? 'Showing all students in this batch. Their required completion status may vary.' : group.startsWith('attempt:') ? 'Showing students with this current attempt status for the selected assessment.' : 'Showing only the records matching this selection.'} {tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Student scope filters apply; partner, position and area filters do not narrow this status view.' : 'Report scope filters still apply.'}</p></div>
             <button type="button" className={button} onClick={() => select('')}>Clear record selection</button>
           </div>}
           <div className="space-y-3 border-y border-gray-100 py-5 dark:border-gray-800">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300">View records</p>
-            <div className="flex flex-wrap gap-2">{[['', 'Student records'], ...(tab === 'assessments' ? [['complete', 'Complete'], ['incomplete', 'Incomplete'], ['followup', 'Needs follow-up'], ['assessments', 'Assessment table'], ['activity', 'Activity table']] : tab === 'skills' ? [['skills', 'Category table']] : [['awaiting', 'Awaiting review'], ['approved', 'Approved'], ['unplaced', 'Unplaced'], ['capacity', 'Capacity table'], ['geography', 'Residence / company areas']])].map(([value, label]) => <button type="button" key={value} className={group === value ? activeButton : button} aria-pressed={group === value} onClick={() => select(value)}>{label}</button>)}</div>
+            <div className="flex flex-wrap gap-2">{[['', 'Student records'], ...(tab === 'assessments' ? [['complete', 'Complete'], ['incomplete', 'Incomplete'], ['followup', 'Needs follow-up'], ['assessments', 'Assessment table'], ['activity', 'Activity table']] : tab === 'skills' ? [['skills', 'Category table']] : [['awaiting', 'Awaiting review'], ['approved', 'Approved'], ['unplaced', 'Unplaced'], ['capacity', 'Capacity table'], ['geography', 'Residence / partner areas']])].map(([value, label]) => <button type="button" key={value} className={group === value ? activeButton : button} aria-pressed={group === value} onClick={() => select(value)}>{label}</button>)}</div>
             {group && !studentTable && <button type="button" className="min-h-10 rounded text-xs font-medium text-green-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-400" onClick={() => select('')}>Clear record selection</button>}
           </div>
           {studentTable && <div className="flex flex-wrap items-end justify-between gap-4">

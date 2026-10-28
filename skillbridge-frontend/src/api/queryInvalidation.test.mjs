@@ -9,6 +9,18 @@ test('shared analytics refreshes for capacity consumption in another batch and r
 })
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 
+test('email jobs refresh only their batch and reconcile lifecycle or ownership changes', () => {
+  const url = '/api/instructor/batches/4/emails/'
+  assert.equal(queryAffected(url, { topics: ['email'], batch_ids: [4] }), true)
+  assert.equal(queryAffected(url, { topics: ['email'], batch_ids: [5] }), false)
+  for (const topic of ['users', 'students', 'batches']) assert.equal(queryAffected(url, { topics: [topic], batch_ids: [4] }), true)
+  assert.equal(queryAffected(url, { resync: true }), true)
+  const progress = '/api/instructor/batches/4/email-progress/'
+  assert.equal(queryAffected(progress, { topics: ['email'], batch_ids: [4] }), true)
+  assert.equal(queryAffected(progress, { topics: ['email'], batch_ids: [5] }), false)
+  assert.equal(queryAffected(progress, { topics: ['batches'], batch_ids: [4] }), true)
+})
+
 test('student recovery reads observe lifecycle changes and respect batch pruning', () => {
   const previous = '/api/instructor/batches/4/unenrolled/'
   assert.equal(queryAffected(previous, { topics: ['students'], batch_ids: [4] }), true)

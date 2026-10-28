@@ -1,5 +1,10 @@
 # Student company browsing
 
+28 October terminology update: current interface labels now say **partners**,
+including **All Partners**, **Top partners for you** and **View partner details**.
+Company IDs, API names and the grouping/scoring behavior described below remain
+unchanged. See [verification and compatibility](PARTNER_TERMINOLOGY.md).
+
 The Final Skill Profile shows one recommendation card per company, ranked by its
 highest individual position match. Each card shows that **Top suggested position**,
 its **Best position match**, up to three neutral skill tags, a count of additional

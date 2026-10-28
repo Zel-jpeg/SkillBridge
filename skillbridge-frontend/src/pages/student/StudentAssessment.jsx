@@ -706,7 +706,7 @@ export default function StudentAssessment() {
       <div className="text-center">
         <p className="text-lg font-bold text-gray-900 dark:text-white">Analyzing your answers…</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-          Our system is scoring your responses and finding your best company matches. This may take a few seconds.
+          Our system is scoring your responses and finding your best partner matches. This may take a few seconds.
         </p>
       </div>
       <div className="flex gap-1.5">

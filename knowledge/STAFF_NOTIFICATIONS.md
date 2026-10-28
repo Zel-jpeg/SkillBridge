@@ -18,6 +18,18 @@ rules. It introduces no separate polling loop, backend endpoint or database tabl
 | Stopped / flagged, overdue required work, no required assessments, unavailable final results, no current recommendations | Role-scoped assessment report filtered by the supplied reason |
 | Unplaced students with current recommendations | Role-scoped placement report, awaiting review |
 | Instructor accounts awaiting approval | Admin Users, pending tab; admin only |
+| Enrollment emails waiting for allowance or requiring attention | Affected batch's Enrollment emails panel; scoped to its current instructor or admins |
+| Enrollment email submission/delivery completion | Affected batch and fixed sending group; separate submission and confirmed-delivery wording |
+
+28 October: the email groups use saved, latest-per-enrollment outbox state through
+the existing analytics subscription. Worker/provider events publish scoped email
+invalidations. Stable count/membership/reason values do not become unread again
+on each quota check. See [email delivery](ENROLLMENT_EMAIL_DELIVERY.md).
+Recent completion groups reuse command receipts and the same subscription. The
+bell retains up to five recent groups per active batch within seven days; live
+completion transitions produce a toast without replaying old completion toasts
+on initial load. A failed/uncertain/cancelled group cannot produce an all-success
+reminder. Delivery confirmation is distinct from successful submission.
 
 The [grouping helper](../skillbridge-frontend/src/utils/notifications.js) preserves
 all supplied current reason groups and avoids repeated reasons within a student.

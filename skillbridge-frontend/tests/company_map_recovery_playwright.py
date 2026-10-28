@@ -51,13 +51,13 @@ with sync_playwright() as p:
             page.wait_for_load_state('networkidle')
             expect(page.get_by_role('button', name='Retry map', exact=True)).to_be_visible()
             if role == 'admin':
-                page.get_by_role('button', name=f'Edit company {company_name}', exact=True).click()
+                page.get_by_role('button', name=f'Edit partner {company_name}', exact=True).click()
             else:
                 page.get_by_role('button').filter(has_text=company_name).first.click()
                 expect(page.get_by_role('button', name='Retry map', exact=True).last).to_be_visible()
                 checks.append('Instructor company view handles CDN denial with a valid zero-coordinate company')
                 page.get_by_role('button', name='Edit', exact=True).click()
-            dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Edit Company', exact=True))
+            dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Edit Partner', exact=True))
             name = dialog.get_by_placeholder('e.g. Azeus Systems Philippines')
             name.fill('Retained draft name')
             expect(dialog.get_by_role('button', name='Retry map', exact=True)).to_be_visible()
@@ -77,7 +77,7 @@ with sync_playwright() as p:
             assert writes[-1]['role'] == role and writes[-1]['payload']['lat'] == writes[-1]['payload']['lng'] == 0
             checks.append(role + ' overview/edit-map denial and retry retain draft/zero pin; invalid geocode is truthful and does not prevent confirmed save')
             if role == 'instructor':
-                page.get_by_role('button', name='Close company details', exact=True).click()
+                page.get_by_role('button', name='Close partner details', exact=True).click()
             # Recover the overview too, exercising escaped catalog labels/popups.
             retry = page.get_by_role('button', name='Retry map', exact=True)
             if retry.count(): retry.first.click()

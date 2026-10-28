@@ -336,7 +336,7 @@ export function useEnrolledStudents() {
     else if (status === 'unplaced') list = list.filter(s => s.placement?.status !== 'approved')
     else if (status !== 'all') list = list.filter(s => s.status === status)
     if (search.trim()) {
-      const q = search.toLowerCase()
+      const q = search.trim().toLowerCase()
       list = list.filter(s =>
         s.name.toLowerCase().includes(q) ||
         s.studentId.toLowerCase().includes(q) ||

@@ -1,5 +1,10 @@
 # Report reconciliation
 
+28 October terminology update: newly generated reports use Partner headings;
+underlying company fields and report-type identifiers are unchanged. See
+[partner terminology](PARTNER_TERMINOLOGY.md) for the column compatibility boundary
+and repeated PDF/XLSX download verification.
+
 V02 uses known synthetic records, not live placement data. The fixture has four
 students across two instructors' batches, three positions with nine configured
 slots, two approved placements, one removed, two rejected and one suggested.

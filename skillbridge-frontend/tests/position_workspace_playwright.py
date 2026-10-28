@@ -47,7 +47,7 @@ def prepare(browser, role):
 
 def open_position(f):
     page = f.open()
-    card = page.get_by_role('button', name='Open company QA Company 01', exact=True)
+    card = page.get_by_role('button', name='Open partner QA Company 01', exact=True)
     card.scroll_into_view_if_needed()
     card.click()
     expect(page.get_by_role('heading', name='QA Company 01', exact=True).first).to_be_focused()
@@ -130,7 +130,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Cancel', exact=True).click()
         checks.append(f'{role}: page/filter rank preservation, score help, elsewhere suggestion, keyboard review/confirmation return, removal reason and manual assignment')
 
-        navigation = page.get_by_role('navigation', name='Company positions')
+        navigation = page.get_by_role('navigation', name='Partner positions')
         navigation.get_by_role('button', name='No matching candidates', exact=False).click()
         lists.get_by_role('button', name='Other ranked candidates', exact=True).click()
         expect(panel.get_by_role('heading', name='No students in this view', exact=True)).to_be_visible()
@@ -153,8 +153,8 @@ with sync_playwright() as p:
         f.refresh('/api/placements/suggestions/?include_history=true&include_placed=true')
         expect(panel.locator('.pl-candidate-row')).to_have_count(8)
         expect(panel.locator('.pl-candidate-row').first.locator('.pl-candidate-rank')).to_have_text('#1')
-        page.get_by_role('button', name='Back to companies', exact=False).click()
-        expect(page.get_by_role('button', name='Open company QA Company 01', exact=True)).to_be_focused()
+        page.get_by_role('button', name='Back to partners', exact=False).click()
+        expect(page.get_by_role('button', name='Open partner QA Company 01', exact=True)).to_be_focused()
         checks.append(f'{role}: position selection, empty state, batch scope with stable ranks, live page clamp/regrowth and Back focus restoration')
         f.close()
     browser.close()

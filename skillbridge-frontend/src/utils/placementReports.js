@@ -2,7 +2,7 @@ import api from '../api/axios'
 
 const REPORT_META = {
   company_placements: {
-    subtitle: 'Company / Position Placement Report',
+    subtitle: 'Partner / Position Placement Report',
     slug: 'company-placements',
   },
   student_placements: {
@@ -24,11 +24,11 @@ const STATUS_LABELS = {
 
 const FILTER_LABELS = {
   status: 'Status',
-  company_id: 'Company',
+  company_id: 'Partner',
   position_id: 'Position',
   batch_id: 'Batch',
   course: 'Course',
-  area: 'Company area',
+  area: 'Partner area',
   date_field: 'Date field',
   date_from: 'From',
   date_to: 'To',
@@ -93,7 +93,7 @@ function drawReportHeader(doc, payload, filterLabels) {
   const summaryItems = [
     ['Records', payload.summary.total_records],
     ['Students', payload.summary.unique_students],
-    ['Companies', payload.summary.unique_companies],
+    ['Partners', payload.summary.unique_companies],
     ['Positions', payload.summary.unique_positions],
     ['Approved records', payload.summary.status_counts.approved],
     ['Remaining slots', payload.summary.remaining_slots],
@@ -146,7 +146,7 @@ function addCompanyTables(doc, autoTable, records, startY) {
   if (!groups.size) {
     autoTable(doc, tableTheme({
       startY: y,
-      head: [['Company / Position', 'Placement records']],
+      head: [['Partner / Position', 'Placement records']],
       body: [['—', 'No placement records match the selected filters.']],
     }))
     return
@@ -205,7 +205,7 @@ function addStudentTable(doc, autoTable, records, startY) {
   autoTable(doc, tableTheme({
     startY,
     head: [[
-      'Student', 'School ID', 'Email', 'Course', 'Batch', 'Company', 'Position',
+      'Student', 'School ID', 'Email', 'Course', 'Batch', 'Partner', 'Position',
       'Status', 'Match', 'Distance', 'Approved at', 'Remarks',
     ]],
     body: records.length ? records.map(record => [
@@ -321,8 +321,8 @@ function spreadsheetRows(payload) {
     Email: record.student.email,
     Course: record.student.course,
     Batch: record.batch?.name || '',
-    Company: record.company.name,
-    'Company Address': record.company.address_text,
+    Partner: record.company.name,
+    'Partner Address': record.company.address_text,
     Position: record.position.title,
     'Slots Available': record.position.slots_available,
     'Approved Count': record.position.approved_count,
@@ -372,7 +372,7 @@ export async function downloadPlacementXlsx(payload, filterLabels = {}) {
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Placements')
   const summaryLabels = {
-    total_records: 'Records', unique_students: 'Unique students', unique_companies: 'Unique companies',
+    total_records: 'Records', unique_students: 'Unique students', unique_companies: 'Unique partners',
     unique_positions: 'Unique positions', slots_available: 'Capacity of reported positions',
     approved_count: 'Current approvals in reported positions', remaining_slots: 'Remaining slots in reported positions',
   }

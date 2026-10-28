@@ -25,7 +25,9 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   const [rows, setRows] = useState([])
   const [review, setReview] = useState(null)
   const [result, setResult] = useState(null)
+  const [emailMode, setEmailMode] = useState('now')
   const [busy, setBusy] = useState(false)
+  const [enrolling, setEnrolling] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const [tab, setTab] = useState(initialStudent ? 'manual' : 'excel')
@@ -41,6 +43,9 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   const [fileRows, setFileRows] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const enrollmentPending = useRef(false)
+  const submission = useRef(null)
+  const [uncertain, setUncertain] = useState(false)
+  const locked = busy || uncertain
 
   useEffect(() => {
     dialog.current.showModal()
@@ -51,7 +56,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
     filter === 'all' || (filter === 'needs_review' ? ['invalid', 'duplicate', 'conflict'].includes(row.status)
       : filter === 'ready' ? ['ready', 'existing_student'].includes(row.status) : row.status === filter)), [rows, filter])
 
-  function invalidateReview() { setReview(null); setVerified(false); setDirty(false) }
+  function invalidateReview() { setReview(null); setVerified(false); setDirty(false); submission.current = null; setUncertain(false) }
 
 
   function openSpreadsheetReview() {
@@ -68,6 +73,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   }
 
   async function preview(nextRows = rows, { preserveVerification = false, successMessage = '' } = {}) {
+    if (uncertain) return false
+    submission.current = null
     setBusy(true); setError('')
     if (!preserveVerification) setVerified(false)
     try {
@@ -81,7 +88,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   }
 
   async function readFile(file) {
-    if (!file || busy || !selectedBatch || result) return
+    if (!file || locked || !selectedBatch || result) return
     setBusy(true); setError(''); setRows([]); setFileRows(false); invalidateReview(); setNote('')
     try {
       const parsed = await parseStudentFile(file)
@@ -93,30 +100,42 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   }
 
   async function confirm() {
-    if (!review || !verified || dirty || busy || enrollmentPending.current) return
+    if ((!submission.current && (!review || !verified || dirty)) || busy || enrollmentPending.current) return
+    submission.current ||= { target, students: structuredClone(rows), review_token: review.review_token,
+      email_mode: emailMode, request_id: crypto.randomUUID() }
     enrollmentPending.current = true
+    setEnrolling(true)
     setBusy(true); setError('')
     try {
-      const { data } = await api.post(`/api/instructor/batches/${target}/enroll/`, { students: rows, review_token: review.review_token })
+      const { target: submittedBatch, ...payload } = submission.current
+      const { data } = await api.post(`/api/instructor/batches/${submittedBatch}/enroll/`, payload)
+      setUncertain(false); submission.current = null
       setResult(data); setRows(data.rows); setReview(null); setFilter('all'); setPage(0)
       invalidateCache('/api/admin/users/')
       invalidateCache('/api/instructor/batches/')
       invalidateCache(`/api/instructor/batches/${target}/students/`)
       invalidateCache(`/api/instructor/batches/${target}/unenrolled/`)
+      invalidateCache(`/api/instructor/batches/${target}/email-progress/`)
+      invalidateCache(`/api/instructor/batches/${target}/emails/`)
+      invalidateCache('/api/management/analytics/')
       const enrolled = data.summary?.enrolled ?? 0
       showToast(`Enrollment completed: ${enrolled} ${enrolled === 1 ? 'student' : 'students'} enrolled.`)
       onEnrolled?.(data)
       setConfirming(false)
     } catch (err) {
-      invalidateReview()
+      const status = err.response?.status
+      const unknown = !status || status >= 500 || err.code === 'ERR_BAD_RESPONSE'
+      if (unknown) setUncertain(true)
+      else invalidateReview()
       const message = requestErrorMessage(err, { mutation: true })
       setError(message)
       showToast(message, 'error')
       setConfirming(false)
-    } finally { enrollmentPending.current = false; setBusy(false) }
+    } finally { enrollmentPending.current = false; setEnrolling(false); setBusy(false) }
   }
 
   function reviewConfirmation() {
+    if (uncertain) { confirm(); return }
     if (!review || !verified || dirty || busy || enrollmentPending.current) return
     if (requireConfirmation) setConfirming(true)
     else confirm()
@@ -145,6 +164,8 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
   const reviewContent = rows.length > 0 && <section aria-label="Student review" className="enrollment-review">
         {!spreadsheetReview && <h3>{result ? 'Enrollment results' : 'Review students'}</h3>}
         {!result && <p className="enrollment-warning">Generated emails are predictions. Verify each address belongs to the intended student before confirming.</p>}
+        {!result && <label className="enrollment-field">Enrollment emails<select aria-label="Enrollment email timing" value={emailMode} disabled={locked} onChange={event => setEmailMode(event.target.value)}><option value="now">Send now (background queue)</option><option value="later">Send later (hold until staff releases)</option></select></label>}
+        {uncertain && <p role="status" className="enrollment-warning">The enrollment result could not be confirmed. Choose Check enrollment result to recover the same saved request before changing students or email timing.</p>}
         {(review || result) && <div className="enrollment-counts" aria-label="Import counts">
           {Object.entries(counts).map(([key, label]) => <span key={key}><strong>{(review || result).summary[key]}</strong> {label}</span>)}
         </div>}
@@ -175,24 +196,24 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
               <span>{row.course || '—'}{row.year_level ? ` · Year ${row.year_level}` : ''}</span>
               <span className="enrollment-list-email" title={row.email || undefined}>{row.email || 'Email missing'}</span>
               <span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span>
-              <button type="button" className="enrollment-button" aria-expanded={editingIndex === index} disabled={busy || (Boolean(initialStudent) && !result)}
+              <button type="button" className="enrollment-button" aria-expanded={editingIndex === index} disabled={locked || (Boolean(initialStudent) && !result)}
                 onClick={() => editingIndex === index && !result ? finishEditing() : setEditingIndex(current => current === index ? null : index)}>
                 {editingIndex === index ? (result ? 'Hide' : busy ? 'Saving…' : 'Done') : result ? 'Details' : 'Edit'}
               </button>
-              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={busy}
+              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={locked}
                 aria-label={`Remove row ${row.source_row}`} onClick={() => removeRow(index)}>Remove</button>}
             </div>
             <div className="enrollment-record-header">
               <div><strong>Row {row.source_row}</strong><span>{row.school_id || 'Student ID missing'}</span></div>
               <span className={`enrollment-status status-${row.status}`}>{statusLabel(row.status)}</span>
-              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={busy}
+              {!result && <button type="button" className="enrollment-button enrollment-button-danger" disabled={locked}
                 aria-label={`Remove row ${row.source_row}`} onClick={() => removeRow(index)}>Remove</button>}
             </div>
             <div className="enrollment-record-grid">
               {columns.map(([field, label]) => <label className={`enrollment-record-field field-${field.replace('_', '-')} ${['name', 'email'].includes(field) ? 'enrollment-record-field-wide' : ''}`} key={field}>
                 <span>{label}</span>
                 {result ? <output>{row[field] || '—'}</output> : <input aria-label={`${label} row ${row.source_row}`}
-                  value={row[field] || ''} disabled={busy} onChange={e => edit(index, field, e.target.value)} />}
+                  value={row[field] || ''} disabled={locked} onChange={e => edit(index, field, e.target.value)} />}
               </label>)}
             </div>
             <div className="enrollment-record-meta">
@@ -221,14 +242,14 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
 
     {!result && !initialStudent && <div className="enrollment-tabs" aria-label="Enrollment method">
       {[{ key: 'excel', label: 'Upload Excel / CSV' }, { key: 'manual', label: 'Manual entry' }].map(item =>
-        <button type="button" key={item.key} aria-pressed={tab === item.key} onClick={() => {
+        <button type="button" key={item.key} disabled={locked} aria-pressed={tab === item.key} onClick={() => {
           setTab(item.key); setRows([]); setFileRows(false); setReview(null); setVerified(false); setError(''); setNote('')
         }}>{item.label}</button>)}
     </div>}
 
     <div className="enrollment-content">
       <label className="enrollment-field">Target batch
-<DataSection url="/api/instructor/batches/" layout="control" count={1}>        <select value={target} disabled={busy || !!result || !!batchId} onChange={e => {
+<DataSection url="/api/instructor/batches/" layout="control" count={1}>        <select value={target} disabled={locked || !!result || !!batchId} onChange={e => {
           setTarget(e.target.value); setRows([]); setFileRows(false); setNote(''); invalidateReview()
         }}>
           <option value="">Select an active batch</option>
@@ -241,7 +262,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       {!result && (tab === 'excel' ? <>
         <div className="enrollment-template-card">
           <div><strong>Need a template?</strong><p>Student Number, Last Name, First Name, Program, YearLevel</p></div>
-          <button type="button" className="enrollment-button enrollment-button-blue" disabled={busy} onClick={() => downloadStudentTemplate()}>Download enrollment template</button>
+          <button type="button" className="enrollment-button enrollment-button-blue" disabled={locked} onClick={() => downloadStudentTemplate()}>Download enrollment template</button>
         </div>
         <div className="enrollment-drop" role="button" tabIndex={0} aria-label="Choose or drop a student list"
           onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); readFile(e.dataTransfer.files[0]) }}
@@ -253,29 +274,29 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
             <polyline points="9 15 12 12 15 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <p>{note.split(' — ')[0] || 'Drop your .xlsx or .csv here'}</p><small>or tap to browse</small>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" disabled={busy || !selectedBatch} aria-label="Student list file"
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" disabled={locked || !selectedBatch} aria-label="Student list file"
             onChange={e => { readFile(e.target.files[0]); e.target.value = '' }} />
         </div>
         <p className="enrollment-caption">XLSX, XLS or CSV · Maximum 5 MB and 1,000 records. IAMS headers may appear within the first 50 rows.</p>
       </> : <form className="enrollment-manual" onSubmit={e => { e.preventDefault(); preview([{ ...manual, source_row: 1, worksheet: 'Manual' }]) }}>
         <p className="enrollment-caption">Add one student at a time. Review the details before enrollment.</p>
         <label className="enrollment-field">DNSC Email
-          <input type="email" value={manual.email} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. villanueva.azel@dnsc.edu.ph"
+          <input type="email" value={manual.email} readOnly={Boolean(initialStudent)} disabled={locked} placeholder="e.g. villanueva.azel@dnsc.edu.ph"
             onChange={e => setManual(current => ({ ...current, email: e.target.value }))} />
         </label>
         <label className="enrollment-field">Full Name
-          <input type="text" value={manual.name} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. Azel Villanueva"
+          <input type="text" value={manual.name} readOnly={Boolean(initialStudent)} disabled={locked} placeholder="e.g. Azel Villanueva"
             onChange={e => setManual(current => ({ ...current, name: e.target.value }))} />
         </label>
         <label className="enrollment-field">Student ID
-          <input type="text" value={manual.school_id} readOnly={Boolean(initialStudent)} disabled={busy} placeholder="e.g. 2026-01982"
+          <input type="text" value={manual.school_id} readOnly={Boolean(initialStudent)} disabled={locked} placeholder="e.g. 2026-01982"
             onChange={e => setManual(current => ({ ...current, school_id: e.target.value }))} />
         </label>
         <div className="enrollment-field"><span>Course</span><div className="enrollment-course-options">
           {['BSIT', 'BSIS'].map(course => <button type="button" key={course} aria-pressed={manual.course === course}
-            disabled={busy || Boolean(initialStudent)} onClick={() => setManual(current => ({ ...current, course }))}>{course}</button>)}
+            disabled={locked || Boolean(initialStudent)} onClick={() => setManual(current => ({ ...current, course }))}>{course}</button>)}
         </div></div>
-        <button className="enrollment-primary" disabled={busy || !selectedBatch}>Preview student</button>
+        <button className="enrollment-primary" disabled={locked || !selectedBatch}>Preview student</button>
       </form>)}
 
       {note.includes(' — ') && <p className="enrollment-caption">{note.split(' — ')[1]}</p>}
@@ -283,13 +304,13 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
     </div>
 
     {!fileRows ? <footer className="enrollment-footer">
-      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
-        {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={reviewConfirmation}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
+      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. View saved delivery status in Enrollment emails.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
+        {review && <><p>{confirmationText(review.summary, emailMode)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={locked} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>{rows.length > 0 && <><button type="button" className="enrollment-button" disabled={locked || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || !uncertain && (dirty || !review?.summary.ready || !verified)} onClick={reviewConfirmation}>{busy ? (enrolling ? 'Enrolling…' : 'Validating…') : uncertain ? 'Check enrollment result' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></>}</div>
       </>}
     </footer> : <footer className="enrollment-footer enrollment-actions">
       <button type="button" className="enrollment-button" disabled={busy} onClick={onClose}>Close</button>
-      <button type="button" className="enrollment-primary" disabled={busy} onClick={openSpreadsheetReview}>Continue review</button>
+      <button type="button" className="enrollment-primary" disabled={locked} onClick={openSpreadsheetReview}>Continue review</button>
     </footer>}
   </dialog>
   <dialog ref={reviewDialog} className="enrollment-dialog enrollment-review-dialog" aria-labelledby="enrollment-review-title"
@@ -305,12 +326,12 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
       {spreadsheetReview && reviewContent}
     </div>
     <footer className="enrollment-footer">
-      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. Check dispatch failures in each record.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
-        {review && <><p>{confirmationText(review.summary)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={busy} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
-        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" className="enrollment-button" disabled={busy || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || dirty || !review?.summary.ready || !verified} onClick={reviewConfirmation}>{busy ? 'Processing…' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
+      {result ? <><p role="status">{resultText(result.summary)} Queued does not mean delivered. View saved delivery status in Enrollment emails.</p><button type="button" className="enrollment-button" onClick={onClose}>Done</button></> : <>
+        {review && <><p>{confirmationText(review.summary, emailMode)}</p><label className="enrollment-verify"><input type="checkbox" checked={verified} disabled={locked} onChange={e => setVerified(e.target.checked)} />I verified the Student IDs and final DNSC email addresses.</label></>}
+        <div className="enrollment-actions"><button type="button" className="enrollment-button" disabled={busy} onClick={backToUpload}>Back</button><button type="button" className="enrollment-button" disabled={locked || !selectedBatch} onClick={() => preview(rows, { preserveVerification: true, successMessage: dirty ? 'Student changes updated successfully.' : 'Review refreshed.' })}>{dirty ? 'Apply changes' : 'Refresh review'}</button><button type="button" className="enrollment-primary" disabled={busy || !uncertain && (dirty || !review?.summary.ready || !verified)} onClick={reviewConfirmation}>{busy ? (enrolling ? 'Enrolling…' : 'Validating…') : uncertain ? 'Check enrollment result' : `Confirm ${review?.summary.ready ?? 0} enrollments`}</button></div>
       </>}
     </footer>
   </dialog>
-  {confirming && <ConfirmModal tone="confirm" title={initialStudent ? "Re-enroll student?" : "Confirm student enrollment?"} message={initialStudent ? `Enroll ${initialStudent.name} (${initialStudent.school_id}) back into ${selectedBatch?.name}? Existing assessment records and other batch memberships will be preserved. ${confirmationText(review?.summary || {})}` : `Enroll ${review?.summary.ready ?? 0} verified students in ${selectedBatch?.name || 'the selected batch'} with ${selectedBatch?.instructor_name || 'its assigned instructor'}? ${confirmationText(review?.summary || {})} Existing assessment records and other batch memberships are preserved.`} confirmLabel={initialStudent ? "Re-enroll student" : "Enroll students"} onCancel={() => setConfirming(false)} onConfirm={confirm} />}
+  {confirming && <ConfirmModal tone="confirm" title={initialStudent ? "Re-enroll student?" : "Confirm student enrollment?"} message={initialStudent ? `Enroll ${initialStudent.name} (${initialStudent.school_id}) back into ${selectedBatch?.name}? Existing assessment records and other batch memberships will be preserved. ${confirmationText(review?.summary || {}, emailMode)}` : `Enroll ${review?.summary.ready ?? 0} verified students in ${selectedBatch?.name || 'the selected batch'} with ${selectedBatch?.instructor_name || 'its assigned instructor'}? ${confirmationText(review?.summary || {}, emailMode)} Existing assessment records and other batch memberships are preserved.`} confirmLabel={initialStudent ? "Re-enroll student" : "Enroll students"} onCancel={() => setConfirming(false)} onConfirm={confirm} />}
   </>
 }

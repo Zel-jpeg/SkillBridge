@@ -154,7 +154,9 @@ def summary(rows):
             'existing_students': sum(r.get('existing_student', False) for r in rows),
             **{s: counts[s] for s in ('already_enrolled', 'duplicate', 'invalid', 'conflict', 'enrolled', 'skipped', 'failed')},
             'unsupported': sum(r['course'] not in ('BSIT', 'BSIS') for r in rows),
-            'notifications_queued': sum(r.get('notification_status') == 'queued' for r in rows)}
+            'notifications_queued': sum(r.get('notification_status') == 'queued' for r in rows),
+            'notifications_held': sum(r.get('notification_status') == 'held' for r in rows),
+            'notifications_failed': sum(r.get('notification_status') == 'dispatch_failed' for r in rows)}
 
 
 def digest(items):
@@ -224,13 +226,15 @@ def confirm_rows(items, batch, notify):
                     ensure_combined(student, locked_batch)
                 row.update(status='enrolled' if created else 'already_enrolled', id=student.pk, enrollment_id=enrollment.pk)
                 if created:
-                    def after_commit(result=row, person=student, record_id=enrollment.pk):
-                        try:
-                            result['notification_status'] = 'queued' if notify(person, record_id) else 'dispatch_failed'
-                        except Exception:
-                            logger.warning('Enrollment notification dispatch failed enrollment_id=%s', record_id)
-                            result['notification_status'] = 'dispatch_failed'
-                    transaction.on_commit(after_commit)
+                    # The durable intent commits with enrollment. Network IO is
+                    # exclusively the worker's responsibility, after this commits.
+                    try:
+                        with transaction.atomic():
+                            outcome = notify(student, enrollment.pk)
+                        row['notification_status'] = outcome if outcome in ('queued', 'held') else 'queued' if outcome else 'dispatch_failed'
+                    except Exception:
+                        logger.warning('Enrollment notification persistence failed enrollment_id=%s', enrollment.pk)
+                        row['notification_status'] = 'dispatch_failed'
                 else:
                     row['notification_status'] = 'skipped_existing_enrollment'
         except IntegrityError:

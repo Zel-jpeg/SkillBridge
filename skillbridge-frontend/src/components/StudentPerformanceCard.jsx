@@ -40,7 +40,7 @@ export default function StudentPerformanceCard({ student, categories = EMPTY_CAT
       {leaderScore > 0 ? <div className="sp-card-best"><StarIcon size={13} /><span>{leaders.length > 1 ? 'Tied best' : 'Best in'}</span><strong className="sp-card-best-name" title={leaderNames}>{leaderNames}</strong><strong className={scoreColor(leaderScore)}>{categoryPercentage(leaderScore)}</strong></div>
         : <p className="sp-card-more">No assessed category scored above zero.</p>}
       {recommendation && <div className="sp-card-recommendation" title={`${recommendation.position || 'Position not provided'} · Recommendation fit is separate from placement approval.`}>
-        <CompanyImage name={recommendation.company} imageUrl={recommendation.company_image_url} className="h-6 w-6 rounded-md" /><span className="sp-card-company-name">{recommendation.company || 'Company not provided'}</span><strong>{categoryPercentage(recommendation.match_score)}</strong>
+        <CompanyImage name={recommendation.company} imageUrl={recommendation.company_image_url} className="h-6 w-6 rounded-md" /><span className="sp-card-company-name">{recommendation.company || 'Partner not provided'}</span><strong>{categoryPercentage(recommendation.match_score)}</strong>
       </div>}
     </div> : <div className={`sp-card-empty ${stopped ? 'sp-card-empty--stopped' : ''}`}>
       <span className="sp-card-empty-icon" aria-hidden="true"><EmptyIcon size={16} /></span><p>{message}</p>

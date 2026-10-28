@@ -82,7 +82,7 @@ export default function StudentProfileForm({ student, fields, errors, travelOpti
             <p className="profile-map-status" role="status">{geocoding ? `Locating ${mapLabel}…` : mapCenter?.approximate ? 'Address lookup unavailable; showing default Panabo view. Your pin is unchanged.' : `Centered on ${mapLabel}`}</p>
             {map}
             <p className="profile-map-status">{pinned ? `Pinned · ${pinned.lat.toFixed(5)}, ${pinned.lng.toFixed(5)}` : 'No pin set — tap the map above to place one.'}</p>
-            <div className="profile-pin-help"><p>{hasBoardingAddress ? 'Both addresses are saved. Only one pin is used for company distances.' : 'Your saved pin is used to calculate company distances.'}</p><p className="mt-1">{hasBoardingAddress ? 'Map view only changes the area shown. ' : ''}Tap the map or drag the pin to move it.</p></div>
+            <div className="profile-pin-help"><p>{hasBoardingAddress ? 'Both addresses are saved. Only one pin is used for partner distances.' : 'Your saved pin is used to calculate partner distances.'}</p><p className="mt-1">{hasBoardingAddress ? 'Map view only changes the area shown. ' : ''}Tap the map or drag the pin to move it.</p></div>
           </section>
         </div>
       </section>

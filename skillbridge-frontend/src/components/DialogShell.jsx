@@ -26,7 +26,7 @@ function lockBody() {
 }
 
 /** Native top-layer modality supplies inert background, focus trapping and nested Escape handling. */
-export default function DialogShell({ title, description, avatar, headerDetails, eyebrow, headerBadge, children, footer, onClose, size = 'detail', closeLabel = 'Close details', restoreFocusRef }) {
+export default function DialogShell({ title, description, avatar, headerDetails, eyebrow, headerBadge, children, footer, onClose, size = 'detail', closeLabel = 'Close details', closeDisabled = false, restoreFocusRef }) {
   const { expired } = useSession()
   const dialog = useRef(null)
   const backdropStart = useRef(false)
@@ -90,7 +90,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
         {headerDetails}
       </div>
       {headerBadge && <div className="sb-detail-header-badge">{headerBadge}</div>}
-      <button type="button" className="sb-detail-close" aria-label={closeLabel} title={closeLabel} onClick={onClose}><XIcon size={20} /></button>
+      <button type="button" className="sb-detail-close" aria-label={closeLabel} title={closeLabel} disabled={closeDisabled} onClick={onClose}><XIcon size={20} /></button>
     </header>
     {children}
     {footer && <footer className="sb-detail-footer">{footer}</footer>}

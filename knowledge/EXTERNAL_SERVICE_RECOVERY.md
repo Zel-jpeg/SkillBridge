@@ -36,6 +36,13 @@ results and drafts remain usable. Retrying result/dashboard maps rebuilds their
 markers. Failed initializers release partially created maps. The CDN remains a
 runtime dependency; local tests do not prove it will be reachable in deployment.
 
+28 October setup follow-up: the initial profile wizard requires a location pin.
+Its map step now says **Place a pin to continue** and disables continuation until
+the student places one, with explicit **Retry map** guidance during an outage.
+Removing the pin disables continuation again. Map retry and back/review navigation
+retain entered profile details; no default map view becomes a saved pin. See the
+[enrollment-to-assessment audit](ENROLLMENT_TO_ASSESSMENT_AUDIT.md).
+
 Company images retain their existing safe contract: only transformed WebP is
 uploaded; storage failure leaves prior details/reference unchanged; rollback
 cleans only owned unreferenced new objects; retired objects are cleaned after

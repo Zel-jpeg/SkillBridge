@@ -66,7 +66,7 @@ class ChoiceFixture(Fixture):
 
     def review(self):
         page = self.open()
-        page.get_by_role('button', name='Open company QA Company 01', exact=True).click()
+        page.get_by_role('button', name='Open partner QA Company 01', exact=True).click()
         page.get_by_role('button', name='Review candidate', exact=True).click()
         return page.get_by_role('dialog', name='Review suggested placement')
 

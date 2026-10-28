@@ -20,6 +20,7 @@ with sync_playwright() as p:
         if url.hostname not in ['localhost', '127.0.0.1']: return route.abort()
         if not url.path.startswith('/api/'): return route.continue_()
         if url.path.endswith('/events/'): return route.fulfill(status=204)
+        if url.path.endswith('/email-progress/'): return route.fulfill(json={'groups': [], 'storage_ready': True})
         if url.path == '/api/auth/me/': return route.fulfill(json=user)
         if url.path == '/api/instructor/batches/':
             if method == 'GET': return route.fulfill(json=batches)
@@ -48,31 +49,34 @@ with sync_playwright() as p:
         name.fill('Synthetic recovery batch')
         create = page.get_by_role('button', name='Create Batch', exact=True)
         create.evaluate('(b)=>{b.click();b.click()}')
-        expect(page.get_by_role('alert')).to_have_text('Synthetic batch validation failed.')
+        expect(page.locator('[role="alert"]:not(.sb-toast-message)')).to_have_text('Synthetic batch validation failed.')
         expect(name).to_have_value('Synthetic recovery batch')
         assert len(creates) == 1 and not batches
         create.click()
-        expect(page.get_by_role('alert')).to_contain_text('save could not be confirmed')
+        expect(page.locator('[role="alert"]:not(.sb-toast-message)')).to_contain_text('save could not be confirmed')
         expect(name).to_have_value('Synthetic recovery batch')
         assert len(creates) == 2 and not batches
         create.click()
         expect(name).to_have_count(0)
         assert len(creates) == 3 and batches[0]['id'] == 50
         checks.append('Rejected and malformed create responses preserve typed name and never fabricate a batch; one write per activation')
-        page.get_by_role('button', name='Archive batch', exact=True).click()
+        page.get_by_role('button', name='Batch actions', exact=True).click()
+        page.get_by_role('menuitem', name='Archive batch', exact=True).click()
         archive = page.get_by_role('button', name='Archive Batch', exact=True)
         archive.click()
-        expect(page.get_by_role('alert')).to_contain_text('Server is unavailable')
+        expect(page.locator('[role="alert"]:not(.sb-toast-message)')).to_contain_text('Server is unavailable')
         assert batches[0]['status'] == 'active'
         expect(archive).to_be_enabled()
         archive.click()
         expect(page.get_by_role('heading', name='Start New Batch', exact=True)).to_be_visible()
         page.get_by_role('button', name='Cancel', exact=True).click()
         page.get_by_role('button', name='Unarchive batch', exact=True).click()
-        expect(page.get_by_role('alert')).to_contain_text('Server is unavailable')
+        expect(page.locator('[role="alert"]:not(.sb-toast-message)')).to_contain_text('Server is unavailable')
         assert batches[0]['status'] == 'archived'
         page.get_by_role('button', name='Unarchive batch', exact=True).click()
-        expect(page.get_by_role('button', name='Archive batch', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Batch actions', exact=True).click()
+        expect(page.get_by_role('menuitem', name='Archive batch', exact=True)).to_be_visible()
+        page.keyboard.press('Escape')
         assert batches[0]['status'] == 'active'
         checks.append('Archive/unarchive failures preserve actual status and recover on explicit successful retry')
         page.evaluate('window.scrollTo(0,0)')

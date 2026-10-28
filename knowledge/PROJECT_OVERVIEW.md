@@ -2,7 +2,7 @@
 
 SkillBridge is a web-based On-the-Job Training placement decision support system
 for Davao del Norte State College (DNSC). Students complete skill assessments;
-instructors manage assessments and batches; admins manage companies, positions,
+instructors manage assessments and batches; admins manage OJT partners, positions,
 users and placement workflows. Recommendations support placement decisions.
 
 ## Architecture
@@ -60,6 +60,32 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [28 October integration review](BRANCH_REVIEW_2026_10_28.md): Combined partner,
+  email, enrollment/instructor recovery and assessment-collection scope; full
+  verification, migration-test isolation, authorization ordering and local merge.
+
+- [Admin-created instructor audit](INSTRUCTOR_ONBOARDING_AUDIT.md): Synthetic
+  creation, welcome queue, Google sign-in and scoped batch access; concurrent
+  duplicate conflict, email normalization and dialog accessibility fixes, with
+  passing PostgreSQL races and desktop/phone checks.
+
+- [Enrollment through assessment audit](ENROLLMENT_TO_ASSESSMENT_AUDIT.md):
+  Synthetic bulk enrollment, login/setup, two required assessments, lost-response
+  recovery, exact combined totals and staff visibility; corrected misleading
+  map-step skip action and isolated PostgreSQL/browser evidence.
+
+- [Enrollment email delivery](ENROLLMENT_EMAIL_DELIVERY.md): Durable notifications,
+  staff send/resend controls, quota-pending notices and automatic resume after
+  allowance returns; separate acceptance/delivery, duplicate protection, migration
+  0027, isolated verification and required hosted worker/webhook setup. Includes
+  the [original plan](ENROLLMENT_EMAIL_DELIVERY_PLAN.md) and
+  [enrollment workflow review](ENROLLMENT_WORKFLOW_REVIEW.md), fixed-group progress,
+  separate submission/delivery completion and lost-response enrollment recovery.
+
+- [OJT partner terminology](PARTNER_TERMINOLOGY.md): Display-only rename across
+  all roles, maps, placements and exports; preserved Company database/API contracts,
+  unchanged scoring/history, export-heading compatibility and local verification.
 
 - [27 October branch integration review](BRANCH_REVIEW_2026_10_27.md): Full
   assessment/retake/profile/placement/student-recovery scope, fixes found during

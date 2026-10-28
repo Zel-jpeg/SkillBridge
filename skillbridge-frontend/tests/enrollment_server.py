@@ -1,5 +1,6 @@
 """Isolated browser-test API. Never imports the normal database configuration as active storage."""
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -26,6 +27,9 @@ settings.CORS_ALLOWED_ORIGINS = [
 settings.DEBUG = False
 import django
 django.setup()
+# The server helper captures stdout/stderr. Avoid filling its Windows pipe
+# with per-request access logs during the multi-viewport browser suite.
+logging.getLogger('django.server').disabled = True
 from django.core.management import call_command
 from rest_framework_simplejwt.tokens import AccessToken
 from api.models import User, Batch, BatchEnrollment
@@ -46,10 +50,12 @@ greeting_student = User.objects.create_user(
     school_id='2099-00999', course='BSIT', is_approved=True,
 )
 BatchEnrollment.objects.create(batch=batch, student=greeting_student)
-# All notification delivery is mocked, including the real browser workflow.
-views.send_instructor_email = lambda *args, **kwargs: True
+# Exercise durable persistence, but never run a worker or contact a provider.
+settings.BREVO_API_KEY = ''
 (ARTIFACTS / 'auth.json').write_text(json.dumps({
     'instructor': str(AccessToken.for_user(teacher)), 'admin': str(AccessToken.for_user(admin)),
     'student': str(AccessToken.for_user(greeting_student)), 'batch_id': batch.pk,
+    'users': {person.role: {'id': person.pk, 'name': person.name, 'role': person.role,
+                           'is_approved': person.is_approved} for person in [teacher, admin]},
 }))
 call_command('runserver', f'127.0.0.1:{API_PORT}', use_reloader=False, verbosity=0)

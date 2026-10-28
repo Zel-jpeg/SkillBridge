@@ -466,7 +466,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
   }
 
   function validateDetails() {
-    if (!name.trim()) { setNameErr('Company name is required.'); return false }
+    if (!name.trim()) { setNameErr('Organization name is required.'); return false }
     // Address validation: required in add mode, or in edit mode when changing address
     if (!isEdit || changeAddr) {
       if (!addrParts.province || !addrParts.city) {
@@ -502,7 +502,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
     })
     setSaving(false)
     if (result?.ok) onClose()
-    else setSaveError(result?.message || 'Could not save company. Your input is preserved; please retry.')
+    else setSaveError(result?.message || 'Could not save partner. Your input is preserved; please retry.')
   }
 
   // Address preview string shown in Step 2
@@ -519,7 +519,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
     onSave={handleSubmit} onClose={onClose} saveLabel="Save Changes"
     details={<>
       <div>
-        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Company name <span className="text-rose-500">*</span></label>
+        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Organization name <span className="text-rose-500">*</span></label>
         <input id="company-edit-name" value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
           placeholder="e.g. Azeus Systems Philippines" className={inputCls(nameErr)} aria-invalid={Boolean(nameErr)} />
         {nameErr && <p className="mt-1 text-xs text-rose-600">{nameErr}</p>}
@@ -534,14 +534,14 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         <summary>
           <span aria-hidden="true" className="text-slate-500 dark:text-gray-400"><BriefcaseIcon size={23} /></span>
           <span className="min-w-0"><span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Positions <span className="ml-1 font-normal text-gray-400">({initialData.positions.length})</span></span>
-            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">View roles associated with this company</span></span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">View roles associated with this partner</span></span>
           <ChevronRightIcon size={18} />
         </summary>
         <div className="company-edit-positions-content space-y-2">
           {initialData.positions.map(position => <div key={position.id} className="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-gray-800">
             <span className="min-w-0 break-words font-medium">{position.title}</span><span className="shrink-0 text-gray-500 dark:text-gray-400">{position.slots} slots</span>
           </div>)}
-          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Add or edit positions from the company card.</p>
+          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Add or edit positions from the partner card.</p>
         </div>
       </details>
     </>}
@@ -580,10 +580,10 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {isEdit ? 'Edit Company' : 'Add Company / Institution'}
+              {isEdit ? 'Edit Partner' : 'Add Partner'}
             </h2>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              {step === 1 ? 'Fill in the company details and address.' : 'Pin the exact location on the map.'}
+              {step === 1 ? 'Fill in the partner details and address.' : 'Pin the exact location on the map.'}
             </p>
           </div>
           <button onClick={onClose}
@@ -595,7 +595,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
         {/* Step indicator */}
         {saveError && <p role="alert" className="text-xs text-rose-600">{saveError}</p>}
         <div className="flex items-center gap-2">
-          {['Company Details', 'Pin Location'].map((label, idx) => {
+          {['Partner Details', 'Pin Location'].map((label, idx) => {
             const s = idx + 1
             return (
               <div key={s} className="flex items-center gap-2">
@@ -623,7 +623,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
             {/* Company name */}
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                Company / Institution Name <span className="text-rose-500">*</span>
+                Organization name <span className="text-rose-500">*</span>
               </label>
               <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
                 placeholder="e.g. Azeus Systems Philippines"
@@ -743,7 +743,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
                   ? <><Spinner /> Saving…</>
                   : isEdit
                     ? 'Save Changes'
-                    : pinned ? 'Add Company' : 'Add Without Pin'}
+                    : pinned ? 'Add Partner' : 'Add Without Pin'}
               </button>
             </div>
           </div>
@@ -1037,7 +1037,7 @@ export default function AdminCompanies() {
 
       {confirmDeleteComp && (
         <ConfirmModal
-          title="Delete company?"
+          title="Delete partner?"
           message={`"${confirmDeleteComp.name}" and all its positions will be permanently removed.`}
           confirmLabel="Delete"
           onConfirm={confirmDeleteCompany}
@@ -1061,9 +1061,9 @@ export default function AdminCompanies() {
         {/* ── Page header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Companies & Positions</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">OJT Partners & Positions</h1>
             <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="text" count={1}><p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {companies.length} companies · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} total slots
+              {companies.length} partners · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} total slots
             </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
@@ -1071,13 +1071,13 @@ export default function AdminCompanies() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
               </svg>
-              <input aria-label="Search companies" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search companies…"
+              <input aria-label="Search partners" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search partners…"
                 className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
             </div>
             <button onClick={() => setShowAddCompany(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
-              <span className="text-base leading-none">+</span> Add Company
+              <span className="text-base leading-none">+</span> Add Partner
             </button>
           </div>
         </div>
@@ -1094,7 +1094,7 @@ export default function AdminCompanies() {
               <div className="text-left">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Partner Locations</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {pinnedCount} of {companies.length} companies pinned
+                  {pinnedCount} of {companies.length} partners pinned
                 </p>
               </div>
             </div>
@@ -1104,14 +1104,14 @@ export default function AdminCompanies() {
           </button>
 
           <div id="partner-locations-map" hidden={!showMap} style={{ isolation: 'isolate' }}>
-            <div className="px-4 pb-4"><CompaniesMap companies={companies} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a company marker to view its address and position count.</p></div>
+            <div className="px-4 pb-4"><CompaniesMap companies={companies} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
           </div>
         </div>
 
         {/* ── Company cards grid ────────────────────────────────────── */}
         {displayed.length === 0 && (
           <div className="text-center py-20 text-gray-400 dark:text-gray-600 text-sm">
-            {companies.length === 0 ? 'No companies yet — click "Add Company" to get started.' : 'No companies match your search.'}
+            {companies.length === 0 ? 'No partners yet — click "Add Partner" to get started.' : 'No partners match your search.'}
           </div>
         )}
 

@@ -13,8 +13,12 @@ from .assessment_interruptions import assessment_interruption
 from .retake_requests import student_request, request_queue, review_request, evidence
 from .sse import admin_events, instructor_events, student_events
 from .health import health
+from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('instructor/batches/<int:batch_id>/emails/', enrollment_emails, name='enrollment_emails'),
+    path('instructor/batches/<int:batch_id>/email-progress/', email_progress, name='email_progress'),
+    path('email/brevo-events/', brevo_event, name='brevo_event'),
     path('instructor/batches/<int:batch_id>/unenrolled/', previously_unenrolled, name='previously_unenrolled'),
     path('admin/users/<int:student_id>/history/', archived_student_history, name='archived_student_history'),
     path('assessments/<int:assessment_id>/interruption/', assessment_interruption, name='assessment_interruption'),

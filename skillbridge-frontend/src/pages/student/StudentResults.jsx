@@ -141,7 +141,7 @@ export default function StudentResults() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Interactive Placement Map</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Select a company pin for driving distance</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Select a partner pin for driving distance</p>
                 </div>
               </div>
               {!hasPin ? (
@@ -194,7 +194,7 @@ export default function StudentResults() {
               <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
                 {[
                   { key: 'recommended', label: 'Recommended' },
-                  { key: 'all',         label: 'All Companies' },
+                  { key: 'all',         label: 'All Partners' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
@@ -218,10 +218,10 @@ export default function StudentResults() {
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
                 {companyTab === 'recommended'
-                  ? (resultsLoading && !sorted.length ? 'Loading…' : `${sorted.length} compan${sorted.length === 1 ? 'y' : 'ies'} · ${recommendations.length} suggested position${recommendations.length !== 1 ? 's' : ''}`)
-                  : (allCompLoading ? 'Loading…' : `${allCompanies.length} partner compan${allCompanies.length !== 1 ? 'ies' : 'y'} · ${allCompanies.reduce((n, c) => n + c.positions.length, 0)} position${allCompanies.reduce((n, c) => n + c.positions.length, 0) !== 1 ? 's' : ''}`)}
+                  ? (resultsLoading && !sorted.length ? 'Loading…' : `${sorted.length} partner${sorted.length === 1 ? '' : 's'} · ${recommendations.length} suggested position${recommendations.length !== 1 ? 's' : ''}`)
+                  : (allCompLoading ? 'Loading…' : `${allCompanies.length} partner${allCompanies.length !== 1 ? 's' : ''} · ${allCompanies.reduce((n, c) => n + c.positions.length, 0)} position${allCompanies.reduce((n, c) => n + c.positions.length, 0) !== 1 ? 's' : ''}`)}
               </p>
-              {companyTab === 'recommended' && sorted.length > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sortMode === 'distance' ? 'Companies ordered by straight-line distance from your saved location.' : 'Companies ranked by their best position match.'}</p>}
+              {companyTab === 'recommended' && sorted.length > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sortMode === 'distance' ? 'Partners ordered by straight-line distance from your saved location.' : 'Partners ranked by their best position match.'}</p>}
             </div>
 
             {/* Sort toggle — only for recommended tab */}
@@ -279,13 +279,13 @@ export default function StudentResults() {
 <DataSection url="/api/student/companies/" layout="cards">              {allCompLoading && (
                 <div className="flex items-center justify-center py-12 text-gray-400 dark:text-gray-600">
                   <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  Loading companies…
+                  Loading partners…
                 </div>
               )}
               {!allCompLoading && allCompanies.length === 0 && (
                 <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No partner companies yet</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Check back after your OJT coordinator adds partner companies.</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No partners yet</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Check back after your OJT coordinator adds partners.</p>
                 </div>
               )}
               {allCompanies.map(co => (
@@ -317,8 +317,8 @@ export default function StudentResults() {
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setCompanySelection({ companyId: co.id })} aria-label={`View company details for ${co.name}`} aria-haspopup="dialog"
-                    className="mt-3 min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View company details <span aria-hidden="true">→</span></button>
+                  <button type="button" onClick={() => setCompanySelection({ companyId: co.id })} aria-label={`View partner details for ${co.name}`} aria-haspopup="dialog"
+                    className="mt-3 min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View partner details <span aria-hidden="true">→</span></button>
                 </article>
               ))}
 </DataSection>            </div>
@@ -329,9 +329,9 @@ export default function StudentResults() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {sorted.length === 0 && !resultsLoading && (
               <div className="col-span-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No eligible company positions are currently available.</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You can still browse partner companies.</p>
-                <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all companies →</button>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No eligible partner positions are currently available.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You can still browse partners.</p>
+                <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all partners →</button>
               </div>
             )}
             {sorted.map((r, idx) => (
@@ -342,7 +342,7 @@ export default function StudentResults() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
 
                     {/* Rank badge */}
-                    <div aria-label={`Company rank ${idx + 1}`} className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5
+                    <div aria-label={`Partner rank ${idx + 1}`} className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5
                       ${idx === 0 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' :
                         idx === 1 ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
                         idx === 2 ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300' :
@@ -427,8 +427,8 @@ export default function StudentResults() {
                   </div>
                 )}
                 <div className="mt-auto pt-3">
-                  <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View company details for ${r.company}, ${r.position}`} aria-haspopup="dialog"
-                    className="min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View company details <span aria-hidden="true">→</span></button>
+                  <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"
+                    className="min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View partner details <span aria-hidden="true">→</span></button>
                 </div>
               </article>
             ))}

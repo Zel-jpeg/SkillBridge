@@ -111,7 +111,7 @@ with sync_playwright() as playwright:
 
         # Create with a real file, force an upload failure, then retry the same
         # form. Address requests and maps remain synthetic/offline.
-        admin.get_by_role('button', name='+ Add Company', exact=True).click()
+        admin.get_by_role('button', name='+ Add Partner', exact=True).click()
         admin.get_by_placeholder('e.g. Azeus Systems Philippines').fill('Created with image')
         admin.locator('select').nth(0).select_option('P1')
         admin.locator('select').nth(1).select_option('C1')
@@ -127,7 +127,7 @@ with sync_playwright() as playwright:
         expect(admin.get_by_text('Created with image', exact=True)).to_be_visible()
         admin_context.request.post(API + '/__fixture__/controls/', data={'fail': False})
         admin.get_by_role('button', name='Add Without Pin', exact=True).click()
-        expect(admin.get_by_role('heading', name='Add Company / Institution')).not_to_be_visible()
+        expect(admin.get_by_role('heading', name='Add Partner')).not_to_be_visible()
         loaded_image(admin.locator('img[alt="Created with image logo"]'))
         response = admin_context.request.get(API + '/api/admin/companies/', headers={'Authorization': 'Bearer ' + AUTH['admin']['token']})
         assert len([c for c in response.json() if c['name'] == 'Created with image']) == 1
@@ -135,11 +135,11 @@ with sync_playwright() as playwright:
 
         def edit_company():
             card = admin.locator('div.rounded-2xl.overflow-hidden').filter(has=admin.get_by_text('Synthetic Employer', exact=True))
-            card.get_by_title('Edit company').click()
+            card.get_by_title('Edit partner').click()
 
         def save_company():
             admin.get_by_role('button', name='Save Changes', exact=True).click()
-            expect(admin.get_by_role('heading', name='Edit Company', exact=True)).not_to_be_visible()
+            expect(admin.get_by_role('heading', name='Edit Partner', exact=True)).not_to_be_visible()
 
         edit_company()
         admin.get_by_label('Company image (optional)').set_input_files(str(ARTIFACTS / 'company.png'))

@@ -1,7 +1,9 @@
-"""Small bounded in-process dispatcher. Queued never means delivered."""
+"""Durable enqueue compatibility for account and enrollment notifications.
+
+The legacy synchronous deliver helper remains available for isolated diagnostics;
+production dispatch is performed only by process_email_outbox.
+"""
 import logging
-import threading
-import queue
 from email.utils import parseaddr
 
 import requests
@@ -9,9 +11,6 @@ from django.conf import settings
 from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
-_pending = queue.Queue(maxsize=1000)
-_worker_lock = threading.Lock()
-_worker = None
 
 
 def deliver_email(*, user_id, email, name, subject, body, html_body=None):
@@ -41,26 +40,11 @@ def deliver_email(*, user_id, email, name, subject, body, html_body=None):
     return False
 
 
-def queue_email(user, subject, body, html_body=None):
-    global _worker
-    if not settings.BREVO_API_KEY and not (settings.ENROLLMENT_SMTP_FALLBACK and not settings.RAILWAY_ENVIRONMENT):
-        return False
-    def run():
-        while True:
-            message = _pending.get()
-            try:
-                if not deliver_email(**message):
-                    logger.warning('Queued email failed user_id=%s', message['user_id'])
-            finally:
-                _pending.task_done()
+def queue_email(user, subject, body, html_body=None, **options):
+    from .email_outbox import enqueue
     try:
-        with _worker_lock:
-            if _worker is None or not _worker.is_alive():
-                _worker = threading.Thread(target=run, name='skillbridge-email', daemon=True)
-                _worker.start()
-        _pending.put_nowait(dict(user_id=user.pk, email=user.email, name=user.name,
-                                subject=subject, body=body, html_body=html_body))
+        enqueue(user, subject, body, html_body, **options)
         return True
     except Exception:
-        logger.warning('Email worker unavailable user_id=%s', user.pk)
+        logger.warning('Email persistence failed user_id=%s', user.pk)
         return False
