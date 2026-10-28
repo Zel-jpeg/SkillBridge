@@ -28,6 +28,11 @@
 .sk-collection-assessment { grid-template-columns: minmax(0,1fr); }
 @media (min-width: 768px) { .sk-collection-assessment { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (min-width: 1280px) { .sk-collection-assessment { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+.sk-collection-assessment.sk-grid-2 { grid-template-columns: minmax(0,1fr); }
+@media (min-width: 1024px) { .sk-collection-assessment.sk-grid-2 { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.sk-collection-assessment.sk-grid-4 { grid-template-columns: minmax(0,1fr); }
+@media (min-width: 768px) { .sk-collection-assessment.sk-grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (min-width: 1280px) { .sk-collection-assessment.sk-grid-4 { grid-template-columns: repeat(4,minmax(0,1fr)); } }
 @media (min-width: 1101px) { .sk-collection-batch, .sk-collection-batch-student { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 .sk-report-stats { grid-template-columns: minmax(0,1fr); }
 .sk-profile { max-width: none; margin: 0; padding: 0; }

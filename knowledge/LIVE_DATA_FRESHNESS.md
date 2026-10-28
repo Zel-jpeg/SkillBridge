@@ -1,5 +1,12 @@
 # Live data freshness
 
+28 October email delivery: batch email status reads use the shared cache and
+recipient-scoped `email` invalidations from committed worker/provider changes.
+Account, student and batch ownership topics also invalidate open email panels.
+The existing management analytics response supplies current, staff-scoped email
+reminders to the bell. No status GET sends or retries mail. See
+[durable delivery](ENROLLMENT_EMAIL_DELIVERY.md).
+
 27 October student recovery follow-up: current admin account archive/restore
 uses the persisted `admin/users/:id/` API (DELETE sets inactive; PATCH restores).
 This supersedes the older audit's frontend-only account-operation limitation

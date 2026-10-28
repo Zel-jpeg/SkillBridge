@@ -11,7 +11,7 @@ export default function DashboardCompanyHighlights({ companies, nearest = false,
       return <li key={company.companyKey}>
         <button type="button" className={`student-company-row ${index === 0 ? 'is-first' : ''}`}
           onClick={() => onSelect(company.company_id != null ? { companyId: company.company_id } : { positionId: company.position_id })}
-          aria-label={`View ${nearest ? 'nearby ' : ''}company details for ${company.company}, ${company.position}`} aria-haspopup="dialog">
+          aria-label={`View ${nearest ? 'nearby ' : ''}partner details for ${company.company}, ${company.position}`} aria-haspopup="dialog">
           <CompanyImage name={company.company} imageUrl={company.company_image_url} className="student-company-avatar" />
           <span className="student-company-identity"><span className="student-company-name"><span className="student-company-rank">#{index + 1}</span><span title={company.company}>{company.company}</span></span><span className="student-company-position" title={company.position}>{company.position}</span></span>
           <span className="student-company-metric">
@@ -22,7 +22,7 @@ export default function DashboardCompanyHighlights({ companies, nearest = false,
           <span className="student-company-chevron" aria-hidden="true"><ChevronRightIcon size={16} /></span>
         </button>
       </li>
-    })}</ol> : <p className="student-company-empty">{nearest ? 'No recommended companies with a known location are currently available.' : 'No eligible company positions are currently available.'}</p>}
+    })}</ol> : <p className="student-company-empty">{nearest ? 'No recommended partners with a known location are currently available.' : 'No eligible partner positions are currently available.'}</p>}
     <div className="student-company-footer">
       <button type="button" onClick={onSeeAll}>{nearest ? 'See distance & match details' : 'See all matches'} <span aria-hidden="true">→</span></button>
     </div>

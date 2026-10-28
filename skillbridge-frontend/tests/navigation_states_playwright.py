@@ -121,7 +121,7 @@ async def loading_lifecycle(browser, checks, metrics):
     checks.append('Independent dashboard sections render; preparation starts after essential data')
     # A mounted consumer adopts an in-flight prepared GET without a duplicate.
     start = time.perf_counter()
-    await page.get_by_role('link', name='Companies', exact=True).click()
+    await page.get_by_role('link', name='OJT Partners', exact=True).click()
     await settled(page)
     assert sum(e['path'] == '/api/admin/companies/' for e in fixture.events) == 1
     checks.append('Navigation adopts an in-flight prepared request')
@@ -200,7 +200,7 @@ async def positive_initial_lists(browser, checks):
          'Synthetic populated user', ['No users match your filters.']),
         ('admin', '/admin/companies', '/api/admin/companies/',
          [{'id': 1, 'name': 'Synthetic populated company', 'positions': [], 'address': {}}],
-         'Synthetic populated company', ['No companies yet', 'No companies match your search.']),
+         'Synthetic populated company', ['No partners yet', 'No partners match your search.']),
         ('instructor', '/instructor/students', '/api/instructor/batches/',
          [{'id': 1, 'name': 'Synthetic populated cohort', 'status': 'active'}],
          'Synthetic populated learner', ['No active batch', 'No students enrolled', 'No students match your search.']),

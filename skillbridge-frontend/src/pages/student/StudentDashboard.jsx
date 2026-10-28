@@ -235,8 +235,8 @@ export default function StudentDashboard() {
 
           {/* ── TOP MATCHES ──────────────────────────────────── */}
           <DataSection url="/api/student/results/combined/" layout="matches" className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Top companies for you</p>
-            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Best position match per company</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Top partners for you</p>
+            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Best position match per partner</p>
             {hasTakenAssessment ? (
               <DashboardCompanyHighlights companies={topMatches} onSelect={setCompanySelection} onSeeAll={() => navigate('/student/results')} />
             ) : (
@@ -310,7 +310,7 @@ export default function StudentDashboard() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Nearby Companies</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Nearby Partners</p>
                   {hasTakenAssessment && studentPin && enrichedCompanies.length > 0 && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">
                       Closest: {nearestThree[0]?.company ?? nearestThree[0]?.name} · {nearestThree[0]?.distKm?.toFixed(1) ?? '?'} km
@@ -331,7 +331,7 @@ export default function StudentDashboard() {
                 {!studentPin && (
                   <div className="flex items-center justify-between gap-3 bg-amber-50 dark:bg-amber-950 border border-amber-100 dark:border-amber-900 rounded-xl px-4 py-2.5 shrink-0">
                     <p className="text-xs text-amber-700 dark:text-amber-300">
-                      Pin your location to see distances to each company.
+                      Pin your location to see distances to each partner.
                     </p>
                     <button
                       onClick={() => navigate('/student/profile')}
@@ -355,7 +355,7 @@ export default function StudentDashboard() {
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="#16a34a" stroke="none">
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                       </svg>
-                      Partner companies
+                      OJT partners
                     </div>
                   </div>
                 )}
@@ -382,7 +382,7 @@ export default function StudentDashboard() {
                 <p className="text-sm text-gray-400 dark:text-gray-600 text-center max-w-xs">
                   {resultData?.recommendations_stale
                     ? 'Matching inputs have changed. Ask your administrator to re-run recommendations to refresh this map.'
-                    : 'Complete all required assessments to unlock the nearby companies map.'}
+                    : 'Complete all required assessments to unlock the nearby partners map.'}
                 </p>
               </div>
             )}
@@ -409,7 +409,7 @@ export default function StudentDashboard() {
                     <span className="text-base">📍</span>
                     <div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white">Set your location pin</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">See distances to partner companies</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">See distances to partners</p>
                     </div>
                   </button>
                   <button
@@ -442,7 +442,7 @@ export default function StudentDashboard() {
                     },
                     {
                       num: '3', label: 'View your matches',
-                      sub: 'See top companies matched to you',
+                      sub: 'See top partners matched to you',
                       done: false, active: false,
                     },
                   ].map(step => (

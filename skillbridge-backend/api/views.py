@@ -509,9 +509,9 @@ def get_student_enrollment_email_html(student_name, instructor_name, batch_name,
 
 import os
 
-def send_instructor_email(user, subject, body, html_body=None):
+def send_instructor_email(user, subject, body, html_body=None, **options):
     from .email_service import queue_email
-    return queue_email(user, subject, body, html_body)
+    return queue_email(user, subject, body, html_body, **options)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -993,9 +993,13 @@ def instructor_batches(request):
 
 
 def _enrollment_request(request, batch_id, preview=False):
-    from .enrollment_import import review_rows, summary, review_token, verify_token, confirm_rows
-    from django.utils.html import escape
-    if request.user.role not in ('instructor', 'admin'):
+    import uuid
+    from .enrollment_import import review_rows, summary, review_token, verify_token, confirm_rows, digest
+    from .email_outbox import email_storage_ready
+    from .email_progress import snapshot
+    from .models import EmailCommand, EmailNotice
+    if not request.user.is_active or request.user.role not in ('instructor', 'admin') or (
+            request.user.role == 'instructor' and not request.user.is_approved):
         return Response({'error': 'Forbidden'}, status=403)
     if not isinstance(request.data, dict):
         return Response({'error': 'Provide a JSON object with student rows.'}, status=400)
@@ -1010,6 +1014,9 @@ def _enrollment_request(request, batch_id, preview=False):
     if batch is None:
         return Response({'error': 'Active batch not found'}, status=404)
     items = request.data.get('students')
+    email_mode = request.data.get('email_mode', 'now')
+    if email_mode not in ('now', 'later'):
+        return Response({'error': 'Choose Send now or Send later.'}, status=400)
     if preview:
         try:
             rows = review_rows(items, batch)
@@ -1017,23 +1024,42 @@ def _enrollment_request(request, batch_id, preview=False):
             return Response({'error': str(error)}, status=400)
         return Response({'rows': rows, 'summary': summary(rows),
                          'review_token': review_token(rows, batch, request.user)})
+    try:
+        request_id = uuid.UUID(request.data['request_id']) if 'request_id' in request.data else uuid.uuid4()
+    except (ValueError, TypeError, AttributeError):
+        return Response({'error': 'Provide a valid enrollment request ID.'}, status=400)
+    storage_ready = email_storage_ready()
+    command_digest = digest([batch_id, 'enrollment', items, email_mode])
+    if storage_ready:
+        previous = EmailCommand.objects.filter(pk=request_id).first()
+        if previous:
+            if previous.actor_id != request.user.pk or previous.digest != command_digest:
+                return Response({'error': 'This request ID is already in use.'}, status=409)
+            return Response(previous.result)
     if not verify_token(request.data.get('review_token'), items, batch, request.user):
         return Response({'error': 'Preview the current rows before confirming. Reviews expire after 30 minutes.'}, status=400)
     def notify(student, enrollment_id):
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-        html = get_student_enrollment_email_html(
-            escape(student.name), escape(batch.instructor.name), escape(batch.name), escape(frontend_url),
-        )
-        return send_instructor_email(
-            student, 'You have been enrolled in SkillBridge — Complete your OJT Assessment',
-            f'Hi {student.name}, your OJT instructor {batch.instructor.name} has enrolled you in {batch.name}. '
-            f'Sign in with your DNSC Google account at {frontend_url}/login to take your assessment.', html,
-        )
+        from .email_outbox import enrollment_content
+        enrollment = BatchEnrollment.objects.get(pk=enrollment_id)
+        subject, body, html = enrollment_content(student, batch)
+        saved = send_instructor_email(student, subject, body, html, enrollment=enrollment,
+                                      actor=request.user, held=email_mode == 'later',
+                                      key=f'enrollment:{enrollment_id}:initial', notify_change=False)
+        return ('held' if email_mode == 'later' else 'queued') if saved else False
     rows = confirm_rows(items, batch, notify)
     record_action(request.user, 'enrollment.confirm', 'batch', batch.id, batch.id,
                   enrolled_count=sum(row['status'] == 'enrolled' for row in rows))
-    return Response({'rows': rows, 'summary': summary(rows),
-                     'enrolled': [r for r in rows if r['status'] == 'enrolled']})
+    result = {'rows': rows, 'summary': summary(rows), 'request_id': str(request_id),
+              'enrolled': [r for r in rows if r['status'] == 'enrolled']}
+    if storage_ready:
+        enrolled_ids = [row['enrollment_id'] for row in result['enrolled']]
+        notices = list(EmailNotice.objects.filter(enrollment_id__in=enrolled_ids,
+            key__in=[f'enrollment:{pk}:initial' for pk in enrolled_ids]).only('id'))
+        if enrolled_ids:
+            result['email_group'] = snapshot(notices, source='enrollment', missing=len(enrolled_ids) - len(notices))
+        EmailCommand.objects.create(id=request_id, actor=request.user, batch_id_snapshot=batch.pk,
+                                    digest=command_digest, result=result)
+    return Response(result)
 
 
 @api_view(['POST'])
@@ -2876,7 +2902,7 @@ def instructor_company_edit(request, co_id):
                 try:
                     pos = company.positions.select_for_update().get(id=position_id)
                 except Position.DoesNotExist:
-                    invalid('positions', 'Position does not belong to this company.')
+                    invalid('positions', 'Position does not belong to this partner.')
                 requested_slots = values.get('slots_available', pos.slots_available)
                 approved_count = pos.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
                 if requested_slots < approved_count:
@@ -3448,23 +3474,33 @@ def admin_instructors(request):
     if not instructor_id:
         return Response({'error': 'instructor_id is required'}, status=400)
 
-    if User.objects.filter(email=email).exists():
+    if User.objects.filter(email__iexact=email).exists():
         return Response({'error': 'Email already exists'}, status=409)
     if User.objects.filter(school_id=instructor_id).exists():
         return Response({'error': 'Instructor ID already exists'}, status=409)
 
-    user = User.objects.create(
-        email=email,
-        name=name,
-        role='instructor',
-        school_id=instructor_id,
-        course=courses,
-        department=department,
-        is_approved=True,
-        is_active=True,
-    )
-    user.set_unusable_password()
-    user.save(update_fields=['password'])
+    try:
+        with transaction.atomic():
+            user = User.objects.create(
+                email=email,
+                name=name,
+                role='instructor',
+                school_id=instructor_id,
+                course=courses,
+                department=department,
+                is_approved=True,
+                is_active=True,
+            )
+            user.set_unusable_password()
+            user.save(update_fields=['password'])
+    except IntegrityError:
+        # Query only after the failed savepoint has rolled back. Another admin
+        # may have claimed either unique identity since the checks above.
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({'error': 'Email already exists'}, status=409)
+        if User.objects.filter(school_id=instructor_id).exists():
+            return Response({'error': 'Instructor ID already exists'}, status=409)
+        raise
 
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
     html_body = get_instructor_email_html(name, frontend_url, instructor_id, department)
@@ -3620,10 +3656,10 @@ def admin_company_detail(request, company_id):
                 company.delete()
                 transaction.on_commit(lambda: cleanup_image(old_key), robust=True)
         except Company.DoesNotExist:
-            return Response({'error': 'Company not found'}, status=404)
+            return Response({'error': 'Partner not found'}, status=404)
         except ProtectedError:
             return Response({
-                'error': 'Company cannot be deleted while placement history references it.',
+                'error': 'Partner cannot be deleted while placement history references it.',
             }, status=409)
         return Response(status=204)
  
@@ -3634,7 +3670,7 @@ def admin_company_detail(request, company_id):
             try:
                 company = Company.objects.select_for_update().get(id=company_id)
             except Company.DoesNotExist:
-                return Response({'error': 'Company not found'}, status=404)
+                return Response({'error': 'Partner not found'}, status=404)
             if data.get('name', '').strip(): company.name = data['name'].strip()
             if 'address' in data: company.address = data['address']
             if 'lat' in data: company.location_lat = data['lat']
@@ -3664,7 +3700,7 @@ def admin_company_positions(request, company_id):
         try:
             company = Company.objects.select_for_update().get(id=company_id)
         except Company.DoesNotExist:
-            return Response({'error': 'Company not found'}, status=404)
+            return Response({'error': 'Partner not found'}, status=404)
         position = Position.objects.create(company=company, **values)
         for category, percentage in requirements:
             PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)

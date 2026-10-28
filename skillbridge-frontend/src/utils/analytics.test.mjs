@@ -47,7 +47,7 @@ test('snapshot export tables retain all filtered rows, raw zero, missing evidenc
   const recommendations = analyticsTable(data, 'assessments', '', [recommendationStudent])
   assert.equal(recommendations.rows[0][12], 'Synthetic Developer Intern')
   assert.equal(recommendations.rows[0][13], 'Synthetic Agency')
-  assert.deepEqual(recommendations.columns.slice(12), ['Top recommended position', 'Top recommended company'])
+  assert.deepEqual(recommendations.columns.slice(12), ['Top recommended position', 'Top recommended partner'])
   const csv = analyticsCsv({ title: 'Snapshot', columns: ['Name', 'Score'], rows: [[' \t=FORMULA()', 0], ['\u0000+FORMULA()', null]] }, { Scope: 'Cohort 1' })
   assert.ok(csv.includes('Scope'))
   assert.ok(csv.includes("' \t=FORMULA()"))

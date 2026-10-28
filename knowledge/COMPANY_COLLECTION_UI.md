@@ -1,5 +1,9 @@
 # Admin Companies and Positions presentation
 
+28 October terminology update: the screen is now **OJT Partners & Positions**,
+with **OJT Partners** navigation and partner wording in controls and messages.
+Internal component/API names remain unchanged. See [verification and compatibility](PARTNER_TERMINOLOGY.md).
+
 ## Scope and audit
 
 The page uses the current SkillBridge collection conventions: white/dark surfaces,

@@ -84,7 +84,7 @@ async def presentation(browser, checks):
 async def routes(browser, checks):
     cases = {
         'admin': [('dashboard', 'Admin Dashboard'), ('users', 'User Management'), ('batches', 'Batches & students'), ('skills', 'Skill Taxonomy'), ('assessments', 'Assessment oversight'), ('reports', 'Reports & Analytics'), ('placements', 'OJT Placement Management'), ('assessment/create', 'New assessment')],
-        'instructor': [('dashboard', 'Student performance'), ('students', 'Enrolled students'), ('assessments', 'Assessments'), ('companies', 'Partner Companies'), ('reports', 'Reports & Analytics'), ('assessment/create', 'New assessment')],
+        'instructor': [('dashboard', 'Student performance'), ('students', 'Enrolled students'), ('assessments', 'Assessments'), ('companies', 'OJT Partners'), ('reports', 'Reports & Analytics'), ('assessment/create', 'New assessment')],
         'student': [('profile', 'My profile'), ('assessments', 'Skills Assessments')],
     }
     for role, paths in cases.items():

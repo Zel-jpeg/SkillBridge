@@ -84,7 +84,9 @@ with sync_playwright() as p:
         if u.path.endswith('/enroll/preview/'):
             return r.fulfill(json={'rows':[review_row], 'summary':summary, 'review_token':'synthetic-review'})
         if u.path.endswith('/enroll/'):
-            return r.fulfill(json={'rows':[review_row], 'summary':{**summary,'ready':0,'enrolled':1}})
+            return r.fulfill(json={'rows':[{**review_row, 'status':'enrolled'}], 'summary':{**summary,'ready':0,'enrolled':1}})
+        if u.path.endswith('/email-progress/'):
+            return r.fulfill(json={'groups':[], 'storage_ready':True})
         if u.path.endswith('/retake/'):
             return r.fulfill(json={'assessment_id':10,'retake_allowed':True})
         return r.fulfill(json=[])
@@ -173,20 +175,24 @@ with sync_playwright() as p:
     assert writes[-1][1]=='/api/instructor/students/1/?batch_id=1' and len(students)==20
     page.get_by_label('Search batch students',exact=True).fill('')
     checks.append('Independent unenroll action, centered named confirmation, no write on cancel, failed mutation recovery and exact batch-scoped retry')
-    page.get_by_role('button',name='Archive batch',exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Archive batch', exact=True).click()
     dialog=confirmation('Archive this batch?'); before=len(writes)
     dialog.get_by_role('button',name='Cancel',exact=True).click(); assert len(writes)==before
-    page.get_by_role('button',name='Archive batch',exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Archive batch', exact=True).click()
     dialog=confirmation('Archive this batch?'); dialog.get_by_role('button',name='Archive batch',exact=True).click()
     expect(dialog.locator('[role="alert"]:not(.sb-toast-message)')).to_be_visible()
     dialog.get_by_role('button',name='Archive batch',exact=True).click(); expect(dialog).not_to_be_visible()
     expect(page.get_by_text('This batch is archived.',exact=False)).to_be_visible()
     expect(page.get_by_role('button',name='Enroll students',exact=True)).to_have_count(0)
-    page.get_by_role('button',name='Reactivate batch',exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Reactivate batch', exact=True).click()
     dialog=confirmation('Reactivate this batch?'); dialog.get_by_role('button',name='Reactivate batch',exact=True).click()
     expect(page.get_by_role('button',name='Enroll students',exact=True)).to_be_visible()
     checks.append('Centered archive/reactivate with impact text, cancellation, failed archive retry and actual status refresh')
-    page.get_by_role('button',name='Manage batch',exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Manage batch', exact=True).click()
     editor=page.get_by_role('dialog',name='Manage batch',exact=True)
     editor.get_by_label('Responsible instructor',exact=True).select_option('3')
     editor.get_by_role('button',name='Review batch changes',exact=True).click()
@@ -225,7 +231,8 @@ with sync_playwright() as p:
         for dark in [False,True]:
             page.evaluate('(dark)=>document.documentElement.classList.toggle("dark",dark)',dark)
             geometry(); shot(f'roster-{width}-{"dark" if dark else "light"}')
-            page.get_by_role('button',name='Archive batch',exact=True).click()
+            page.get_by_role('button', name='Batch actions', exact=True).click()
+            page.get_by_role('menuitem', name='Archive batch', exact=True).click()
             dialog=confirmation('Archive this batch?'); geometry()
             if width==320: shot('confirmation-320-'+('dark' if dark else 'light'))
             dialog.get_by_role('button',name='Cancel',exact=True).click()

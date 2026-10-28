@@ -172,6 +172,8 @@ EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False') == 'True'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@skillbridge.local')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
 BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+BREVO_WEBHOOK_SECRET = os.getenv('BREVO_WEBHOOK_SECRET', '')
+BREVO_ACCOUNT_EMAIL_RESERVE = max(0, int(os.getenv('BREVO_ACCOUNT_EMAIL_RESERVE', '0')))
 BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', DEFAULT_FROM_EMAIL)
 # Explicit opt-in for local/supported environments; Railway uses HTTPS only.
 ENROLLMENT_SMTP_FALLBACK = os.getenv('ENROLLMENT_SMTP_FALLBACK', 'False').lower() == 'true'

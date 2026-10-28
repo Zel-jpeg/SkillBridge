@@ -1,0 +1,73 @@
+.sb-roster-toolbar {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.sb-roster-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+}
+
+.sb-roster-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.sb-roster-recovery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.sb-roster-recovery select {
+  width: 100%;
+  min-width: 0;
+}
+
+.sb-roster-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 16px;
+}
+
+.sb-roster-view-tools {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+@container (min-width: 420px) {
+  .sb-roster-recovery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 560px) {
+  .sb-roster-primary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sb-roster-recovery {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (min-width: 1000px) {
+  .sb-roster-primary {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 22rem);
+  }
+
+  .sb-roster-recovery {
+    grid-column: auto;
+  }
+}

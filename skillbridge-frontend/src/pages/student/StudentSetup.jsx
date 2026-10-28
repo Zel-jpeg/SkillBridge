@@ -72,6 +72,7 @@ function PinMap({ center, pinned, onPin }) {
 
   useEffect(() => {
     let alive = true
+    let resizeTimer
     loadLeaflet().then(L => {
       if (!alive || !elRef.current || mapRef.current) return
 
@@ -87,7 +88,9 @@ function PinMap({ center, pinned, onPin }) {
       }).addTo(map)
       tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
       map.zoomControl.setPosition('bottomright')
-      setTimeout(() => map.invalidateSize(), 150)
+      resizeTimer = setTimeout(() => {
+        if (alive && mapRef.current === map) map.invalidateSize()
+      }, 150)
 
       function placeMk(lat, lng) {
         if (mkRef.current) {
@@ -117,11 +120,19 @@ function PinMap({ center, pinned, onPin }) {
     })
     return () => {
       alive = false
+      clearTimeout(resizeTimer)
       mapRef.current?.remove()
       mapRef.current = null
       mkRef.current  = null
     }
   }, [mapAttempt]) // intentional — only mount/unmount
+
+  useEffect(() => {
+    if (!pinned) {
+      mkRef.current?.remove()
+      mkRef.current = null
+    }
+  }, [pinned])
 
   // Re-center when geocoding resolves
   useEffect(() => {
@@ -382,7 +393,7 @@ export default function StudentSetup() {
         {step === 2 && (
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">Your location</h2>
-            <p className="text-sm text-gray-500 mb-5">Helps us suggest nearby companies.</p>
+            <p className="text-sm text-gray-500 mb-5">Helps us suggest nearby partners.</p>
 
             <div className="mb-5">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">During OJT, where will you be staying?</label>
@@ -433,7 +444,7 @@ export default function StudentSetup() {
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">Pin your location</h2>
             <p className="text-sm text-gray-500 mb-3">
-              Pin the one place where you will stay during OJT. We use this location to show company distances.
+              Pin the one place where you will stay during OJT. We use this location to show partner distances.
             </p>
 
             {/* Address toggle — only shown when stayingAt is 'boarding' */}
@@ -476,6 +487,7 @@ export default function StudentSetup() {
               onPin={loc => {
                 setPinnedLoc(loc)
                 setFormData(prev => ({ ...prev, pinLat: loc.lat, pinLng: loc.lng }))
+                setErrors(prev => ({ ...prev, pin: '' }))
               }}
             />
 
@@ -486,6 +498,8 @@ export default function StudentSetup() {
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   Pinned · {pinnedLoc.lat.toFixed(5)}, {pinnedLoc.lng.toFixed(5)}
                   <button
+                    type="button"
+                    aria-label="Remove location pin"
                     onClick={() => { setPinnedLoc(null); setFormData(prev => ({ ...prev, pinLat: null, pinLng: null })) }}
                     className="ml-1 text-gray-400 hover:text-red-500 transition-colors leading-none"
                   >✕</button>
@@ -494,6 +508,9 @@ export default function StudentSetup() {
                 <p className="text-xs text-gray-400">No pin — tap the map above to set your location.</p>
               )}
             </div>
+            <p id="setup-pin-guidance" className="mt-2 text-xs leading-5 text-gray-500">
+              A location pin is required to continue. If the map is unavailable, use Retry map.
+            </p>
             
             {errors.pin && <p className="text-xs text-red-500 font-medium mt-1 text-center">{errors.pin}</p>}
 
@@ -503,7 +520,7 @@ export default function StudentSetup() {
               <p className="text-xs text-blue-700 leading-relaxed">
                 {formData.stayingAt === 'boarding'
                   ? 'Both addresses are saved, but only one map pin is saved. These buttons only move the map view. Pin your boarding house if you will stay there during OJT. Tapping elsewhere moves the same pin.'
-                  : 'This pin is used in your Results page to calculate how far each company is from you — so you can find nearby internships.'}
+                  : 'This pin is used in your Results page to calculate how far each partner is from you — so you can find nearby internships.'}
               </p>
             </div>
           </div>
@@ -569,8 +586,9 @@ export default function StudentSetup() {
           )}
           <button
             onClick={step === 4 ? handleSubmit : handleNext}
-            disabled={submitLoading}
-            className="flex-1 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            disabled={submitLoading || (step === 3 && !pinnedLoc)}
+            aria-describedby={step === 3 ? 'setup-pin-guidance' : undefined}
+            className="min-w-0 flex-1 px-3 py-3.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {submitLoading ? (
               <>
@@ -581,7 +599,7 @@ export default function StudentSetup() {
               </>
             ) : (
               step === 4 ? 'Finish & go to dashboard →'
-              : step === 3 ? (pinnedLoc ? 'Continue →' : 'Skip for now →')
+              : step === 3 ? (pinnedLoc ? 'Continue →' : 'Place a pin to continue')
               : 'Next'
             )}
           </button>

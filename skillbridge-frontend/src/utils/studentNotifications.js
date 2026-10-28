@@ -42,7 +42,7 @@ export function studentNotifications(assessments, profile, now) {
   if (profile?.placement?.status === 'approved') {
     const { placement } = profile
     entries.push({ id: `placement:${placement.id}`, title: 'OJT placement approved', kind: 'placement', severity: 'success', to: '/student/results',
-      description: `Your approved placement is at ${placement.company?.name || 'your assigned company or institution'}${placement.position?.title ? ` as ${placement.position.title}` : ''}. View your placement details and contact your coordinator for next steps.`,
+      description: `Your approved placement is at ${placement.company?.name || 'your assigned partner organization'}${placement.position?.title ? ` as ${placement.position.title}` : ''}. View your placement details and contact your coordinator for next steps.`,
     })
   }
   if (profile?.all_required_completed && profile?.recommendations_locked === false) entries.push({

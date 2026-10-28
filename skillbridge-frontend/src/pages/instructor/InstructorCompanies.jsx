@@ -109,7 +109,7 @@ function ViewMap({ company }) {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
-        <p className="text-xs text-gray-400 dark:text-gray-600 text-center px-6">No location pinned for this company</p>
+        <p className="text-xs text-gray-400 dark:text-gray-600 text-center px-6">No location pinned for this partner</p>
       </div>
     )
   }
@@ -367,7 +367,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
 
   async function handleSubmit() {
     if (image.error || saving) return
-    if (!name.trim()) { setNameErr('Company name is required.'); return }
+    if (!name.trim()) { setNameErr('Organization name is required.'); return }
     if (changingAddr && (!newAddr.province || !newAddr.city)) {
       setAddrErr('Please select at least a province and city.')
       return
@@ -399,7 +399,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
     onSave={handleSubmit} onClose={onClose}
     details={<>
       <div>
-        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Company name <span className="text-rose-500">*</span></label>
+        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Organization name <span className="text-rose-500">*</span></label>
         <input id="company-edit-name" value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
           className={inputCls(nameErr)} placeholder="e.g. Azeus Systems Philippines" aria-invalid={Boolean(nameErr)} />
         {nameErr && <p className="mt-1 text-xs text-rose-600">{nameErr}</p>}
@@ -409,7 +409,7 @@ function EditModal({ company, saving, saveError, onSave, onClose }) {
         <summary>
           <span aria-hidden="true" className="text-slate-500 dark:text-gray-400"><BriefcaseIcon size={23} /></span>
           <span className="min-w-0"><span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Positions <span className="ml-1 font-normal text-gray-400">({positions.length})</span></span>
-            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Manage roles associated with this company</span></span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Manage roles associated with this partner</span></span>
           <ChevronRightIcon size={18} />
         </summary>
         <div className="company-edit-positions-content flex flex-col gap-3">
@@ -516,7 +516,7 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors">
               <EditIcon /> Edit
             </button>
-            <button onClick={onClose} aria-label="Close company details"
+            <button onClick={onClose} aria-label="Close partner details"
               className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <XIcon />
             </button>
@@ -726,9 +726,9 @@ export default function InstructorCompanies() {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Partner Companies</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">OJT Partners</h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {allCount} {allCount === 1 ? 'company' : 'companies'} · tap a card to view details
+              {allCount} {allCount === 1 ? 'partner' : 'partners'} · tap a card to view details
             </p>
           </div>
           <div className="relative w-full sm:w-60">
@@ -738,7 +738,7 @@ export default function InstructorCompanies() {
           </div>
         </div>
 
-        <DataSection url="/api/instructor/companies/" skeleton={<div className="space-y-5"><ContentSkeleton layout="map" label="Loading company locations" /><ContentSkeleton layout="company-cards" label="Loading partner companies" /></div>}>
+        <DataSection url="/api/instructor/companies/" skeleton={<div className="space-y-5"><ContentSkeleton layout="map" label="Loading partner locations" /><ContentSkeleton layout="company-cards" label="Loading partners" /></div>}>
         {/* Overview Map */}
         {!loading && companies.length > 0 && (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-1 shadow-sm">
@@ -750,7 +750,7 @@ export default function InstructorCompanies() {
         {!loading && companies.length === 0 && (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-16 flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-700"><HomeIcon /></div>
-            <p className="text-sm font-medium text-gray-400 dark:text-gray-600">No companies found</p>
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-600">No partners found</p>
             {search && <button onClick={() => setSearch('')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Clear search</button>}
           </div>
         )}

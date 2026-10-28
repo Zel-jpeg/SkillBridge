@@ -49,3 +49,42 @@ company lookups or changes to branding storage.
 Browser checks use local headless Chrome with mocked API responses. They do not
 establish live-service integration or physical-device coverage. No backend or
 database behavior changed.
+
+## Instructor roster filter placement — 28 October 2026
+
+The instructor Students toolbar groups labelled Search students, Course,
+Enrollment and Account status controls on one row when its content width reaches
+1,000px. Progress/placement pills occupy the next row, with the compact view
+switch and filtered count at the right. Narrower layouts wrap by available
+content width: paired enrollment/account dropdowns from 420px, and single-column
+fields below that. Student cards and the admin roster layout are unchanged.
+
+The shared enrollment filter component accepts an optional presentation class;
+its options and other callers retain their existing behavior. Course/status/view
+buttons expose their selected state and keyboard focus. Enrollment changes reset
+the enrolled roster page and progress filter; existing course/account/search
+combination rules and the previously unenrolled collection are preserved. Counts
+now distinguish “1 student” from multiple students.
+
+Verification: frontend lint/build pass. The synthetic
+[roster toolbar browser check](../skillbridge-frontend/tests/student_roster_toolbar_playwright.py)
+covers 320, 375, 768, 1024 and 1440px in light/dark mode, including toolbar geometry,
+account/course/progress filters, later-page resets, card/list switching, enrollment
+switching, keyboard search and empty-state recovery. It blocks API writes and
+external services; no live database is used.
+
+### Complete roster filter audit
+
+Expanded the same browser check to 216 enrolled-roster combinations (all eight
+status options × three course options × three account states, in mobile cards,
+desktop cards and desktop lists), checking exact student identities as well as
+counts. Another 27 combinations cover previously unenrolled course/account
+filters in those views. Name, school-ID and email search, mixed case, surrounding
+spaces, batch isolation, pagination resets and empty-state recovery are included.
+
+The audit found and fixed untrimmed enrolled-roster searches: pasted values with
+surrounding spaces now match consistently with the previously unenrolled view.
+Switching enrollment views also exposed a duplicate React sibling key shared
+by email progress and the unenrolled collection; email progress now uses a
+distinct key prefix. Browser verification checks for that warning and uncaught
+page errors. These fixes do not change access, assessment or placement rules.

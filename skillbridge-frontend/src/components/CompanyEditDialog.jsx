@@ -4,9 +4,9 @@ import './companyEdit.css'
 
 export default function CompanyEditDialog({ details, location, saving, saveError, invalid, onSave, onClose, saveLabel = 'Save changes' }) {
   const close = () => { if (!saving) onClose() }
-  return <DialogShell title="Edit Company" description="Keep your company profile up to date."
-    size="company-edit" onClose={close} closeLabel="Close company editor"
-    headerDetails={<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Keep your company profile up to date.</p>}
+  return <DialogShell title="Edit Partner" description="Keep your partner profile up to date."
+    size="company-edit" onClose={close} closeLabel="Close partner editor"
+    headerDetails={<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Keep your partner profile up to date.</p>}
     footer={<div className="company-edit-footer">
       <p className="text-xs text-gray-500 dark:text-gray-400">Your changes appear after you save.</p>
       <div className="company-edit-actions">
@@ -22,12 +22,12 @@ export default function CompanyEditDialog({ details, location, saving, saveError
     <div className="company-edit-body" aria-busy={saving}>
       {saveError && <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">{saveError}</p>}
       <fieldset disabled={saving} className="company-edit-grid">
-        <section className="min-w-0 space-y-5" aria-label="Company details">
-          <h3 className="company-edit-heading"><span aria-hidden="true"><CompanyIcon size={21} /></span>Company details</h3>
+        <section className="min-w-0 space-y-5" aria-label="Partner details">
+          <h3 className="company-edit-heading"><span aria-hidden="true"><CompanyIcon size={21} /></span>Partner details</h3>
           {details}
         </section>
-        <section className="company-edit-location min-w-0 space-y-5" aria-label="Company location">
-          <h3 className="company-edit-heading"><span aria-hidden="true"><PinIcon size={21} /></span>Company location</h3>
+        <section className="company-edit-location min-w-0 space-y-5" aria-label="Partner location">
+          <h3 className="company-edit-heading"><span aria-hidden="true"><PinIcon size={21} /></span>Partner location</h3>
           {location}
         </section>
       </fieldset>

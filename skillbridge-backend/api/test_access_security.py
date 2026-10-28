@@ -39,8 +39,9 @@ class AccessSecurityTests(APITestCase):
     def test_every_private_route_rejects_anonymous_requests(self):
         from .urls import urlpatterns
         # Readiness exposes only a coarse status and deliberately ignores JWTs;
-        # its public/error/method contract is covered in test_health.
-        public = {'login', 'refresh', 'google_login', 'register_role', 'health'}
+        # its public/error/method contract is covered in test_health. Brevo's
+        # provider endpoint uses its own secret (403), covered in test_email_outbox.
+        public = {'login', 'refresh', 'google_login', 'register_role', 'health', 'brevo_event'}
         for route in urlpatterns:
             if route.name in public:
                 continue

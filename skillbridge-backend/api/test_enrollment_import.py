@@ -15,7 +15,7 @@ from .models import Batch, BatchEnrollment, User
 
 class EnrollmentImportTests(TestCase):
     def setUp(self):
-        self.instructor = User.objects.create_user('teacher@dnsc.edu.ph', name='Test Instructor', role='instructor')
+        self.instructor = User.objects.create_user('teacher@dnsc.edu.ph', name='Test Instructor', role='instructor', is_approved=True)
         self.admin = User.objects.create_user('admin@dnsc.edu.ph', name='Test Admin', role='admin')
         self.batch = Batch.objects.create(name='TEST IAMS', instructor=self.instructor)
         self.client = APIClient()
@@ -209,9 +209,9 @@ console.log(JSON.stringify(parseWorkbook(book)));
     def test_confirmation_internal_id_school_id_and_after_commit(self, mail):
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             response = self.confirm()
-            mail.assert_not_called()
-        # One email callback and one coalesced data-change publication.
-        self.assertEqual(len(callbacks), 2)
+            mail.assert_called_once()
+        # Durable enqueue is transactional; only data-change publication waits.
+        self.assertEqual(len(callbacks), 1)
         mail.assert_called_once()
         student = User.objects.get(school_id='2026-01982')
         self.assertIsInstance(student.pk, int)
@@ -279,7 +279,7 @@ console.log(JSON.stringify(parseWorkbook(book)));
         self.assertEqual(self.confirm(preview).data['rows'][0]['status'], 'conflict')
 
     def test_authorization_and_batch_scope(self):
-        other = User.objects.create_user('other@dnsc.edu.ph', name='Other', role='instructor')
+        other = User.objects.create_user('other@dnsc.edu.ph', name='Other', role='instructor', is_approved=True)
         self.client.force_authenticate(other)
         self.assertEqual(self.preview().status_code, 404)
         self.client.force_authenticate(self.admin)
@@ -342,8 +342,6 @@ class EmailServiceTests(TestCase):
         self.assertTrue(deliver_email(**self.message))
         smtp.assert_called_once()
 
-    @patch('api.email_service.threading.Thread')
-    @patch('api.email_service._worker', None)
-    def test_worker_start_failure(self, thread):
-        thread.return_value.start.side_effect = RuntimeError('secret')
+    @patch('api.email_outbox.enqueue', side_effect=RuntimeError('secret'))
+    def test_persistence_failure(self, enqueue):
         self.assertFalse(queue_email(Mock(pk=123), 'subject', 'body'))

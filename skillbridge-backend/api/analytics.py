@@ -41,6 +41,8 @@ def analytics_payload(user, params):
     # Imported at call time to avoid the URL/views import cycle. This helper only
     # reads saved evidence and runs the same current/finalization gates as rosters.
     from .views import bulk_management_states
+    from .email_outbox import email_storage_ready, reminders
+    from .email_progress import progress_groups
 
     if user.role not in ('admin', 'instructor') or not user.is_active or (user.role == 'instructor' and not user.is_approved):
         raise PermissionDenied('Approved staff only.')
@@ -214,7 +216,7 @@ def analytics_payload(user, params):
     if position_id and position_id not in {position.id for position in catalog}:
         raise NotFound('Position not found.')
     if company_id and company_id not in {position.company_id for position in catalog}:
-        raise NotFound('Company has no configured positions.')
+        raise NotFound('Partner has no configured positions.')
     capacity = [{'id': position.id, 'company_id': position.company_id, 'company': position.company.name,
         'name': position.title, 'area': area_of(position.company.address), 'total': position.slots_available or 0,
         'occupied': occupied.get(position.id, 0), 'remaining': max(0, (position.slots_available or 0) - occupied.get(position.id, 0))}
@@ -267,15 +269,19 @@ def analytics_payload(user, params):
         'pending_instructors': User.objects.filter(role='instructor', is_active=True, is_approved=False).count() if user.role == 'admin' else 0}
     summary['completion_rate'] = rate(summary['required_complete'], summary['students'])
     summary['placement_rate'] = rate(summary['approved'], summary['students'])
+    email_ready = email_storage_ready()
     return {'generated_at': now.isoformat(), 'role': user.role,
         'scope': {'batch_ids': selected_ids, 'batch_status': status, 'course': course, 'instructor_id': instructor_id,
             'assessment_id': assessment_id, 'company_id': company_id, 'position_id': position_id, 'area': params.get('area', ''),
             'date_from': start.isoformat(), 'date_to': end.isoformat(),
             'activity_period': activity_period, 'activity_interval': activity_interval,
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
-            'capacity_scope': 'Shared system-wide slots; only company/position/area filters apply',
+            'capacity_scope': 'Shared system-wide slots; only partner/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},
-        'summary': summary, 'students': students, 'placement_students': placed_filtered,
+        'summary': summary, 'email_storage_ready': email_ready,
+        'email_notifications': reminders(selected) if email_ready else [],
+        'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else [],
+        'students': students, 'placement_students': placed_filtered,
         'assessments': list(attempt_rows.values()), 'batches': list(batch_rows.values()),
         'skills': sorted(skill_rows.values(), key=lambda row: row['name']), 'capacity': capacity,
         'match_bands': [{'name': name, 'count': count} for name, count in match_bands.items()],

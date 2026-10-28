@@ -155,13 +155,13 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
       const mk = L.marker([co.lat, co.lng], {
         icon: makeCompanyIcon(L, co.company ?? co.name ?? '', isTopMatch),
         zIndexOffset: isTopMatch ? 1000 : idx * -10,
-        title: `Show driving route to ${co.company ?? co.name ?? 'company'}`,
-        alt: co.company ?? co.name ?? 'Company',
+        title: `Show driving route to ${co.company ?? co.name ?? 'partner'}`,
+        alt: co.company ?? co.name ?? 'Partner',
       })
         .addTo(map)
         .bindPopup(`
           <div style="min-width:150px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.company ?? co.name ?? 'Company')}</p>
+            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.company ?? co.name ?? 'Partner')}</p>
             <p style="font-size:11px;color:#6b7280;margin:0 0 3px">${escapeHtml(co.position)}</p>
             <div style="font-size:11px;margin:0">
               <span style="color:#16a34a;font-weight:600">${escapeHtml(co.match)}% match</span>
@@ -258,7 +258,7 @@ export default function NearbyMap({ companies, studentPin, initialCenter }) {
           ? <>Road route unavailable. Pins are still visible. <button type="button" className="student-map-retry" onClick={() => setRouteAttempt(value => value + 1)}>Retry route</button></>
           : <><b>{routeView.distanceKm.toFixed(1)} km by road</b> · about {routeView.minutes} min driving</>}</div>
         {routeView.status === 'ready' && <small>Estimate between nearby mapped roads; not live traffic.</small>}
-      </> : <span>{studentPin ? 'Select a company pin to see a road route.' : 'Set your profile pin to see road routes.'}</span>}
+      </> : <span>{studentPin ? 'Select a partner pin to see a road route.' : 'Set your profile pin to see road routes.'}</span>}
     </div>}
   </div>
 }

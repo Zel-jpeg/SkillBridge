@@ -23,6 +23,20 @@ test('approvals stay admin-only and current reminders use role-scoped destinatio
   assert.deepEqual(managementNotifications(data, 'student'), [])
 })
 
+test('quota reminders explain saved enrollment and link each staff role to its reviewed batch', () => {
+  const payload = { ...data, email_notifications: [{ batch_id: 7, batch_name: 'Synthetic Batch', kind: 'quota', count: 80, revision: ['opaque'] }] }
+  for (const role of ['admin', 'instructor']) {
+    const item = managementNotifications(payload, role).find(entry => entry.kind === 'email')
+    assert.equal(item.count, 80)
+    assert.match(item.description, /Students are enrolled/)
+    assert.match(item.description, /automatically/)
+    const url = new URL(item.to, 'https://example.invalid')
+    assert.equal(url.searchParams.get('batch_id'), '7')
+    assert.equal(url.searchParams.get('emails'), '1')
+    assert.ok(url.pathname.startsWith(`/${role}/`))
+  }
+})
+
 test('missing data and genuinely empty action queues remain distinct at the caller', () => {
   assert.deepEqual(managementNotifications(null, 'admin'), [])
   assert.deepEqual(managementNotifications({ summary: {}, students: [] }, 'admin'), [])

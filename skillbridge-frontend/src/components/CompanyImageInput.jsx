@@ -39,9 +39,9 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
   }
   return <div className="space-y-2.5">
     <label htmlFor={id} className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
-      Company image <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+      Partner image <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
     </label>
-    <div role="group" aria-label="Company image upload"
+    <div role="group" aria-label="Partner image upload"
       onDragOver={event => {
         event.preventDefault()
         if (!disabled) setDragging(true)
@@ -54,7 +54,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
         setDragging(false)
         if (disabled) return
         if (event.dataTransfer.files.length > 1) {
-          onChange({ ...value, error: 'Choose one company image at a time.' })
+          onChange({ ...value, error: 'Choose one partner image at a time.' })
           return
         }
         selectFile(event.dataTransfer.files[0])
@@ -70,13 +70,13 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
       {hasImage && <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
         <CompanyImage name={name} imageUrl={displayUrl} className="h-14 w-14 rounded-lg" loading="eager" />
         <div className="min-w-0 flex-1">
-          <p title={value.file?.name} className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">{value.file?.name || 'Current company logo'}</p>
+          <p title={value.file?.name} className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">{value.file?.name || 'Current partner logo'}</p>
           {value.file ? <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
             <span>{value.file.size < 1024 * 1024 ? `${Math.max(1, Math.round(value.file.size / 1024))} KB` : `${(value.file.size / (1024 * 1024)).toFixed(1)} MB`}</span>
             <span className={`inline-flex items-center gap-1.5 font-medium ${value.error ? 'text-gray-500 dark:text-gray-400' : 'text-green-700 dark:text-green-400'}`}>
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />{value.error ? 'Previous selection kept' : 'Ready to save'}
             </span>
-          </div> : <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Currently displayed on your company profile</p>}
+          </div> : <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Currently displayed on your partner profile</p>}
         </div>
         <button type="button" aria-label="Remove image" title="Remove image" disabled={disabled} onClick={() => reset('remove')}
           className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-rose-300">
@@ -108,7 +108,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
       </div>}
     </div>
     <p id={`${id}-help`} className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
-      Company images are publicly visible.
+      Partner images are publicly visible.
     </p>
     {value.error && <p id={`${id}-error`} role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{value.error}</p>}
   </div>

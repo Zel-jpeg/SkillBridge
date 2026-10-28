@@ -4,9 +4,10 @@ import DataSection from '../../components/DataSection'
 // All data + logic now in useEnrolledStudents.js
 // Modals now in components/instructor/ and components/admin/
 
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
+const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
 import PreviouslyUnenrolled, { EnrollmentRecoveryFilters } from '../../components/enrollment/EnrollmentRecovery'
-import { useNavigate }         from 'react-router-dom'
+import { useLocation, useNavigate }         from 'react-router-dom'
 import StudentModal            from '../../components/instructor/StudentModal'
 import StudentPerformanceCard from '../../components/StudentPerformanceCard'
 import EnrollModal             from '../../components/instructor/EnrollModal'
@@ -16,6 +17,10 @@ import { useEnrolledStudents } from '../../hooks/instructor/useEnrolledStudents'
 import Avatar                  from '../../components/Avatar'
 import StatusBadge             from '../../components/StatusBadge'
 import PlacementStatusCard      from '../../components/placements/PlacementStatusCard'
+import ActionMenu from '../../components/ActionMenu'
+import { MailIcon, MoreHorizontalIcon } from '../../components/Icons'
+import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
+import './studentRosterToolbar.css'
 
 // ── Page-scoped icons ─────────────────────────────────────────────
 const ArchiveIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -24,6 +29,7 @@ const PlusIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const TrashIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
 const GridIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
 const ListIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+const headerButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
 
 
 function scoreColor(pct) {
@@ -41,7 +47,13 @@ function avg(scores) {
 
 export default function EnrolledStudents() {
   const navigate = useNavigate()
+  const emailLocation = useLocation()
   const [enrollment, setEnrollment] = useState('enrolled')
+  const [showEmails, setShowEmails] = useState(false)
+  const [closedEmailKey, setClosedEmailKey] = useState(null)
+  const emailParams = new URLSearchParams(emailLocation.search)
+  const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
+  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0 && closedEmailKey !== emailLocation.key
   const {
     instructor,
     batches, activeBatchId, setActiveBatchId, initialBatchPending, initialRosterPending,
@@ -78,6 +90,7 @@ export default function EnrolledStudents() {
           onCancel={() => setConfirmRemove(null)}
         />
       )}
+      {(showEmails || emailRouteOpen) && (emailRouteOpen || activeBatchId) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : activeBatchId} batchId={emailRouteOpen ? routeEmailId : activeBatchId} onClose={() => { setShowEmails(false); setClosedEmailKey(emailLocation.key) }} /></Suspense>}
       {showModal && <EnrollModal batchId={activeBatchId} onClose={() => setShowModal(false)} onEnrolled={handleEnroll} />}
       {selectedStudent && <StudentModal student={selectedStudent} instructorName={instructor.name} isArchived={isArchived} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
 
@@ -151,6 +164,7 @@ export default function EnrolledStudents() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {activeBatchId && <button className={headerButton} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>}
             {!isArchived && !activeBatch && (
                 <button onClick={() => setShowNewBatch(true)}
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
@@ -159,20 +173,14 @@ export default function EnrolledStudents() {
             )}
             {!isArchived && activeBatch && (
               <>
+                <button onClick={() => navigate('/instructor/assessment/create')} className={headerButton}><PlusIcon />New assessment</button>
                 <button disabled={initialBatchPending} onClick={() => setShowModal(true)}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+                  className="flex min-h-11 items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2.5"/><line x1="19" y1="8" x2="19" y2="14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><line x1="22" y1="11" x2="16" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
                   Enroll students
                 </button>
-                <button onClick={() => navigate('/instructor/assessment/create')}
-                  className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                  New assessment
-                </button>
-                <button disabled={initialBatchPending} onClick={() => setShowArchiveConf(true)}
-                  className="flex items-center gap-1.5 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-700 dark:text-amber-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
-                  <ArchiveIcon /> Archive batch
-                </button>
+                <ActionMenu label="Batch actions" className={headerButton} disabled={initialBatchPending}
+                  items={[{ id: 'archive', label: 'Archive batch', icon: <ArchiveIcon />, danger: true }]} onAction={() => setShowArchiveConf(true)}><MoreHorizontalIcon /></ActionMenu>
               </>
             )}
             {isArchived && (
@@ -199,6 +207,7 @@ export default function EnrolledStudents() {
         </div>
 
 
+<BatchEmailProgress key={`email-progress-${activeBatchId}`} batchId={activeBatchId} onView={() => setShowEmails(true)} />
 <DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="roster-stats" count={8} label="Loading batch totals">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -222,33 +231,44 @@ export default function EnrolledStudents() {
 
 </DataSection>
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-0 sm:min-w-56">
+        <section className="sb-roster-toolbar" aria-label="Student filters">
+          <div className="sb-roster-primary">
+          <label className="sb-roster-field">
+            <span>Search students</span>
+            <span className="relative block">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, ID, or email…"
-              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-green-500 transition-colors" />
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
+              className="min-h-11 w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-green-500 focus-visible:ring-2 focus-visible:ring-green-500 transition-colors" />
+            </span>
+          </label>
+          <div className="sb-roster-field" role="group" aria-labelledby="roster-course-label">
+            <span id="roster-course-label">Course</span>
+            <div className="flex min-h-11 items-center gap-1.5 flex-wrap">
             {[{v:'all',l:'All courses'},{v:'BSIT',l:'BSIT'},{v:'BSIS',l:'BSIS'}].map(f => (
-              <button key={f.v} onClick={() => { setCourse(f.v); setPage(1) }}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${course===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
+              <button key={f.v} type="button" aria-pressed={course === f.v} onClick={() => { setCourse(f.v); setPage(1) }}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${course===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
+            </div>
           </div>
-          {enrollment === 'enrolled' && <div className="flex flex-wrap items-center gap-1.5">
+          <EnrollmentRecoveryFilters className="sb-roster-recovery" enrollment={enrollment} onEnrollment={value => { setEnrollment(value); setStatus('all'); setPage(1) }} account={accountStatus} onAccount={setAccountStatus} />
+          </div>
+          <div className="sb-roster-secondary">
+          {enrollment === 'enrolled' && <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Student progress and placement">
             {[{v:'all',l:'All'},{v:'completed',l:'Complete'},{v:'pending',l:'In progress'},{v:'stopped',l:'Stopped / flagged'},{v:'retake',l:'Retake approved'},{v:'unlocked',l:'Recommendations unlocked'},{v:'unplaced',l:'Unplaced'},{v:'placed',l:'Placed'}].map(f => (
-              <button key={f.v} onClick={() => { setStatus(f.v); setPage(1) }}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${status===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
+              <button key={f.v} type="button" aria-pressed={status === f.v} onClick={() => { setStatus(f.v); setPage(1) }}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${status===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
             ))}
           </div>}
-          <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-auto">
+          <div className="sb-roster-view-tools">
+          <div role="group" aria-label="Student view" className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
             {[{v:'grid',Icon:GridIcon},{v:'list',Icon:ListIcon}].map(vi => (
-              <button key={vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
+              <button key={vi.v} type="button" aria-pressed={view === vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
             ))}
           </div>
-          {enrollment === 'enrolled' && <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} students`}</p>}
-        </div>
-
-<EnrollmentRecoveryFilters enrollment={enrollment} onEnrollment={value => { setEnrollment(value); setStatus('all') }} account={accountStatus} onAccount={setAccountStatus} />
+          {enrollment === 'enrolled' && <p role="status" className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} ${filtered.length === 1 ? 'student' : 'students'}`}</p>}
+          </div>
+          </div>
+        </section>
 {enrollment === 'unenrolled' && viewedBatch ? <PreviouslyUnenrolled key={activeBatchId} batch={viewedBatch} search={search} course={course} account={accountStatus} view={view} onChanged={handleEnroll} /> : <DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
         {/* Empty state */}
         {filtered.length === 0 ? (

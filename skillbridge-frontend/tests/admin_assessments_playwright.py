@@ -174,8 +174,14 @@ with sync_playwright() as p:
     fixture = Fixture(browser)
     page = fixture.open()
     expect(page.get_by_role('button', name='Card view')).to_have_attribute('aria-pressed', 'true')
-    expect(page.get_by_role('article')).to_have_count(10)
+    expect(page.get_by_role('article')).to_have_count(4)
     card = page.get_by_role('article').first
+    expect(card.locator('.ac-metrics').get_by_text('Questions', exact=True)).to_be_visible()
+    expect(card.locator('.ac-metrics').get_by_text('Submitted', exact=True)).to_be_visible()
+    expect(card.locator('.ac-metrics').get_by_text('/ 23', exact=True)).to_be_visible()
+    expect(card.get_by_text('Completion', exact=True)).to_be_visible()
+    expect(card.get_by_role('progressbar')).to_have_attribute('aria-valuenow', '43.5')
+    expect(card.locator('.ac-schedule')).to_contain_text('Due Nov 10, 2026')
     assert 'View details' not in card.inner_text()
     card.click(position={'x': card.bounding_box()['width'] - 8, 'y': card.bounding_box()['height'] - 8})
     expect(details(page).get_by_role('heading', name='Assessment 27 — Database foundations')).to_be_visible()
@@ -195,35 +201,57 @@ with sync_playwright() as p:
     expect(card.get_by_text('Security', exact=True)).not_to_be_visible()
     expect(page.locator('dialog[open]')).to_have_count(0)
     checks.append('Whole-card click, native Enter/Space activation, card focus restoration, independent category disclosure and no View details text')
-    expect(page.get_by_text('Showing 1–10 of 27', exact=True)).to_be_visible()
+    expect(page.get_by_text('Showing 1–4 of 27', exact=True)).to_be_visible()
     fixture.shot('desktop-cards')
     page.get_by_role('button', name='Next →').click()
-    expect(page.get_by_text('Showing 11–20 of 27', exact=True)).to_be_visible()
+    expect(page.get_by_text('Showing 5–8 of 27', exact=True)).to_be_visible()
     page.get_by_role('button', name='List view').click()
-    expect(page.locator('tbody tr')).to_have_count(10)
-    expect(page.get_by_text('Showing 11–20 of 27', exact=True)).to_be_visible()
+    expect(page.locator('tbody tr')).to_have_count(4)
+    expect(page.get_by_text('Showing 5–8 of 27', exact=True)).to_be_visible()
     page.get_by_role('button', name='Next →').click()
-    expect(page.locator('tbody tr')).to_have_count(7)
-    fixture.records = fixture.records[:11]
+    expect(page.locator('tbody tr')).to_have_count(4)
+    fixture.records = fixture.records[:5]
     fixture.refresh()
-    expect(page.get_by_text('Showing 11–11 of 11', exact=True)).to_be_visible()
+    expect(page.get_by_text('Showing 5–5 of 5', exact=True)).to_be_visible()
     fixture.records = [assessment(i) for i in range(1, 28)]
     fixture.refresh()
-    expect(page.get_by_text('Showing 11–20 of 27', exact=True)).to_be_visible()
+    expect(page.get_by_text('Showing 5–8 of 27', exact=True)).to_be_visible()
     page.get_by_role('searchbox', name='Search assessments').fill('Alex')
-    expect(page.get_by_text('Showing 1–10 of 14', exact=True)).to_be_visible()
+    expect(page.get_by_text('Showing 1–4 of 14', exact=True)).to_be_visible()
     page.get_by_label('All batches', exact=True).select_option('2')
     assert page.get_by_label('All batches', exact=True).locator('option').count() == 3
     page.get_by_role('group', name='Publication status').get_by_role('button', name=re.compile('^Published')).click()
-    expect(page.locator('tbody tr')).to_have_count(5)
+    expect(page.locator('tbody tr')).to_have_count(4)
     page.get_by_role('button', name=re.compile('More filters')).click()
     page.get_by_label('Requirement', exact=True).select_option('required')
     page.get_by_label('Category', exact=True).select_option('Database')
-    expect(page.locator('tbody tr')).to_have_count(5)
+    expect(page.locator('tbody tr')).to_have_count(4)
     expect(page.get_by_label('Global assessment totals').get_by_text('27', exact=True)).to_be_visible()
+    page.get_by_label('Completion', exact=True).select_option('complete')
+    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
+    page.get_by_label('Completion', exact=True).select_option('incomplete')
+    expect(page.locator('tbody tr')).to_have_count(4)
+    page.get_by_label('Competency inclusion', exact=True).select_option('excluded')
+    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
+    page.get_by_label('Competency inclusion', exact=True).select_option('included')
+    page.get_by_label('Availability', exact=True).select_option('closed')
+    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
+    page.get_by_label('Availability', exact=True).select_option('available')
+    page.get_by_label('All instructors', exact=True).select_option('Sam Cruz')
+    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
+    page.get_by_label('All instructors', exact=True).select_option('Alex Rivera')
+    expect(page.locator('tbody tr')).to_have_count(4)
     page.get_by_role('button', name='Clear all', exact=True).click()
     page.get_by_role('button', name=re.compile('More filters')).click()
     fixture.shot('desktop-list')
+    # A non-button cell opens the same dialog; category disclosure stays independent.
+    row = page.locator('tbody tr').first
+    row.locator('td').nth(1).click()
+    expect(details(page).get_by_role('heading', name='Assessment 27 — Database foundations')).to_be_visible()
+    page.keyboard.press('Escape')
+    expect(row.get_by_role('button', name='View details for Assessment 27 — Database foundations')).to_be_focused()
+    expect(row).to_contain_text('12 of 23 submitted')
+    expect(row).to_contain_text('10 completed')
     page.locator('tbody tr').first.get_by_role('button', name='Show 2 more categories', exact=True).click()
     expect(page.locator('tbody').get_by_text('Security', exact=True).first).to_be_visible()
     checks.append('Both views: pagination, stable ordering, live clamping, combined filters, global counts, batch deduplication, category disclosure')
@@ -299,7 +327,7 @@ with sync_playwright() as p:
 
     fixture.hold_roster = True
     tab(page, 'Students & attempts')
-    expect(details(page).get_by_role('status', name='Loading assessments')).to_be_visible()
+    expect(details(page).get_by_role('status', name='Loading enrolled students')).to_be_visible()
     fixture.shot('modal-loading-students')
     fixture.hold_roster = False
     fixture.pending_roster.fulfill(status=503, json={'error': 'Synthetic roster failure'})
@@ -328,7 +356,7 @@ with sync_playwright() as p:
     assert not any(path.endswith('/questions/') for _, path in fixture.calls)
     fixture.hold_questions = True
     details(page).get_by_role('button', name='View authorized answer key', exact=True).click()
-    expect(details(page).get_by_role('status', name='Loading assessments')).to_be_visible()
+    expect(details(page).get_by_role('status', name='Loading authorized questions')).to_be_visible()
     fixture.shot('modal-loading-questions')
     fixture.hold_questions = False
     fixture.pending_questions.fulfill(status=503, json={'error': 'Synthetic key failure'})
@@ -380,7 +408,7 @@ with sync_playwright() as p:
     assert page.evaluate('document.body.style.overflow') == ''
     for width in [375, 768, 1440]:
         page.set_viewport_size({'width': width, 'height': 900})
-        for view in ['Card view', 'List view']:
+        for view in (['Card view', 'List view'] if width >= 640 else []):
             page.get_by_role('button', name=view, exact=True).click()
             geometry(page)
             if width == 375:
@@ -445,12 +473,12 @@ with sync_playwright() as p:
         if fail:
             expect(page.get_by_text('Server is unavailable. Check your connection.', exact=True).first).to_be_visible()
             fixture.fail = False
-            page.get_by_role('button', name='Retry', exact=True).click()
-            expect(page.get_by_role('article')).to_have_count(10)
+            page.get_by_role('button', name='Retry', exact=True).evaluate('(button) => button.click()')
+            expect(page.get_by_role('article')).to_have_count(4)
             fixture.fail = True
             fixture.refresh()
             expect(page.get_by_text('Could not refresh. Showing the last loaded assessments.', exact=True)).to_be_visible()
-            expect(page.get_by_role('article')).to_have_count(10)
+            expect(page.get_by_role('article')).to_have_count(4)
         else:
             expect(page.get_by_role('heading', name='No assessments yet')).to_be_visible()
         fixture.close()
@@ -463,7 +491,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='List view').click()
     expect(page.get_by_role('status', name='Loading assessments').last).to_be_visible()
     fixture.shot('loading-list')
-    expect(page.locator('tbody tr')).to_have_count(10)
+    expect(page.locator('tbody tr')).to_have_count(4)
     fixture.close()
     checks.append('Initial layout skeletons in both views, no false zero stats, initial failure/retry, last-good content on background errors and empty collection')
     browser.close()

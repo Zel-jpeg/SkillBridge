@@ -101,7 +101,7 @@ export function CollectionSkeleton({ view = 'grid', kind = 'student', columns = 
 
 export function InsightsSkeleton({ tab }) {
   return <div className={`sk-insights sk-insights-${tab}`}>
-    <div className="sk-pair">{(tab === 'skills' ? ['Skill results by category', 'Best current company match'] : tab === 'placements' ? ['Student placement progress', 'Approved placements by company'] : ['Required completion by batch', 'Assessment attempt status']).map((title, index) => <section key={title} className="sk-insight-panel"><h3>{title}</h3><ContentSkeleton layout={tab === 'skills' || tab === 'placements' && index === 1 ? 'table' : tab === 'placements' ? 'placement-progress' : index === 0 ? 'batch-completion' : 'attempt-status'} count={4} label={`Loading ${title.toLowerCase()}`} /></section>)}</div>
+    <div className="sk-pair">{(tab === 'skills' ? ['Skill results by category', 'Best current partner match'] : tab === 'placements' ? ['Student placement progress', 'Approved placements by partner'] : ['Required completion by batch', 'Assessment attempt status']).map((title, index) => <section key={title} className="sk-insight-panel"><h3>{title}</h3><ContentSkeleton layout={tab === 'skills' || tab === 'placements' && index === 1 ? 'table' : tab === 'placements' ? 'placement-progress' : index === 0 ? 'batch-completion' : 'attempt-status'} count={4} label={`Loading ${title.toLowerCase()}`} /></section>)}</div>
     {tab === 'placements' && <section className="sk-insight-panel"><h3>Shared position slots</h3><ContentSkeleton layout="table" count={4} label="Loading position slots" /></section>}
   </div>
 }

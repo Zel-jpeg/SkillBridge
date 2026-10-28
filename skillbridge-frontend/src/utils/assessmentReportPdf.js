@@ -34,7 +34,7 @@ export function studentCompetencySections(row) {
       `${Number(rec.location_score_component).toFixed(1)}%`,
     ]),
     placement: placement.status === 'approved'
-      ? `Approved: ${placement.company?.name || 'Company unavailable'} - ${placement.position?.title || 'Position unavailable'}`
+      ? `Approved: ${placement.company?.name || 'Partner unavailable'} - ${placement.position?.title || 'Position unavailable'}`
       : (placement.status || 'unplaced').replaceAll('_', ' '),
   }
 }
@@ -104,8 +104,8 @@ export function buildAssessmentReportPdf(payload, filters, jsPDF, autoTable) {
       }
       section(`Final ranked recommendations - ${s.recommendationState}`)
       if (s.recommendationState.startsWith('Locked')) paragraph('Recommendations are locked. No current rankings are shown.')
-      else table(['Rank', 'Company', 'Position', 'Match', 'Category', 'NLP', 'Location'],
-        s.recommendations.length ? s.recommendations : [['', 'No eligible company positions', '', '', '', '', '']],
+      else table(['Rank', 'Partner', 'Position', 'Match', 'Category', 'NLP', 'Location'],
+        s.recommendations.length ? s.recommendations : [['', 'No eligible partner positions', '', '', '', '', '']],
         { columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 58 }, 2: { cellWidth: 80 }, 3: { cellWidth: 24 }, 4: { cellWidth: 30 }, 5: { cellWidth: 30 }, 6: { cellWidth: 36 } } })
     })
   } else if (payload.report_type === 'assessment_completion') {

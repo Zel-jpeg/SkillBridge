@@ -61,7 +61,7 @@ with sync_playwright() as p:
         expected = controls['filtered']['filters']
         field('Report type').select_option('company_placements')
         field('Status').select_option('approved')
-        field('Company').select_option(str(expected['company_id']))
+        field('Partner').select_option(str(expected['company_id']))
         field('Batch').select_option(str(expected['batch_id']))
         field('Date field').select_option('approved_at')
         field('Date from').fill('2026-10-18')
@@ -72,7 +72,7 @@ with sync_playwright() as p:
             download.value.save_as(OUT / f'filtered.{format.lower()}')
         assert len(requests) == 8
         checks.append('Batch/company/status/Philippine-date controls retained in both filtered downloads, independent of browser timezone')
-        field('Company').select_option('')
+        field('Partner').select_option('')
         field('Batch').select_option('')
         field('Status').select_option('all')
         field('Report type').select_option('student_placements')

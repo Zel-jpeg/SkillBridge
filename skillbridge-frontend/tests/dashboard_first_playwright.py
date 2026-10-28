@@ -251,12 +251,12 @@ async def priority_and_visibility(browser, checks):
     await fixture.click(page)
     await page.wait_for_url('**/instructor/dashboard')
     await fixture.wait_started(OPTIONAL['instructor'], 2)
-    await page.get_by_role('link', name='Companies', exact=True).click()
+    await page.get_by_role('link', name='OJT Partners', exact=True).click()
     await fixture.wait_started(['/api/instructor/companies/'], 1)
     company = next(event for event in fixture.events if event['path'] == '/api/instructor/companies/')
     earlier = [event for event in fixture.events if event['path'] in ['/api/instructor/batches/', '/api/instructor/assessments/']][:2]
     assert all(event['end'] is None or company['start'] < event['end'] for event in earlier)
-    await expect(page.get_by_role('heading', name='Partner Companies', exact=True)).to_be_visible()
+    await expect(page.get_by_role('heading', name='OJT Partners', exact=True)).to_be_visible()
     checks.append('Selected page begins its data request ahead of unrelated warming reads')
     await context.close()
 

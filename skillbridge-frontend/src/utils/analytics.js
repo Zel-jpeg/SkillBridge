@@ -60,15 +60,15 @@ export function selectAnalyticsStudents(data, tab, group, search = '') {
 
 // All table exports use the already displayed snapshot, never a second GET.
 export function analyticsTable(data, tab, group, students) {
-  if (group === 'geography') return { title: 'Residence and company-area comparison', columns: ['Area', 'Selected student residents', 'Unplaced selected student residents', 'Approved deployments to companies', 'Companies with configured positions', 'Shared configured slots', 'Shared remaining slots'], rows: data.geography.map(row => [row.name, row.residents, row.unplaced_residents, row.approved_deployments, row.companies, row.total_slots, row.remaining_slots]) }
-  if (group === 'capacity') return { title: 'Shared position capacity', columns: ['Company', 'Position', 'Company area', 'Configured slots', 'Approved assignments', 'Remaining slots'],
+  if (group === 'geography') return { title: 'Residence and partner-area comparison', columns: ['Area', 'Selected student residents', 'Unplaced selected student residents', 'Approved deployments to partners', 'Partners with configured positions', 'Shared configured slots', 'Shared remaining slots'], rows: data.geography.map(row => [row.name, row.residents, row.unplaced_residents, row.approved_deployments, row.companies, row.total_slots, row.remaining_slots]) }
+  if (group === 'capacity') return { title: 'Shared position capacity', columns: ['Partner', 'Position', 'Partner area', 'Configured slots', 'Approved assignments', 'Remaining slots'],
     rows: data.capacity.map(row => [row.company, row.name, row.area, row.total, row.occupied, row.remaining]) }
   if (group === 'assessments') return { title: 'Assessment completion', columns: ['Assessment', 'Batch', 'Publication', 'Assigned', 'Valid submitted', 'In progress', 'Not started', 'Stopped / flagged', 'Retakes approved'],
     rows: data.assessments.map(row => [row.name, row.batch, row.publication_status, row.assigned, row.submitted, row.in_progress, row.not_started, row.stopped, row.retake_approved]) }
   if (group === 'activity') return { title: 'Recorded submission activity', columns: [data.scope?.activity_interval === 'month' ? 'Philippine month' : data.scope?.activity_interval === 'year' ? 'Philippine year' : 'Philippine date', 'Valid submitted attempts'], rows: data.activity.map(row => [data.scope?.activity_interval === 'month' ? row.date.slice(0, 7) : data.scope?.activity_interval === 'year' ? row.date.slice(0, 4) : row.date, row.submissions]) }
   if (group === 'skills') return { title: 'Combined skill distribution', columns: ['Category', 'Students with evidence', 'Missing / locked', 'Strong', 'Fair', 'Needs work', 'Mean of final student percentages'], rows: data.skills.map(row => [row.name, row.sample, row.missing, row.strong, row.fair, row.needs_work, row.average]) }
   return { title: tab === 'placements' ? 'Placement records' : tab === 'skills' ? 'Student competency records' : 'Student progress and follow-up',
-    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved company', 'Approved position', 'Best current match %', 'Follow-up reasons', 'Top recommended position', 'Top recommended company', ...(tab === 'skills' ? data.skills.map(row => `${row.name} %`) : [])],
+    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved partner', 'Approved position', 'Best current match %', 'Follow-up reasons', 'Top recommended position', 'Top recommended partner', ...(tab === 'skills' ? data.skills.map(row => `${row.name} %`) : [])],
     rows: students.map(row => [row.name, row.school_id, row.course, row.batch, row.instructor, `${row.required_completed}/${row.required_total}`, row.recommendations_locked ? 'Locked / unavailable' : 'Current', row.placement_status.replaceAll('_', ' '), row.company, row.position, row.top_match, row.reasons.join('; '), row.top_position || null, row.top_company || null, ...(tab === 'skills' ? data.skills.map(skill => row.scores[skill.id] ?? null) : [])]) }
 }
 
@@ -77,13 +77,13 @@ export function analyticsSelectionLabel(data, group) {
   const [kind, id, state] = group.split(':')
   const states = { submitted: 'Valid submitted', in_progress: 'In progress', not_started: 'Not started', stopped: 'Stopped / flagged', strong: 'Strong', fair: 'Fair', needs_work: 'Needs work' }
   if (kind === 'reason') return group.slice(7)
-  if (kind === 'band') return ({ Strong: 'Strong fit · best current company match', Fair: 'Fair fit · best current company match', Low: 'Low fit · best current company match', 'No current match': 'No current recommendation', Locked: 'Final results locked' })[group.slice(5)] || 'Selected company match group'
+  if (kind === 'band') return ({ Strong: 'Strong fit · best current partner match', Fair: 'Fair fit · best current partner match', Low: 'Low fit · best current partner match', 'No current match': 'No current recommendation', Locked: 'Final results locked' })[group.slice(5)] || 'Selected partner match group'
   if (kind === 'skill') return `${data.skills.find(row => String(row.id) === id)?.name || 'Selected category'} · ${states[state] || 'All evidence'}`
   if (kind === 'attempt') return `${data.assessments.find(row => String(row.id) === id)?.name || 'Selected assessment'} · ${states[state] || 'All attempts'}`
   if (kind === 'batch') return data.options.batches.find(row => String(row.id) === id)?.name || 'Selected batch'
-  if (kind === 'company') return data.options.companies.find(row => String(row.id) === id)?.name || 'Selected company'
-  if (kind === 'area') return `Company area: ${group.slice(5)}`
-  if (group === 'geography') return 'Selected student residence counts are separate from company deployment and shared capacity'
+  if (kind === 'company') return data.options.companies.find(row => String(row.id) === id)?.name || 'Selected partner'
+  if (kind === 'area') return `Partner area: ${group.slice(5)}`
+  if (group === 'geography') return 'Selected student residence counts are separate from partner deployment and shared capacity'
   return ({ complete: 'Required assessments complete', incomplete: 'Incomplete required assessments', followup: 'Students needing follow-up', awaiting: 'Awaiting placement review', approved: 'Approved in selected batches', approved_other_batch: 'Approved in another batch', unplaced: 'Unplaced', capacity: 'Shared position capacity', assessments: 'Assessment completion', skills: 'Combined skill distribution', activity: 'Recorded submission activity' })[group] || 'Selected records'
 }
 
@@ -92,8 +92,8 @@ export function analyticsFilterText(data) {
   const lookup = (collection, id) => data.options[collection].find(row => row.id === id)?.name || 'All'
   return [`Batch status: ${scope.batch_status}`, `Course: ${scope.course || 'All'}`,
     `Instructor: ${lookup('instructors', scope.instructor_id)}`, `Assessment analysis: ${lookup('assessments', scope.assessment_id)}`,
-    `Approved company: ${lookup('companies', scope.company_id)}`, `Approved position: ${lookup('positions', scope.position_id)}`,
-    `Company area: ${scope.area || 'All'}`].join('; ')
+    `Approved partner: ${lookup('companies', scope.company_id)}`, `Approved position: ${lookup('positions', scope.position_id)}`,
+    `Partner area: ${scope.area || 'All'}`].join('; ')
 }
 
 export function csvCell(value) {

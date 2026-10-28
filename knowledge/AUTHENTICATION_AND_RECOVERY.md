@@ -1,5 +1,10 @@
 # Authentication and account recovery contract
 
+28 October notification follow-up: account and enrollment emails now use the
+shared [durable outbox](ENROLLMENT_EMAIL_DELIVERY.md). Provider acceptance is not
+delivery, and delivery is not a student acceptance/login requirement. The worker,
+migration 0027 and hosted webhook setup are separate from Google authentication.
+
 ## Login background presentation
 
 Both public sign-in screens share
@@ -80,6 +85,12 @@ mail service. `email_queued` reports enqueueing; compatibility `email_sent` stay
 false because queue admission cannot confirm delivery. The UI says queued or
 unavailable and still identifies the supported Google sign-in path. Verification
 uses mocks and does not send real messages.
+
+The 28 October instructor follow-up handles concurrent email/ID collisions as
+409 conflicts after rolling back the failed account insertion, preserving one
+account and one welcome notice. The creation form normalizes email before
+validation/submission and uses the shared accessible dialog with pending-save
+guards. See the [instructor onboarding audit and fix verification](INSTRUCTOR_ONBOARDING_AUDIT.md).
 
 Local evidence is tracked by A07 in the single continuous-development checklist:
 `api.test_auth_contract`, `api.test_auth_deadlines`, enrollment/image regressions

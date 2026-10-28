@@ -47,11 +47,11 @@ export default function SkillsInsights({ data, selection, onSelect }) {
       {rows.length > 0 && <p className="si-helper">Each row totals {data.summary.students} {data.summary.students === 1 ? 'student' : 'students'}. A student may appear in several skill categories.</p>}
       <footer className="si-footer"><button type="button" className="si-table-action" onClick={() => onSelect('skills')}><ReportIcon size={16} />View category table</button><div><p>Select a score-band count to view its students.</p><p>Unavailable is not a zero score.</p></div></footer>
     </section>
-    <section className="si-panel" aria-label="Current company matches">
-      <header className="si-header"><span className="si-icon" aria-hidden="true"><CompanyIcon size={23} /></span><div><h3>Current company matches</h3><p>Each student counts once, using their highest current recommendation match.</p></div></header>
+    <section className="si-panel" aria-label="Current partner matches">
+      <header className="si-header"><span className="si-icon" aria-hidden="true"><CompanyIcon size={23} /></span><div><h3>Current partner matches</h3><p>Each student counts once, using their highest current recommendation match.</p></div></header>
       <div className="si-match-group"><div className="si-match-heading"><h4>With a current match</h4><span className="si-badge">{withMatch} {withMatch === 1 ? 'student' : 'students'}</span></div>{matchBands.map(band => <MatchRow key={band.key} band={band} count={counts.get(band.key) ?? 0} selection={selection} onSelect={onSelect} />)}</div>
       <div className="si-match-group si-match-group-neutral"><div className="si-match-heading"><h4>Without a current match</h4><span className="si-badge">{withoutMatch} {withoutMatch === 1 ? 'student' : 'students'}</span></div>{unavailableBands.map(band => <MatchRow key={band.key} band={band} count={counts.get(band.key) ?? 0} selection={selection} onSelect={onSelect} />)}</div>
-      <p className="si-helper si-approval-note">A company match supports review. Placement still needs approval.</p>
+      <p className="si-helper si-approval-note">A partner match supports review. Placement still needs approval.</p>
     </section>
   </div>
 }

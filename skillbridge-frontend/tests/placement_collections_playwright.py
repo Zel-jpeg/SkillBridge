@@ -86,7 +86,7 @@ class Fixture:
     def open(self):
         self.page.goto(BASE + f'/{self.role}/placements')
         self.page.wait_for_load_state('networkidle')
-        expect(self.page.get_by_role('button', name='Open company QA Company 01', exact=True)).to_be_visible()
+        expect(self.page.get_by_role('button', name='Open partner QA Company 01', exact=True)).to_be_visible()
         return self.page
 
     def refresh(self, url):
@@ -120,12 +120,12 @@ def run_checks():
                 page.set_viewport_size({'width': width, 'height': height})
                 for dark in [False, True]:
                     page.evaluate('dark => document.documentElement.classList.toggle("dark", dark)', dark)
-                    for name, key in [('Companies', 'companies'), (re.compile('^Awaiting allocation'), 'awaiting'), ('Decision history', 'history')]:
+                    for name, key in [('Partners', 'companies'), (re.compile('^Awaiting allocation'), 'awaiting'), ('Decision history', 'history')]:
                         choose(page, name)
                         geometry(page)
                         if key == 'companies':
                             expect(page.locator('.pl-company')).to_have_count(10)
-                            card = page.get_by_role('button', name='Open company QA Company 01', exact=True)
+                            card = page.get_by_role('button', name='Open partner QA Company 01', exact=True)
                             expect(card.get_by_text('3 approved', exact=True)).to_be_visible()
                             expect(card.get_by_text('3 suggested', exact=True)).to_be_visible()
                             expect(card.get_by_text('2 available', exact=True)).to_be_visible()
@@ -141,8 +141,8 @@ def run_checks():
                             page.screenshot(path=str(OUT / f'{role}-{key}-{width}.png'), full_page=True)
                     checks.append(f'{role} {width}x{height} {dark=}: all three collections, capacity proportions, explicit zero/missing snapshots and geometry')
             page.set_viewport_size({'width': 1366, 'height': 1000})
-            choose(page, 'Companies')
-            page.get_by_role('navigation', name='companies pages').get_by_role('button', name='2', exact=True).click()
+            choose(page, 'Partners')
+            page.get_by_role('navigation', name='partners pages').get_by_role('button', name='2', exact=True).click()
             expect(page.locator('.pl-company')).to_have_count(3)
             f.company_limit = 2
             f.refresh('/api/placements/suggestions/?include_history=true&include_placed=true')
@@ -150,15 +150,15 @@ def run_checks():
             f.company_limit = 13
             f.refresh('/api/placements/suggestions/?include_history=true&include_placed=true')
             expect(page.locator('.pl-company')).to_have_count(10)
-            expect(page.get_by_role('button', name='Open company QA Company 01', exact=True)).to_be_visible()
+            expect(page.get_by_role('button', name='Open partner QA Company 01', exact=True)).to_be_visible()
             page.get_by_label('Search', exact=True).fill('QA Company 13')
             expect(page.locator('.pl-company')).to_have_count(1)
             page.get_by_role('button', name='Clear filters', exact=True).click()
-            page.get_by_role('button', name='Open company QA Company 01', exact=True).click()
+            page.get_by_role('button', name='Open partner QA Company 01', exact=True).click()
             page.get_by_role('button', name='Review candidate', exact=True).first.click()
             expect(page.get_by_role('dialog', name='Review suggested placement')).to_be_visible()
             page.keyboard.press('Escape')
-            page.get_by_role('button', name='Back to companies', exact=False).click()
+            page.get_by_role('button', name='Back to partners', exact=False).click()
             checks.append(f'{role}: company pagination/clamp/regrowth, search reset and existing position/candidate review')
 
             choose(page, re.compile('^Awaiting allocation'))

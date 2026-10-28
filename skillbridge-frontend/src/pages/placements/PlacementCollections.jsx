@@ -8,7 +8,7 @@ import { BriefcaseIcon, ChevronRightIcon, ClockIcon, ReportIcon, UserIcon, WarnI
 const states = {
   results_locked: ['Results incomplete or stale', 'Review required assessments and current finalized evidence before matching.', 'warning', ReportIcon],
   awaiting_capacity: ['Awaiting a slot', 'Current matching positions have no available suggestion slots.', 'warning', UserIcon],
-  no_current_matches: ['No current matches', 'Review competency evidence and the available company positions.', 'neutral', WarnIcon],
+  no_current_matches: ['No current matches', 'Review competency evidence and the available partner positions.', 'neutral', WarnIcon],
   awaiting_draft: ['Preparing suggestions', 'Suggestions are being prepared from the current placement inputs.', 'info', ClockIcon],
   awaiting_update: ['Updating suggestions', 'Suggestions will update when current inputs are ready.', 'info', ClockIcon],
   coordinator_review: ['Coordinator choice needs review', 'The previous coordinator choice is no longer available. Review the alternatives.', 'warning', UserIcon],
@@ -43,7 +43,7 @@ export function CompanyOverviewCard({ company, counts, suggestedInScope, address
   // Bound visual segments for legacy over-capacity records; numeric labels stay exact.
   const approvedWidth = totals.total ? Math.min(totals.approved / totals.total * 100, 100) : 0
   const suggestedWidth = totals.total ? Math.min(totals.suggested / totals.total * 100, 100 - approvedWidth) : 0
-  return <button type="button" className="pl-company" onClick={() => onOpen(company)} aria-label={`Open company ${company.name}`}>
+  return <button type="button" className="pl-company" onClick={() => onOpen(company)} aria-label={`Open partner ${company.name}`}>
     <div className="pl-company-heading"><div className="pl-identity"><CompanyImage name={company.name} imageUrl={company.image_url} className="h-11 w-11 rounded-xl" /><div><h2>{company.name}</h2><p className="pl-muted">{address || 'Address not provided'}</p><p className="pl-muted">{company.positions.length} position{company.positions.length === 1 ? '' : 's'} · {suggestedInScope} suggested in your scope</p></div></div>
       <div className="pl-company-available"><strong>{totals.available}</strong><span>available for suggestions</span></div></div>
     <div className="pl-capacity-strip" aria-hidden="true"><span className="pl-capacity-approved" style={{ width: `${approvedWidth}%` }} /><span className="pl-capacity-suggested" style={{ width: `${suggestedWidth}%` }} /></div>
@@ -88,9 +88,9 @@ export function AllocationDetails({ item, role, onClose, onReview }) {
 export function DecisionHistory({ rows, total, page, onPage, onOpen, filtered }) {
   return <>
     <section className="pl-history" aria-label="Placement decision history"><header className="pl-collection-heading"><div className="pl-history-title"><h2>Decision history</h2><span className="pl-muted">{total} decision{total === 1 ? '' : 's'}</span></div><p className="pl-muted pl-snapshot-note"><ClockIcon size={18} />Scores are snapshots from the placement decision, not current match rankings.</p></header>
-      {rows.length ? <table className="pl-history-table"><caption className="sr-only">Recorded placement decisions. Scores were saved at assignment; recorded times use Asia/Manila.</caption><thead><tr><th>Student</th><th>Company / Position</th><th>Decision</th><th>Score at decision</th><th>Recorded</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>
+      {rows.length ? <table className="pl-history-table"><caption className="sr-only">Recorded placement decisions. Scores were saved at assignment; recorded times use Asia/Manila.</caption><thead><tr><th>Student</th><th>Partner / Position</th><th>Decision</th><th>Score at decision</th><th>Recorded</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>
         {rows.map(item => <tr className="pl-history-row" key={item.id}><td data-label="Student"><PlacementIdentity student={item.student} /></td>
-          <td data-label="Company / Position"><div className="pl-identity"><CompanyImage name={item.company.name} imageUrl={item.company.image_url} className="h-9 w-9 rounded-lg" /><div><strong>{item.company.name}</strong><p className="pl-muted">{item.position.title}</p></div></div></td>
+          <td data-label="Partner / Position"><div className="pl-identity"><CompanyImage name={item.company.name} imageUrl={item.company.image_url} className="h-9 w-9 rounded-lg" /><div><strong>{item.company.name}</strong><p className="pl-muted">{item.position.title}</p></div></div></td>
           <td data-label="Decision"><span className={`pl-status pl-decision-status pl-decision-status--${item.status}`}>{decisions[item.status] || item.status}</span></td>
           <td data-label="Score at decision" className="pl-history-score">{item.match_score_at_assignment == null ? <span className="pl-muted">Manual / no score</span> : percentage(item.match_score_at_assignment)}</td>
           <td data-label="Recorded"><p>{stamp(recordedAt(item))}</p><p className="pl-muted">by {actor(item)}</p></td>
@@ -98,7 +98,7 @@ export function DecisionHistory({ rows, total, page, onPage, onOpen, filtered })
         </tr>)}
       </tbody></table> : <div className="pl-empty"><ClockIcon size={30} /><h3>{filtered ? 'No decisions match these filters' : 'No placement decisions yet'}</h3><p>{filtered ? 'Adjust the search, student scope or decision filter.' : 'Approved, declined and removed decisions will appear here after a coordinator records them.'}</p></div>}
       <CollectionPagination total={total} page={page} onPage={onPage} noun="decisions" />
-    </section><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested allocations appear under Companies until a decision is recorded.</p>
+    </section><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested allocations appear under Partners until a decision is recorded.</p>
   </>
 }
 

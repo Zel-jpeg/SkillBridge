@@ -3,6 +3,35 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('enrollment responses must confirm saved rows and accurate counts before showing success', () => {
+  const config = { method: 'post', url: '/api/instructor/batches/2/enroll/' }
+  for (const data of [{}, { rows: [], summary: { total: 0, ready: 0, enrolled: 1, notifications_queued: 1 } }]) {
+    assert.throws(() => validateApiResponse({ data, config, status: 200 }))
+  }
+  const data = { rows: [{ name: 'Synthetic Student', email: 'synthetic@example.invalid', status: 'enrolled' }],
+    summary: { total: 1, ready: 0, enrolled: 1, notifications_queued: 1 } }
+  assert.doesNotThrow(() => validateApiResponse({ data, config, status: 200 }))
+  assert.throws(() => validateApiResponse({ data, config: { ...config, url: `${config.url}preview/` }, status: 200 }))
+})
+
+test('email history rejects malformed recipients and unconfirmed email commands', () => {
+  const config = { method: 'get', url: '/api/instructor/batches/4/emails/' }
+  const data = { batch: { id: 4, status: 'active' }, rows: [], review_token: 'reviewed', service: { worker_recent: false } }
+  assert.doesNotThrow(() => validateApiResponse({ data, config, status: 200 }))
+  assert.throws(() => validateApiResponse({ data: { ...data, service: { ...data.service, waiting_count: -1 } }, config, status: 200 }))
+  assert.throws(() => validateApiResponse({ data: { ...data, service: { ...data.service, diagnostics: { worker_recent: 'yes' } } }, config, status: 200 }))
+  for (const row of [{ student_id: 3, history: [] }, { student_id: 3, enrollment_id: 2, name: 'Synthetic', email: 'student@example.invalid', eligible: true, status: 'delivered', label: 'Delivered', notice: null, history: [{}] }]) {
+    assert.throws(() => validateApiResponse({ data: { ...data, rows: [row] }, config, status: 200 }))
+  }
+  assert.throws(() => validateApiResponse({ data: { changed: true }, config: { ...config, method: 'post' }, status: 200 }))
+  const recipient = { student_id: 3, enrollment_id: 2, name: 'Synthetic', email: 'student@example.invalid', eligible: true, status: 'history_unavailable', label: 'History unavailable', notice: null, history: [] }
+  for (const photo_url of [undefined, null, '', 'https://images.example.invalid/synthetic.webp']) {
+    assert.doesNotThrow(() => validateApiResponse({ data: { ...data, rows: [{ ...recipient, photo_url }] }, config, status: 200 }))
+  }
+  assert.throws(() => validateApiResponse({ data: { ...data, rows: [{ ...recipient, photo_url: {} }] }, config, status: 200 }))
+  assert.doesNotThrow(() => validateApiResponse({ data: { changed: 1, skipped: 0, request_id: 'confirmed' }, config: { ...config, method: 'post' }, status: 200 }))
+})
+
 test('retake request and review mutations must confirm their saved state', () => {
   const requestConfig = { method: 'post', url: '/api/assessments/2/retake-request/' }
   const reviewConfig = { method: 'post', url: '/api/assessments/2/retake-requests/3/review/' }

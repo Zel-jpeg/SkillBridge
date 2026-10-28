@@ -103,7 +103,8 @@ def run_checks(browser):
     # Reassignment is tested on the original batch, with existing attempts/scores.
     page.get_by_role('button', name='Back to batches', exact=True).click()
     page.get_by_role('button', name=re.compile('^Main synthetic cohort')).click()
-    page.get_by_role('button', name='Manage batch', exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Manage batch', exact=True).click()
     dialog = page.get_by_role('dialog', name='Manage batch', exact=True)
     dialog.get_by_label('Responsible instructor', exact=True).select_option(str(AUTH['other_id']))
     dialog.get_by_role('button', name='Review batch changes', exact=True).click()
@@ -112,12 +113,18 @@ def run_checks(browser):
     path = f"/api/instructor/assessments/{AUTH['locked_id']}/questions/"
     assert api_request(context, path, identity='owner').status == 404
     assert api_request(context, path, identity='other').status == 200
-    page.get_by_role('button', name='Archive batch', exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Archive batch', exact=True).click()
     page.get_by_role('dialog', name='Archive this batch?', exact=True).get_by_role('button', name='Confirm batch status', exact=True).click()
-    expect(page.get_by_role('button', name='Reactivate batch', exact=True)).to_be_visible()
-    page.get_by_role('button', name='Reactivate batch', exact=True).click()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    expect(page.get_by_role('menuitem', name='Reactivate batch', exact=True)).to_be_visible()
+    page.keyboard.press('Escape')
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    page.get_by_role('menuitem', name='Reactivate batch', exact=True).click()
     page.get_by_role('dialog', name='Reactivate this batch?', exact=True).get_by_role('button', name='Confirm batch status', exact=True).click()
-    expect(page.get_by_role('button', name='Archive batch', exact=True)).to_be_visible()
+    page.get_by_role('button', name='Batch actions', exact=True).click()
+    expect(page.get_by_role('menuitem', name='Archive batch', exact=True)).to_be_visible()
+    page.keyboard.press('Escape')
     page.get_by_role('button', name='View action history', exact=True).click()
     expect(page.get_by_text('batch.update', exact=True).first).to_be_visible()
     checks.append('Batch reassignment transfers access and preserves history; archive/reactivation/audit work')

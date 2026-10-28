@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
+import uuid
 
 
 # ── User Manager ────────────────────────────────────────────────────────────
@@ -507,7 +509,7 @@ class OJTPlacement(models.Model):
         if self.student_id and self.student.role != 'student':
             errors['student'] = 'OJT placements can only be created for students.'
         if self.position_id and self.company_id and self.position.company_id != self.company_id:
-            errors['company'] = 'Company must match the selected position.'
+            errors['company'] = 'Partner must match the selected position.'
         if self.recommendation_id:
             if self.recommendation.student_id != self.student_id:
                 errors['recommendation'] = 'Recommendation must belong to the selected student.'
@@ -578,3 +580,69 @@ class ManagementAction(models.Model):
 
     class Meta:
         ordering = ['-created_at', '-id']
+
+
+class EmailNotice(models.Model):
+    """One immutable recipient/content intent, including intentional resends."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.CharField(max_length=120, unique=True)
+    kind = models.CharField(max_length=30, default='account')
+    student = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='email_notices')
+    enrollment = models.ForeignKey(BatchEnrollment, null=True, on_delete=models.SET_NULL)
+    batch_id_snapshot = models.PositiveBigIntegerField(null=True, db_index=True)
+    actor = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='requested_emails')
+    recipient = models.EmailField()
+    recipient_name = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    html_body = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=30, default='queued', db_index=True)
+    reason = models.CharField(max_length=50, blank=True, default='')
+    suppressed = models.BooleanField(default=False)
+    due_at = models.DateTimeField(default=timezone.now, db_index=True)
+    lease_until = models.DateTimeField(null=True)
+    attempts = models.PositiveIntegerField(default=0)
+    message_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    accepted_at = models.DateTimeField(null=True)
+    delivered_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class EmailAttempt(models.Model):
+    notice = models.ForeignKey(EmailNotice, on_delete=models.CASCADE, related_name='delivery_attempts')
+    status = models.CharField(max_length=30)
+    reason = models.CharField(max_length=50, blank=True, default='')
+    http_status = models.PositiveIntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class EmailProviderEvent(models.Model):
+    fingerprint = models.CharField(max_length=64, unique=True)
+    message_id = models.CharField(max_length=255, db_index=True)
+    request_tag = models.CharField(max_length=50, blank=True, default='')
+    event = models.CharField(max_length=30)
+    occurred_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class EmailDispatchControl(models.Model):
+    """Shared provider allowance and a short sending lease across all workers."""
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    credits = models.PositiveIntegerField(null=True)
+    checked_at = models.DateTimeField(null=True)
+    check_after = models.DateTimeField(null=True)
+    reason = models.CharField(max_length=50, blank=True, default='')
+    lease_token = models.UUIDField(null=True)
+    lease_until = models.DateTimeField(null=True)
+    heartbeat_at = models.DateTimeField(null=True)
+    reconcile_after = models.DateTimeField(null=True)
+
+
+class EmailCommand(models.Model):
+    id = models.UUIDField(primary_key=True)
+    actor = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    batch_id_snapshot = models.PositiveBigIntegerField()
+    digest = models.CharField(max_length=64)
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
