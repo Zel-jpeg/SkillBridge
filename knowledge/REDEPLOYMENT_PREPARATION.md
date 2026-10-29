@@ -1,6 +1,7 @@
 # Railway and Vercel redeployment preparation
 
-Date: 29 October 2026. Branch: `codex/redeployment-preparation`.
+Date: 29 October 2026. Preparation branch: `codex/redeployment-preparation`;
+published application merge: `2b0c435` on `main`.
 
 ## Authorized scope
 
@@ -34,8 +35,8 @@ remain masked. Frontend remains on Vercel. Railway is offline after trial expiry
 - [x] Prepare explicit build/start, static serving, healthcheck and worker config.
 - [x] Add targeted regressions and run full isolated PostgreSQL/frontend checks.
 - [x] Review final diff, dependency advisories and release instructions.
-- [ ] Commit and push the preparation branch, then merge and push main.
-- [ ] Rerun isolated PostgreSQL, frontend and browser checks on merged main.
+- [x] Commit and push the preparation branch, then merge and push main.
+- [x] Rerun isolated PostgreSQL, frontend and browser checks on merged main.
 
 ## Verification baseline
 
@@ -46,13 +47,17 @@ not validate the updated versions or hosted runtime.
 
 ## Active checkpoint
 
-Local implementation and branch verification are complete. The owner has now
-explicitly authorized Git publication and post-merge verification. Publication
-is in progress from `codex/redeployment-preparation`, based on `e779283`.
+Git publication and post-merge local verification are complete. Preparation
+commit `a55c664` was pushed to `codex/redeployment-preparation`; merge `2b0c435`
+was pushed to `main` without force. All post-merge checks below passed against
+that published application tree. This verification record is a later docs-only
+update; it does not alter the tested application files.
 
-Exact next step: commit/push this branch, merge/push main without force, rerun the
-isolated checks, and record their actual results. Keep Railway reactivation and
-the remaining hosted release gates with the owner.
+Exact next step: the owner reactivates Railway, reviews the service configuration
+and pending migrations/backups, then verifies the first Linux build and hosted
+health/login behavior. Keep the saved webhook disabled and inspect the email
+queue before enabling delivery processing. Local tests do not complete these
+remaining hosted release gates.
 
 ## Changes
 
@@ -101,6 +106,31 @@ passes. The initial schema checker supported an older JSON Schema draft; an
 isolated Draft 2020-12 validator confirmed both final configurations.
 Unit/API tests warn when no collected backend static directory exists; production
 collection and actual WhiteNoise serving were separately verified successfully.
+
+## Verification after publishing merged main
+
+The owner requested another run after merging and pushing. On application merge
+`2b0c435`, whose application tree matches the preparation branch:
+
+- **547 PostgreSQL API tests passed, zero skips, in 314.031 seconds**. Fresh local
+  cluster, synthetic credentials and disabled normal dotenv loading. Evidence:
+  `work/redeployment-postgres-vmz1i2ly/tests.txt`.
+- **288 frontend tests passed**, zero skips; ESLint and Vite production build
+  passed. Logs: `work/postmerge-frontend-tests.txt`,
+  `work/postmerge-frontend-lint.txt`, `work/postmerge-frontend-build.txt`.
+- **12 production-build sign-in browser outcomes passed**, zero page errors,
+  with mocked providers/APIs. Evidence:
+  `skillbridge-frontend/tests/artifacts/auth-contract/results.json`.
+- Django deploy checks passed with only optional HSTS-preload warning;
+  makemigrations reported no changes and pip check reported no broken requirements.
+  All 74 applicable lock entries, including pip tooling, match the environment.
+- Both Railway TOML schemas passed; 110 local links in the changed knowledge files
+  resolved. Original and hashed admin CSS returned 200 through WhiteNoise using
+  `work/postmerge-static/`. Strict preprocessing used `spacy_md` without fallback.
+- The task-owned preview and disposable database were stopped after verification.
+
+These remain Windows/local results. No successful Vercel deployment, Railway
+Linux build, real Google login, hosted migration or live email delivery is claimed.
 
 ## Remaining hosted release gates
 

@@ -10,7 +10,9 @@ S02 final hosted acceptance. Their live criteria are not completed by local test
 
 ## Release identity and existing services
 
-Local preparation is on `codex/redeployment-preparation`, based on `e779283`.
+Preparation commit `a55c664` on `codex/redeployment-preparation` was merged and
+pushed to main as `2b0c435`, based on `e779283`. The subsequent local full backend,
+frontend and browser checks passed on that published application tree.
 See [the active preparation tracker](REDEPLOYMENT_PREPARATION.md) for current
 checks, publication status and limits. Git publication is now owner-authorized.
 Railway is connected to main with automatic deployment enabled: pushing main
