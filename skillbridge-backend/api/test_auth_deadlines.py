@@ -51,7 +51,7 @@ class GoogleAccessTests(TestCase):
                 if enrolled:
                     BatchEnrollment.objects.create(student=user, batch=batch)
                 get.return_value = Mock(status_code=200)
-                get.return_value.json.return_value = {'email': user.email, 'name': 'Synthetic user', 'email_verified': True}
+                get.return_value.json.return_value = {'email': user.email, 'name': 'Synthetic user', 'email_verified': True, 'hd': 'dnsc.edu.ph', 'aud': 'synthetic-skillbridge-client.apps.googleusercontent.com', 'expires_in': '3600'}
                 response = client.post('/api/auth/google/', {'token': 'synthetic'}, format='json')
                 self.assertEqual(response.status_code, code)
                 if error:

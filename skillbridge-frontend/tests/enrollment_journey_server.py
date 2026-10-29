@@ -38,7 +38,7 @@ def synthetic_google_userinfo(token):
               'synthetic-journey-admin': 'browser-admin@dnsc.edu.ph'}
     if token not in emails:
         return Mock(status_code=401)
-    return Mock(status_code=200, json=lambda: dict(email=emails[token], email_verified=True,
+    return Mock(status_code=200, json=lambda: dict(email=emails[token], email_verified=True, hd='dnsc.edu.ph',
                                                   name='Synthetic Provider Name', picture=''))
 
 

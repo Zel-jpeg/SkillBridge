@@ -63,7 +63,7 @@ class EnrollmentAssessmentJourneyTests(APITestCase):
     def login_student(self):
         student = User.objects.get(email='journey-001@dnsc.edu.ph')
         public = APIClient()
-        provider = Mock(status_code=200, json=lambda: dict(email=student.email, email_verified=True,
+        provider = Mock(status_code=200, json=lambda: dict(email=student.email, email_verified=True, hd='dnsc.edu.ph',
                                                           name='Provider Name Must Not Replace Reviewed Name', picture=''))
         with patch('api.views._google_userinfo', return_value=provider):
             login = public.post(reverse('google_login'), {'token': 'synthetic-provider-token'}, format='json')

@@ -66,8 +66,13 @@ instructors cannot bypass Google identity checks by setting a local password and
 calling the admin password endpoint. Admin Google attempts direct users to the
 password sign-in page.
 
-Provider userinfo must be a valid object with an institutional email and a true
-`email_verified` flag. Client-supplied email, approval and role values cannot
+The browser access-token flow is preserved. The backend checks Google token
+metadata against `GOOGLE_OAUTH_CLIENT_ID` (the same public client ID as Vercel
+`VITE_GOOGLE_CLIENT_ID`), requires a positive remaining lifetime, and rejects a
+conflicting authorized-party/client claim. Missing backend client configuration
+fails closed with a retryable 503. Both provider calls have connect/read deadlines
+and reject redirects. Provider userinfo must have an institutional email, a true
+`email_verified` flag and the exact Workspace claim `hd=dnsc.edu.ph`. Client-supplied email, approval and role values cannot
 replace provider identity or existing stored roles. Public registration permits
 only student/instructor roles and never changes an existing user's role. New
 public accounts remain pending and use unusable passwords. Approved students

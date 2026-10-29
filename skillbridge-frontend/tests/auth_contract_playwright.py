@@ -16,7 +16,7 @@ with sync_playwright() as p:
             ('Google pending instructor', 'google', 403, 'pending', '/instructor/pending', None),
             ('Google unenrolled student', 'google', 403, 'student_not_enrolled', '/instructor/pending', None),
             ('Google token invalid', 'google', 401, 'Invalid token', None, 'Google token was invalid or expired.'),
-            ('Google service unavailable', 'google', 503, 'Google sign-in is temporarily unavailable. Please try again.', None, 'Server is unavailable. Check your connection.'),
+            ('Google service unavailable', 'google', 503, 'Google sign-in is temporarily unavailable. Please try again.', None, 'Sign-in is temporarily unavailable. Please try again.'),
             ('Google disabled account', 'google', 403, 'account_disabled', None, 'This account is inactive.'),
             ('Google unverified email', 'google', 403, 'email_unverified', None, 'Verify your DNSC Google email'),
             ('Admin directed to password login', 'google', 403, 'admin_password_required', '/admin/login', None),

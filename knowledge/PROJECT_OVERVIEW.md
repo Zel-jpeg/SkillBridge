@@ -67,6 +67,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Redeployment preparation](REDEPLOYMENT_PREPARATION.md): Local dependency/security
+  updates, Google client/domain binding, explicit Railway web/worker configuration,
+  build exclusions and current verification/hosted-release gates.
+
 - [29 October full branch verification](BRANCH_VERIFICATION_2026_10_29.md):
   Fresh disposable PostgreSQL, frontend, production-build collection and real-API
   journey results for the complete local cycle/filter branch, with fixture fixes

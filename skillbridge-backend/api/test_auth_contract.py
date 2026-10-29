@@ -18,7 +18,7 @@ class AuthenticationContractTests(APITestCase):
         return self.client.post(reverse('login'), {'email': actor.email, 'password': 'Synthetic-admin-pass-2026', **extra}, format='json')
 
     def google(self, actor, *, route='google_login', identity=None, **extra):
-        data = {'email': actor.email, 'name': 'Synthetic verified user', 'email_verified': True} if identity is None else identity
+        data = {'email': actor.email, 'name': 'Synthetic verified user', 'email_verified': True, 'hd': 'dnsc.edu.ph'} if identity is None else identity
         with patch('api.views._google_userinfo', return_value=Mock(status_code=200, json=lambda: data)):
             return self.client.post(reverse(route), {'token': 'synthetic-provider-token', **extra}, format='json')
 
@@ -50,7 +50,7 @@ class AuthenticationContractTests(APITestCase):
         self.student.name = 'David Rey Bali-os'
         self.student.save(update_fields=['name'])
         identity = {'email': self.student.email, 'name': 'davidrey bali-os',
-                    'picture': 'https://example.com/synthetic-photo.png', 'email_verified': True}
+                    'picture': 'https://example.com/synthetic-photo.png', 'email_verified': True, 'hd': 'dnsc.edu.ph'}
         self.assertEqual(self.google(self.student, identity=identity).status_code, 200)
         self.student.refresh_from_db()
         self.assertEqual(self.student.name, 'David Rey Bali-os')
@@ -63,12 +63,12 @@ class AuthenticationContractTests(APITestCase):
     def test_verified_institutional_identity_required_for_login_and_registration(self):
         for route in ['google_login', 'register_role']:
             for identity in [[], {'email': None}, {'email': self.student.email, 'email_verified': False},
-                             {'email': self.student.email}, {'email': ['invalid'], 'email_verified': True}]:
+                             {'email': self.student.email}, {'email': ['invalid'], 'email_verified': True, 'hd': 'dnsc.edu.ph'}]:
                 with self.subTest(route=route, identity=identity):
                     result = self.google(self.student, route=route, identity=identity, role='student')
                     self.assertIn(result.status_code, [401, 403, 503])
                     self.assertNotIn('access', result.data)
-            foreign = self.google(self.student, route=route, identity={'email': 'synthetic@example.com', 'email_verified': True}, role='student')
+            foreign = self.google(self.student, route=route, identity={'email': 'synthetic@example.com', 'email_verified': True, 'hd': 'dnsc.edu.ph'}, role='student')
             self.assertEqual(foreign.status_code, 403)
             self.assertEqual(foreign.data['error'], 'not_dnsc')
 

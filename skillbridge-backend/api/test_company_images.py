@@ -355,7 +355,7 @@ class CompanyImageAPITests(TestCase):
         self.student.save(update_fields=['photo_url'])
         foreign = User.objects.create_user('other@synthetic.invalid', name='Other', role='instructor', is_approved=True)
         for picture in ('https://synthetic.invalid/new.png', None):
-            userinfo = {'email': self.student.email, 'name': 'Student', 'email_verified': True}
+            userinfo = {'email': self.student.email, 'name': 'Student', 'email_verified': True, 'hd': 'dnsc.edu.ph', 'aud': 'synthetic-skillbridge-client.apps.googleusercontent.com', 'expires_in': '3600'}
             if picture: userinfo['picture'] = picture
             with patch('api.views.http_requests.get', return_value=Mock(status_code=200, json=lambda: userinfo)):
                 with self.captureOnCommitCallbacks(execute=True):
@@ -388,7 +388,7 @@ class CompanyImageAPITests(TestCase):
     def test_role_registration_refreshes_missing_picture_without_changing_identity(self):
         self.student.photo_url = 'https://synthetic.invalid/old.png'
         self.student.save(update_fields=['photo_url'])
-        userinfo = {'email': self.student.email, 'name': self.student.name, 'email_verified': True}
+        userinfo = {'email': self.student.email, 'name': self.student.name, 'email_verified': True, 'hd': 'dnsc.edu.ph', 'aud': 'synthetic-skillbridge-client.apps.googleusercontent.com', 'expires_in': '3600'}
         with patch('api.views.http_requests.get', return_value=Mock(status_code=200, json=lambda: userinfo)):
             with self.captureOnCommitCallbacks(execute=True):
                 result = self.client.post('/api/auth/register-role/', {'token': 'synthetic', 'role': 'instructor'}, format='json')

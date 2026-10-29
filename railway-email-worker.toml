@@ -1,0 +1,9 @@
+# Select this config path explicitly for a separate email-worker service.
+# Apply/review web migrations first. Starting this service can send queued mail.
+[build]
+builder = "RAILPACK"
+buildCommand = "python -m pip install -r requirements-production.txt"
+
+[deploy]
+startCommand = "python manage.py process_email_outbox"
+restartPolicyType = "ON_FAILURE"
