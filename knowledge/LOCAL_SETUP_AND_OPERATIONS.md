@@ -6,7 +6,7 @@ tracker; installing packages does not establish signoff or authorize deployment.
 ## Prerequisites
 
 The Windows reference runtime is Python **3.13.7**, Node **24.14.1**, PostgreSQL
-**17.11**, Django **6.0.4**, Vite **8.0.3**, React **19.2.4**, spaCy **3.8.16** and
+**17.11**, Django **6.0.9**, Vite **8.3.5**, React **19.2.4**, spaCy **3.8.16** and
 `en_core_web_md` **3.8.0**. `package-lock.json` resolves frontend packages.
 `requirements-local.lock.txt` records the tested Python runtime, including the
 selected Medium resource. Linux hosting remains a separate check.
@@ -39,7 +39,9 @@ work. Storage keys are backend-only; image-free CRUD works without them.
 
 In a fresh frontend checkout, copy `.env.example` to `.env` and set
 `VITE_API_URL=http://127.0.0.1:8000`. Real Google sign-in needs a public OAuth client
-ID and registered origins. Local auth tests mock Google; setup does not invent
+ID and registered origins. Set backend `GOOGLE_OAUTH_CLIENT_ID` to the same
+public web client ID as frontend `VITE_GOOGLE_CLIENT_ID`; missing backend client
+configuration denies Google sign-in with a retryable service error. Local auth tests mock Google; setup does not invent
 provider configuration. Backend keys/database credentials never belong in VITE_*.
 
 ## Backend install and startup
@@ -169,8 +171,8 @@ use synthetic databases and mocked email, never a normal application database.
   day, not business records. Run only against the intended authorized database.
   Reconnect resynchronizes data. Before authorized storage cleanup, verify object
   ownership and absence of database references; do not bulk-delete objects.
-- Review/test migrations locally before an authorized release. Migration 0015 has
-  only local evidence. Hosting, backups/restore/rollback, health and live-provider
+- Review/test migrations locally before an authorized release. The current chain
+  ends at 0029; check the actual pending plan and preserve backups. Hosting, backups/restore/rollback, health and live-provider
   checks remain later checklist gates.
 
 ## Verification record
@@ -199,3 +201,20 @@ Evidence: `v11-npm-ci.txt`, `v11-pip-{base,nlp,check}.txt`,
 `v11-profile-browser.txt` under `work/defense_audit/`. Initial failed fixture logs
 remain. Dependency installs used public package/model sources; no global npm
 settings or existing application .env files were modified.
+
+## 29 October redeployment preparation
+
+See [the preparation tracker](REDEPLOYMENT_PREPARATION.md) for the updated package
+and deployment checks. The verification runtime is isolated under ignored
+`work/redeployment-runtime/`; the original backend venv was preserved. Install
+`requirements-production.txt` to reproduce the selected dependency/model set.
+The production manifest constrains the dependencies to the tested local lock;
+Linux/Gunicorn and hosted Python 3.13.15 remain release checks. The temporary
+first installation attempt under `work/redeployment-venv/` failed on a Windows
+metadata write and is not verification evidence.
+
+Production database connections require TLS by default. Local DEBUG=True uses
+libpq's prefer mode; configure DB_SSLMODE/DB_SSLROOTCERT according to provider
+policy. Static-file collection and WhiteNoise serving are now explicit. Tests,
+migrations and research artifacts were retained; the backend .dockerignore
+excludes development-only files from the image context.

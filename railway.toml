@@ -1,0 +1,13 @@
+# Railway resolves this file from the repository root; commands run in the
+# existing /skillbridge-backend service root. Publishing is owner-controlled.
+[build]
+builder = "RAILPACK"
+buildCommand = "python -m pip install -r requirements-production.txt && python manage.py collectstatic --noinput"
+
+[deploy]
+preDeployCommand = ["python manage.py migrate --noinput"]
+preDeployTimeoutSeconds = 300
+startCommand = "gunicorn core.wsgi:application --worker-class gevent --workers 2 --worker-connections 1000 --timeout 120 --bind 0.0.0.0:$PORT"
+healthcheckPath = "/api/health/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"

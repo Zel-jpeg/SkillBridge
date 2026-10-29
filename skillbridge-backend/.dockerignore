@@ -1,0 +1,15 @@
+# Build exclusions only. Source/tests/history remain in Git and on disk.
+.git
+.env
+.env.*
+!.env.example
+venv
+.venv
+**/__pycache__
+**/*.py[cod]
+*.sqlite3
+*.log
+api/test_*.py
+api/tests.py
+core/test_settings.py
+core/sse_postgres_test_settings.py

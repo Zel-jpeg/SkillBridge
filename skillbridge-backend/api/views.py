@@ -606,15 +606,37 @@ def me(request):
 
 
 def _google_userinfo(access_token):
-    # Bound only the external identity lookup; uploads, reports and SSE keep
-    # their operation-specific behavior. Requests uses connect/read seconds.
+    # Keep the existing browser access-token flow, but bind the Google token to
+    # this application's OAuth client before using it as an identity credential.
+    from django.conf import settings
+    if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        return None
     try:
+        checked = http_requests.get(
+            'https://oauth2.googleapis.com/tokeninfo',
+            params={'access_token': access_token},
+            timeout=(3.05, 10), allow_redirects=False,
+        )
+        if checked.status_code != 200:
+            return checked
+        metadata = checked.json()
+        if not isinstance(metadata, dict):
+            return None
+        audience = metadata.get('aud', metadata.get('audience'))
+        expiry = metadata.get('expires_in')
+        if (audience != settings.GOOGLE_OAUTH_CLIENT_ID or
+                metadata.get('azp', metadata.get('issued_to', audience)) != settings.GOOGLE_OAUTH_CLIENT_ID or
+                isinstance(expiry, bool) or not isinstance(expiry, (str, int)) or
+                not str(expiry).isdigit() or int(expiry) <= 0):
+            denied = http_requests.Response()
+            denied.status_code = 401
+            return denied
         return http_requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
             headers={'Authorization': f'Bearer {access_token}'},
             timeout=(3.05, 10), allow_redirects=False,
         )
-    except http_requests.RequestException:
+    except (http_requests.RequestException, ValueError, TypeError):
         return None
 
 
@@ -638,6 +660,8 @@ def _verified_google_identity(data):
         return None, Response({'error': 'not_dnsc'}, status=403)
     if identity.get('email_verified') is not True:
         return None, Response({'error': 'email_unverified', 'message': 'Verify your DNSC Google email before signing in.'}, status=403)
+    if identity.get('hd') != 'dnsc.edu.ph':
+        return None, Response({'error': 'not_dnsc'}, status=403)
     name, photo = identity.get('name') or email.split('@')[0], identity.get('picture') or ''
     if not isinstance(name, str) or len(name) > 255 or not isinstance(photo, str):
         return None, Response({'error': 'Google sign-in returned an invalid identity. Please try again.'}, status=503)

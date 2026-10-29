@@ -76,7 +76,7 @@ export default function LoginPage() {
           })
         } else if (err.response?.status === 401) {
           setError('Google token was invalid or expired. Please try signing in again.')
-        } else if (err.response?.status === 500) {
+        } else if (err.response?.status >= 500) {
           setError('Sign-in is temporarily unavailable. Please try again.')
         } else if (!err.response) {
           setError('Cannot reach the server. Check your connection and try again.')

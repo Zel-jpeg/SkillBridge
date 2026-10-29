@@ -1,20 +1,21 @@
 # Vercel and Railway release handoff
 
-The team owns publishing and Railway subscription reactivation. This document
-prepares the tested local release; no host, subscription, production database,
-Storage policy or live email was changed by the agent. The four remaining gates
+The owner authorized Git publication and post-merge local verification on
+29 October 2026; Railway subscription reactivation remains with the owner.
+Pushing main can trigger connected hosts' automatic deployments. Direct provider,
+production database, Storage policy and live email operations remain outside this
+work. The four remaining gates
 are V05 hosted integration, V09 provider backup/rollback, V10 hosted recovery and
 S02 final hosted acceptance. Their live criteria are not completed by local tests.
 
 ## Release identity and existing services
 
-Current base is `227f794` plus preserved uncommitted application, tests and
-documentation. The latest source manifest in the continuous checklist identifies
-the verified snapshot. HEAD alone does not contain this implementation. Review
-and save the intended application files as a release commit before publishing;
-retain user research files and keep populated `.env`, ignored test dumps, runtime
-folders and synthetic browser credentials out of the release. No commit/push was
-created automatically.
+Local preparation is on `codex/redeployment-preparation`, based on `e779283`.
+See [the active preparation tracker](REDEPLOYMENT_PREPARATION.md) for current
+checks, publication status and limits. Git publication is now owner-authorized.
+Railway is connected to main with automatic deployment enabled: pushing main
+after reactivation can deploy and migrate. No publication, subscription change
+or production operation is independently authorized by this handoff.
 
 Configured frontend: `https://skill-bridge-six-psi.vercel.app`.
 Configured API: `https://skillbridge-production-1e3c.up.railway.app`.
@@ -42,43 +43,53 @@ checks passed; see [browser policy](PRODUCTION_BROWSER_POLICY.md).
 
 ## Owner-run backend release
 
-Railway root: `skillbridge-backend`. The local verified Python version is 3.13.7;
-select a compatible Python runtime before installing this Django 6/spaCy stack.
+Railway root: `skillbridge-backend`. The repository pins hosted Python 3.13.15,
+matching the owner screenshots.
+Local verification uses Windows Python 3.13.7; this runtime difference still
+needs a Railway build verification.
 Linux/Gunicorn packaging still needs a Railway build verification; Windows tests
 are not evidence that the actual Railway image has built successfully.
 
 Install base and the selected Medium model resources during the build:
 
 ```sh
-pip install -r requirements.txt -r requirements-nlp-spacy.txt
+python -m pip install -r requirements-production.txt
 python manage.py collectstatic --noinput
 ```
 
 The selected local runtime is spaCy Medium 3.8.0 with spaCy 3.8.16. Optional Stanza
 is not installed by the command above. Inspect the actual saved selected-model
 configuration and results' `model_used`; a fallback is not a selected-model pass.
-The current application static frontend is on Vercel. Django admin static files
-are collected, but this repository has no production static-serving middleware;
-verify any required Django-admin static serving on the actual deployment.
+The application frontend remains on Vercel. WhiteNoise serves collected,
+compressed manifest assets for Django admin. Collect during build, not pre-deploy,
+because Railway pre-deploy filesystem changes do not persist. Requirements are
+UTF-8; production includes the intended spaCy model and constrains dependencies
+to the tested local lock. That lock does not certify a Linux build.
 
 Required backend variables are private except explicitly public origins:
 
 | Name | Purpose |
 |---|---|
 | `SECRET_KEY` | Existing secure application signing secret |
+| `GOOGLE_OAUTH_CLIENT_ID` | Same public OAuth client ID as Vercel VITE_GOOGLE_CLIENT_ID; required for Google login |
 | `DEBUG` | `False` for the hosted release |
 | `ALLOWED_HOSTS` | Exact Railway hostname and `healthcheck.railway.app`, comma-separated; no scheme |
 | `FRONTEND_URL` | Existing HTTPS Vercel origin |
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Intended Supabase/PostgreSQL connection; confirm provider connection/TLS requirements |
 | `DB_CONNECT_TIMEOUT` | Existing connection timeout per resolved address, default 5 seconds |
+| `DB_SSLMODE`, `DB_SSLROOTCERT` | DEBUG=False defaults to require; prefer verify-full with provider CA when supported |
+| `TRUSTED_PROXY_COUNT` | Verify the real forwarded-IP chain before changing the default zero |
+| `BREVO_WEBHOOK_SECRET`, `BREVO_SENDER_EMAIL` | Saved webhook token and verified sender |
+| `RETAKE_EVIDENCE_BUCKET` | Private evidence bucket, separate from branding |
 | `SUPABASE_STORAGE_URL` | Public HTTPS project API origin used for branding |
 | `SUPABASE_STORAGE_SERVICE_KEY` | Backend-only privileged key; never copy into frontend or documentation |
 | `COMPANY_IMAGE_BUCKET` | Existing public branding bucket, default `company-branding` |
 | `BREVO_API_KEY`, `EMAIL_TIMEOUT` | Configured intended email provider and bounded wait |
 | `ENROLLMENT_SMTP_FALLBACK` | Keep `False` on Railway; no live test mail is authorized here |
 
-Backend CORS currently explicitly lists the configured Vercel origin. Do not
-assume an arbitrary Vercel preview URL is permitted. Keep the existing backend
+Backend CORS includes FRONTEND_URL and optional exact origins from the
+comma-separated CORS_ALLOWED_ORIGINS variable. Localhost is automatic only with
+DEBUG=True. Arbitrary Vercel previews are not permitted automatically. Keep backend
 secret/credential values in host settings; this handoff does not ask you to paste
 them into chat.
 
@@ -92,22 +103,36 @@ python manage.py showmigrations api
 python manage.py migrate --plan
 ```
 
-Repository latest is `0015_user_department`, additive after `0014_company_image_key`.
-Record the actual pending plan; do not assume only 0015 is pending on a paused or
-older deployment. Once the owner has reviewed the plan and backup boundary:
+Repository latest is `0029_recommendation_cycle_scope`. Review the actual pending
+plan; it can include experimental-field/table removal in 0019 and guarded
+reversals in 0028/0029. Preserve database and storage backups. An image rollback
+does not reverse schema or reconstruct removed data. After the owner reviews
+the migration plan and backup boundary:
 
 ```sh
 python manage.py migrate --noinput
 ```
 
-The preserved Procfile already runs migration before starting Gunicorn:
+Repository-root railway.toml separates migrations into pre-deploy and starts
+Gunicorn without migration on every restart. Keep the existing backend service
+root and verify its repository-relative config path is `/railway.toml` before
+publication. The preserved Procfile remains a legacy migrate-on-start fallback:
 
 ```sh
 python manage.py migrate --noinput && gunicorn core.wsgi:application --worker-class gevent --workers 2 --worker-connections 1000 --timeout 120 --bind 0.0.0.0:$PORT
 ```
 
 If the Railway service overrides Procfile commands, compare its actual command.
-No service setting was changed here. Worker/model memory, SSE buffering, idle
+No service setting was changed here. A separate worker can select
+`/railway-email-worker.toml` with the same backend root and environment. Start it
+only after reviewed migrations and queue inspection: it can send queued mail.
+A lower-frequency alternative is a separate cron service running
+`python manage.py process_email_outbox --once --limit 100`, without an HTTP
+healthcheck. Do not put an email cron schedule on the web API service.
+Keep the saved webhook disabled until backend/secret deployment, then verify
+an owner-controlled delivery test.
+
+Worker/model memory, SSE buffering, idle
 limits and hosted performance remain measured deployment checks, not inferred
 from the local threaded listener benchmark.
 
@@ -117,7 +142,9 @@ from the local threaded listener benchmark.
 `SELECT 1` succeeds; database errors return 503 with only
 `{"status":"unavailable"}`. Responses are `Cache-Control: no-store`. JWT identity
 is intentionally ignored for this probe; normal API permission boundaries and
-throttles remain. It does not load NLP, contact providers, verify migrations or
+throttles remain. The probe itself is unthrottled and exempt from HTTPS redirects
+for internal checks; business/admin routes retain HTTPS redirects. It does not
+load NLP, contact providers, verify migrations or
 assert that all application workflows work.
 
 A real local HTTP200 -> unavailable-local-port 503 -> recovered 200 rehearsal is
@@ -180,9 +207,8 @@ build variables and DB migration level before the owner publishes. If the new
 release fails, restore the previous frontend/backend deployment together through
 the provider controls, then check health, authentication, attempt/result reads,
 capacity and exports. Do not reverse migrations or overwrite newer business data
-as a routine code rollback. Check old-code/schema compatibility first; this
-release's latest migration adds a field, but actual pending migrations must be
-reviewed individually. If a data restore is needed, use the isolated tested
+as a routine code rollback. Check old-code/schema compatibility and each
+pending migration individually, including removal operations and guarded reversals. If a data restore is needed, use the isolated tested
 procedure and a separately approved cutover; a restore can discard newer writes.
 No hosted rollback has been executed or claimed.
 

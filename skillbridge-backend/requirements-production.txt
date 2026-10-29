@@ -1,0 +1,6 @@
+# Railway web and worker image: install the selected model at build time.
+# Constrain dependencies to the locally verified versions. Linux verification
+# remains a separate release gate; platform-specific dependencies stay conditional.
+-c requirements-local.lock.txt
+-r requirements.txt
+-r requirements-nlp-spacy.txt

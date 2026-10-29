@@ -30,7 +30,7 @@ class InstructorOnboardingTests(APITestCase):
     def google(self, user):
         client = APIClient()
         with patch('api.views._google_userinfo', return_value=Mock(status_code=200,
-                json=lambda: dict(email=user.email, email_verified=True, name='Synthetic Google Faculty', picture=''))):
+                json=lambda: dict(email=user.email, email_verified=True, hd='dnsc.edu.ph', name='Synthetic Google Faculty', picture=''))):
             return client.post(reverse('google_login'), {'token': 'synthetic-provider-token'}, format='json')
 
     @patch('api.email_outbox.requests.post')

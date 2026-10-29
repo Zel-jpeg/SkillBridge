@@ -36,7 +36,7 @@ Batch.objects.create(name='Existing faculty private batch', instructor=existing)
 
 def google_userinfo(token):
     allowed = {f'synthetic-{name}': f'{name}@dnsc.edu.ph' for name in ['faculty.desktop', 'faculty.phone', 'faculty.lost', 'faculty.queuefail']}
-    return Mock(status_code=200, json=lambda: dict(email=allowed[token], email_verified=True,
+    return Mock(status_code=200, json=lambda: dict(email=allowed[token], email_verified=True, hd='dnsc.edu.ph',
         name='Synthetic Google Instructor', picture='')) if token in allowed else Mock(status_code=401)
 
 

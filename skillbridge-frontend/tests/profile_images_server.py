@@ -83,8 +83,10 @@ def storage(method, url, **kwargs):
 company_images.requests.request = storage
 
 def google(url, **kwargs):
+    if url.endswith('/tokeninfo'):
+        return Mock(status_code=200, json=lambda: {'aud': settings.GOOGLE_OAUTH_CLIENT_ID, 'expires_in': '3600'})
     token = kwargs.get('headers', {}).get('Authorization', '')
-    body = {'email': student.email, 'name': student.name, 'email_verified': True}
+    body = {'email': student.email, 'name': student.name, 'email_verified': True, 'hd': 'dnsc.edu.ph'}
     if token != 'Bearer photo-none':
         body['picture'] = 'https://synthetic.invalid/google/new.png'
     return Mock(status_code=200, json=lambda: body)

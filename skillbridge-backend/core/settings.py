@@ -42,8 +42,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://skill-bridge-six-psi.vercel.app')
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '').strip()
 
 
 # Application definition
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # ← add this as the first line
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -105,6 +107,8 @@ DATABASES = {
         'OPTIONS': {
             # libpq applies this limit separately to each resolved address.
             'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '5')),
+            'sslmode': os.getenv('DB_SSLMODE') or ('prefer' if DEBUG else 'require'),
+            **({'sslrootcert': os.environ['DB_SSLROOTCERT']} if os.getenv('DB_SSLROOTCERT') else {}),
         },
     }
 }
@@ -117,10 +121,11 @@ COMPANY_IMAGE_PREFIX = 'companies'
 RETAKE_EVIDENCE_BUCKET = os.getenv('RETAKE_EVIDENCE_BUCKET', 'retake-evidence')
 
 # CORS — allow React frontend to call the API
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',   # Vite dev server
-    'https://skill-bridge-six-psi.vercel.app',  # your Vercel URL
-]
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys([
+    FRONTEND_URL.rstrip('/'),
+    *[origin.strip().rstrip('/') for origin in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if origin.strip()],
+    *(['http://localhost:5173'] if DEBUG else []),
+]))
 
 # DRF — use JWT for all endpoints by default
 REST_FRAMEWORK = {
@@ -217,10 +222,17 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER        = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT            = True
+    # Railway's internal readiness request may use HTTP. Only this read-only,
+    # non-sensitive probe is exempt; normal API/admin traffic still redirects.
+    SECURE_REDIRECT_EXEMPT         = [r'^api/health/$']
     SESSION_COOKIE_SECURE          = True
     CSRF_COOKIE_SECURE             = True
     SECURE_HSTS_SECONDS            = 31536000
