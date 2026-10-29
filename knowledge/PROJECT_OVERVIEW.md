@@ -67,6 +67,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Database improvement](DATABASE_IMPROVEMENT.md): Repeated-query fixes,
+  paginated staff collections, on-demand student history, measured local payload
+  reductions and read-only PostgreSQL diagnostics before hosted verification.
+
 - [Redeployment preparation](REDEPLOYMENT_PREPARATION.md): Local dependency/security
   updates, Google client/domain binding, explicit Railway web/worker configuration,
   build exclusions and current verification/hosted-release gates.

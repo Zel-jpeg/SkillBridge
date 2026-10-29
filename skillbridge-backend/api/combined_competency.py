@@ -38,7 +38,10 @@ def eligible_evidence(student, batch):
     return included_ids, [score for score in scores if score.assessment_id in scored_ids]
 
 
-def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids=None, catalog=None, review_required=None):
+_PROFILE_NOT_LOADED = object()
+
+
+def combined_is_unlocked(student, batch, profile=_PROFILE_NOT_LOADED, progress=None, source_ids=None, catalog=None, review_required=None):
     needs_review = (review_required if review_required is not None else
                     BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists())
     if needs_review:
@@ -48,7 +51,9 @@ def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids
         return False
     if batch.status != 'active':
         return False
-    profile = profile or CombinedCompetencyProfile.objects.filter(student=student, batch=batch).first()
+    # Bulk callers pass None when their grouped read has already proved absence.
+    if profile is _PROFILE_NOT_LOADED:
+        profile = CombinedCompetencyProfile.objects.filter(student=student, batch=batch).first()
     if profile is None or not profile.is_finalized:
         return False
     if source_ids is None:

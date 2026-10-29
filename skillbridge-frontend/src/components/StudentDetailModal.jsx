@@ -3,8 +3,26 @@ import DialogShell from './DialogShell'
 import AssessmentStudentDetail from './AssessmentStudentDetail'
 import { LockIcon, UserIcon } from './Icons'
 import DataSection from './DataSection'
+import { useApi } from '../hooks/useApi'
+import { normalizeStudent } from '../utils/managementStudent'
 
-export default function StudentDetailModal({ student, instructorName, isArchived = false, readOnly = false, onClose, onToggleRetake, footer, restoreFocusRef, contextControls, historyUrl }) {
+export default function StudentDetailModal(props) {
+  const { student } = props
+  const url = student.detailUrl || null
+  const { data } = useApi(url)
+  if (!url) return <StudentDetailContent {...props} />
+  const raw = data?.students?.find(row => row.id === student.id)
+  if (!raw) return <DialogShell title={student.name || 'Student details'} size="student" onClose={props.onClose} closeLabel="Close student details" restoreFocusRef={props.restoreFocusRef}>
+    <DataSection url={url} layout="student-detail" label="Loading student evidence">
+      <p role="status" className="p-5 text-xs">Student details are no longer available. Refresh the collection.</p>
+    </DataSection>
+  </DialogShell>
+  const loaded = { ...student, ...normalizeStudent({ ...raw, school_id: raw.school_id ?? raw.student_id }),
+    batch: raw.batch ?? data.batch ?? student.batch, instructor: raw.instructor ?? student.instructor, detailUrl: null }
+  return <StudentDetailContent {...props} student={loaded} historyUrl={url} isArchived={props.isArchived} />
+}
+
+function StudentDetailContent({ student, instructorName, isArchived = false, readOnly = false, onClose, onToggleRetake, footer, restoreFocusRef, contextControls, historyUrl }) {
   const archived = isArchived || student.archived
   const viewOnly = readOnly || archived
   return <DialogShell title={student.name || 'Student details'} description="Student enrollment, assessment results, combined competency, recommendations and archived attempt history."
@@ -23,6 +41,6 @@ export default function StudentDetailModal({ student, instructorName, isArchived
       </div>
     </>}>
     {contextControls}
-    {historyUrl ? <DataSection url={historyUrl} layout="assessment-dialog"><AssessmentStudentDetail key={student.batch?.id ?? 'detached'} student={student} instructorName={instructorName} variant="modal" isArchived onToggleRetake={undefined} /></DataSection> : <AssessmentStudentDetail student={student} instructorName={instructorName} variant="modal" isArchived={archived} onToggleRetake={readOnly ? undefined : onToggleRetake} />}
+    <DataSection urls={historyUrl ? [historyUrl] : []} layout="assessment-dialog"><AssessmentStudentDetail key={student.batch?.id ?? 'detached'} student={student} instructorName={instructorName} variant="modal" isArchived={archived} onToggleRetake={viewOnly ? undefined : onToggleRetake} /></DataSection>
   </DialogShell>
 }

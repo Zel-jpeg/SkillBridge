@@ -292,7 +292,7 @@ def management_combined_state(student, batch):
     }, unlocked
 
 
-def bulk_management_states(students, batch, include_history=True):
+def bulk_management_states(students, batch, include_history=True, *, summary_only=False, include_inactive_history=False):
     """Build roster/dashboard state in grouped queries without recalculating NLP."""
     ids = [student.id for student in students]
     review_required = set(BatchEnrollment.objects.filter(student_id__in=ids, batch=batch,
@@ -300,29 +300,40 @@ def bulk_management_states(students, batch, include_history=True):
     assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
     required_ids = {a.id for a in assessments if a.publication_status == 'published' and a.is_required and a.include_in_competency}
     assessment_by_id = {a.id: a for a in assessments}
-    responses = list(StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id))
+    response_query = StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id)
+    if summary_only:
+        response_query = response_query.only('student_id', 'assessment_id', 'status', 'submitted_at', 'is_flagged', 'retake_allowed')
+    responses = list(response_query)
     response_map = {(r.student_id, r.assessment_id): r for r in responses}
+    responses_by_student = {}
+    for response in responses:
+        responses_by_student.setdefault(response.student_id, []).append(response)
     histories = {}
-    for h in (AssessmentAttemptHistory.objects.filter(response_id__in=[r.id for r in responses]).order_by('attempt_number') if include_history else []):
+    for h in (AssessmentAttemptHistory.objects.filter(response_id__in=[r.id for r in responses]).order_by('attempt_number') if include_history and not summary_only else []):
         histories.setdefault(h.response_id, []).append({
             'attempt_number': h.attempt_number, 'status': h.status, 'started_at': h.started_at,
             'submitted_at': h.submitted_at, 'stopped_at': h.stopped_at, 'is_flagged': h.is_flagged,
             'violation_count': h.violation_count, 'stopped_reason': h.stopped_reason,
             'category_scores': h.category_scores, 'answers': h.answers,
         })
-    scores = list(SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id).select_related('skill_category'))
+    score_query = SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id)
+    scores = list(score_query.only('student_id', 'assessment_id', 'raw_score', 'max_score') if summary_only else score_query.select_related('skill_category'))
     score_map = {}
     valid_score_ids = set()
     for score in scores:
-        score_map.setdefault((score.student_id, score.assessment_id), []).append({
-            'category_id': score.skill_category_id, 'category': score.skill_category.name,
-            'raw_score': score.raw_score, 'max_score': score.max_score, 'percentage': score.percentage,
-        })
+        if not summary_only:
+            score_map.setdefault((score.student_id, score.assessment_id), []).append({
+                'category_id': score.skill_category_id, 'category': score.skill_category.name,
+                'raw_score': score.raw_score, 'max_score': score.max_score, 'percentage': score.percentage,
+            })
         if score.max_score > 0 and score.raw_score <= score.max_score:
             valid_score_ids.add((score.student_id, score.assessment_id))
-    profiles = {p.student_id: p for p in CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)}
+    profile_query = CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)
+    if summary_only:
+        profile_query = profile_query.only('student_id', 'is_finalized', 'included_assessment_ids', 'ranking_input_fingerprint')
+    profiles = {p.student_id: p for p in profile_query}
     combined_scores = {}
-    for score in CombinedCategoryScore.objects.filter(student_id__in=ids, batch=batch).select_related('skill_category').order_by('skill_category__name', 'skill_category_id'):
+    for score in (CombinedCategoryScore.objects.filter(student_id__in=ids, batch=batch).select_related('skill_category').order_by('skill_category__name', 'skill_category_id') if not summary_only else []):
         combined_scores.setdefault(score.student_id, []).append({
             'category_id': score.skill_category_id, 'category': score.skill_category.name,
             'raw_score': score.raw_score, 'max_score': score.max_score,
@@ -345,6 +356,15 @@ def bulk_management_states(students, batch, include_history=True):
         profile = profiles.get(student.id)
         unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids,
                                        catalog=catalog, review_required=student.id in review_required)
+        if summary_only:
+            result[student.id] = ({**progress, 'recommendations_locked': not unlocked,
+                'assessment_results': [{'id': r.assessment_id, 'attempt_status': r.status,
+                    'is_flagged': r.is_flagged, 'retake_allowed': r.retake_allowed}
+                    for r in responses_by_student.get(student.id, [])]}, unlocked)
+            continue
+        historical = include_inactive_history and not student.is_active
+        if historical:
+            unlocked = False
         individual = []
         for assessment in assessments:
             response = response_map.get((student.id, assessment.id))
@@ -369,25 +389,25 @@ def bulk_management_states(students, batch, include_history=True):
                 'prior_attempts': histories.get(response.id, []) if response else [],
             })
         result[student.id] = ({**progress, 'recommendations_locked': not unlocked,
-                              'combined_category_scores': combined_scores.get(student.id, []) if unlocked else [],
-                              'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+                              'combined_category_scores': combined_scores.get(student.id, []) if unlocked or historical else [],
+                              'combined_competency_profile': serialize_combined_profile(profile) if unlocked or historical else None,
                               'assessment_results': individual}, unlocked)
     return result
 
 
-def admin_current_management_states(students):
+def admin_current_management_states(students, **state_options):
     """Group system-wide oversight by active batch instead of querying per student."""
     student_by_id = {student.id: student for student in students}
     current = {}
     for enrollment in (BatchEnrollment.objects.filter(student_id__in=student_by_id, batch__status='active')
-                       .select_related('batch', 'batch__instructor').order_by('student_id', '-enrolled_at', '-id')):
+                       .select_related('batch', 'batch__instructor').defer('batch__closeout_snapshots').order_by('student_id', '-enrolled_at', '-id')):
         current.setdefault(enrollment.student_id, enrollment)
     grouped = {}
     for student_id, enrollment in current.items():
         grouped.setdefault(enrollment.batch_id, {'batch': enrollment.batch, 'students': []})['students'].append(student_by_id[student_id])
     states = {}
     for group in grouped.values():
-        for student_id, state in bulk_management_states(group['students'], group['batch']).items():
+        for student_id, state in bulk_management_states(group['students'], group['batch'], **state_options).items():
             states[student_id] = state
     return current, states
 
@@ -1282,7 +1302,20 @@ def instructor_batch_students(request, batch_id):
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
 
-    enrollments = list(BatchEnrollment.objects.filter(batch=batch).select_related('student'))
+    from .collection_queries import batch_collection, detail_student_id
+    if 'page' in request.query_params:
+        return Response(batch_collection(request.query_params, batch))
+    student_id = detail_student_id(request.query_params)
+    if student_id is not None and not BatchEnrollment.objects.filter(batch=batch, student_id=student_id).exists():
+        return Response({'error': 'Student not found in this batch'}, status=404)
+    return Response(_batch_students_payload(batch, [student_id] if student_id is not None else None))
+
+
+def _batch_students_payload(batch, student_ids=None, *, include_history=True):
+    enrollment_query = BatchEnrollment.objects.filter(batch=batch).select_related('student')
+    if student_ids is not None:
+        enrollment_query = enrollment_query.filter(student_id__in=student_ids)
+    enrollments = list(enrollment_query)
     student_objs = [e.student for e in enrollments]
     student_ids  = [s.id for s in student_objs]
 
@@ -1323,7 +1356,7 @@ def instructor_batch_students(request, batch_id):
             recs_by_student[r.student_id].append(r)
 
     placements_by_student = _visible_placements_by_student(student_ids, batch=batch)
-    combined_states = bulk_management_states(student_objs, batch)
+    combined_states = bulk_management_states(student_objs, batch, include_history=include_history, include_inactive_history=True)
     current_approved_ids = set(allocated_approvals(student_id__in=student_ids).values_list('student_id', flat=True))
 
     students = []
@@ -1333,10 +1366,6 @@ def instructor_batch_students(request, batch_id):
         combined_state, unlocked = combined_states[s.id]
         if not s.is_active:
             unlocked = False
-            combined_state = {**combined_state, 'recommendations_locked': True,
-                              'combined_category_scores': serialize_combined_scores(s, batch),
-                              'combined_competency_profile': serialize_combined_profile(
-                                  CombinedCompetencyProfile.objects.filter(student=s, batch=batch).first())}
         students.append({
             'id':             s.id,
             'name':           s.name,
@@ -1377,7 +1406,7 @@ def instructor_batch_students(request, batch_id):
         })
 
     published = [a for a in batch_assessments if a.publication_status == Assessment.PUBLICATION_PUBLISHED]
-    return Response({
+    return {
         'batch': {'id': batch.id, 'name': batch.name},
         'summary': {
             'published_required_count': sum(a.is_required and a.include_in_competency for a in published),
@@ -1390,7 +1419,7 @@ def instructor_batch_students(request, batch_id):
             'recommendations_unlocked_students': sum(not s['recommendations_locked'] for s in students),
         },
         'students': students,
-    })
+    }
 
 
 @api_view(['GET'])
@@ -3440,10 +3469,23 @@ def admin_users(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
-    students            = list(User.objects.filter(role='student', is_active=True).order_by('name'))
-    current_by_student, management_states = admin_current_management_states(students)
-    instructors         = list(User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name'))
-    pending_instructors = list(User.objects.filter(role='instructor', is_active=True, is_approved=False).order_by('name'))
+    from .collection_queries import admin_collection, detail_student_id
+    if 'page' in request.query_params:
+        return Response(admin_collection(request.query_params))
+    student_id = detail_student_id(request.query_params)
+    if student_id is not None and not User.objects.filter(pk=student_id, role='student').exists():
+        return Response({'error': 'Student not found'}, status=404)
+    return Response(_admin_users_payload([student_id] if student_id is not None else None))
+
+
+def _admin_users_payload(user_ids=None, *, include_history=True):
+    users = User.objects.all()
+    if user_ids is not None:
+        users = users.filter(id__in=user_ids)
+    students            = list(users.filter(role='student', is_active=True).order_by('name', 'id'))
+    current_by_student, management_states = admin_current_management_states(students, include_history=include_history)
+    instructors         = list(users.filter(role='instructor', is_active=True, is_approved=True).order_by('name', 'id'))
+    pending_instructors = list(users.filter(role='instructor', is_active=True, is_approved=False).order_by('name', 'id'))
 
     # ── Bulk-load top recs for all students in ONE query ─────────────
     student_ids = [s.id for s in students]
@@ -3522,17 +3564,17 @@ def admin_users(request):
             'competency_profile': serialize_competency_profile(profile_map.get(s.id)),
         })
 
-    return Response({
+    return {
         'students':            students_out,
         'instructors':         [instructor_payload(i) for i in instructors],
         'pending_instructors': [instructor_payload(i) for i in pending_instructors],
-        'archived_instructors': [instructor_payload(i) for i in User.objects.filter(role='instructor', is_active=False).order_by('name', 'id')],
+        'archived_instructors': [instructor_payload(i) for i in users.filter(role='instructor', is_active=False).order_by('name', 'id')],
         'archived_students': [{
             'id': s.id, 'name': s.name, 'email': s.email, 'student_id': s.school_id,
             'course': s.course, 'photo_url': s.photo_url, 'address': s.address,
             'is_active': False, 'status': 'archived', 'recommendations_locked': True,
-        } for s in User.objects.filter(role='student', is_active=False).order_by('name', 'id')],
-    })
+        } for s in users.filter(role='student', is_active=False).order_by('name', 'id')],
+    }
 
 
 @api_view(['POST'])

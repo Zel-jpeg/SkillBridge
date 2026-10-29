@@ -1,5 +1,7 @@
 import { normalizeStudent } from '../../utils/managementStudent'
 import { filterRosterStudents } from '../../utils/studentRosterFilters'
+import { rosterUrl as collectionRosterUrl } from '../../utils/collectionQueries'
+import { useCollectionPage } from '../useCollectionPage'
 import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useEnrolledStudents.js
 //
@@ -89,8 +91,17 @@ export function useEnrolledStudents() {
   const [loadedRosters, setLoadedRosters] = useState(() => new Set(batches
     .filter(batch => getCachedData(`/api/instructor/batches/${batch.id}/students/`) != null)
     .map(batch => batch.id)))
-  const rosterUrl = activeBatchId ? `/api/instructor/batches/${activeBatchId}/students/` : null
+  const [search, setSearch] = useState('')
+  const [accountStatus, setAccountStatus] = useState('all')
+  const [course, setCourse] = useState('all')
+  const [assessmentStatus, setAssessmentStatus] = useState('all')
+  const [recommendationStatus, setRecommendationStatus] = useState('all')
+  const [view, setView] = useState('grid')
+  const [page, setPage] = useState(1)
+  const rosterUrl = collectionRosterUrl(activeBatchId, { page, search, course, accountStatus, assessmentStatus, recommendationStatus })
   const { data: rosterRaw, errorStatus: rosterErrorStatus } = useApi(rosterUrl)
+  useCollectionPage(rosterUrl, rosterRaw, setPage)
+  const [readyRosterUrl, setReadyRosterUrl] = useState(null)
 
   useEffect(() => {
     if (!activeBatchId || (!rosterRaw && ![403, 404].includes(rosterErrorStatus))) return
@@ -106,16 +117,10 @@ export function useEnrolledStudents() {
     })
     // Mirror the shared roster into this hook's existing optimistic batch state.
     setBatches(prev => prev.map(b => b.id === activeBatchId ? { ...b, students: fresh } : b))
-  }, [rosterRaw, activeBatchId, rosterErrorStatus])
+    setReadyRosterUrl(rosterUrl)
+  }, [rosterRaw, activeBatchId, rosterErrorStatus, rosterUrl])
 
   // ── Modal / UI state ──────────────────────────────────────────────
-  const [search,          setSearch]          = useState('')
-  const [accountStatus, setAccountStatus] = useState('all')
-  const [course,          setCourse]          = useState('all')
-  const [assessmentStatus, setAssessmentStatus] = useState('all')
-  const [recommendationStatus, setRecommendationStatus] = useState('all')
-  const [view,            setView]            = useState('grid')
-  const [page,            setPage]            = useState(1)
   const [showModal,       setShowModal]       = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [confirmRemove,   setConfirmRemove]   = useState(null)
@@ -145,12 +150,12 @@ export function useEnrolledStudents() {
   // Refresh only the selected roster after an action or relevant SSE event.
   const refreshSelectedRoster = useCallback(async () => {
     if (!activeBatchId) return
-    const url = `/api/instructor/batches/${activeBatchId}/students/`
-    invalidateCache(url)
+    const url = rosterUrl
+    invalidateCache(`/api/instructor/batches/${activeBatchId}/students/`)
     try {
       await fetchWithDedup(url)
     } catch { /* Keep the last roster on a background failure. */ }
-  }, [activeBatchId])
+  }, [activeBatchId, rosterUrl])
 
   // ── React to batch list changes (initial load + SSE re-fetches) ──────
   useEffect(() => {
@@ -321,7 +326,7 @@ export function useEnrolledStudents() {
   const completed = students.filter(s => s.allRequiredCompleted)
 
   // Derive categories dynamically from actual score keys
-  const categories = useMemo(() => {
+  const derivedCategories = useMemo(() => {
     const seen = new Set()
     for (const s of completed) Object.keys(s.scores).forEach(k => seen.add(k))
     if (seen.size === 0) for (const s of students) Object.keys(s.scores).forEach(k => seen.add(k))
@@ -344,15 +349,18 @@ export function useEnrolledStudents() {
     setPage(1)
   }
 
-  const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
-  const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
+  const filteredCount = rosterRaw?.pagination?.count ?? filtered.length
+  const visiblePage = rosterRaw?.pagination?.page ?? Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+  const paginated = rosterRaw?.pagination ? filtered : filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
+  const previewUrl = values => collectionRosterUrl(activeBatchId, { ...values, countsOnly: true })
 
   return {
     instructor,
     // Batch
-    batches, activeBatchId, setActiveBatchId, loadingBatches,
+    batches, activeBatchId, setActiveBatchId: value => { setActiveBatchId(value); setPage(1) }, loadingBatches,
     initialBatchPending: !batchesReady,
-    initialRosterPending: !batchesReady || Boolean(activeBatchId && !loadedRosters.has(activeBatchId) && !rosterErrorStatus),
+    initialRosterPending: !batchesReady || Boolean(activeBatchId && (rosterRaw == null || readyRosterUrl !== rosterUrl || !loadedRosters.has(activeBatchId)) && !rosterErrorStatus),
+    rosterUrl, filteredCount, previewUrl, rosterSummary: rosterRaw?.pagination ? rosterRaw.summary : null,
     viewedBatch, isArchived, students, activeBatch, completed,
     // Batch actions
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
@@ -374,7 +382,7 @@ export function useEnrolledStudents() {
     view, setView,
     page: visiblePage, setPage,
     // Derived
-    filtered, paginated, categories,
+    filtered, paginated, categories: rosterRaw?.categories ?? derivedCategories,
     // Toast
     showToast,
     PAGE_SIZE,

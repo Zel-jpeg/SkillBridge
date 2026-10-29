@@ -16,6 +16,8 @@ import { useApi, invalidateCache, fetchWithDedup, getCachedData, updateCachedDat
 import { reconcileAccountCollection } from '../../utils/accountCollection'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
 import { useSSE } from '../useSSE'
+import { adminUsersUrl } from '../../utils/collectionQueries'
+import { useCollectionPage } from '../useCollectionPage'
 
 const PAGE_SIZE = 10
 const SSE_PATH  = '/api/admin/events/'
@@ -57,6 +59,7 @@ function normalizeUsers(usersData) {
       totalRequiredCount: s.total_required_count ?? 0,
       remainingRequiredCount: s.remaining_required_count ?? 0,
       top_recommendations: s.recommendations_locked ? [] : (s.top_recommendations ?? []),
+      detailUrl: s.detail_url ?? null,
     })),
     instructors: approved.map(i => ({
       id:           i.id,
@@ -86,7 +89,18 @@ export function useAdminUsers() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
-  const { data: usersData, request, error: usersError } = useApi('/api/admin/users/')
+  const [activeTab, setActiveTab] = useState(() => ['pending', 'archived'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'students')
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterCourse, setFilterCourse] = useState('all')
+  const [filterInstructor, setFilterInstr] = useState('all')
+  const [sortCol, setSortCol] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+  const [page, setPage] = useState(1)
+  const [view, setView] = useState('grid')
+  const usersUrl = adminUsersUrl({ page, tab: activeTab, sortCol, sortDir, search, filterStatus, filterCourse, filterInstructor })
+  const { data: usersData, request, error: usersError } = useApi(usersUrl)
+  useCollectionPage(usersUrl, usersData, setPage)
   const accountPending = useRef(new Set())
   async function accountRequest(method, endpoint, payload) {
     const key = method + endpoint
@@ -96,17 +110,18 @@ export function useAdminUsers() {
     finally { accountPending.current.delete(key) }
   }
   function publishAccount(account, role) {
-    const next = reconcileAccountCollection(getCachedData('/api/admin/users/'), account, role)
-    if (next) updateCachedData('/api/admin/users/', next)
+    const next = reconcileAccountCollection(getCachedData(usersUrl), account, role)
+    if (next) updateCachedData(usersUrl, next)
     if (role === 'student') invalidateCache(`/api/admin/users/${account.id}/history/`)
     invalidateCache('/api/admin/users/')
   }
   const normalized = useMemo(() => normalizeUsers(usersData), [usersData])
   const [usersReady, setUsersReady] = useState(usersData != null)
+  const [readyUrl, setReadyUrl] = useState(usersData ? usersUrl : null)
 
   async function handleEnrollmentComplete() {
     invalidateCache('/api/admin/users/')
-    try { await fetchWithDedup('/api/admin/users/') } catch { /* Keep the last user list. */ }
+    try { await fetchWithDedup(usersUrl) } catch { /* Keep the last user list. */ }
   }
 
   // ── Raw data state ────────────────────────────────────────────────
@@ -124,15 +139,6 @@ export function useAdminUsers() {
   const [confirmRejectPending, setConfirmRejectPending] = useState(null)
 
   // ── Table state ───────────────────────────────────────────────────
-  const [activeTab,        setActiveTab]     = useState(() => ['pending', 'archived'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'students')
-  const [search,           setSearch]        = useState('')
-  const [filterStatus,     setFilterStatus]  = useState('all')
-  const [filterCourse,     setFilterCourse]  = useState('all')
-  const [filterInstructor, setFilterInstr]   = useState('all')
-  const [sortCol,          setSortCol]       = useState('name')
-  const [sortDir,          setSortDir]       = useState('asc')
-  const [page,             setPage]          = useState(1)
-  const [view,             setView]          = useState('grid')
 
   // ── Toast ─────────────────────────────────────────────────────────
   const { showToast } = useToast()
@@ -146,7 +152,8 @@ export function useAdminUsers() {
     setInstructors(normalized.instructors)
     setPendingInstructors(normalized.pending)
     setUsersReady(true)
-  }, [usersData, normalized])
+    setReadyUrl(usersUrl)
+  }, [usersData, normalized, usersUrl])
 
   // ── Sync selectedUser with fresh data ─────────────────────────────
   // If a background fetch brings in new data (e.g. adding the address field),
@@ -308,6 +315,7 @@ export function useAdminUsers() {
 
   // ── Sort toggle ───────────────────────────────────────────────────
   function toggleSort(col) {
+    setPage(1)
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
@@ -321,10 +329,11 @@ export function useAdminUsers() {
     setSearch(values.search); setFilterStatus(values.filterStatus); setFilterCourse(values.filterCourse); setFilterInstr(values.filterInstructor); setPage(1)
   }
 
-  const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
-  const displayed = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
+  const filteredCount = usersData?.pagination?.count ?? filtered.length
+  const visiblePage = usersData?.pagination?.page ?? Math.min(page, Math.max(1, Math.ceil(filteredCount / PAGE_SIZE)))
+  const displayed = usersData?.pagination ? filtered : filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
 
-  const counts = {
+  const counts = usersData?.counts ?? {
     all:         [...studentsList, ...instructors].filter(u => !u.archived).length,
     students:    studentsList.filter(s => !s.archived).length,
     instructors: instructors.filter(i => !i.archived).length,
@@ -332,11 +341,12 @@ export function useAdminUsers() {
     archived:    [...studentsList, ...instructors].filter(u => u.archived).length,
   }
 
-  const instructorsList = [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
+  const instructorsList = usersData?.options?.instructors ?? [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
+  const previewUrl = values => adminUsersUrl({ tab: activeTab, sortCol, sortDir, ...values, countsOnly: true })
 
   return {
     handleEnrollmentComplete,
-    studentsList, instructors, pendingInstructors, initialUsersPending: !usersReady, usersError,
+    studentsList, instructors, pendingInstructors, initialUsersPending: !usersReady || usersData == null || readyUrl !== usersUrl, usersError, usersUrl, filteredCount, previewUrl,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser,
     selectedUserType, setSelectedUserType,

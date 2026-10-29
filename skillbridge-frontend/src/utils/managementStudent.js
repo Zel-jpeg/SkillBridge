@@ -45,6 +45,7 @@ export function normalizeStudent(s) {
     remainingRequiredCount: s.remaining_required_count ?? 0,
     allRequiredCompleted: s.all_required_completed === true,
     hasCurrentApproval: s.has_current_approval ?? (s.placement?.status === 'approved'),
+    detailUrl: s.detail_url ?? null,
   }
 }
 

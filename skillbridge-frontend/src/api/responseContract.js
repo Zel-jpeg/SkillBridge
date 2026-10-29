@@ -1,5 +1,10 @@
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const id = value => Number.isSafeInteger(value) && value > 0
+const pagination = (data, rows) => data.pagination === undefined || (
+  object(data.pagination) && Number.isSafeInteger(data.pagination.count) && data.pagination.count >= 0 &&
+  id(data.pagination.page) && id(data.pagination.page_size) && data.pagination.page_size <= 50 &&
+  data.pagination.page <= Math.max(1, Math.ceil(data.pagination.count / data.pagination.page_size)) &&
+  rows.length <= Math.min(data.pagination.count, data.pagination.page_size))
 const emailGroups = groups => Array.isArray(groups) && groups.every(group => object(group) &&
   typeof group.id === 'string' && id(group.batch_id) && typeof group.batch_name === 'string' &&
   typeof group.source === 'string' && typeof group.created_at === 'string' && Number.isFinite(Date.parse(group.created_at)) &&
@@ -50,6 +55,9 @@ export function validateApiResponse(response) {
   } else if (method === 'get' && /^\/api\/instructor\/batches\/\d+\/unenrolled\/$/.test(path)) {
     valid = object(data) && object(data.batch) && id(data.batch.id) && Array.isArray(data.students) &&
       data.students.every(row => object(row) && id(row.id) && typeof row.name === 'string' && typeof row.is_active === 'boolean')
+  } else if (method === 'get' && /^\/api\/instructor\/batches\/\d+\/students\/$/.test(path)) {
+    valid = object(data) && object(data.batch) && id(data.batch.id) && Array.isArray(data.students) &&
+      data.students.every(row => object(row) && id(row.id) && typeof row.name === 'string') && pagination(data, data.students)
   } else if (method === 'get' && /^\/api\/admin\/users\/\d+\/history\/$/.test(path)) {
     valid = object(data) && id(data.student_id) && data.read_only === true && Array.isArray(data.records) &&
       data.records.every(row => object(row) && Array.isArray(row.assessment_results) && Array.isArray(row.placement_history) && Array.isArray(row.combined_category_scores))
@@ -72,7 +80,8 @@ export function validateApiResponse(response) {
   } else if (method === 'get' && ['/api/categories/', '/api/instructor/batches/', '/api/instructor/assessments/'].includes(path)) {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id))
   } else if (method === 'get' && path === '/api/admin/users/') {
-    valid = object(data) && ['students', 'instructors', 'pending_instructors'].every(field => Array.isArray(data[field]))
+    valid = object(data) && ['students', 'instructors', 'pending_instructors'].every(field => Array.isArray(data[field])) &&
+      pagination(data, ['students', 'instructors', 'pending_instructors', 'archived_students', 'archived_instructors'].flatMap(key => data[key] ?? []))
   } else if (method === 'get' && path === '/api/admin/skills/') {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string' &&
       Array.isArray(row.tags) && row.tags.every(tag => typeof tag === 'string'))
