@@ -104,6 +104,18 @@ test('unconfirmed mutation response has a distinct safe message, not a success o
   assert.match(requestErrorMessage({ code: 'ECONNABORTED' }, { mutation: true }), /could not be confirmed/)
 })
 
+test('collection pagination rejects invalid bounds before caching', () => {
+  for (const url of ['/api/admin/users/?page=1', '/api/instructor/batches/4/students/?page=1']) {
+    const data = { students: [{ id: 2, name: 'Synthetic' }], instructors: [], pending_instructors: [], batch: { id: 4 },
+      pagination: { count: 1, page: 1, page_size: 10 } }
+    const response = { data, status: 200, config: { url } }
+    assert.equal(validateApiResponse(response), response)
+    for (const invalid of [{ count: -1 }, { page: 2 }, { page_size: 51 }, { count: '1' }]) {
+      assert.throws(() => validateApiResponse({ ...response, data: { ...data, pagination: { ...data.pagination, ...invalid } } }), { code: 'ERR_BAD_RESPONSE' })
+    }
+  }
+})
+
 test('error payload objects/HTML and internal 500 details do not become UI content', () => {
   for (const data of [{ error: { secret: 'synthetic-private' } }, { detail: ['synthetic-private'] }, { error: '<html>synthetic-private</html>' }]) {
     assert.equal(requestErrorMessage({ response: { status: 400, data } }), 'Invalid request. Please check your input.')

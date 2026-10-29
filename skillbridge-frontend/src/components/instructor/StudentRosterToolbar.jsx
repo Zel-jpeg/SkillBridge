@@ -21,22 +21,23 @@ function summary(filters) {
   }).join(' · ')
 }
 
-export default function StudentRosterToolbar({ batchId, students, pending, filters, onApply, onSearch, view, onView, gridIcon: GridIcon, listIcon: ListIcon }) {
+export default function StudentRosterToolbar({ batchId, students, pending, filters, onApply, onSearch, view, onView, count: serverCount, total: serverTotal, previewUrl, gridIcon: GridIcon, listIcon: ListIcon }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(filters)
   const needsPrevious = filters.enrollment === 'unenrolled' || (open && draft.enrollment === 'unenrolled')
   const previousUrl = batchId && needsPrevious ? `/api/instructor/batches/${batchId}/unenrolled/` : null
   const { data: previous, error: previousError } = useApi(previousUrl)
+  const { data: preview, error: previewError } = useApi(open && draft.enrollment === 'enrolled' && previewUrl ? previewUrl(draft) : null)
   const previousPending = needsPrevious && !previous
-  const previewPending = draft.enrollment === 'unenrolled' ? previousPending : pending
-  const previewFailed = draft.enrollment === 'unenrolled' && Boolean(previousError)
+  const previewPending = draft.enrollment === 'unenrolled' ? previousPending : pending || Boolean(open && previewUrl && !preview)
+  const previewFailed = draft.enrollment === 'unenrolled' ? Boolean(previousError) : Boolean(previewError)
   const count = filters.enrollment === 'unenrolled'
     ? filterPreviouslyUnenrolled(previous?.students || [], filters).length
-    : filterRosterStudents(students, filters).length
-  const total = filters.enrollment === 'unenrolled' ? previous?.students.length ?? 0 : students.length
+    : serverCount ?? filterRosterStudents(students, filters).length
+  const total = filters.enrollment === 'unenrolled' ? previous?.students.length ?? 0 : serverTotal ?? students.length
   const previewCount = draft.enrollment === 'unenrolled'
     ? filterPreviouslyUnenrolled(previous?.students || [], draft).length
-    : filterRosterStudents(students, draft).length
+    : preview?.pagination?.count ?? filterRosterStudents(students, draft).length
   const activeCount = rosterFilterCount(filters)
   const active = activeCount > 0 || Boolean(filters.search.trim())
 
@@ -59,8 +60,8 @@ export default function StudentRosterToolbar({ batchId, students, pending, filte
         <GroupedFilterPanel groups={groups.map(group => ({ ...group, disabled: group.enrolledOnly && draft.enrollment !== 'enrolled', hint: group.enrolledOnly && draft.enrollment !== 'enrolled' ? 'Available for enrolled students.' : undefined }))}
           draft={draft} onChange={change} open={open} onOpenChange={changeOpen} onApply={() => onApply(draft)}
           onClear={() => setDraft({ ...DEFAULT_ROSTER_FILTERS })} activeCount={activeCount} previewCount={previewCount}
-          pending={previewPending} error={previewFailed ? 'Could not load previously unenrolled students.' : undefined}
-          onRetry={() => fetchWithDedup(previousUrl).catch(() => {})} noun="students" disabled={!batchId} dialogLabel="Student filter options" errorLabel="Students unavailable" loadingLabel="Loading students…" />
+          pending={previewPending} error={previewFailed ? draft.enrollment === 'unenrolled' ? 'Could not load previously unenrolled students.' : 'Could not load matching students.' : undefined}
+          onRetry={() => fetchWithDedup(draft.enrollment === 'unenrolled' ? previousUrl : previewUrl(draft)).catch(() => {})} noun="students" disabled={!batchId} dialogLabel="Student filter options" errorLabel="Students unavailable" loadingLabel="Loading students…" />
         <div role="group" aria-label="Student view" className="sb-roster-view-tools">
           {[{ value: 'grid', Icon: GridIcon, label: 'Show student cards' }, { value: 'list', Icon: ListIcon, label: 'Show student list' }].map(item =>
             <button key={item.value} type="button" aria-label={item.label} aria-pressed={view === item.value} onClick={() => onView(item.value)}><item.Icon /></button>)}

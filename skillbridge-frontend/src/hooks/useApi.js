@@ -106,15 +106,17 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
     data: typeof value === 'function' ? value(previous.url === url ? previous.data : null) : value,
   })), [url])
   const [loading, setLoading] = useState(!!url && !skip && !seed && !initialData)
-  const [error,   setError]   = useState(null)
-  const [errorStatus, setErrorStatus] = useState(null)
+  // Errors belong to the same URL as their data. A failed filter must not
+  // disable a different filter whose successful response is already cached.
+  const [failure, setFailure] = useState({ url, message: null, status: null })
+  const error = failure.url === url ? failure.message : null
+  const errorStatus = failure.url === url ? failure.status : null
 
   useEffect(() => {
     if (!url || skip || expired) return
     return cache.subscribe(url, (value, err) => {
       setResult({ url, data: value })
-      setError(err ? friendlyError(err.response?.status) : null)
-      setErrorStatus(err?.response?.status ?? null)
+      setFailure({ url, message: err ? friendlyError(err.response?.status) : null, status: err?.response?.status ?? null })
     })
   }, [url, skip, expired])
 
@@ -133,6 +135,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (entry) setData(entry.data)
       setLoading(false)
+      setFailure({ url, message: null, status: null })
       return
     }
 
@@ -141,8 +144,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       // Reuse a completed route/preparation failure instead of immediately
       // issuing the same failed read again as the page mounts. Route intent,
       // explicit retry and live reconciliation can initiate another request.
-      setError(priorError.response?.data?.error || priorError.response?.data?.detail || friendlyError(priorError.response?.status))
-      setErrorStatus(priorError.response?.status ?? null)
+      setFailure({ url, message: priorError.response?.data?.error || priorError.response?.data?.detail || friendlyError(priorError.response?.status), status: priorError.response?.status ?? null })
       setLoading(false)
       return
     }
@@ -155,28 +157,28 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       // No cache and no initialData → show spinner
       setLoading(true)
     }
-    if (!entry && !initialData) setError(null)
+    setFailure({ url, message: null, status: null })
 
     fetchWithDedup(url)
       .then(res => {
         if (cancelled) return
         if (cache.read(url)?.data === res.data) setData(res.data)
         setLoading(false)
-        setError(null)
+        setFailure({ url, message: null, status: null })
       })
       .catch(err => {
         if (cancelled || err.staleIdentity || err.code === 'ERR_CANCELED') return
         setLoading(false)
         const status = err.response?.status
-        setErrorStatus(status ?? null)
 
         if (status === 401) {
+          setFailure({ url, message: null, status })
           triggerSessionExpired()
           return
         }
 
         const msg = requestErrorMessage(err)
-        if (!cache.read(url) && !initialData) setError(msg)
+        setFailure({ url, message: !cache.read(url) && !initialData ? msg : null, status: status ?? null })
         // 409 = intentional "conflict" state (e.g. already submitted assessment)
         // The consuming component handles this with its own UI — skip the generic toast.
         if (!entry && status !== 409) showToast(msg, 'error')
@@ -224,7 +226,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
   const request = useCallback(async (method, endpoint, payload, { silentError = false } = {}) => {
     const requestToken = localStorage.getItem('sb-token')
     if (!url || !cache.read(url)) setLoading(true)
-    setError(null)
+    setFailure({ url, message: null, status: null })
     try {
       const res = await api[method](endpoint, payload)
       setLoading(false)
@@ -239,7 +241,7 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
       }
 
       const msg = requestErrorMessage(err, { mutation: !['get', 'head', 'options'].includes(method.toLowerCase()) })
-      setError(msg)
+      setFailure({ url, message: msg, status: status ?? null })
       if (!silentError) showToast(msg, 'error')
       return { ok: false, status, message: msg, raw: err.response?.data }
     }

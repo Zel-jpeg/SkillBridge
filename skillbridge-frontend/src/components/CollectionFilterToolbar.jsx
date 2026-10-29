@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import GroupedFilterPanel from './GroupedFilterPanel'
 import { SearchIcon } from './Icons'
+import { fetchWithDedup, useApi } from '../hooks/useApi'
 
-export default function CollectionFilterToolbar({ filters, defaults, groups, onApply, onSearch, getPreviewCount, count, total, pending = false, error, noun, label, searchLabel, placeholder, children }) {
+export default function CollectionFilterToolbar({ filters, defaults, groups, onApply, onSearch, getPreviewCount, previewUrl, count, total, pending = false, error, noun, label, searchLabel, placeholder, children }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(filters)
+  const { data: preview, error: previewError } = useApi(open && previewUrl ? previewUrl(draft) : null)
   const active = groups.filter(group => filters[group.key] !== defaults[group.key])
   const searching = Boolean(filters.search.trim())
   function changeOpen(next) {
@@ -20,7 +22,9 @@ export default function CollectionFilterToolbar({ filters, defaults, groups, onA
       <div className="sb-roster-controls">
         {groups.length > 0 && <GroupedFilterPanel groups={groups} draft={draft} onChange={(key, value) => setDraft(previous => ({ ...previous, [key]: value }))}
           open={open} onOpenChange={changeOpen} onApply={() => onApply(draft)} onClear={() => setDraft({ ...defaults })}
-          activeCount={active.length} previewCount={open ? getPreviewCount(draft) : 0} pending={pending} error={error}
+          activeCount={active.length} previewCount={previewUrl && preview?.pagination ? preview.pagination.count : open ? getPreviewCount(draft) : 0}
+          pending={pending || Boolean(open && previewUrl && !preview)} error={error || (open ? previewError : null)}
+          onRetry={previewUrl ? () => fetchWithDedup(previewUrl(draft)).catch(() => {}) : undefined}
           noun={noun} dialogLabel={`${label} options`} />}
         {children}
       </div>

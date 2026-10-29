@@ -75,7 +75,7 @@ export default function EnrolledStudents() {
     search, setSearch, course, assessmentStatus,
     recommendationStatus, hasActiveFilters, applyFilters, accountStatus,
     view, setView, page, setPage,
-    filtered, paginated,
+    filtered, paginated, filteredCount, rosterUrl, rosterSummary, previewUrl,
     PAGE_SIZE,
     categories,
   } = useEnrolledStudents()
@@ -223,14 +223,14 @@ export default function EnrolledStudents() {
 {isArchived && <p className="mt-3 text-xs leading-6 text-gray-500 dark:text-gray-400">Use saved closeout reports for the recorded cycle details. Personal details in this roster reflect the student's current account.</p>}
 {section === 'students' && <>
 <BatchEmailProgress key={`email-progress-${activeBatchId}`} batchId={activeBatchId} onView={() => setShowEmails(true)} />
-<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="roster-stats" count={4} label="Loading batch totals">
+<DataSection pending={initialRosterPending} urls={rosterUrl ? ['/api/instructor/batches/', rosterUrl] : ['/api/instructor/batches/']} layout="roster-stats" count={4} label="Loading batch totals">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Enrolled students', icon: UsersIcon, value: students.length, sub: `BSIT ${bsit.length} · BSIS ${bsis.length}`, green: false },
-            { label: 'Required assessments complete', icon: CheckCircleIcon, value: `${completed.length} of ${students.length}`, sub: students.length ? `${students[0].totalRequiredCount} required assessments` : 'No students enrolled', green: true },
-            { label: 'Recommendations available', icon: ReportIcon, value: students.filter(s => !s.recommendationsLocked && s.top_recommendations.length > 0).length, sub: 'students with current ranked matches', green: true },
-            { label: 'Awaiting coordinator review', icon: ClockIcon, value: students.filter(s => !s.recommendationsLocked && !s.hasCurrentApproval && s.top_recommendations.length > 0).length, sub: 'current matches, no approved decision', green: false },
+            { label: 'Enrolled students', icon: UsersIcon, value: rosterSummary?.student_count ?? students.length, sub: `BSIT ${rosterSummary?.courses?.BSIT ?? bsit.length} · BSIS ${rosterSummary?.courses?.BSIS ?? bsis.length}`, green: false },
+            { label: 'Required assessments complete', icon: CheckCircleIcon, value: `${rosterSummary?.completed_students ?? completed.length} of ${rosterSummary?.student_count ?? students.length}`, sub: (rosterSummary?.student_count ?? students.length) ? `${rosterSummary?.published_required_count ?? students[0]?.totalRequiredCount ?? 0} required assessments` : 'No students enrolled', green: true },
+            { label: 'Recommendations available', icon: ReportIcon, value: rosterSummary?.recommendations_available_students ?? students.filter(s => !s.recommendationsLocked && s.top_recommendations.length > 0).length, sub: 'students with current ranked matches', green: true },
+            { label: 'Awaiting coordinator review', icon: ClockIcon, value: rosterSummary?.awaiting_review_students ?? students.filter(s => !s.recommendationsLocked && !s.hasCurrentApproval && s.top_recommendations.length > 0).length, sub: 'current matches, no approved decision', green: false },
           ].map(c => (
             <div key={c.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
               <div className="mb-3 flex items-start gap-2.5"><span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 [&_svg]:stroke-[1.8]"><c.icon size={18} /></span><p className="pt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{c.label}</p></div>
@@ -243,10 +243,11 @@ export default function EnrolledStudents() {
 </DataSection>
         {/* Controls */}
         <StudentRosterToolbar key={`roster-toolbar-${activeBatchId}`} batchId={activeBatchId} students={students} pending={initialRosterPending}
+          count={filteredCount} total={rosterSummary?.student_count} previewUrl={previewUrl}
           filters={{ search, course, enrollment, accountStatus, assessmentStatus, recommendationStatus }}
           onApply={values => { setEnrollment(values.enrollment); applyFilters(values) }} onSearch={setSearch}
           view={view} onView={setView} gridIcon={GridIcon} listIcon={ListIcon} />
-{enrollment === 'unenrolled' && viewedBatch ? <PreviouslyUnenrolled key={activeBatchId} batch={viewedBatch} search={search} course={course} account={accountStatus} view={view} onChanged={handleEnroll} /> : <DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
+{enrollment === 'unenrolled' && viewedBatch ? <PreviouslyUnenrolled key={activeBatchId} batch={viewedBatch} search={search} course={course} account={accountStatus} view={view} onChanged={handleEnroll} /> : <DataSection pending={initialRosterPending} urls={rosterUrl ? ['/api/instructor/batches/', rosterUrl] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
         {/* Empty state */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-16 flex flex-col items-center gap-3">
@@ -314,7 +315,7 @@ export default function EnrolledStudents() {
               </div>
             )}
 
-            <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
+            <Pagination total={filteredCount} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
           </>
         )}
 

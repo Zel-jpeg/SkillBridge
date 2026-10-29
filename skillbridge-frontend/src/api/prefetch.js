@@ -2,6 +2,7 @@ import { queryStore as cache } from './queryStore.js'
 import { createPreparationQueue } from './preparationQueue.js'
 import { preloadPage } from '../router/preloadPage.js'
 import { waitForDashboard } from './dashboardReadiness.js'
+import { adminUsersUrl } from '../utils/collectionQueries.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
 export const DESTINATION_QUERIES = {
@@ -35,7 +36,7 @@ const PAGE_QUERIES = {
   '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
   '/admin/dashboard': ['/api/management/analytics/', '/api/admin/students/recommendations/'],
-  '/admin/users': ['/api/admin/users/'],
+  '/admin/users': [adminUsersUrl()],
   '/admin/placements': PLACEMENT_QUERIES,
   '/admin/reports': ['/api/management/analytics/'],
 }

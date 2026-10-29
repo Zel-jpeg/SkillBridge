@@ -35,7 +35,7 @@ export default function AdminUsers() {
   const [showEnrollment, setShowEnrollment] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
   const {
-    instructors, pendingInstructors, initialUsersPending, usersError,
+    instructors, pendingInstructors, initialUsersPending, usersError, usersUrl, filteredCount, previewUrl,
     handleEnrollmentComplete,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser, selectedUserType, setSelectedUserType,
@@ -46,7 +46,7 @@ export default function AdminUsers() {
     setFilterStatus, setFilterCourse, setFilterInstructor,
     sortCol, sortDir, toggleSort,
     page, setPage, view, setView,
-    displayed, filtered, counts, instructorsList, userFilters, previewFilters, applyFilters,
+    displayed, counts, instructorsList, userFilters, previewFilters, applyFilters,
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
     approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
@@ -177,7 +177,7 @@ export default function AdminUsers() {
         </div>
 
         {/* ── PENDING TAB ── simple approve/reject list */}
-{activeTab === 'pending' && <DataSection url="/api/admin/users/" pending={initialUsersPending} layout="allocation" label="Loading instructor requests">
+{activeTab === 'pending' && <DataSection url={usersUrl} pending={initialUsersPending} layout="allocation" label="Loading instructor requests">
           <div className="space-y-2">
             {pendingInstructors.length === 0 ? (
               <EmptyState message="No pending instructor requests." />
@@ -206,6 +206,7 @@ export default function AdminUsers() {
               </div>
             ))}
           </div>
+          <Pagination total={filteredCount} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
         </DataSection>}
 
         {/* ── ALL OTHER TABS ── full filter + table/grid */}
@@ -217,11 +218,11 @@ export default function AdminUsers() {
                 { key: 'filterStatus', label: 'Assessment status', options: [['all', 'All'], ['completed', 'Completed'], ['stopped', 'Stopped / flagged'], ['pending', 'Pending']] },
                 ...(instructorsList.length ? [{ key: 'filterInstructor', label: 'Instructor', options: [['all', 'All instructors'], ...instructorsList.map(name => [name, name])] }] : []),
               ] : []} onApply={applyFilters} onSearch={setSearch} getPreviewCount={draft => previewFilters(draft).length}
-              count={filtered.length} total={counts[activeTab]} pending={initialUsersPending} error={initialUsersPending ? usersError : undefined} noun="users" label="User filters" searchLabel="Search users" placeholder="Search name, ID, or email…">
+              previewUrl={previewUrl} count={filteredCount} total={counts[activeTab]} pending={initialUsersPending} error={initialUsersPending ? usersError : undefined} noun="users" label="User filters" searchLabel="Search users" placeholder="Search name, ID, or email…">
               <CollectionViewToggle label="User view" view={view} onChange={setView} />
             </CollectionFilterToolbar>
 
-            <DataSection url="/api/admin/users/" pending={initialUsersPending} skeleton={<CollectionSkeleton view={view} kind={activeTab === 'students' ? 'student' : 'user'} columns={activeTab === 'instructors' ? 4 : 3} />}>
+            <DataSection url={usersUrl} pending={initialUsersPending} skeleton={<CollectionSkeleton view={view} kind={activeTab === 'students' ? 'student' : 'user'} columns={activeTab === 'instructors' ? 4 : 3} />}>
             {displayed.length === 0 && <EmptyState message="No users match your filters." onClear={() => { setSearch(''); setFilterStatus('all'); setFilterCourse('all'); setFilterInstructor('all') }} />}
 
             {/* Grid */}
@@ -311,7 +312,7 @@ export default function AdminUsers() {
               </div>
             )}
 
-            <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
+            <Pagination total={filteredCount} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
             </DataSection>
           </div>
         )}
