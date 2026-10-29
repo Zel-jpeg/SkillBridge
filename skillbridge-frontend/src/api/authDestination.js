@@ -4,6 +4,7 @@ export function authDestination(user) {
   if (user.role === 'instructor') return user.is_approved ? '/instructor/dashboard' : '/instructor/pending'
   if (user.role === 'student') {
     if (user.is_approved === false) return '/instructor/pending'
+    if (user.profile_review_required) return '/student/profile'
     return user.phone ? '/student/dashboard' : '/student/setup'
   }
   return '/login'

@@ -61,6 +61,8 @@ def audience(kind, request, kwargs, response=None):
     batch_id = _id(kwargs.get('batch_id') or (data.get('batch_id') if kind in ('assessment', 'placement') else None))
     if batch_id:
         batches.add(batch_id)
+    if kind == 'batch' and _id(getattr(request, '_transfer_source_batch_id', None)):
+        batches.add(request._transfer_source_batch_id)
     if kind == 'batch' and response and not kwargs.get('batch_id'):
         batch_id = _id(body.get('id'))
         if batch_id:

@@ -20,7 +20,7 @@ def unused_port():
 
 
 def ready(process, port):
-    deadline = time.monotonic() + 45
+    deadline = time.monotonic() + float(os.environ.get('SB_TEST_STARTUP_TIMEOUT', '90'))
     while time.monotonic() < deadline:
         if process.poll() is not None:
             raise RuntimeError(f'Test server exited: inspect server-{port}.log')
@@ -32,14 +32,17 @@ def ready(process, port):
     raise RuntimeError(f'Test server did not listen on IPv4 port {port}')
 
 
-api_port, frontend_port = unused_port(), unused_port()
+external_frontend_port = os.environ.get('SB_TEST_FRONTEND_PORT')
+api_port = unused_port()
+frontend_port = int(external_frontend_port) if external_frontend_port else unused_port()
 env = {**os.environ, 'ADMIN_MANAGEMENT_API_PORT': str(api_port),
     'ADMIN_MANAGEMENT_FRONTEND_PORT': str(frontend_port),
     'ADMIN_MANAGEMENT_FRONTEND_URL': f'http://127.0.0.1:{frontend_port}', 'PYTHONIOENCODING': 'utf-8'}
 commands = [
-    ([str(ROOT / 'skillbridge-backend/venv/Scripts/python.exe'), '-u', str(ROOT / 'skillbridge-frontend/tests' / ('analytics_server.py' if ANALYTICS else 'admin_management_server.py'))], api_port),
-    ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), str(ROOT / 'skillbridge-frontend'), '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port),
+    ([str(ROOT / 'skillbridge-backend/venv/Scripts/python.exe'), '-u', str(ROOT / 'skillbridge-frontend/tests' / ('cycle_server.py' if '--cycles' in sys.argv else 'analytics_server.py' if ANALYTICS else 'admin_management_server.py'))], api_port),
 ]
+if not external_frontend_port:
+    commands.append(([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), str(ROOT / 'skillbridge-frontend'), '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port))
 processes, files = [], []
 try:
     for command, port in commands:
@@ -50,8 +53,8 @@ try:
         processes.append((process, port))
     for process, port in processes:
         ready(process, port)
-    script = 'analytics_activity_playwright.py' if '--activity-periods' in sys.argv else 'assessment_policy_playwright.py' if '--policy' in sys.argv else 'assessment_archives_playwright.py' if '--archives' in sys.argv else 'analytics_playwright.py' if ANALYTICS else 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
-    args = [arg for arg in sys.argv[1:] if arg not in ('--oversight', '--analytics', '--archives', '--policy', '--activity-periods')]
+    script = 'cycle_lifecycle_playwright.py' if '--cycles' in sys.argv else 'analytics_activity_playwright.py' if '--activity-periods' in sys.argv else 'assessment_policy_playwright.py' if '--policy' in sys.argv else 'assessment_archives_playwright.py' if '--archives' in sys.argv else 'analytics_playwright.py' if ANALYTICS else 'admin_assessments_playwright.py' if '--oversight' in sys.argv else 'admin_management_playwright.py'
+    args = [arg for arg in sys.argv[1:] if arg not in ('--cycles', '--oversight', '--analytics', '--archives', '--policy', '--activity-periods')]
     result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script), *args], cwd=ROOT, env=env)
     raise SystemExit(result.returncode)
 finally:

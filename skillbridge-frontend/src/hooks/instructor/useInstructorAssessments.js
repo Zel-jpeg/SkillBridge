@@ -121,7 +121,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   useSSE(`/api/${role}/events/`)
 
   // ── Assessment + batch lists ──────────────────────────────────────────────
-  const { data: assessmentsRaw, loading: loadingList } = useApi('/api/instructor/assessments/')
+  const { data: assessmentsRaw, loading: loadingList, error: listError } = useApi('/api/instructor/assessments/')
   const { data: batchesRaw }                           = useApi('/api/instructor/batches/')
 
   const assessments = useMemo(() => Array.isArray(assessmentsRaw) ? assessmentsRaw.filter(a => !a.is_archived) : [], [assessmentsRaw])
@@ -410,7 +410,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
       choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,
     }, true))]),
     // ── List ─────────────────────────────────────────────────────────────────
-    assessments, loadingList, filtered, stats, batchOptions,
+    assessments, loadingList, listError, filtered, stats, batchOptions,
     // ── Filters ──────────────────────────────────────────────────────────────
     search, setSearch,
     filterBatch,  setFilterBatch,

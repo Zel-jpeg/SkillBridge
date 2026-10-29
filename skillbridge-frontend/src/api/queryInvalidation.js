@@ -20,6 +20,8 @@ for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.em
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
+  if (path === '/api/students/me/history/' && (change.resync || change.topics?.some(t => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(t)))) return true
+  if (/^\/api\/instructor\/batches\/\d+\/closeout\/$/.test(path) && !parsed.searchParams.has('version') && (change.resync || change.topics?.some(t => ['students', 'batches', 'assessments', 'results', 'placements', 'catalog', 'capacity', 'taxonomy'].includes(t)))) return true
   if (/^\/api\/admin\/users\/\d+\/history\/$/.test(path) && (change.resync || change.topics?.some(topic => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(topic)))) return true
   if (path === '/api/placements/draft/' && change.topics?.some(topic => ['students', 'batches', 'assessments', 'results', 'catalog', 'taxonomy', 'configuration'].includes(topic))) return true
   // Analytics includes shared capacity as well as scoped cohort data. A foreign

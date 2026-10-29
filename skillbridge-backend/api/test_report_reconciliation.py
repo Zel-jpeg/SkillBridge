@@ -50,7 +50,7 @@ class ReportReconciliationTests(APITestCase):
         report = self.report(report_type='placement_history')
         self.assertEqual(report['summary'], {'total_records': 6, 'unique_students': 3,
             'unique_companies': 2, 'unique_positions': 2,
-            'status_counts': {'suggested': 1, 'approved': 2, 'removed': 1, 'rejected': 2},
+            'status_counts': {'suggested': 1, 'approved': 2, 'removed': 1, 'rejected': 2, 'completed': 0},
             'slots_available': 5, 'approved_count': 2, 'remaining_slots': 3})
         for row in report['records']:
             self.assertEqual(row['match_score_at_assignment'], 72.345)

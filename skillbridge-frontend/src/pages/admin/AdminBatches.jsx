@@ -6,6 +6,8 @@ import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../../components/DataSection'
 import DialogShell from '../../components/DialogShell'
+import BatchCyclePanel from '../../components/BatchCyclePanel'
+import StudentTransferAction from '../../components/StudentTransferAction'
 import ActionMenu from '../../components/ActionMenu'
 import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
 import ConfirmModal from '../../components/admin/ConfirmModal'
@@ -20,7 +22,7 @@ import StudentModal from '../../components/instructor/StudentModal'
 import { normalizeStudent } from '../../utils/managementStudent'
 import { requestErrorMessage } from '../../api/requestErrors'
 import { assessmentRetakeCandidate } from '../../utils/assessmentManagement'
-import { ArchiveIcon, ChevronRightIcon, MailIcon, MoreHorizontalIcon, PlusIcon, ReportIcon, SearchIcon, UsersIcon } from '../../components/Icons'
+import { ArchiveIcon, ChevronRightIcon, MailIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, ReportIcon, SearchIcon, UsersIcon } from '../../components/Icons'
 
 const BATCHES = '/api/instructor/batches/'
 const OWNERS = '/api/admin/batch-instructors/'
@@ -174,16 +176,18 @@ export default function AdminBatches() {
       <section className={`${surface} p-5 sm:p-6`} aria-label="Selected batch">
         <header className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 items-start gap-3"><span className="batch-symbol h-12 w-12" aria-hidden="true"><UsersIcon size={23} /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-3"><h1 ref={batchHeading} tabIndex={-1} className="break-words text-xl font-bold outline-none">{selected.name}</h1><BatchStatus status={selected.status} /></div><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Responsible instructor · {selected.instructor_name || 'Instructor not assigned'}</p><p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{selected.student_count ?? 0} students</p></div></div>
         <div className="flex flex-wrap gap-2">
+          {selected.status === 'active' && <StudentTransferAction key={`transfer-${selected.id}`} batchId={selected.id} batchName={selected.name} />}
           <button className={button} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>
           {selected.status === 'active' && <><Link className={button} to={`/admin/assessment/create?batch_id=${selected.id}`}><PlusIcon size={14} />New assessment</Link><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} disabled={busy} onClick={() => setEnrolling(true)}><PlusIcon size={14} />Enroll students</button></>}
           <ActionMenu label="Batch actions" className={button} disabled={busy} items={[
-            { id: 'manage', label: 'Manage batch' },
+            { id: 'manage', label: 'Manage batch', icon: <PencilIcon size={14} /> },
             { id: 'status', label: selected.status === 'active' ? 'Archive batch' : 'Reactivate batch', icon: <ArchiveIcon size={14} />, danger: selected.status === 'active' },
           ]} onAction={action => action === 'manage' ? setEditor({ batch: selected }) : setConfirm({ type: selected.status === 'active' ? 'archive' : 'unarchive' })}><MoreHorizontalIcon /></ActionMenu>
         </div></header>
         <div className="mt-4"><BatchEmailProgress key={selected.id} batchId={selected.id} onView={() => setShowEmails(true)} /></div>
         {selected.status === 'archived' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">This batch is archived. Student assessment availability and final recommendations are locked. Reactivate it before enrolling students or starting assessments.</p>}
       </section>
+      <BatchCyclePanel key={`cycle-${selected.id}`} batchId={selected.id} role="admin" />
       <section className={`${surface} space-y-5 p-4 sm:p-6`} aria-label="Batch students">
         {feedback && <p role={feedback.error ? 'alert' : 'status'} className={`rounded-lg p-3 text-xs ${feedback.error ? 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300'}`}>{feedback.text}</p>}
         <header className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Students <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">{students.length} enrolled</span></h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Required assessment progress for this batch. Select a student for results, history and retake management.</p></div><CollectionViewToggle view={studentView} onChange={setStudentView} label="Batch student view" /></header>

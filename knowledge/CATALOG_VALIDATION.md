@@ -1,5 +1,11 @@
 # Catalog validation and recovery
 
+28 October cycle update: admins can archive/restore partners and positions without
+removing history. Current allocated approvals block archive; archived records cannot be edited
+or used for new assignments. Recommendation-only references now also protect deletion.
+Approvals in archived batches stay protected history and do not reserve current slots. See
+[cycle lifecycle and verification](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md).
+
 20 October2026:shared category creation reuses strict admin skill validation;
 malformed names,envelopes,descriptions and tags return400 before writes.
 [Ranking freshness](RECOMMENDATION_FRESHNESS.md) also detects input changes before

@@ -4,6 +4,23 @@ SkillBridge is DNSC's OJT placement decision support application. Start with
 [the project overview](knowledge/PROJECT_OVERVIEW.md). Use current code and tests
 to resolve differences with older project notes.
 
+## PAUSE / CONTINUE protocol
+
+- When the user says **PAUSE**, stop starting new work immediately. Safely finish
+  or stop any in-flight operation, preserve edits, and stop only task-owned test
+  servers/helpers when needed. Do not deploy, migrate live data, merge, reset or
+  discard work as part of pausing.
+- Before ending the pause turn, update the active plan/checkpoint with the branch,
+  completed changes, checks actually run, remaining tasks, known failures and the
+  exact next step. Keep credentials and personal records out of that checkpoint.
+- Briefly report the checkpoint location and wait for **CONTINUE**. Do not resume
+  automatically, schedule a wakeup or treat token reset/time passing as permission.
+- On **CONTINUE**, read the checkpoint and Git status, reconcile any intervening
+  changes, then resume the same authorized scope without repeating completed work.
+- The OJT cycle update's tracker and resume checkpoint are in
+  [OJT cycle closeout and rollover](knowledge/OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md).
+  For other work, use its active knowledge plan and record that path when pausing.
+
 ## Context check for every request
 
 - At the start of each request, check these instructions, the project overview

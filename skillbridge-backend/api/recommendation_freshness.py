@@ -17,7 +17,8 @@ def catalog_fingerprint():
     changes are authoring hints and are likewise outside the matching inputs.
     Bulk callers share this value only within their current read operation.
     """
-    positions = list(Position.objects.filter(requirements__isnull=False).order_by('id').values(
+    positions = list(Position.objects.filter(requirements__isnull=False, archived_at__isnull=True,
+                                            company__archived_at__isnull=True).order_by('id').values(
         'id', 'title', 'tags', 'company_id', 'company__name',
         'company__location_lat', 'company__location_lng',
     ).distinct())

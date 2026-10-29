@@ -10,10 +10,10 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.db.models.functions import Lower
 
-from .models import Batch, BatchEnrollment, ManagementAction, User
+from .models import Batch, BatchEnrollment, ManagementAction, User, OJTPlacement
 from .name_formatting import format_person_name
 
 logger = logging.getLogger(__name__)
@@ -101,11 +101,12 @@ def normalize_row(item, index):
     return row
 
 
-def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None):
+def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None, active_conflicts=None):
     if row['status'] not in READY:
         return row, None
     if matched_users is None:
-        query = User.objects.filter(Q(school_id=row['school_id']) | Q(email__iexact=row['email']))
+        query = User.objects.filter(Q(school_id=row['school_id']) | Q(email__iexact=row['email'])).annotate(
+            has_saved_batch_approval=Exists(OJTPlacement.objects.filter(student_id=OuterRef('pk'), batch=batch, status='approved')))
         users = list(query.select_for_update() if lock else query)
     else:
         users = matched_users
@@ -118,8 +119,18 @@ def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None):
         return row, None
     if student:
         row['existing_student'] = True
+        if (student.pk in active_conflicts if active_conflicts is not None else
+                BatchEnrollment.objects.filter(student=student, batch__status='active').exclude(batch=batch).exists()):
+            row.update(status='conflict', issues=['This student already has an active batch. Ask authorized staff to review a transfer before enrolling here.'])
+            return row, None
         already = (BatchEnrollment.objects.filter(batch=batch, student=student).exists()
                    if enrolled_ids is None else student.pk in enrolled_ids)
+        if not already and getattr(student, 'has_saved_batch_approval', True):
+            from .placement_scope import enrollment_allocation_conflict
+            allocation_error = enrollment_allocation_conflict(student, batch)
+            if allocation_error:
+                row.update(status='conflict', issues=[allocation_error])
+                return row, None
         row['status'] = 'already_enrolled' if already else 'existing_student'
     return row, student
 
@@ -130,21 +141,24 @@ def review_rows(items, batch):
     rows = [normalize_row(item, i) for i, item in enumerate(items)]
     ids, emails = Counter(r['school_id'] for r in rows), Counter(r['email'] for r in rows)
     # One identity query and one enrollment query, even for multi-sheet imports.
-    users = list(User.objects.annotate(normalized_email=Lower('email')).filter(
+    users = list(User.objects.annotate(normalized_email=Lower('email'),
+        has_saved_batch_approval=Exists(OJTPlacement.objects.filter(student_id=OuterRef('pk'), batch=batch, status='approved'))).filter(
         Q(school_id__in=[sid for sid in ids if sid]) | Q(normalized_email__in=[email for email in emails if email])))
     by_id, by_email = {}, {}
     for user in users:
         if user.school_id:
             by_id.setdefault(user.school_id, []).append(user)
         by_email.setdefault(user.email.lower(), []).append(user)
-    enrolled_ids = set(BatchEnrollment.objects.filter(batch=batch, student_id__in=[u.pk for u in users])
-                       .values_list('student_id', flat=True))
+    memberships = list(BatchEnrollment.objects.filter(student_id__in=[u.pk for u in users])
+                       .values_list('student_id', 'batch_id', 'batch__status'))
+    enrolled_ids = {sid for sid, bid, _ in memberships if bid == batch.pk}
+    active_conflicts = {sid for sid, bid, state in memberships if bid != batch.pk and state == 'active'}
     for row in rows:
         if (row['school_id'] and ids[row['school_id']] > 1) or (row['email'] and emails[row['email']] > 1):
             row.update(status='duplicate', issues=row['issues'] + ['Repeated Student ID or email in this file; remove or correct duplicate rows.'])
         else:
             matches = {u.pk: u for u in by_id.get(row['school_id'], []) + by_email.get(row['email'], [])}
-            match_row(row, batch, matched_users=list(matches.values()), enrolled_ids=enrolled_ids)
+            match_row(row, batch, matched_users=list(matches.values()), enrolled_ids=enrolled_ids, active_conflicts=active_conflicts)
     return rows
 
 
@@ -217,7 +231,10 @@ def confirm_rows(items, batch, notify):
                     student.course = student.course or row['course']
                     update_fields.extend(['school_id', 'course'])
                     student.save(update_fields=update_fields)
-                enrollment, created = BatchEnrollment.objects.get_or_create(batch=locked_batch, student=student)
+                returning = (BatchEnrollment.objects.filter(student=student).exists()
+                             or student.responses.exists() or student.ojt_placements.exists())
+                enrollment, created = BatchEnrollment.objects.get_or_create(batch=locked_batch, student=student,
+                    defaults={'profile_review_required': returning})
                 if created and ManagementAction.objects.filter(action='enrollment.remove', target_type='student',
                                                               target_id=student.pk, batch_id_snapshot=locked_batch.pk).exists():
                     # Reconcile retained evidence through the usual gates, never

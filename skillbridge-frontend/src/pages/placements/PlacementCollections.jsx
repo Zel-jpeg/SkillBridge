@@ -14,7 +14,7 @@ const states = {
   coordinator_review: ['Coordinator choice needs review', 'The previous coordinator choice is no longer available. Review the alternatives.', 'warning', UserIcon],
   suggestions_declined: ['Available suggestions declined', 'Previous decisions remain recorded. Review other suitable positions when available.', 'neutral', BriefcaseIcon],
 }
-const decisions = { approved: 'Approved', removed: 'Removed', rejected: 'Declined suggestion', suggested: 'Suggested' }
+const decisions = { completed: 'Legacy record', approved: 'Approved', removed: 'Removed', rejected: 'Declined suggestion', suggested: 'Suggested' }
 const percentage = value => value == null ? 'Not recorded' : `${value}%`
 const stamp = value => {
   const parsed = value ? new Date(value) : null

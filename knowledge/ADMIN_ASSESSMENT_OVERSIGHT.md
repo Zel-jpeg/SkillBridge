@@ -1,5 +1,16 @@
 # Admin assessment oversight
 
+## Grouped filters — 29 October 2026
+
+Admin now reuses the [compact grouped filter panel](GROUPED_COLLECTION_FILTERS.md)
+with instructor Assessments and the student roster. It preserves publication,
+instructor, batch, requirement, category, completion, inclusion and availability
+choices. Draft selections preview results; Apply commits together and resets page
+1 without resetting view. Clear and individual filter removal remain. Initial
+failures show an unavailable state rather than a successful zero count. Management
+dialogs, answer-key access, saved drafts, retakes, summaries and permissions retain
+their existing behavior. The previous toolbar descriptions below are historical.
+
 ## Refined assessment cards — 28 October 2026
 
 The shared card now follows the approved compact

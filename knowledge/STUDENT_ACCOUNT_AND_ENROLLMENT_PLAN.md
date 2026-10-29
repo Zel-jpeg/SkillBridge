@@ -1,5 +1,12 @@
 # Student account archiving, unenrollment and re-enrollment plan
 
+28 October follow-up: the [cycle closeout update](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md)
+adds one-active-batch enrollment checks, explicit reviewed transfers and returning-student
+profile confirmation/history. Archive-to-next-cycle enrollment preserves old memberships.
+An active transfer explicitly removes/audits only the source membership, retaining the
+account, evidence and placement records. That later update uses migration 0028; the
+27 October implementation and no-schema-change evidence below describe its original scope.
+
 Created and implemented 27 October 2026. Status: **implemented and locally verified**.
 This records the agreed student removal/archive scope and the previously
 unenrolled filter/re-enrollment workflow. No deployment or live-data changes

@@ -11,7 +11,8 @@ import AddInstructorModal from '../../components/admin/AddInstructorModal'
 import UserDetailModal   from '../../components/admin/UserDetailModal'
 import PendingDetailModal from '../../components/admin/PendingDetailModal'
 import Pagination        from '../../components/Pagination'
-import SearchBar         from '../../components/SearchBar'
+import CollectionFilterToolbar from '../../components/CollectionFilterToolbar'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
 import EmptyState        from '../../components/EmptyState'
 import StatusBadge       from '../../components/StatusBadge'
 import { useAdminUsers } from '../../hooks/admin/useAdminUsers'
@@ -22,8 +23,6 @@ import StudentPerformanceCard from '../../components/StudentPerformanceCard'
 // ── Small page-scoped icons ───────────────────────────────────────
 const PlusIcon     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const SortIcon     = ({ dir }) => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`transition-transform ${dir === 'desc' ? 'rotate-180' : ''}`}><path d="M12 5v14M5 12l7-7 7 7"/></svg>
-const GridIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-const ListIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
 
 // ── Role pill ─────────────────────────────────────────────────────
 function RolePill({ role }) {
@@ -36,18 +35,18 @@ export default function AdminUsers() {
   const [showEnrollment, setShowEnrollment] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
   const {
-    instructors, pendingInstructors, initialUsersPending,
+    instructors, pendingInstructors, initialUsersPending, usersError,
     handleEnrollmentComplete,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser, selectedUserType, setSelectedUserType,
     selectedPending, setSelectedPending,
     confirmRemoveInstr, setConfirmRemoveInstr,
     activeTab, setActiveTab,
-    search, setSearch,
-    filterStatus, setFilterStatus, filterCourse, setFilterCourse, filterInstructor, setFilterInstructor,
+    setSearch,
+    setFilterStatus, setFilterCourse, setFilterInstructor,
     sortCol, sortDir, toggleSort,
     page, setPage, view, setView,
-    displayed, filtered, counts, instructorsList,
+    displayed, filtered, counts, instructorsList, userFilters, previewFilters, applyFilters,
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
     approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
@@ -212,41 +211,15 @@ export default function AdminUsers() {
         {/* ── ALL OTHER TABS ── full filter + table/grid */}
         {activeTab !== 'pending' && (
           <div className="space-y-3">
-            {/* Controls row */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-              <SearchBar value={search} onChange={setSearch} placeholder="Search…" className="flex-1 sm:max-w-xs" />
-
-              {activeTab === 'students' && (
-                <>
-                  <select aria-label="Filter students by course" value={filterCourse} onChange={e => setFilterCourse(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
-                    <option value="all">All courses</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="BSIS">BSIS</option>
-                  </select>
-                  <select aria-label="Filter students by status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
-                    <option value="all">All status</option>
-                    <option value="completed">Completed</option>
-                    <option value="stopped">Stopped / flagged</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                  {instructorsList.length > 0 && (
-                    <select aria-label="Filter students by instructor" value={filterInstructor} onChange={e => setFilterInstructor(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none">
-                      <option value="all">All instructors</option>
-                      {instructorsList.map(i => <option key={i} value={i}>{i}</option>)}
-                    </select>
-                  )}
-                </>
-              )}
-
-              <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-auto">
-                {[{ val: 'grid', Icon: GridIcon }, { val: 'list', Icon: ListIcon }].map(v => (
-                  <button key={v.val} aria-label={v.val === 'grid' ? 'Show cards' : 'Show list'} onClick={() => setView(v.val)}
-                    className={`p-1.5 rounded-lg transition-colors ${view === v.val ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
-                    <v.Icon />
-                  </button>
-                ))}
-              </div>
-            </div>
+            <CollectionFilterToolbar key={activeTab} filters={userFilters} defaults={{ search: '', filterStatus: 'all', filterCourse: 'all', filterInstructor: 'all' }}
+              groups={activeTab === 'students' ? [
+                { key: 'filterCourse', label: 'Course', options: [['all', 'All courses'], ['BSIT', 'BSIT'], ['BSIS', 'BSIS']] },
+                { key: 'filterStatus', label: 'Assessment status', options: [['all', 'All'], ['completed', 'Completed'], ['stopped', 'Stopped / flagged'], ['pending', 'Pending']] },
+                ...(instructorsList.length ? [{ key: 'filterInstructor', label: 'Instructor', options: [['all', 'All instructors'], ...instructorsList.map(name => [name, name])] }] : []),
+              ] : []} onApply={applyFilters} onSearch={setSearch} getPreviewCount={draft => previewFilters(draft).length}
+              count={filtered.length} total={counts[activeTab]} pending={initialUsersPending} error={initialUsersPending ? usersError : undefined} noun="users" label="User filters" searchLabel="Search users" placeholder="Search name, ID, or email…">
+              <CollectionViewToggle label="User view" view={view} onChange={setView} />
+            </CollectionFilterToolbar>
 
             <DataSection url="/api/admin/users/" pending={initialUsersPending} skeleton={<CollectionSkeleton view={view} kind={activeTab === 'students' ? 'student' : 'user'} columns={activeTab === 'instructors' ? 4 : 3} />}>
             {displayed.length === 0 && <EmptyState message="No users match your filters." onClear={() => { setSearch(''); setFilterStatus('all'); setFilterCourse('all'); setFilterInstructor('all') }} />}

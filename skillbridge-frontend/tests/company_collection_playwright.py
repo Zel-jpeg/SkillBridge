@@ -6,6 +6,7 @@ Run with Vite on port 5176 and Python Playwright + Chrome installed.
 import base64
 import copy
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent / '.runtime-win'))
 sys.path.insert(1, str(Path(__file__).parent / '.runtime'))
 from playwright.sync_api import sync_playwright, expect
 
-BASE = 'http://127.0.0.1:5176'
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5176')
 API = '/api/admin/companies/'
 ARTIFACTS = Path(__file__).parent / 'artifacts/company-collection'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
@@ -196,12 +197,17 @@ with sync_playwright() as p:
     assert page.evaluate('window.__maps.length') == 1
     map_id = page.locator('#partner-locations-map .leaflet-container').evaluate('el => el._leaflet_id')
     checks = ['Map initially expanded, actual Leaflet initialized once and synthetic tiles loaded']
-    expect(company(page).get_by_text('2 positions · 3 configured slots', exact=True)).to_be_visible()
+    expect(company(page).get_by_text('2 positions · 3 active configured slots', exact=True)).to_be_visible()
     expect(position(page).get_by_text('9 requirements · 9 keywords', exact=True)).to_be_visible()
     expect(page.get_by_role('button', name='Preview Position NLP Description')).to_have_count(0)
     expect(company(page, 'Synthetic Empty Partner').get_by_text(re.compile('No positions yet'))).to_be_visible()
-    assert page.get_by_role('img', name=NAME + ' logo').evaluate('el => el.tagName === "IMG" && el.naturalWidth > 0')
-    assert page.get_by_role('img', name='Synthetic Broken Logo Partner logo').evaluate('el => el.tagName === "SPAN"')
+    logo = page.get_by_role('img', name=NAME + ' logo')
+    logo.scroll_into_view_if_needed()
+    expect(logo).to_have_js_property('complete', True)
+    expect(logo).to_have_js_property('naturalWidth', 80)
+    broken_logo = page.get_by_role('img', name='Synthetic Broken Logo Partner logo')
+    broken_logo.scroll_into_view_if_needed()
+    expect(broken_logo).to_have_js_property('tagName', 'SPAN')
     company(page).get_by_label('Full address for ' + NAME).click()
     expect(company(page).get_by_text(re.compile('Suite 1204'))).to_be_visible()
     company(page).get_by_label('Full address for ' + NAME).click()
@@ -347,7 +353,7 @@ with sync_playwright() as p:
             company(page, 'Unsaved company draft').evaluate('el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72)')
             f.shot(f'expanded-{width}-' + ('dark' if dark else 'light'))
     search.fill('no-such-company')
-    expect(page.get_by_text('No partners match your search.', exact=True)).to_be_visible()
+    expect(page.get_by_text('No partners match these filters.', exact=True)).to_be_visible()
     f.close()
     checks.append('Phone/tablet/desktop and dark mode, long text without overflow, independent card heights, all seven positions reachable, no-match state')
     for mode in ['empty', 'failure', 'loading']:

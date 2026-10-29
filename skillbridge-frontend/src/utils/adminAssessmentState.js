@@ -9,6 +9,7 @@ export const initialAssessmentView = { filters: DEFAULT_FILTERS, view: 'grid', p
 export function assessmentViewReducer(state, action) {
   switch (action.type) {
     case 'filter': return { ...state, filters: { ...state.filters, [action.key]: action.value }, page: 1 }
+    case 'filters': return { ...state, filters: { ...DEFAULT_FILTERS, ...action.value }, page: 1 }
     case 'reset': return { ...state, filters: DEFAULT_FILTERS, page: 1 }
     case 'view': return { ...state, view: action.value }
     case 'page': return { ...state, page: action.value }

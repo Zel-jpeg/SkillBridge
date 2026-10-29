@@ -124,7 +124,7 @@ function UploadErrors({ errors }) {
 // ════════════════════════════════════════════════════════════════════════════
 export default function InstructorAssessments() {
   const {
-    assessments, stats, batchOptions,
+    assessments, stats, batchOptions, loadingList, listError,
     selected, loadingQuestions, questionError, retryQuestions,
     openAssessment, closeAssessment,
     editTitle, setEditTitle,
@@ -163,7 +163,7 @@ export default function InstructorAssessments() {
 
 
 
-      <AssessmentLibrary assessments={assessments} stats={stats} batches={batchOptions} onOpen={openAssessment} />
+      <AssessmentLibrary assessments={assessments} stats={stats} batches={batchOptions} onOpen={openAssessment} pending={loadingList} error={assessments.length ? undefined : listError} />
 
       {/* ════════════════════════════════════════════════════════════════════
           FULL EDIT MODAL

@@ -116,6 +116,8 @@ class AnalyticsTests(APITestCase):
         result = self.get()
         self.assertEqual(result['summary']['slots_remaining'], 4)
         self.assertNotIn('Private foreign student', str(result))
+        # A legacy overlapping membership still reserves its active-batch decision.
+        BatchEnrollment.objects.create(student=self.student, batch=self.foreign)
         OJTPlacement.objects.create(student=self.student, batch=self.foreign, company=self.company, position=self.position, status='approved')
         result = self.get()
         self.assertEqual(result['summary']['approved'], 0)

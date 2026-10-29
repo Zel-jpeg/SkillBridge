@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from .change_events import notify_changes
 from .management_access import batch_payload, record_action, selected_instructor
 from .models import Batch, ManagementAction, User
+from .cycle_lifecycle import lifecycle_lock
 
 
 @api_view(['GET'])
@@ -21,6 +22,7 @@ def admin_batch_instructors(request):
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
 @transaction.atomic
+@lifecycle_lock
 def admin_batch_detail(request, batch_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)

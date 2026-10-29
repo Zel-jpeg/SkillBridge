@@ -4,6 +4,18 @@ import { assessmentPage, assessmentViewReducer, initialAssessmentView, assessmen
 
 const records = Array.from({ length: 27 }, (_, i) => ({ id: i + 1, title: `Assessment ${i + 1}`, instructor_name: i % 2 ? 'Alex' : 'Sam', batch_id: 2, batch_name: 'Blue', publication_status: 'published', categories: ['Database'], completion_rate: i % 2 ? 100 : 25, is_required: true, include_in_competency: true, duration_minutes: 30, display_order: i, available_at: null, due_at: null, created_at: '2026-10-01T00:00:00Z' }))
 
+test('a staged multi-filter apply commits together, resets pagination and preserves list view', () => {
+  const state = { ...initialAssessmentView, view: 'list', page: 4 }
+  const applied = assessmentViewReducer(state, { type: 'filters', value: { search: 'Database', batch: '2', required: 'required' } })
+  assert.equal(applied.page, 1)
+  assert.equal(applied.view, 'list')
+  assert.equal(applied.filters.search, 'Database')
+  assert.equal(applied.filters.batch, '2')
+  assert.equal(applied.filters.required, 'required')
+  assert.equal(applied.filters.state, 'all')
+  assert.equal(state.page, 4)
+})
+
 test('filtering and immutable tie-break ordering precede slicing in both views', () => {
   const page = assessmentPage(records, { instructor: 'Alex', category: 'Database', completion: 'complete' }, 2)
   assert.equal(page.total, 13)

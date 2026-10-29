@@ -16,6 +16,7 @@ const REPORT_META = {
 }
 
 const STATUS_LABELS = {
+  completed: 'Legacy record',
   suggested: 'Suggested',
   approved: 'Approved',
   removed: 'Removed',

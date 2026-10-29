@@ -45,7 +45,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">OJT</span>
-        <StatusBadge status={status} />
+        <StatusBadge status={status === 'completed' ? 'pending' : status} label={status === 'completed' ? 'Legacy record' : undefined} />
         {approved && company?.name && <CompanyImage name={company.name} imageUrl={company.image_url} className="w-7 h-7 rounded-lg" />}
         {approved && company?.name && (
           <span className="min-w-0 truncate text-xs font-medium text-green-700 dark:text-green-300">
@@ -75,7 +75,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
           )}
           {position?.title && <p className="text-xs text-gray-600 dark:text-gray-300">{position.title}</p>}
         </div>
-        <StatusBadge status={status} size="md" />
+        <StatusBadge status={status === 'completed' ? 'pending' : status} label={status === 'completed' ? 'Legacy record' : undefined} size="md" />
       </div>
 
       {detail && !approved && <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">No approved OJT placement yet. Placement approval is separate from recommendation ranking.</p>}

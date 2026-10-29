@@ -69,6 +69,9 @@ def lock_state():
     return read_state()
 
 
+from .placement_scope import current_approvals
+
+
 def context():
     catalog = catalog_fingerprint()
     enrollments = BatchEnrollment.objects.filter(
@@ -77,20 +80,24 @@ def context():
     by_student = {}
     for enrollment in enrollments:
         by_student.setdefault(enrollment.student_id, enrollment)
-    approvals = list(OJTPlacement.objects.filter(status='approved').order_by('id').values('id', 'student_id', 'position_id'))
+    approvals = list(current_approvals().order_by('id').values('id', 'student_id', 'position_id'))
     approved_students = {row['student_id'] for row in approvals}
     occupancy = Counter(row['position_id'] for row in approvals)
-    positions = list(Position.objects.order_by('id').values('id', 'slots_available'))
+    positions = list(Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).order_by('id').values('id', 'slots_available'))
     capacities = {row['id']: max(0, row['slots_available'] - occupancy[row['id']]) for row in positions}
     eligible = {}
     for student_id, enrollment in by_student.items():
-        if student_id not in approved_students and combined_is_unlocked(enrollment.student, enrollment.batch, catalog=catalog):
+        if (student_id not in approved_students
+                and not enrollment.profile_review_required
+                and combined_is_unlocked(enrollment.student, enrollment.batch, catalog=catalog)):
             eligible[student_id] = enrollment
     latest = {}
-    for row in OJTPlacement.objects.filter(student_id__in=eligible, is_active_suggestion=False).order_by('-updated_at', '-id').values('student_id', 'position_id', 'status'):
-        latest.setdefault((row['student_id'], row['position_id']), row['status'])
+    for row in OJTPlacement.objects.filter(student_id__in=eligible, is_active_suggestion=False).order_by('-updated_at', '-id').values('student_id', 'batch_id', 'position_id', 'status'):
+        if row['batch_id'] == eligible[row['student_id']].batch_id:
+            latest.setdefault((row['student_id'], row['position_id']), row['status'])
     recommendations = []
-    for row in Recommendation.objects.filter(student_id__in=eligible, is_current=True).order_by('student_id', '-match_score', 'position_id').values(
+    for row in Recommendation.objects.filter(student_id__in=eligible, is_current=True,
+            position__archived_at__isnull=True, position__company__archived_at__isnull=True).order_by('student_id', '-match_score', 'position_id').values(
         'id', 'student_id', 'batch_id', 'position_id', 'match_score', 'generated_at',
     ):
         if row['batch_id'] == eligible[row['student_id']].batch_id and latest.get((row['student_id'], row['position_id'])) not in ('removed', 'rejected'):
@@ -99,7 +106,8 @@ def context():
                         'memberships': [(key, value.batch_id) for key, value in by_student.items()],
                         'eligible': sorted(eligible), 'recommendations': recommendations, 'decisions': sorted(latest.items())})
     return {'signature': signature, 'recommendations': recommendations, 'capacities': capacities,
-            'enrollments': by_student, 'eligible': eligible, 'approved_students': approved_students,
+            'enrollments': by_student, 'eligible': eligible,
+            'approved_students': approved_students,
             'declined_students': {sid for (sid, _), status in latest.items() if status == 'rejected'}}
 
 
@@ -317,7 +325,7 @@ def placement_write_lock(view):
                 if type(sid) is int and type(pid) is int and before:
                     # Preserve the existing view's authorization and idempotent paths.
                     own = request.user.role == 'admin' or (bool(rec.batch_id and rec.batch.instructor_id == request.user.id) if rec else BatchEnrollment.objects.filter(student_id=sid, batch__instructor=request.user).exists())
-                    approved = OJTPlacement.objects.filter(student_id=sid, status='approved').exists()
+                    approved = current_approvals(student_id=sid).exists()
                     held = active_suggestions().filter(position_id=pid).exclude(student_id=sid).count()
                     if own and not approved and (not fresh or (held and held >= before['capacities'].get(pid, 0))):
                         return Response({'error': 'This slot is committed in the shared suggestions or the suggestions need updating. Review the proposed allocations first.'}, status=409)
@@ -346,7 +354,7 @@ def placement_catalog_lock(view):
     """Catalog deletion/capacity edits use the allocation lock before row locks."""
     @wraps(view)
     def wrapped(request, *args, **kwargs):
-        if request.user.role != 'admin':
+        if request.user.role not in ('admin', 'instructor'):
             return view(request, *args, **kwargs)
         with transaction.atomic():
             lock_state()

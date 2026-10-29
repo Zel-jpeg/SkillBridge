@@ -85,6 +85,15 @@ class Fixture:
         self.context.close()
 
 
+
+def set_library_filters(page, choices):
+    page.get_by_role('region', name='Assessment filters', exact=True).get_by_role('button', name=re.compile('^Filters')).click()
+    panel = page.get_by_role('dialog', name='Assessment filters options', exact=True)
+    for group, option in choices:
+        panel.get_by_role('group', name=group, exact=True).get_by_text(option, exact=True).click()
+    panel.get_by_role('button', name=re.compile(r'^Show \d+ assessments?$')).click()
+    expect(panel).to_have_count(0)
+
 checks = []
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
@@ -101,7 +110,7 @@ with sync_playwright() as p:
         expect(cards).to_have_count(4)
         expect(page.get_by_role('button', name=re.compile('Manage assessment'))).to_have_count(0)
         assert not any(path.endswith('/questions/') for _, path, _ in f.calls)
-        expect(library.get_by_text('23 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('23 of 23 assessments', exact=True)).to_be_visible()
         page.get_by_role('button', name='Next', exact=False).click()
         expect(page.get_by_text('Showing 5–8 of 23')).to_be_visible()
         before = cards.locator('h2').all_text_contents()
@@ -118,37 +127,23 @@ with sync_playwright() as p:
         expect(page.get_by_role('button', name='Next', exact=False)).to_be_disabled()
         page.get_by_role('searchbox', name='Search assessments').fill('Assessment 23')
         expect(rows).to_have_count(1)
-        expect(library.get_by_text('1 assessment', exact=True)).to_be_visible()
+        expect(library.get_by_text('1 of 23 assessments', exact=True)).to_be_visible()
         expect(page.get_by_role('button', name='Next', exact=False)).to_have_count(0)
         page.get_by_role('button', name='Clear filters', exact=True).click()
         expect(page.get_by_text('Showing 1–4 of 23')).to_be_visible()
         checks.append('Four records per page in cards/list; shared ordering, view/page preservation, filter reset and last-page boundaries')
 
-        page.get_by_role('button', name='More filters', exact=False).click()
-        page.get_by_role('combobox', name='Requirement', exact=True).select_option('required')
-        page.get_by_role('combobox', name='Competency inclusion', exact=True).select_option('included')
-        page.get_by_role('combobox', name='Skill category', exact=True).select_option('Database')
-        page.get_by_role('combobox', name='Availability', exact=True).select_option('available')
-        expect(library.get_by_text('4 assessments', exact=True)).to_be_visible()
-        page.get_by_role('button', name='More filters', exact=False).click()
-        expect(page.get_by_role('button', name='Remove Requirement filter')).to_be_visible()
-        page.get_by_role('combobox', name='All batches', exact=True).select_option('2')
+        set_library_filters(page, [('Requirement','Required'), ('Competency inclusion','Included'), ('Skill category','Database'), ('Availability','Available')])
+        expect(library.get_by_text('4 of 23 assessments',exact=True)).to_be_visible()
+        expect(page.get_by_role('button',name='Remove Requirement filter',exact=True)).to_be_visible()
+        set_library_filters(page, [('Batch','Green cohort')])
         expect(library.get_by_text('No assessments match your filters')).to_be_visible()
-        library.get_by_role('button', name='Clear filters', exact=True).first.click()
-        statuses = page.get_by_role('group', name='Publication status')
-        statuses.get_by_role('button', name='Published', exact=False).click()
-        clear = statuses.get_by_role('button', name='Clear filters', exact=True)
-        expect(clear).to_be_visible()
-        closed_box = statuses.get_by_role('button', name='Closed', exact=False).bounding_box()
-        clear_box = clear.bounding_box()
-        assert clear_box['x'] > closed_box['x'] + closed_box['width'] - 1
-        assert abs(clear_box['y'] - closed_box['y']) < 2
-        expect(library.get_by_role('button', name='Clear filters', exact=True)).to_have_count(1)
-        expect(library.get_by_text('7 assessments', exact=True)).to_be_visible()
-        # Global totals stay independent of filtered result counts.
-        expect(page.locator('[aria-label="Assessment totals"]').get_by_text('23', exact=True)).to_be_visible()
-        page.get_by_role('button', name='Clear filters', exact=True).click()
-        checks.append('Combined secondary filters, hidden active-filter chips, batch/status/reset and independent summary totals')
+        library.get_by_role('button',name='Clear filters',exact=True).click()
+        set_library_filters(page, [('Publication status','Published')])
+        expect(library.get_by_text('7 of 23 assessments',exact=True)).to_be_visible()
+        expect(page.locator('[aria-label="Assessment totals"]').get_by_text('23',exact=True)).to_be_visible()
+        library.get_by_role('button',name='Clear filters',exact=True).click()
+        checks.append('Staged grouped filters, active removal, batch/publication/reset and independent summary totals')
 
         page.get_by_role('button', name='Card view', exact=True).click()
         more_categories = cards.first.get_by_role('button', name='Show 2 more categories')
@@ -200,11 +195,11 @@ with sync_playwright() as p:
 
         f.records = f.records[:4]
         f.refresh()
-        expect(library.get_by_text('4 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('4 of 4 assessments', exact=True)).to_be_visible()
         expect(page.get_by_role('button', name='Next', exact=False)).to_have_count(0)
         f.records = [assessment(i) for i in range(1, 6)]
         f.refresh()
-        expect(library.get_by_text('5 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('5 of 5 assessments', exact=True)).to_be_visible()
         page.get_by_role('button', name='Next', exact=False).click()
         expect(rows).to_have_count(1)
         f.records = f.records[:2]
@@ -248,7 +243,7 @@ with sync_playwright() as p:
         f.records[0]['title'] = 'Web & database skills'
         f.records[1]['title'] = 'Technical foundations'
         f.refresh()
-        expect(library.get_by_text('2 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('2 of 2 assessments', exact=True)).to_be_visible()
         for width in [1440, 1024, 768, 390, 320]:
             page.set_viewport_size({'width': width, 'height': 1000})
             for dark in [False, True]:
@@ -275,7 +270,7 @@ with sync_playwright() as p:
         checks.append('Ten responsive light/dark layouts, contained table scrolling and mobile card fallback without page overflow')
         page.set_viewport_size({'width': 1440, 'height': 1000})
         page.get_by_role('button', name='Card view', exact=True).click()
-        statuses.get_by_role('button', name='Published', exact=False).click()
+        set_library_filters(page, [('Publication status', 'Published')])
         cards.first.get_by_role('button', name='Show 2 more categories').click()
         for dark in [False, True]:
             page.evaluate('dark => document.documentElement.classList.toggle("dark", dark)', dark)

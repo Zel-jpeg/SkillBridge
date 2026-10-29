@@ -280,14 +280,17 @@ class DraftAPITests(APITestCase):
         self.assertEqual(suggestion.status, 'approved')
         self.assertEqual(self.client.get(reverse('placement_history')).data['count'], 1)
 
-    def test_catalog_deletion_releases_only_pending_suggestions(self):
+    def test_used_catalog_is_archived_preserving_recommendations_and_releasing_pending_only(self):
         self.generate()
         response = self.client.delete(reverse('admin_position_detail', args=[self.position.id]))
-        self.assertEqual(response.status_code, 204, response.data)
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertTrue(Recommendation.objects.filter(position=self.position).exists())
+        response = self.client.post(reverse('position_archive', args=[self.position.id]), {}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertFalse(active_suggestions().filter(position_id=self.position.id).exists())
         self.assertTrue(self.client.get(reverse('placement_draft')).data['stale'])
-        response = self.client.delete(reverse('admin_company_detail', args=[self.other_company.id]))
-        self.assertEqual(response.status_code, 204, response.data)
+        response = self.client.post(reverse('partner_archive', args=[self.other_company.id]), {}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertFalse(active_suggestions().exists())
 
     def test_failed_catalog_delete_rolls_back_pending_cleanup_and_preserves_history(self):
@@ -321,7 +324,8 @@ class MigrationPreservationTests(TransactionTestCase):
             executor = MigrationExecutor(connection)
             executor.migrate(new)
             self.assertEqual(set(connection.introspection.table_names()), tables_before)
-            rows = list(OJTPlacement.objects.filter(pk__in=ids).order_by('id'))
+            historical_placement = executor.loader.project_state(new).apps.get_model('api', 'OJTPlacement')
+            rows = list(historical_placement.objects.filter(pk__in=ids).order_by('id'))
             self.assertEqual([row.status for row in rows], ['suggested', 'approved', 'removed', 'rejected'])
             self.assertTrue(all(not row.is_active_suggestion and row.match_score_at_assignment == 72.345
                                 and row.remarks == 'Preserve legacy decision' for row in rows))
@@ -397,16 +401,17 @@ class ConcurrentDraftTests(TransactionTestCase):
         self.assertEqual(active_suggestions().count(), 1)
         self.assertFalse(OJTPlacement.objects.filter(status='approved').exists())
 
-    def test_catalog_delete_and_apply_cannot_leave_an_orphan_reservation(self):
+    def test_catalog_archive_and_apply_cannot_leave_an_unavailable_reservation(self):
         preview = self.preview()
         barrier = Barrier(2)
         with ThreadPoolExecutor(max_workers=2) as pool:
             apply = pool.submit(self.request, self.admin.pk, 'post', reverse('placement_draft'),
                 {'action': 'apply', 'preview_token': preview['preview_token']}, barrier=barrier)
-            delete = pool.submit(self.request, self.admin.pk, 'delete',
-                reverse('admin_position_detail', args=[self.position.pk]), {}, barrier=barrier)
+            delete = pool.submit(self.request, self.admin.pk, 'post',
+                reverse('position_archive', args=[self.position.pk]), {}, barrier=barrier)
             outcomes = (apply.result(timeout=30), delete.result(timeout=30))
         self.assertIn(outcomes[0][0], [200, 409])
-        self.assertEqual(outcomes[1][0], 204)
-        self.assertFalse(Position.objects.filter(pk=self.position.pk).exists())
+        self.assertEqual(outcomes[1][0], 200)
+        self.assertIsNotNone(Position.objects.get(pk=self.position.pk).archived_at)
+        self.assertTrue(Recommendation.objects.filter(position_id=self.position.pk).exists())
         self.assertFalse(active_suggestions().exists())

@@ -9,6 +9,7 @@ from .attempt_timing import check_attempt_identity, snapshot_timing, timing
 from .change_events import notify_changes
 from .management_access import managed_assessments, managed_batches, record_action
 from .models import Assessment, AnswerChoice, ManagementAction, Question, StudentResponse, User
+from .cycle_lifecycle import lifecycle_lock
 
 
 def request_id(data):
@@ -22,6 +23,7 @@ def request_id(data):
 @permission_classes([IsAuthenticated])
 @notify_changes('assessment')
 @transaction.atomic
+@lifecycle_lock
 def assessment_duplicate(request, assessment_id):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -89,6 +91,7 @@ def assessment_attempt_timing(request, assessment_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
 @transaction.atomic
+@lifecycle_lock
 def assessment_extra_time(request, assessment_id, student_id):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Forbidden'}, status=403)

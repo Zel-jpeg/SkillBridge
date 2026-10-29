@@ -1,5 +1,11 @@
 # Report reconciliation
 
+28 October cycle update: **Save report & archive batch** saves versioned recommendation-cycle
+facts and exports PDF/XLSX/CSV, including original partner labels, openings and slots.
+Existing placement reports still join the current catalog; no training completion
+is inferred. Choose the saved report version when an immutable past-cycle record is
+needed. See [closeout implementation and checks](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md).
+
 28 October terminology update: newly generated reports use Partner headings;
 underlying company fields and report-type identifiers are unchanged. See
 [partner terminology](PARTNER_TERMINOLOGY.md) for the column compatibility boundary

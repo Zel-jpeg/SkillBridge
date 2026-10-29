@@ -1,4 +1,5 @@
 import { normalizeStudent } from '../../utils/managementStudent'
+import { filterRosterStudents } from '../../utils/studentRosterFilters'
 import { useToast } from '../../context/ToastContext'
 // src/hooks/instructor/useEnrolledStudents.js
 //
@@ -111,7 +112,8 @@ export function useEnrolledStudents() {
   const [search,          setSearch]          = useState('')
   const [accountStatus, setAccountStatus] = useState('all')
   const [course,          setCourse]          = useState('all')
-  const [status,          setStatus]          = useState('all')
+  const [assessmentStatus, setAssessmentStatus] = useState('all')
+  const [recommendationStatus, setRecommendationStatus] = useState('all')
   const [view,            setView]            = useState('grid')
   const [page,            setPage]            = useState(1)
   const [showModal,       setShowModal]       = useState(false)
@@ -316,7 +318,7 @@ export function useEnrolledStudents() {
   }
 
   // ── Derived stats ─────────────────────────────────────────────────
-  const completed = students.filter(s => s.status === 'completed')
+  const completed = students.filter(s => s.allRequiredCompleted)
 
   // Derive categories dynamically from actual score keys
   const categories = useMemo(() => {
@@ -327,24 +329,20 @@ export function useEnrolledStudents() {
   }, [completed, students])
 
   // ── Filters ───────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    let list = students.filter(student => accountStatus === 'all' || (accountStatus === 'archived' ? student.archived : !student.archived))
-    if (course !== 'all') list = list.filter(s => s.course === course)
-    if (status === 'unlocked') list = list.filter(s => !s.recommendationsLocked)
-    else if (status === 'retake') list = list.filter(s => s.assessmentResults.some(a => a.retake_allowed))
-    else if (status === 'placed') list = list.filter(s => s.placement?.status === 'approved')
-    else if (status === 'unplaced') list = list.filter(s => s.placement?.status !== 'approved')
-    else if (status !== 'all') list = list.filter(s => s.status === status)
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      list = list.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        s.studentId.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q)
-      )
-    }
-    return list
-  }, [search, course, status, students, accountStatus])
+  const filtered = useMemo(() => filterRosterStudents(students, {
+    search, course, accountStatus, assessmentStatus, recommendationStatus,
+  }), [search, course, assessmentStatus, recommendationStatus, students, accountStatus])
+  const hasActiveFilters = Boolean(search.trim() || course !== 'all' || accountStatus !== 'all' || assessmentStatus !== 'all' || recommendationStatus !== 'all')
+  function clearFilters() {
+    setSearch(''); setCourse('all'); setAccountStatus('all')
+    setAssessmentStatus('all'); setRecommendationStatus('all'); setPage(1)
+  }
+  function applyFilters(values) {
+    setSearch(values.search); setCourse(values.course); setAccountStatus(values.accountStatus)
+    setAssessmentStatus(values.enrollment === 'enrolled' ? values.assessmentStatus : 'all')
+    setRecommendationStatus(values.enrollment === 'enrolled' ? values.recommendationStatus : 'all')
+    setPage(1)
+  }
 
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
   const paginated = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
@@ -354,7 +352,7 @@ export function useEnrolledStudents() {
     // Batch
     batches, activeBatchId, setActiveBatchId, loadingBatches,
     initialBatchPending: !batchesReady,
-    initialRosterPending: !batchesReady || Boolean(rosterRaw && activeBatchId && !loadedRosters.has(activeBatchId)),
+    initialRosterPending: !batchesReady || Boolean(activeBatchId && !loadedRosters.has(activeBatchId) && !rosterErrorStatus),
     viewedBatch, isArchived, students, activeBatch, completed,
     // Batch actions
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
@@ -370,7 +368,9 @@ export function useEnrolledStudents() {
     accountStatus, setAccountStatus: value => { setAccountStatus(value); setPage(1) },
     search, setSearch: (v) => { setSearch(v); setPage(1) },
     course, setCourse: (v) => { setCourse(v); setPage(1) },
-    status, setStatus: (v) => { setStatus(v); setPage(1) },
+    assessmentStatus, setAssessmentStatus: value => { setAssessmentStatus(value); setPage(1) },
+    recommendationStatus, setRecommendationStatus: value => { setRecommendationStatus(value); setPage(1) },
+    hasActiveFilters, clearFilters, applyFilters,
     view, setView,
     page: visiblePage, setPage,
     // Derived

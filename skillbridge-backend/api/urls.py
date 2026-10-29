@@ -2,6 +2,7 @@ from django.urls import path
 from .placement_drafts import placement_draft
 from .admin_accounts import admin_account_detail
 from .student_records import previously_unenrolled, archived_student_history
+from .cycle_lifecycle import catalog_archive, batch_closeout, student_history, confirm_profile, transfer_student
 from .analytics import management_analytics
 from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
 from .evaluation_views import admin_nlp_model_comparison
@@ -16,6 +17,12 @@ from .health import health
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('admin/partners/<int:object_id>/archive/', catalog_archive, {'kind': 'partner'}, name='partner_archive'),
+    path('admin/positions/<int:object_id>/archive/', catalog_archive, {'kind': 'position'}, name='position_archive'),
+    path('instructor/batches/<int:batch_id>/closeout/', batch_closeout, name='batch_closeout'),
+    path('instructor/batches/<int:batch_id>/transfer/', transfer_student, name='transfer_student'),
+    path('students/me/history/', student_history, name='student_history'),
+    path('students/me/confirm-profile/', confirm_profile, name='confirm_profile'),
     path('instructor/batches/<int:batch_id>/emails/', enrollment_emails, name='enrollment_emails'),
     path('instructor/batches/<int:batch_id>/email-progress/', email_progress, name='email_progress'),
     path('email/brevo-events/', brevo_event, name='brevo_event'),

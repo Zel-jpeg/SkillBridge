@@ -3,6 +3,16 @@ import assert from 'node:assert/strict'
 import { matchesAccount } from './studentAccount.js'
 import { normalizeStudent } from './managementStudent.js'
 
+test('required-assessment completion stays independent of an optional flagged attempt and coordinator approval', () => {
+  const student = normalizeStudent({ id: 9, all_required_completed: true, recommendations_locked: false,
+    has_current_approval: false, placement: { status: 'approved' },
+    assessment_results: [{ attempt_status: 'stopped', is_flagged: true }] })
+  assert.equal(student.status, 'stopped')
+  assert.equal(student.allRequiredCompleted, true)
+  assert.equal(student.hasCurrentApproval, false)
+  assert.equal(student.recommendationsLocked, false)
+})
+
 test('account archive filtering is independent from required completion and membership', () => {
   const record = normalizeStudent({ id: 4, name: 'Synthetic', is_active: false, historical_evidence: true,
     all_required_completed: true, recommendations_locked: true })
