@@ -325,7 +325,7 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         return []
 
     positions = list(
-        Position.objects.order_by('id').select_related('company').prefetch_related(
+        Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).order_by('id').select_related('company').prefetch_related(
             'requirements', 'requirements__skill_category'
         )
     )

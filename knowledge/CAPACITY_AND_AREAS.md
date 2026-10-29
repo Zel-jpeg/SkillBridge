@@ -1,5 +1,11 @@
 # Agency capacity and company-area placement counts
 
+28 October scope correction: current Approved allocations consume shared slots
+only in active batches where the student remains enrolled. Detached legacy approvals
+stay reserved for staff review. Archive/transfer releases the allocation while
+preserving the decision; no internship completion is tracked. Reactivation checks
+capacity and retired openings. See [the corrected policy](OJT_CYCLE_SCOPE_REVIEW.md).
+
 Terminology update, 26 October 2026: application labels, report exports and current
 API messages now use **slots** for position capacity and **batch / selected
 students** instead of cohort. Earlier references below retain their original

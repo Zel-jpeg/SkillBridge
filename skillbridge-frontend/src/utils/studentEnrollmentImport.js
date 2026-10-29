@@ -74,7 +74,7 @@ export async function parseStudentFile(file) {
 
 export const statusLabel = status => ({ ready: 'Ready', existing_student: 'Existing student',
   already_enrolled: 'Already enrolled', unsupported: 'Unsupported program', duplicate: 'Duplicate',
-  invalid: 'Invalid', conflict: 'Identity conflict', enrolled: 'Enrolled', skipped: 'Skipped', failed: 'Failed' }[status] || status)
+  invalid: 'Invalid', conflict: 'Needs staff review', enrolled: 'Enrolled', skipped: 'Skipped', failed: 'Failed' }[status] || status)
 
 export function editReviewRow(row, field, value) {
   const next = { ...row, [field]: value }

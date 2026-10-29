@@ -1,5 +1,11 @@
 # Live data freshness
 
+28 October cycle update: closeout previews and student batch-history reads observe
+relevant committed lifecycle topics. Saved closeout-version downloads remain deliberate
+snapshots. Explicit transfers invalidate both the source and target batch scopes, and
+batch archive and membership removal refresh current allocations without rewriting decisions. See
+[cycle lifecycle implementation](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md).
+
 28 October email delivery: batch email status reads use the shared cache and
 recipient-scoped `email` invalidations from committed worker/provider changes.
 Account, student and batch ownership topics also invalidate open email panels.

@@ -1,5 +1,6 @@
 """Three placement collections, both staff roles, synthetic API responses only."""
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -7,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent / '.runtime'))
 from playwright.sync_api import sync_playwright, expect
 
-BASE = 'http://127.0.0.1:5195'
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5195')
 OUT = Path(__file__).parent / 'artifacts' / 'placement-collections'
 OUT.mkdir(parents=True, exist_ok=True)
 checks = []

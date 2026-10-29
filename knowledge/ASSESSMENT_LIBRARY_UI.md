@@ -1,5 +1,18 @@
 # Instructor assessment library
 
+## Grouped filters — 29 October 2026
+
+The library now uses the [shared grouped filter panel](GROUPED_COLLECTION_FILTERS.md)
+instead of publication tabs, batch dropdown and More filters disclosure. Existing
+publication, batch, requirement, competency inclusion, category and availability
+choices remain. Search stays visible; chips preview a count and Show assessments
+applies them together at page 1. Close/Escape/outside interaction discards drafts.
+Clear filters resets search and all groups while preserving card/list choice.
+Applied filters remain individually removable. The compact 38px search/trigger,
+28px chips and familiar view toggle follow the user's reference. Report-panel
+filters and assessment editing, scoring, locks and authorization remain separate.
+The older descriptions below preserve prior UI history.
+
 ## Compact assessment card design — 28 October 2026
 
 Both roles use the approved compact card concept in `AssessmentCollection`:

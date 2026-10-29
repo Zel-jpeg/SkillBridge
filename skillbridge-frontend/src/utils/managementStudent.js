@@ -43,6 +43,8 @@ export function normalizeStudent(s) {
     completedRequiredCount: s.completed_required_count ?? 0,
     totalRequiredCount: s.total_required_count ?? 0,
     remainingRequiredCount: s.remaining_required_count ?? 0,
+    allRequiredCompleted: s.all_required_completed === true,
+    hasCurrentApproval: s.has_current_approval ?? (s.placement?.status === 'approved'),
   }
 }
 

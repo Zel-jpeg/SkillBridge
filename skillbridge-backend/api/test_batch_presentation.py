@@ -12,7 +12,7 @@ class BatchPresentationTests(SimpleTestCase):
             id=7, name='Synthetic batch', status='active', created_at=None,
             archived_at=None, instructor_id=2,
             instructor=SimpleNamespace(name='Synthetic Instructor', photo_url=photo_url),
-            created_by_id=1, enrollments=Mock(),
+            created_by_id=1, enrollments=Mock(), closeout_snapshots=[],
         )
 
     def test_current_responsible_instructor_photo_is_included_without_extra_count(self):

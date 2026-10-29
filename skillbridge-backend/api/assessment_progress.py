@@ -10,7 +10,7 @@ from .models import Assessment, BatchEnrollment, StudentResponse
 
 def current_enrollment(student):
     return (BatchEnrollment.objects.filter(student=student, batch__status='active')
-            .select_related('batch').order_by('-enrolled_at', '-id').first())
+            .select_related('batch').defer('batch__closeout_snapshots').order_by('-enrolled_at', '-id').first())
 
 
 def assessment_availability(assessment, now=None):

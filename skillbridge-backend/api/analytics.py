@@ -9,6 +9,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .placement_scope import current_approvals
 from .management_access import managed_batches
 from .analytics_activity import activity_dates, submission_activity
 from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, OJTPlacement,
@@ -120,7 +121,7 @@ def analytics_payload(user, params):
                 if current[placement.student_id].batch_id == placement.batch_id}
     # A saved approved placement in a different batch is not an unplaced student
     # and must not become a candidate for a second approval.
-    other_approved = set(OJTPlacement.objects.filter(student_id__in=current, status='approved')
+    other_approved = set(current_approvals(student_id__in=current)
                          .values_list('student_id', flat=True)) - set(approved)
     students = []
     skill_rows = {}
@@ -210,9 +211,9 @@ def analytics_payload(user, params):
 
     # Catalog availability is shared, but no foreign student/placement identities
     # are serialized. All approved assignments consume seats, regardless of filters.
-    occupied = dict(OJTPlacement.objects.filter(status='approved').values('position_id')
+    occupied = dict(current_approvals().values('position_id')
                     .annotate(total=Count('id')).values_list('position_id', 'total'))
-    catalog = list(Position.objects.select_related('company').order_by('company__name', 'title', 'id'))
+    catalog = list(Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).select_related('company').order_by('company__name', 'title', 'id'))
     if position_id and position_id not in {position.id for position in catalog}:
         raise NotFound('Position not found.')
     if company_id and company_id not in {position.company_id for position in catalog}:

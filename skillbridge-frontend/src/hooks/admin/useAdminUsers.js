@@ -1,3 +1,4 @@
+import { filterAdminUsers } from '../../utils/adminUserCollection'
 import { useToast } from '../../context/ToastContext'
 // src/hooks/admin/useAdminUsers.js
 //
@@ -85,7 +86,7 @@ export function useAdminUsers() {
   // ── Real-time SSE connection ──────────────────────────────────────
   useSSE(SSE_PATH)
 
-  const { data: usersData, request } = useApi('/api/admin/users/')
+  const { data: usersData, request, error: usersError } = useApi('/api/admin/users/')
   const accountPending = useRef(new Set())
   async function accountRequest(method, endpoint, payload) {
     const key = method + endpoint
@@ -312,53 +313,13 @@ export function useAdminUsers() {
   }
 
   // ── Derived / filtered lists ──────────────────────────────────────
-  const filtered = useMemo(() => {
-    let list
-
-    if (activeTab === 'students') {
-      list = studentsList.filter(s => !s.archived)
-      if (filterStatus     !== 'all') list = list.filter(s => s.status     === filterStatus)
-      if (filterCourse     !== 'all') list = list.filter(s => s.course     === filterCourse)
-      if (filterInstructor !== 'all') list = list.filter(s => s.instructor === filterInstructor)
-    } else if (activeTab === 'instructors') {
-      list = instructors.filter(i => !i.archived)
-    } else if (activeTab === 'pending') {
-      return pendingInstructors
-    } else {
-      const combined = [
-        ...studentsList.map(s => ({ ...s, role: 'student' })),
-        ...instructors.map(i =>  ({ ...i, role: 'instructor' })),
-      ]
-      list = activeTab === 'archived'
-        ? combined.filter(u => u.archived)
-        : combined.filter(u => !u.archived)
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(u =>
-        u.name.toLowerCase().includes(q) ||
-        (u.email ?? '').toLowerCase().includes(q) ||
-        (u.studentId ?? '').toLowerCase().includes(q) ||
-        (u.instructorId ?? '').toLowerCase().includes(q)
-      )
-    }
-
-    list = [...list].sort((a, b) => {
-      let av, bv
-      if      (sortCol === 'match')  { av = a.match ?? -1; bv = b.match ?? -1 }
-      else if (sortCol === 'course') { av = a.course;       bv = b.course }
-      else                           { av = a.name;         bv = b.name  }
-      if (av < bv) return sortDir === 'asc' ? -1 : 1
-      if (av > bv) return sortDir === 'asc' ?  1 : -1
-      return 0
-    })
-
-    return list
-  }, [
-    search, filterStatus, filterCourse, filterInstructor,
-    sortCol, sortDir, studentsList, instructors, pendingInstructors, activeTab,
-  ])
+  const userFilters = { search, filterStatus, filterCourse, filterInstructor }
+  const previewFilters = values => filterAdminUsers({ tab: activeTab, students: studentsList, instructors, pending: pendingInstructors, filters: values, sortCol, sortDir })
+  const filtered = useMemo(() => filterAdminUsers({ tab: activeTab, students: studentsList, instructors, pending: pendingInstructors,
+    filters: { search, filterStatus, filterCourse, filterInstructor }, sortCol, sortDir }), [activeTab, studentsList, instructors, pendingInstructors, search, filterStatus, filterCourse, filterInstructor, sortCol, sortDir])
+  function applyFilters(values) {
+    setSearch(values.search); setFilterStatus(values.filterStatus); setFilterCourse(values.filterCourse); setFilterInstr(values.filterInstructor); setPage(1)
+  }
 
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
   const displayed = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE)
@@ -375,7 +336,7 @@ export function useAdminUsers() {
 
   return {
     handleEnrollmentComplete,
-    studentsList, instructors, pendingInstructors, initialUsersPending: !usersReady,
+    studentsList, instructors, pendingInstructors, initialUsersPending: !usersReady, usersError,
     showAddInstr, setShowAddInstr,
     selectedUser, setSelectedUser,
     selectedUserType, setSelectedUserType,
@@ -389,7 +350,7 @@ export function useAdminUsers() {
     sortCol, sortDir, toggleSort,
     page: visiblePage, setPage,
     view, setView,
-    filtered, displayed, counts, instructorsList,
+    filtered, displayed, counts, instructorsList, userFilters, previewFilters, applyFilters,
     PAGE_SIZE,
     handleAddInstructor,
     handleDeleteInstructor,

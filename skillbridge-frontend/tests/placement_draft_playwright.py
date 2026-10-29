@@ -25,6 +25,7 @@ os.environ.update(PYTHON_DOTENV_DISABLED='1', DJANGO_SETTINGS_MODULE='core.test_
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(OUT / f'fixture-{uuid.uuid4().hex}.sqlite3')
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+settings.SECURE_SSL_REDIRECT = False  # Disposable localhost HTTP fixture only.
 settings.CORS_ALLOW_ALL_ORIGINS = True
 import django
 django.setup()
@@ -101,7 +102,14 @@ with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     try:
         context, page = navigate(browser, 'admin', fail_sync_once=True)
-        expect(page.get_by_role('button', name='Open company', exact=False)).to_have_count(2)
+        try:
+            expect(page.get_by_role('button', name='Open partner', exact=False)).to_have_count(2, timeout=45000)
+        except Exception:
+            page.screenshot(path=str(OUT / 'failure-initial.png'))
+            body = page.locator('body').inner_text()
+            (OUT / 'failure-initial.txt').write_text(body, encoding='utf-8')
+            print(body, flush=True)
+            raise
         expect(page.get_by_role('alert')).to_contain_text('Could not update suggestions')
         assert active_suggestions().count() == 0
         page.get_by_role('button', name='Refresh suggestions', exact=True).click()
@@ -151,7 +159,7 @@ with sync_playwright() as p:
         assert_button_feedback(page, page.get_by_role('button', name='Back to partners', exact=False))
         page.get_by_role('button', name='Back to partners', exact=False).click()
         page.get_by_label('Search', exact=True).fill(manual_student.name)
-        expect(page.get_by_role('button', name='Open company', exact=False)).to_have_count(1)
+        expect(page.get_by_role('button', name='Open partner', exact=False)).to_have_count(1)
         page.get_by_role('button', name='Open partner Company One', exact=True).click()
         expect(page.get_by_role('button', name='Remove placement', exact=True)).to_be_visible()
         page.get_by_label('Search', exact=True).fill('')

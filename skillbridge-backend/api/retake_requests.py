@@ -15,6 +15,7 @@ from .assessment_progress import assessment_availability
 from .attempt_timing import check_attempt_identity, timing, mark_expired_for_review
 from .change_events import notify_changes
 from .management_access import record_action
+from .cycle_lifecycle import lifecycle_lock
 from . import retake_evidence
 
 
@@ -196,6 +197,7 @@ def request_queue(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
+@lifecycle_lock
 def review_request(request, assessment_id, student_id):
     if not isinstance(request.data, dict):
         raise ValidationError({'error': 'Review data must be an object.'})

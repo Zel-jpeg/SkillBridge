@@ -1,4 +1,5 @@
 import DataSection from '../../components/DataSection'
+import StudentCycleNotice from '../../components/student/StudentCycleNotice'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { assessmentAction } from './assessmentUiState'
@@ -80,6 +81,7 @@ export default function StudentAssessments() {
     <div className="min-w-0">
 
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        <StudentCycleNotice />
         <button onClick={() => navigate('/student/dashboard')} className="mb-5 text-sm font-medium text-green-700 hover:underline dark:text-green-400 focus-visible:outline-2">← Dashboard</button>
         <header className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-7">
           <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">{data?.batch?.name || 'Your batch'}</p>

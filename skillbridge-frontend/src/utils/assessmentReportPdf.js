@@ -35,7 +35,7 @@ export function studentCompetencySections(row) {
     ]),
     placement: placement.status === 'approved'
       ? `Approved: ${placement.company?.name || 'Partner unavailable'} - ${placement.position?.title || 'Position unavailable'}`
-      : (placement.status || 'unplaced').replaceAll('_', ' '),
+      : placement.status === 'completed' ? 'Legacy recorded decision' : (placement.status || 'unplaced').replaceAll('_', ' '),
   }
 }
 

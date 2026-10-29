@@ -9,6 +9,13 @@ test('shared analytics refreshes for capacity consumption in another batch and r
 })
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 
+test('cycle previews and own history refresh while issued closeout versions remain deliberate snapshots', () => {
+  assert.equal(queryAffected('/api/students/me/history/', { topics: ['batches'] }), true)
+  assert.equal(queryAffected('/api/instructor/batches/4/closeout/', { topics: ['capacity'], batch_ids: [9] }), true)
+  assert.equal(queryAffected('/api/instructor/batches/4/closeout/?version=1', { topics: ['catalog'] }), false)
+  assert.equal(queryAffected('/api/instructor/batches/4/closeout/?version=1', { resync: true }), false)
+})
+
 test('email jobs refresh only their batch and reconcile lifecycle or ownership changes', () => {
   const url = '/api/instructor/batches/4/emails/'
   assert.equal(queryAffected(url, { topics: ['email'], batch_ids: [4] }), true)

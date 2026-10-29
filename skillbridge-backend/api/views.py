@@ -1,5 +1,7 @@
 from .name_formatting import format_person_name
 from .placement_drafts import placement_catalog_lock, placement_write_lock
+from .placement_scope import current_approvals as allocated_approvals, reactivation_conflict
+from .cycle_lifecycle import lifecycle_lock, available as catalog_available, unfinished, release_suggestions
 from django.db.models.functions import TruncDate
 from rest_framework.throttling import AnonRateThrottle
 import requests as http_requests
@@ -293,6 +295,8 @@ def management_combined_state(student, batch):
 def bulk_management_states(students, batch, include_history=True):
     """Build roster/dashboard state in grouped queries without recalculating NLP."""
     ids = [student.id for student in students]
+    review_required = set(BatchEnrollment.objects.filter(student_id__in=ids, batch=batch,
+                         profile_review_required=True).values_list('student_id', flat=True))
     assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
     required_ids = {a.id for a in assessments if a.publication_status == 'published' and a.is_required and a.include_in_competency}
     assessment_by_id = {a.id: a for a in assessments}
@@ -339,7 +343,8 @@ def bulk_management_states(students, batch, include_history=True):
                       r.submitted_at and not r.is_flagged and (student.id, a.id) in valid_score_ids]
         source_ids.sort()
         profile = profiles.get(student.id)
-        unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids, catalog=catalog)
+        unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids,
+                                       catalog=catalog, review_required=student.id in review_required)
         individual = []
         for assessment in assessments:
             response = response_map.get((student.id, assessment.id))
@@ -744,6 +749,7 @@ def register_role(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 @notify_changes('student')
+@lifecycle_lock
 def student_profile(request):
     user = request.user
     if user.role != 'student':
@@ -752,6 +758,9 @@ def student_profile(request):
     from .profile_validation import profile_data
     try:
         with transaction.atomic():
+            enrollment = current_enrollment(user)
+            if enrollment:
+                Batch.objects.select_for_update().get(pk=enrollment.batch_id)
             user = User.objects.select_for_update().get(pk=user.pk)
             changes = profile_data(request.data, user)
             enrollment = current_enrollment(user)
@@ -819,6 +828,8 @@ def student_me(request):
     return Response({
         **UserSerializer(user).data,
         'has_submitted':      has_submitted,
+        'profile_review_required': bool(enrollment and enrollment.profile_review_required),
+        'profile_confirmed_at': enrollment.profile_confirmed_at if enrollment else None,
         'retake_allowed':     retake_allowed,
         'recommendations_locked': not unlocked,
         **serialize_attempt_integrity(latest_response),
@@ -1072,6 +1083,7 @@ def instructor_batch_enroll_preview(request, batch_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
 @transaction.atomic
+@lifecycle_lock
 def instructor_batch_enroll(request, batch_id):
     return _enrollment_request(request, batch_id)
 
@@ -1081,6 +1093,7 @@ def instructor_batch_enroll(request, batch_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
 @transaction.atomic
+@lifecycle_lock
 def instructor_batch_archive(request, batch_id):
     """Mark a batch as archived (read-only). Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1089,6 +1102,16 @@ def instructor_batch_archive(request, batch_id):
         batch = managed_batches(request.user).select_for_update().get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
+    if batch.status == 'archived':
+        return Response({'id': batch.id, 'status': 'archived', 'archived_at': batch.archived_at, 'idempotent': True})
+    # Submission holds its assessment lock until profiles and combined evidence
+    # finish. Archive must not freeze a half-finalized result.
+    list(Assessment.objects.select_for_update().filter(batch=batch).order_by('id'))
+    if unfinished(batch).exists():
+        return Response({'error': 'Resolve unfinished assessment attempts before archiving this batch.'}, status=409)
+    if StudentResponse.objects.filter(assessment__batch=batch).filter(Q(retake_request_status='pending') | Q(retake_allowed=True)).exists():
+        return Response({'error': 'Resolve pending or approved retakes before archiving this batch.'}, status=409)
+    release_suggestions(request.user, batch_id=batch.pk)
     batch.status      = 'archived'
     batch.archived_at = timezone.now()
     batch.save(update_fields=['status', 'archived_at'])
@@ -1102,6 +1125,7 @@ def instructor_batch_archive(request, batch_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('batch')
 @transaction.atomic
+@lifecycle_lock
 def instructor_batch_unarchive(request, batch_id):
     """Mark a batch as active. Only the owning instructor can do this."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1110,6 +1134,15 @@ def instructor_batch_unarchive(request, batch_id):
         batch = managed_batches(request.user).select_for_update().get(id=batch_id)
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
+    if batch.status == 'active':
+        return Response({'id': batch.id, 'status': 'active', 'archived_at': None, 'idempotent': True})
+    conflicts = BatchEnrollment.objects.filter(batch__status='active', student_id__in=
+        BatchEnrollment.objects.filter(batch=batch).values('student_id')).exclude(batch=batch).exists()
+    if conflicts:
+        return Response({'error': 'Some students already have another active batch. Resolve those enrollments before reactivating this batch.'}, status=409)
+    conflict = reactivation_conflict(batch)
+    if conflict:
+        return Response({'error': conflict}, status=409)
     batch.status      = 'active'
     batch.archived_at = None
     batch.save(update_fields=['status', 'archived_at'])
@@ -1123,6 +1156,7 @@ def instructor_batch_unarchive(request, batch_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
 @transaction.atomic
+@lifecycle_lock
 def instructor_student_retake(request, student_id):
     """Approve a specific attempt; legacy omission works only when unambiguous."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1179,6 +1213,7 @@ def instructor_student_retake(request, student_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('student')
 @transaction.atomic
+@lifecycle_lock
 def instructor_student_remove(request, student_id):
     """Unenroll from a selected owned batch; legacy callers omit batch_id."""
     if request.user.role not in ('instructor', 'admin'):
@@ -1193,6 +1228,8 @@ def instructor_student_remove(request, student_id):
         batches = Batch.objects.filter(pk=batch_id)
         if request.user.role != 'admin':
             batches = batches.filter(instructor=request.user)
+    # Serialize membership removal with attempt start and cycle closeout.
+    list(batches.select_for_update().order_by('id'))
     removed_batches = list(BatchEnrollment.objects.filter(batch__in=batches, student_id=student_id).values_list('batch_id', flat=True))
     deleted, _ = BatchEnrollment.objects.filter(
         batch__in=batches, student_id=student_id
@@ -1261,8 +1298,9 @@ def instructor_batch_students(request, batch_id):
         if len(recs_by_student[r.student_id]) < 3:
             recs_by_student[r.student_id].append(r)
 
-    placements_by_student = _visible_placements_by_student(student_ids)
+    placements_by_student = _visible_placements_by_student(student_ids, batch=batch)
     combined_states = bulk_management_states(student_objs, batch)
+    current_approved_ids = set(allocated_approvals(student_id__in=student_ids).values_list('student_id', flat=True))
 
     students = []
     for e in enrollments:
@@ -1284,6 +1322,7 @@ def instructor_batch_students(request, batch_id):
             'photo_url':      s.photo_url,
             'is_active':      s.is_active,
             'historical_evidence': not s.is_active,
+            'has_current_approval': s.id in current_approved_ids,
             'has_submitted': unlocked,
             **combined_state,
             'retake_allowed': resp.retake_allowed if resp else False,
@@ -1430,7 +1469,8 @@ def management_assessment_reports(request):
         rec_map = {}
         for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by('student_id', '-match_score', 'position_id', 'id'):
             rec_map.setdefault((rec.student_id, rec.batch_id), []).append(rec)
-        placements = _visible_placements_by_student([e.student_id for e in enrollments])
+        placements = {(sid, bid): row for bid in batch_ids for sid, row in
+                      _visible_placements_by_student([e.student_id for e in enrollments], batch=bid).items()}
         student_rows_by_key = {(row['student_id'], row['batch_id']): row for row in student_rows}
         assessment_titles = {assessment.id: assessment.title for assessment in all_assessments}
         source_ids_by_key = {(profile.student_id, profile.batch_id): profile.included_assessment_ids
@@ -1452,7 +1492,7 @@ def management_assessment_reports(request):
                          'included_assessments': [{'id': source_id, 'title': assessment_titles.get(source_id, 'Assessment unavailable')}
                                                   for source_id in source_ids],
                          'final_recommendations': [{'rank': rank, **serialize_recommendation(rec)} for rank, rec in enumerate(recs, 1)],
-                         'placement': _serialize_placement_visibility(placements.get(enrollment.student_id), include_unplaced=True)})
+                         'placement': _serialize_placement_visibility(placements.get((enrollment.student_id, enrollment.batch_id)), include_unplaced=True)})
     else:
         rows = student_rows
     payload = {'report_type': report_type, 'generated_at': timezone.now(),
@@ -1522,6 +1562,7 @@ def management_assessment_reports(request):
 @permission_classes([IsAuthenticated])
 @notify_changes('assessment')
 @transaction.atomic
+@lifecycle_lock
 def instructor_assessments(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1725,6 +1766,7 @@ def instructor_assessments(request):
 @permission_classes([IsAuthenticated])
 @notify_changes('assessment')
 @transaction.atomic
+@lifecycle_lock
 def instructor_assessment_detail(request, assessment_id):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
@@ -1900,6 +1942,7 @@ def instructor_assessment_questions(request, assessment_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('question')
 @transaction.atomic
+@lifecycle_lock
 def instructor_assessment_add_questions(request, assessment_id):
     """
     Append new questions (from a parsed file upload) to an existing assessment.
@@ -2036,6 +2079,7 @@ def instructor_assessment_add_questions(request, assessment_id):
 @permission_classes([IsAuthenticated])
 @notify_changes('question')
 @transaction.atomic
+@lifecycle_lock
 def instructor_question_detail(request, question_id):
     """
     PATCH  → update question text, type, choices, category.
@@ -2197,6 +2241,10 @@ def _student_assessment(request, assessment_id, *, require_available=True, allow
         return None, Response({'error': 'Assessment not found'}, status=404)
     if assessment.publication_status == Assessment.PUBLICATION_DRAFT and not require_available:
         return None, Response({'error': 'Assessment not found'}, status=404)
+    if require_available and BatchEnrollment.objects.filter(student=request.user, batch_id=assessment.batch_id,
+                                                           profile_review_required=True).exists():
+        return None, Response({'error': 'Review and confirm your profile for this batch before continuing.',
+                               'code': 'profile_review_required'}, status=409)
     availability = assessment_availability(assessment)
     if require_available and availability != 'available' and not (allow_overdue and availability == 'overdue'):
         return None, Response({'error': 'Assessment unavailable', 'availability_status': availability}, status=409)
@@ -2316,6 +2364,7 @@ def assessment_active(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
+@transaction.atomic
 def assessment_start(request, assessment_id):
     """
     Called when the student loads the first question.
@@ -2323,10 +2372,15 @@ def assessment_start(request, assessment_id):
     Returns full shuffled question list (without revealing correct answers).
     """
     user = request.user
+    enrollment = current_enrollment(user)
+    if enrollment and enrollment.profile_review_required:
+        return Response({'error': 'Review and confirm your profile for your new batch before starting an assessment.',
+                         'code': 'profile_review_required'}, status=409)
     assessment, access_error = _student_assessment(request, assessment_id)
     if access_error is not None:
         return access_error
 
+    Batch.objects.select_for_update().get(pk=assessment.batch_id)
     # Lock the response while its layout is first created. This prevents two
     # near-simultaneous /start/ requests from returning different arrangements.
     was_retake = False
@@ -2478,6 +2532,7 @@ def assessment_start(request, assessment_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
+@transaction.atomic
 def assessment_submit(request, assessment_id):
     """
     Grade all answers, write SkillScore rows, generate recommendations.
@@ -2498,6 +2553,7 @@ def assessment_submit(request, assessment_id):
     # The row lock makes normal submit and integrity stop mutually exclusive.
     # Whichever request finalizes the attempt first wins.
     with transaction.atomic():
+        Batch.objects.select_for_update().get(pk=assessment.batch_id)
         Assessment.objects.select_for_update().get(pk=assessment.id)
         assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
         if access_error is not None:
@@ -2558,6 +2614,7 @@ def assessment_submit(request, assessment_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('attempt')
+@transaction.atomic
 def assessment_stop(request, assessment_id):
     """Finalize an attempt after the first browser integrity rule is triggered."""
     from .scoring import score_submission
@@ -2582,6 +2639,7 @@ def assessment_stop(request, assessment_id):
     categories = list(SkillCategory.objects.all())
 
     with transaction.atomic():
+        Batch.objects.select_for_update().get(pk=assessment.batch_id)
         Assessment.objects.select_for_update().get(pk=assessment.id)
         assessment, access_error = _student_assessment(request, assessment_id, allow_overdue=True)
         if access_error is not None:
@@ -2707,7 +2765,7 @@ def instructor_student_recommendations(request):
         if len(recs_by_student[r.student_id]) < 3:
             recs_by_student[r.student_id].append(r)
 
-    placements_by_student = _visible_placements_by_student(student_ids)
+    placements_by_student = _visible_placements_by_student(student_ids, batch=active_batch)
 
     # ── Bulk-load all skill scores ─────────────────────────────────
     all_scores = (
@@ -2814,7 +2872,7 @@ def instructor_companies(request):
             recs_by_position[r.position_id].append(r)
 
     companies = (
-        Company.objects
+        Company.objects.filter(archived_at__isnull=True)
         .prefetch_related('positions', 'positions__requirements', 'positions__requirements__skill_category')
         .order_by('name')
     )
@@ -2822,7 +2880,7 @@ def instructor_companies(request):
     result = []
     for company in companies:
         positions_data = []
-        for pos in company.positions.all().order_by('title'):
+        for pos in company.positions.filter(archived_at__isnull=True).order_by('title'):
             matched = [
                 {
                     'id':          r.student.id,
@@ -2889,6 +2947,8 @@ def instructor_company_edit(request, co_id):
             except Company.DoesNotExist:
                 return Response({'error': 'Not found'}, status=404)
 
+            if company.archived_at:
+                return Response({'error': 'Restore this partner before editing it.'}, status=409)
             # Validate all positions before uploading or persisting any changes.
             positions, seen = [], set()
             for pos_data in data.get('positions', []):
@@ -2903,8 +2963,10 @@ def instructor_company_edit(request, co_id):
                     pos = company.positions.select_for_update().get(id=position_id)
                 except Position.DoesNotExist:
                     invalid('positions', 'Position does not belong to this partner.')
+                if pos.archived_at:
+                    return Response({'error': 'Restore this position before editing it.'}, status=409)
                 requested_slots = values.get('slots_available', pos.slots_available)
-                approved_count = pos.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
+                approved_count = allocated_approvals(position=pos).count()
                 if requested_slots < approved_count:
                     return Response({'error': 'slots cannot be lower than the approved placement count.',
                                      'position_id': pos.id, 'approved_count': approved_count}, status=409)
@@ -3153,7 +3215,7 @@ def student_companies(request):
     }
 
     companies = (
-        Company.objects
+        Company.objects.filter(archived_at__isnull=True)
         .prefetch_related(
             'positions',
             'positions__requirements',
@@ -3175,7 +3237,7 @@ def student_companies(request):
                     for req in p.requirements.all()
                 ] + list(p.tags or []),
             }
-            for p in company.positions.all()
+            for p in company.positions.all() if p.archived_at is None
         ]
         result.append({
             'id':       company.id,
@@ -3295,8 +3357,8 @@ def admin_stats(request):
         return Response({'error': 'Admins only'}, status=403)
 
     total_students = User.objects.filter(role='student', is_active=True).count()
-    total_companies = Company.objects.count()
-    open_positions = Position.objects.aggregate(total=Sum('slots_available')).get('total') or 0
+    total_companies = Company.objects.filter(archived_at__isnull=True).count()
+    open_positions = Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).aggregate(total=Sum('slots_available')).get('total') or 0
     recommendations_made = current_recommendations().count()
     publication_counts = {row['publication_status']: row['total'] for row in Assessment.objects.values('publication_status').annotate(total=Count('id'))}
     enrollments = (BatchEnrollment.objects.filter(batch__status='active', student__is_active=True)
@@ -3324,6 +3386,7 @@ def admin_stats(request):
         student_id__in=completed_ids, batch_id__in=set(current_batches.values()), is_finalized=True,
     ).values_list('student_id', 'batch_id'))
     unlocked_students = sum((student_id, current_batches[student_id]) in finalized_pairs for student_id in completed_ids)
+    placed_ids = set(allocated_approvals(student_id__in=current_batches).values_list('student_id', flat=True))
     stopped_or_flagged = StudentResponse.objects.filter(Q(status=StudentResponse.STATUS_STOPPED) | Q(is_flagged=True)).count()
     retake_approved = StudentResponse.objects.filter(retake_allowed=True).count()
 
@@ -3343,7 +3406,7 @@ def admin_stats(request):
         'retakes_approved': retake_approved,
         'final_profiles_generated': CombinedCompetencyProfile.objects.filter(is_finalized=True, batch__status='active').count(),
         'recommendations_unlocked_students': unlocked_students,
-        'unplaced_students': len(current_batches) - OJTPlacement.objects.filter(student_id__in=current_batches, status='approved').values('student_id').distinct().count(),
+        'unplaced_students': len(current_batches) - len(placed_ids),
     })
 
 
@@ -3597,6 +3660,7 @@ def admin_companies(request):
                 }
                 positions.append({
                     'id':     pos.id,
+                    'archived_at': pos.archived_at,
                     'title':  pos.title,
                     'slots':  pos.slots_available,
                     'tags':   pos.tags or [],
@@ -3604,6 +3668,7 @@ def admin_companies(request):
                 })
             data.append({
                 'id':       co.id,
+                'archived_at': co.archived_at,
                 'name':     co.name,
                 **image_fields(co),
                 'address':  co.address,
@@ -3650,6 +3715,8 @@ def admin_company_detail(request, company_id):
         try:
             with transaction.atomic():
                 company = Company.objects.select_for_update().get(id=company_id)
+                if Recommendation.objects.filter(position__company=company).exists():
+                    return Response({'error': 'Archive this partner to preserve its recommendation and placement records.'}, status=409)
                 old_key = company.image_key
                 # Unapproved system suggestions are replaceable, not history.
                 OJTPlacement.objects.filter(company=company, is_active_suggestion=True).delete()
@@ -3671,6 +3738,8 @@ def admin_company_detail(request, company_id):
                 company = Company.objects.select_for_update().get(id=company_id)
             except Company.DoesNotExist:
                 return Response({'error': 'Partner not found'}, status=404)
+            if company.archived_at:
+                return Response({'error': 'Restore this partner before editing it.'}, status=409)
             if data.get('name', '').strip(): company.name = data['name'].strip()
             if 'address' in data: company.address = data['address']
             if 'lat' in data: company.location_lat = data['lat']
@@ -3701,6 +3770,8 @@ def admin_company_positions(request, company_id):
             company = Company.objects.select_for_update().get(id=company_id)
         except Company.DoesNotExist:
             return Response({'error': 'Partner not found'}, status=404)
+        if company.archived_at:
+            return Response({'error': 'Restore this partner before adding a position.'}, status=409)
         position = Position.objects.create(company=company, **values)
         for category, percentage in requirements:
             PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
@@ -3777,11 +3848,15 @@ def admin_position_detail(request, position_id):
         with transaction.atomic():
             position = Position.objects.select_for_update().get(id=position_id)
             if request.method == 'DELETE':
+                if Recommendation.objects.filter(position=position).exists():
+                    return Response({'error': 'Archive this position to preserve its recommendation and placement records.'}, status=409)
                 OJTPlacement.objects.filter(position=position, is_active_suggestion=True).delete()
                 position.delete()
                 return Response(status=204)
+            if not catalog_available(position):
+                return Response({'error': 'Restore the partner and position before editing this opening.'}, status=409)
             if 'slots_available' in values:
-                approved_count = position.ojt_placements.filter(status=OJTPlacement.STATUS_APPROVED).count()
+                approved_count = allocated_approvals(position=position).count()
                 if values['slots_available'] < approved_count:
                     return Response({'error': 'slots cannot be lower than the approved placement count.',
                                      'approved_count': approved_count}, status=409)
@@ -4057,6 +4132,8 @@ def _serialize_placement(placement):
         'approved_at': placement.approved_at,
         'removed_at': placement.removed_at,
         'rejected_at': placement.rejected_at,
+        'completed_at': placement.completed_at,
+        'legacy_record': placement.status == 'completed',
     }
 
 
@@ -4077,6 +4154,7 @@ def _serialize_placement_visibility(placement, include_unplaced=False):
     return {
         'id': placement.id,
         'status': placement.status,
+        'completed_at': placement.completed_at,
         'company': {
             'id': placement.company_id,
             'name': placement.company.name,
@@ -4095,32 +4173,37 @@ def _serialize_placement_visibility(placement, include_unplaced=False):
 
 
 def _approved_student_placement(student_id):
-    return _placement_select_related(
-        OJTPlacement.objects.filter(
-            student_id=student_id,
-            status=OJTPlacement.STATUS_APPROVED,
-        )
-    ).order_by('-approved_at', '-id').first()
+    return _placement_select_related(allocated_approvals(student_id=student_id)).order_by('-approved_at', '-id').first()
 
 
-def _visible_placements_by_student(student_ids):
+def _visible_placements_by_student(student_ids, batch=None):
     """Approved placement wins; otherwise expose only the latest workflow state."""
     if not student_ids:
         return {}
+    if batch is not None:
+        rows = _placement_select_related(OJTPlacement.objects.filter(student_id__in=student_ids,
+            batch=batch, is_active_suggestion=False)).order_by('-updated_at', '-id')
+        result = {}
+        for row in rows:
+            priority = {'approved': 2}
+            if row.student_id not in result or priority.get(row.status, 0) > priority.get(result[row.student_id].status, 0):
+                result[row.student_id] = row
+        return result
 
     latest = {}
+    current_batches = {}
+    for sid, bid in BatchEnrollment.objects.filter(student_id__in=student_ids, batch__status='active').order_by('-enrolled_at', '-id').values_list('student_id', 'batch_id'):
+        current_batches.setdefault(sid, bid)
     placements = _placement_select_related(
         OJTPlacement.objects.filter(student_id__in=student_ids, is_active_suggestion=False)
     ).order_by('student_id', '-updated_at', '-id')
     for placement in placements:
-        latest.setdefault(placement.student_id, placement)
+        if placement.batch_id is None or placement.batch_id == current_batches.get(placement.student_id):
+            latest.setdefault(placement.student_id, placement)
 
     approved = {}
     approved_rows = _placement_select_related(
-        OJTPlacement.objects.filter(
-            student_id__in=student_ids,
-            status=OJTPlacement.STATUS_APPROVED,
-        )
+        allocated_approvals(student_id__in=student_ids)
     ).order_by('student_id', '-approved_at', '-id')
     for placement in approved_rows:
         approved.setdefault(placement.student_id, placement)
@@ -4220,13 +4303,13 @@ def placement_suggestions(request):
         if combined_is_unlocked(User.objects.get(id=student_id), batch, catalog=catalog)
     }
 
-    companies = Company.objects.prefetch_related('positions').order_by('name', 'id')
+    companies = Company.objects.filter(archived_at__isnull=True).prefetch_related('positions').order_by('name', 'id')
     if company_id:
         companies = companies.filter(id=company_id)
     if position_id:
         companies = companies.filter(positions__id=position_id).distinct()
 
-    positions_query = Position.objects.filter(company__in=companies)
+    positions_query = Position.objects.filter(company__in=companies, archived_at__isnull=True)
     if position_id:
         positions_query = positions_query.filter(id=position_id)
     position_ids = list(positions_query.values_list('id', flat=True))
@@ -4244,28 +4327,24 @@ def placement_suggestions(request):
 
     approved_counts = {
         row['position_id']: row['count']
-        for row in OJTPlacement.objects.filter(
-            position_id__in=position_ids, status=OJTPlacement.STATUS_APPROVED,
-        ).values('position_id').annotate(count=Count('id'))
+        for row in allocated_approvals(position_id__in=position_ids).values('position_id').annotate(count=Count('id'))
     }
     approved_by_student = {
         placement.student_id: placement
-        for placement in _placement_select_related(OJTPlacement.objects.filter(
-            student_id__in=student_ids, status=OJTPlacement.STATUS_APPROVED,
-        ))
+        for placement in _placement_select_related(allocated_approvals(student_id__in=student_ids))
     }
     latest_by_student_position = {}
     for placement in _placement_select_related(OJTPlacement.objects.filter(
         student_id__in=student_ids, position_id__in=position_ids,
     )).order_by('student_id', 'position_id', '-updated_at', '-id'):
         latest_by_student_position.setdefault(
-            (placement.student_id, placement.position_id), placement,
+            (placement.student_id, placement.batch_id, placement.position_id), placement,
         )
 
     output = []
     for company in companies:
         positions_output = []
-        positions = company.positions.all().order_by('title', 'id')
+        positions = company.positions.filter(archived_at__isnull=True).order_by('title', 'id')
         if position_id:
             positions = positions.filter(id=position_id)
         for position in positions:
@@ -4273,7 +4352,7 @@ def placement_suggestions(request):
             for recommendation in recommendations_by_position.get(position.id, []):
                 approved = approved_by_student.get(recommendation.student_id)
                 latest = latest_by_student_position.get(
-                    (recommendation.student_id, position.id),
+                    (recommendation.student_id, recommendation.batch_id, position.id),
                 )
                 if approved is not None:
                     suggestion_status = (
@@ -4357,7 +4436,7 @@ def placement_suggestions(request):
             'batch': {'id': batch.id, 'name': batch.name} if batch else None,
         })
 
-    current_approvals = _placement_select_related(OJTPlacement.objects.filter(status='approved'))
+    current_approvals = _placement_select_related(allocated_approvals())
     if request.user.role == 'instructor':
         current_approvals = current_approvals.filter(batch__instructor=request.user)
     if batch_id:
@@ -4397,10 +4476,10 @@ def placement_approve(request):
             position = Position.objects.select_for_update().select_related('company').get(
                 id=recommendation.position_id,
             )
+            if not catalog_available(position):
+                return Response({'error': 'This partner or position is archived. Choose an available opening.'}, status=409)
 
-            current = _placement_select_related(OJTPlacement.objects.filter(
-                student=student, status=OJTPlacement.STATUS_APPROVED,
-            )).first()
+            current = _placement_select_related(allocated_approvals(student=student)).first()
             if current:
                 if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
                     return Response({'error': 'Student already has an approved placement.'}, status=409)
@@ -4419,9 +4498,7 @@ def placement_approve(request):
             ):
                 return Response({'error': 'Final recommendations are locked for this student.'}, status=409)
 
-            approved_count = OJTPlacement.objects.filter(
-                position=position, status=OJTPlacement.STATUS_APPROVED,
-            ).count()
+            approved_count = allocated_approvals(position=position).count()
             if approved_count >= position.slots_available:
                 return Response({
                     'error': 'No remaining slots for this position.',
@@ -4555,8 +4632,11 @@ def _change_placement_status(request, new_status):
                 return Response({
                     'placement': _serialize_placement(placement), 'idempotent': True,
                 })
+            if placement.batch_id and (placement.batch.status != 'active' or not BatchEnrollment.objects.filter(
+                    batch_id=placement.batch_id, student_id=placement.student_id).exists()):
+                return Response({'error': 'This decision belongs to an archived batch or previous enrollment and is read-only.'}, status=409)
             if placement.status in (
-                OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED,
+                OJTPlacement.STATUS_REMOVED, OJTPlacement.STATUS_REJECTED, OJTPlacement.STATUS_LEGACY_COMPLETED,
             ):
                 return Response({
                     'error': f'Placement is already {placement.status}.',
@@ -4624,9 +4704,9 @@ def placement_manual_assign(request):
             position = Position.objects.select_for_update().select_related('company').get(
                 id=position_id,
             )
-            current = _placement_select_related(OJTPlacement.objects.filter(
-                student=student, status=OJTPlacement.STATUS_APPROVED,
-            )).first()
+            if not catalog_available(position):
+                return Response({'error': 'This partner or position is archived. Choose an available opening.'}, status=409)
+            current = _placement_select_related(allocated_approvals(student=student)).first()
             if current:
                 if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
                     return Response({'error': 'Student already has an approved placement.'}, status=409)
@@ -4638,9 +4718,7 @@ def placement_manual_assign(request):
             if not student.is_active:
                 return Response({'error': 'Restore the student account before assigning a placement.'}, status=409)
 
-            approved_count = OJTPlacement.objects.filter(
-                position=position, status=OJTPlacement.STATUS_APPROVED,
-            ).count()
+            approved_count = allocated_approvals(position=position).count()
             if approved_count >= position.slots_available:
                 return Response({
                     'error': 'No remaining slots for this position.',
@@ -4663,6 +4741,10 @@ def placement_manual_assign(request):
             else:
                 batch = _placement_batch(student.id, request.user if request.user.role == 'instructor' else None)
 
+            if not batch or batch.status != 'active':
+                return Response({'error': 'Choose an active enrolled batch for a new placement.'}, status=409)
+            if BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists():
+                return Response({'error': 'The student must confirm their profile for this batch first.'}, status=409)
             recommendation = (Recommendation.objects.filter(
                 student=student, batch=batch, position=position, is_current=True,
             ).first() if batch and combined_is_unlocked(student, batch) else None)
@@ -4758,8 +4840,7 @@ def placement_analytics(request):
         User.objects.filter(role='student', is_active=True).only('id', 'address')
     )
     approved_placements = list(
-        OJTPlacement.objects
-        .filter(status=OJTPlacement.STATUS_APPROVED)
+        allocated_approvals()
         .select_related('company')
         .only('student_id', 'position_id', 'company__address')
     )
@@ -4772,7 +4853,7 @@ def placement_analytics(request):
         if student.id not in approved_student_ids
     )
 
-    companies = list(Company.objects.all().only('id', 'address'))
+    companies = list(Company.objects.filter(archived_at__isnull=True).only('id', 'address'))
     company_counts = Counter(_placement_area(company.address) for company in companies)
     placement_counts = Counter(
         _placement_area(placement.company.address)
@@ -4786,7 +4867,7 @@ def placement_analytics(request):
     available_slots = 0
     total_slots_by_area = Counter()
     available_slots_by_area = Counter()
-    for position in Position.objects.select_related('company').all():
+    for position in Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).select_related('company'):
         area = _placement_area(position.company.address)
         position_slots = position.slots_available or 0
         position_free = max(
@@ -5007,17 +5088,13 @@ def placement_reports(request):
         placements = placements.order_by('-updated_at', '-id')
 
     position_ids = list(placements.values_list('position_id', flat=True).distinct())
+    occupied = dict(allocated_approvals(position_id__in=position_ids).values('position_id').annotate(n=Count('id')).values_list('position_id', 'n'))
     capacity_by_position = {
         row['id']: {
-            'approved_count': row['approved_count'],
+            'approved_count': occupied.get(row['id'], 0),
             'slots_available': row['slots_available'],
         }
-        for row in Position.objects.filter(id__in=position_ids).annotate(
-            approved_count=Count(
-                'ojt_placements',
-                filter=Q(ojt_placements__status=OJTPlacement.STATUS_APPROVED),
-            ),
-        ).values('id', 'slots_available', 'approved_count')
+        for row in Position.objects.filter(id__in=position_ids).values('id', 'slots_available')
     }
     records = [
         _serialize_placement_report_record(placement, capacity_by_position)

@@ -1,5 +1,11 @@
 # Saved recommendation freshness
 
+28 October cycle update: ranking candidates and catalog fingerprints exclude archived
+partners/openings. Capacity stays a separate approval rule; weights and grading stay
+unchanged. A previous cycle's approved/declined decision does not suppress the
+same position in a new batch. Saved closeout versions never regenerate rankings. See
+[cycle closeout and rollover](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md).
+
 20 October2026. Fixes the three findings in the
 [branch review](BRANCH_REVIEW_2026_10_20.md). Weights remain60/25/15; grading,
 required-assessment gates, assessment history and placement snapshots remain.

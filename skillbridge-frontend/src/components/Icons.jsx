@@ -93,6 +93,12 @@ export const XIcon = ({ size = 14 }) => (
   </svg>
 )
 
+export const FilterIcon = ({ size = 18 }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h3m4 0h11M3 12h11m4 0h3M3 18h5m4 0h9" /><circle cx="8" cy="6" r="2" /><circle cx="16" cy="12" r="2" /><circle cx="10" cy="18" r="2" />
+  </svg>
+)
+
 export const BellIcon = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -237,6 +243,18 @@ export const PinIcon = ({ size = 11 }) => (
 export const UsersIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="9" cy="8" r="3" /><path d="M2 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M22 21v-2a6 6 0 0 0-4-5.65" />
+  </svg>
+)
+
+export const UserPlusIcon = ({ size = 16 }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M20 8v6M17 11h6" />
+  </svg>
+)
+
+export const TransferIcon = ({ size = 16 }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7h17m-4-4 4 4-4 4M21 17H4m4-4-4 4 4 4" />
   </svg>
 )
 

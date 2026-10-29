@@ -94,6 +94,16 @@ def run_checks(browser):
     enrollment.get_by_label('Full Name', exact=True).fill('Synthetic Student')
     enrollment.get_by_label('Student ID', exact=True).fill('2099-90001')
     enrollment.get_by_role('button', name='Preview student', exact=True).click()
+    expect(enrollment.locator('.enrollment-status.status-conflict').first).to_have_text('Needs staff review')
+    expect(enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True)).to_have_count(0)
+    enrollment.get_by_role('button', name='Close enrollment', exact=True).click()
+    page.get_by_role('button', name='Enroll students', exact=True).click()
+    enrollment = page.get_by_role('dialog', name='Enroll students', exact=True)
+    enrollment.get_by_role('button', name='Manual entry', exact=True).click()
+    enrollment.get_by_label('DNSC Email', exact=True).fill('management.new@dnsc.edu.ph')
+    enrollment.get_by_label('Full Name', exact=True).fill('Synthetic New Student')
+    enrollment.get_by_label('Student ID', exact=True).fill('2099-90002')
+    enrollment.get_by_role('button', name='Preview student', exact=True).click()
     enrollment.get_by_role('checkbox', name='I verified the Student IDs and final DNSC email addresses.', exact=True).check()
     enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True).click()
     page.get_by_role('dialog', name='Confirm student enrollment?', exact=True).get_by_role('button', name='Enroll students', exact=True).click()
@@ -115,13 +125,13 @@ def run_checks(browser):
     assert api_request(context, path, identity='other').status == 200
     page.get_by_role('button', name='Batch actions', exact=True).click()
     page.get_by_role('menuitem', name='Archive batch', exact=True).click()
-    page.get_by_role('dialog', name='Archive this batch?', exact=True).get_by_role('button', name='Confirm batch status', exact=True).click()
+    page.get_by_role('dialog', name='Archive this batch?', exact=True).get_by_role('button', name='Archive batch', exact=True).click()
     page.get_by_role('button', name='Batch actions', exact=True).click()
     expect(page.get_by_role('menuitem', name='Reactivate batch', exact=True)).to_be_visible()
     page.keyboard.press('Escape')
     page.get_by_role('button', name='Batch actions', exact=True).click()
     page.get_by_role('menuitem', name='Reactivate batch', exact=True).click()
-    page.get_by_role('dialog', name='Reactivate this batch?', exact=True).get_by_role('button', name='Confirm batch status', exact=True).click()
+    page.get_by_role('dialog', name='Reactivate this batch?', exact=True).get_by_role('button', name='Reactivate batch', exact=True).click()
     page.get_by_role('button', name='Batch actions', exact=True).click()
     expect(page.get_by_role('menuitem', name='Archive batch', exact=True)).to_be_visible()
     page.keyboard.press('Escape')
@@ -151,11 +161,11 @@ def run_checks(browser):
     assert assessment['instructor_id'] == AUTH['owner_id']
     assert api_request(context, f"/api/instructor/assessments/{assessment['id']}/questions/", identity='owner').status == 200
     checks.append('Admin manually creates/publishes through shared form; assigned instructor can manage it')
-    student_context, student_page = session(browser, 'student')
+    student_context, student_page = session(browser, 'new_student')
     student_page.goto(BASE + '/student/assessments')
     student_page.wait_for_load_state('networkidle')
     expect(student_page.get_by_role('heading', name=title, exact=True)).to_be_visible()
-    assert api_request(student_context, f"/api/instructor/assessments/{assessment['id']}/questions/", identity='student').status == 403
+    assert api_request(student_context, f"/api/instructor/assessments/{assessment['id']}/questions/", identity='new_student').status == 403
     student_context.close()
     checks.append('Enrolled student sees the admin-published assessment and cannot read its answer key')
 
@@ -240,14 +250,20 @@ def run_checks(browser):
     editor = open_authoring(page, 'Unassigned synthetic draft')
     editor.get_by_label('Assign draft to batch', exact=True).select_option(str(created['id']))
     editor.get_by_role('button', name='Review & save authoring', exact=True).click()
-    page.get_by_role('dialog', name='Save assessment authoring?', exact=True).get_by_role('button', name='Save changes', exact=True).click()
+    # Keep the real assignment/analysis path. Await its mutation response
+    # explicitly rather than requiring it to finish within the default
+    # five-second visibility assertion or replacing analysis with a mock.
+    with page.expect_response(lambda response: response.request.method == 'PATCH'
+            and urlparse(response.url).path == f"/api/instructor/assessments/{AUTH['unassigned_id']}/", timeout=45000) as assignment:
+        page.get_by_role('dialog', name='Save assessment authoring?', exact=True).get_by_role('button', name='Save changes', exact=True).click()
+    assert assignment.value.status == 200, assignment.value.text()
     expect(editor).not_to_be_visible()
     assigned = next(row for row in api_request(context, '/api/instructor/assessments/').json() if row['id'] == AUTH['unassigned_id'])
     assert assigned['batch_id'] == created['id']
     checks.append('Admin assigns an existing batchless draft')
 
     editor = open_authoring(page, 'Attempted synthetic assessment')
-    expect(editor.get_by_text('A student attempt exists.', exact=False)).to_be_visible()
+    expect(editor.get_by_role('status').filter(has_text='A student attempt exists.').first).to_be_visible()
     expect(editor.get_by_role('button', name='Add Multiple Choice', exact=True)).to_have_count(0)
     editor.get_by_role('button', name='Close editor', exact=True).click()
     checks.append('Attempted questions remain locked for admins')
@@ -297,6 +313,8 @@ def session(browser, identity='admin', width=1366):
     def route_request(route):
         source = urlparse(route.request.url)
         if source.path.startswith('/api/'):
+            if source.path.endswith('/events/'):
+                return route.fulfill(status=204)
             route.continue_(url=API + source.path + ('?' + source.query if source.query else ''))
         elif source.hostname not in ('127.0.0.1', 'localhost'):
             route.abort()
@@ -326,6 +344,17 @@ with sync_playwright() as playwright:
     if '--inspect' in sys.argv:
         inspect(browser)
     else:
-        run_checks(browser)
+        try:
+            run_checks(browser)
+        except Exception:
+            for context_index, context in enumerate(browser.contexts):
+                for page_index, page in enumerate(context.pages):
+                    prefix = ARTIFACTS / f'failure-{context_index}-{page_index}'
+                    try:
+                        page.screenshot(path=str(prefix.with_suffix('.png')), timeout=5000)
+                        prefix.with_suffix('.txt').write_text(page.locator('body').inner_text(timeout=5000), encoding='utf-8')
+                    except Exception:
+                        pass
+            raise
     browser.close()
 assert not errors, errors

@@ -7,7 +7,7 @@ import StudentEnrollmentModal from './StudentEnrollmentModal'
 import { getCachedData, invalidateCache, updateCachedData, useApi } from '../../hooks/useApi'
 import { manilaDateTime } from '../../utils/assessmentDates'
 import { reportTableStyles as table } from '../analytics/reportTableStyles'
-import { matchesAccount } from '../../utils/studentAccount'
+import { filterPreviouslyUnenrolled } from '../../utils/studentRosterFilters'
 
 const field = 'min-h-11 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900'
 const button = 'inline-flex min-h-11 items-center justify-center rounded-xl border border-green-700 px-3 py-2 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:text-green-300 dark:hover:bg-green-950'
@@ -25,8 +25,7 @@ export default function PreviouslyUnenrolled({ batch, search = '', course = 'all
   const [page, setPage] = useState({ key: '', value: 1 })
   const [student, setStudent] = useState(null)
   const key = `${batch.id}:${search}:${course}:${account}`
-  const rows = (data?.students || []).filter(row => matchesAccount({ archived: row.is_active === false }, account) &&
-    (course === 'all' || row.course === course) && `${row.name} ${row.school_id} ${row.email}`.toLowerCase().includes(search.trim().toLowerCase()))
+  const rows = filterPreviouslyUnenrolled(data?.students || [], { search, course, accountStatus: account })
   const current = Math.min(page.key === key ? page.value : 1, Math.max(1, Math.ceil(rows.length / 10)))
   if (page.key !== key || page.value !== current) setPage({ key, value: current })
   const records = rows.slice((current - 1) * 10, current * 10)

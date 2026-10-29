@@ -19,6 +19,11 @@ placement = {'id': 5, 'status': 'approved', 'student': student, 'company': compa
              'created_at': '2026-10-18T00:00:00Z', 'updated_at': '2026-10-18T00:00:00Z',
              'approved_at': '2026-10-18T00:00:00Z', 'match_score_at_assignment': 80}
 fail_read, approved = [False], [False]
+draft = {'revision': 1, 'generated': True, 'stale': False, 'sync_key': 'synthetic-recovery',
+         'proposed_counts': {'1': 1}, 'students': [{'student': student, 'batch': suggestion['batch'], 'status': 'proposed',
+             'proposal': {'id': 8, 'position_id': 1, 'position': 'Synthetic Intern', 'company_id': 1, 'company': 'Synthetic Employer',
+                          'match_score': 80, 'category_score_component': 80, 'nlp_score_component': 80, 'location_score_component': 80},
+             'alternatives': []}]}
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     context = browser.new_context(viewport={'width': 1280, 'height': 950})
@@ -30,16 +35,23 @@ with sync_playwright() as p:
         if url.hostname not in ['localhost', '127.0.0.1']: return route.abort()
         if not url.path.startswith('/api/'): return route.continue_()
         if url.path.endswith('/events/'): return route.fulfill(status=204)
+        if url.path == '/api/placements/draft/':
+            if route.request.method == 'GET' and fail_read[0]:
+                return route.fulfill(status=503, json={'error': 'Synthetic refresh outage'})
+            return route.fulfill(json={**draft, 'changed': False})
         if url.path == '/api/placements/approve/':
             writes.append(route.request.post_data_json)
             if len(writes) == 1: return route.fulfill(status=500, json={'error': {'private': 'Synthetic internal details'}})
             approved[0], fail_read[0] = True, True
             position.update(approved_count=1, remaining_slots=4)
             suggestion.update(placement_id=5, placement_status='approved')
+            placement['remarks'] = writes[-1]['remarks']
+            position['suggested_students'] = []
+            draft.update(revision=2, students=[], proposed_counts={})
             return route.fulfill(status=201, json={'placement': placement})
         if url.path in ['/api/placements/suggestions/', '/api/placements/']:
             if fail_read[0]: return route.fulfill(status=503, json={'error': 'Synthetic refresh outage'})
-            return route.fulfill(json={'companies': [company], 'eligible_students': [student]} if url.path.endswith('/suggestions/') else {'placements': [placement] if approved[0] else []})
+            return route.fulfill(json={'companies': [company], 'eligible_students': [student], 'approved_placements': [placement] if approved[0] else []} if url.path.endswith('/suggestions/') else {'count': 1 if approved[0] else 0, 'placements': [placement] if approved[0] else []})
         return route.fulfill(json=[])
     context.route('**/*', route_request)
     page = context.new_page()
@@ -47,11 +59,13 @@ with sync_playwright() as p:
     try:
         page.goto('http://127.0.0.1:5178/admin/placements')
         page.wait_for_load_state('networkidle')
-        page.get_by_role('button', name='Approve', exact=True).click()
+        page.get_by_role('button', name='Open partner Synthetic Employer', exact=True).click()
+        page.get_by_role('button', name='Review candidate', exact=True).click()
+        page.get_by_role('button', name='Approve placement', exact=True).click()
         remarks = page.get_by_placeholder('Add context for placement history…')
         remarks.fill('Synthetic retained review remark')
         page.get_by_role('button', name='Approve student', exact=True).evaluate('(b)=>{b.click();b.click()}')
-        expect(page.get_by_role('alert').filter(has_text='Server error. Please try again in a moment.')).to_be_visible()
+        expect(page.get_by_role('dialog', name='Placement decision', exact=True).get_by_text('Server error. Please try again in a moment.', exact=True)).to_be_visible()
         expect(remarks).to_have_value('Synthetic retained review remark')
         assert len(writes) == 1 and not approved[0]
         assert 'Synthetic internal details' not in page.locator('body').inner_text()
@@ -62,8 +76,8 @@ with sync_playwright() as p:
         assert len(writes) == 2 and approved[0]
         assert writes[1]['remarks'] == 'Synthetic retained review remark'
         fail_read[0] = False
-        page.get_by_role('button', name='Refresh', exact=True).click()
-        expect(page.get_by_text('4 remaining', exact=True)).to_have_count(2)
+        page.get_by_role('button', name='Refresh suggestions', exact=True).click()
+        expect(page.get_by_text('4 available for suggestions', exact=True).first).to_be_visible()
         assert len(writes) == 2
         checks.append('Committed approval is not replayed on failed refresh; explicit read refresh reconciles remaining capacity')
         page.screenshot(path=str(ARTIFACTS / 'reconciled.png'), full_page=True)

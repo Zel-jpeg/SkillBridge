@@ -168,6 +168,15 @@ def geometry(page):
         assert details(page).evaluate('el => el.scrollWidth <= el.clientWidth + 1')
 
 
+
+def set_library_filters(page, choices):
+    page.get_by_role('region', name='Assessment filters', exact=True).get_by_role('button', name=re.compile('^Filters')).click()
+    panel = page.get_by_role('dialog', name='Assessment filters options', exact=True)
+    for group, option in choices:
+        panel.get_by_role('group', name=group, exact=True).get_by_text(option, exact=True).click()
+    panel.get_by_role('button', name=re.compile(r'^Show \d+ assessments?$')).click()
+    expect(panel).to_have_count(0)
+
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     checks = []
@@ -218,31 +227,16 @@ with sync_playwright() as p:
     expect(page.get_by_text('Showing 5–8 of 27', exact=True)).to_be_visible()
     page.get_by_role('searchbox', name='Search assessments').fill('Alex')
     expect(page.get_by_text('Showing 1–4 of 14', exact=True)).to_be_visible()
-    page.get_by_label('All batches', exact=True).select_option('2')
-    assert page.get_by_label('All batches', exact=True).locator('option').count() == 3
-    page.get_by_role('group', name='Publication status').get_by_role('button', name=re.compile('^Published')).click()
+    set_library_filters(page,[('Batch','Blue cohort'),('Publication status','Published'),('Requirement','Required'),('Skill category','Database')])
     expect(page.locator('tbody tr')).to_have_count(4)
-    page.get_by_role('button', name=re.compile('More filters')).click()
-    page.get_by_label('Requirement', exact=True).select_option('required')
-    page.get_by_label('Category', exact=True).select_option('Database')
-    expect(page.locator('tbody tr')).to_have_count(4)
-    expect(page.get_by_label('Global assessment totals').get_by_text('27', exact=True)).to_be_visible()
-    page.get_by_label('Completion', exact=True).select_option('complete')
-    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
-    page.get_by_label('Completion', exact=True).select_option('incomplete')
-    expect(page.locator('tbody tr')).to_have_count(4)
-    page.get_by_label('Competency inclusion', exact=True).select_option('excluded')
-    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
-    page.get_by_label('Competency inclusion', exact=True).select_option('included')
-    page.get_by_label('Availability', exact=True).select_option('closed')
-    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
-    page.get_by_label('Availability', exact=True).select_option('available')
-    page.get_by_label('All instructors', exact=True).select_option('Sam Cruz')
-    expect(page.get_by_role('heading', name='No matching assessments')).to_be_visible()
-    page.get_by_label('All instructors', exact=True).select_option('Alex Rivera')
-    expect(page.locator('tbody tr')).to_have_count(4)
-    page.get_by_role('button', name='Clear all', exact=True).click()
-    page.get_by_role('button', name=re.compile('More filters')).click()
+    expect(page.get_by_label('Global assessment totals').get_by_text('27',exact=True)).to_be_visible()
+    for group, option in [('Completion','100% complete'),('Competency inclusion','Excluded'),('Availability','Closed'),('Instructor','Sam Cruz')]:
+        set_library_filters(page,[(group,option)])
+        expect(page.get_by_role('heading',name='No matching assessments')).to_be_visible()
+        restore={'Completion':'Below 100%','Competency inclusion':'Included','Availability':'Available','Instructor':'Alex Rivera'}[group]
+        set_library_filters(page,[(group,restore)])
+        expect(page.locator('tbody tr')).to_have_count(4)
+    page.get_by_role('region',name='Assessment filters',exact=True).get_by_role('button',name='Clear filters',exact=True).click()
     fixture.shot('desktop-list')
     # A non-button cell opens the same dialog; category disclosure stays independent.
     row = page.locator('tbody tr').first

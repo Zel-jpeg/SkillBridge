@@ -6,7 +6,8 @@ import DataSection from '../../components/DataSection'
 
 import { lazy, Suspense, useState } from 'react'
 const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
-import PreviouslyUnenrolled, { EnrollmentRecoveryFilters } from '../../components/enrollment/EnrollmentRecovery'
+import PreviouslyUnenrolled from '../../components/enrollment/EnrollmentRecovery'
+import StudentRosterToolbar from '../../components/instructor/StudentRosterToolbar'
 import { useLocation, useNavigate }         from 'react-router-dom'
 import StudentModal            from '../../components/instructor/StudentModal'
 import StudentPerformanceCard from '../../components/StudentPerformanceCard'
@@ -18,7 +19,9 @@ import Avatar                  from '../../components/Avatar'
 import StatusBadge             from '../../components/StatusBadge'
 import PlacementStatusCard      from '../../components/placements/PlacementStatusCard'
 import ActionMenu from '../../components/ActionMenu'
-import { MailIcon, MoreHorizontalIcon } from '../../components/Icons'
+import BatchCyclePanel from '../../components/BatchCyclePanel'
+import StudentTransferAction from '../../components/StudentTransferAction'
+import { MailIcon, UsersIcon, UserPlusIcon, TransferIcon, CheckCircleIcon, ReportIcon, ClockIcon, ListIcon as BatchListIcon, ChevronDown, PlusIcon as AddIcon, ArchiveIcon as SharedArchiveIcon } from '../../components/Icons'
 import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
 import './studentRosterToolbar.css'
 
@@ -50,6 +53,10 @@ export default function EnrolledStudents() {
   const emailLocation = useLocation()
   const [enrollment, setEnrollment] = useState('enrolled')
   const [showEmails, setShowEmails] = useState(false)
+  const [showReactivate, setShowReactivate] = useState(false)
+  const [showReportReview, setShowReportReview] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [section, setSection] = useState('students')
   const [closedEmailKey, setClosedEmailKey] = useState(null)
   const emailParams = new URLSearchParams(emailLocation.search)
   const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
@@ -65,7 +72,8 @@ export default function EnrolledStudents() {
     showModal, setShowModal,
     selectedStudent, setSelectedStudent,
     confirmRemove, setConfirmRemove,
-    search, setSearch, course, setCourse, status, setStatus, accountStatus, setAccountStatus,
+    search, setSearch, course, assessmentStatus,
+    recommendationStatus, hasActiveFilters, applyFilters, accountStatus,
     view, setView, page, setPage,
     filtered, paginated,
     PAGE_SIZE,
@@ -103,7 +111,7 @@ export default function EnrolledStudents() {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Archive this batch?</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                  <strong>{viewedBatch?.name}</strong> will be marked as archived and become read-only. All student data is preserved.
+                  <strong>{viewedBatch?.name}</strong> will become read-only. Its current allocations will release their slots; student records and approved decision history stay preserved. This action does not save a final report.
                 </p>
               </div>
             </div>
@@ -173,14 +181,14 @@ export default function EnrolledStudents() {
             )}
             {!isArchived && activeBatch && (
               <>
-                <button onClick={() => navigate('/instructor/assessment/create')} className={headerButton}><PlusIcon />New assessment</button>
+                <ActionMenu label="Batch actions" className={headerButton} disabled={initialBatchPending}
+                  items={[{ id: 'assessment', label: 'New assessment', icon: <AddIcon size={16} /> }, { id: 'transfer', label: 'Transfer student', icon: <TransferIcon size={16} /> }, { id: 'report', label: 'Save report & archive batch', icon: <ReportIcon size={16} /> }, { id: 'archive', label: 'Archive without final report', icon: <SharedArchiveIcon size={16} />, danger: true }]}
+                  onAction={action => { if (action === 'assessment') navigate('/instructor/assessment/create'); else if (action === 'transfer') setShowTransfer(true); else if (action === 'report') setShowReportReview(true); else setShowArchiveConf(true) }}><span aria-hidden="true"><BatchListIcon size={16} /></span><span>Batch actions</span><span aria-hidden="true"><ChevronDown size={14} /></span></ActionMenu>
                 <button disabled={initialBatchPending} onClick={() => setShowModal(true)}
                   className="flex min-h-11 items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2.5"/><line x1="19" y1="8" x2="19" y2="14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><line x1="22" y1="11" x2="16" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                  <UserPlusIcon size={16} />
                   Enroll students
                 </button>
-                <ActionMenu label="Batch actions" className={headerButton} disabled={initialBatchPending}
-                  items={[{ id: 'archive', label: 'Archive batch', icon: <ArchiveIcon />, danger: true }]} onAction={() => setShowArchiveConf(true)}><MoreHorizontalIcon /></ActionMenu>
               </>
             )}
             {isArchived && (
@@ -197,9 +205,9 @@ export default function EnrolledStudents() {
                     Switch to active batch
                   </button>
                 )}
-                <button disabled={initialBatchPending} onClick={handleUnarchiveBatch}
+                <button disabled={initialBatchPending} onClick={() => setShowReactivate(true)}
                   className="flex items-center gap-1.5 border border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950 text-green-700 dark:text-green-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
-                  <UnarchiveIcon /> Unarchive batch
+                  <UnarchiveIcon /> Reactivate batch
                 </button>
               </>
             )}
@@ -207,22 +215,25 @@ export default function EnrolledStudents() {
         </div>
 
 
+{showTransfer && <StudentTransferAction key={`transfer-${activeBatchId}`} batchId={activeBatchId} batchName={viewedBatch?.name || 'this batch'} isOpen onClose={() => setShowTransfer(false)} showTrigger={false} />}
+{showReportReview && <BatchCyclePanel key={`review-${activeBatchId}`} batchId={activeBatchId} role="instructor" mode="review" onClose={() => setShowReportReview(false)} onSaved={() => { setShowReportReview(false); setSection('reports') }} />}
+<nav className="flex gap-5 border-b border-gray-200 text-xs font-semibold dark:border-gray-800" aria-label="Batch sections">{[['students', 'Students'], ['reports', 'Saved reports']].map(([id, label]) => <button key={id} className={`min-h-11 border-b-2 px-1 focus-visible:outline-2 focus-visible:outline-green-600 ${section === id ? 'border-green-600 text-green-700 dark:text-green-300' : 'border-transparent text-gray-500 dark:text-gray-400'}`} aria-current={section === id ? 'page' : undefined} onClick={() => setSection(id)}>{label}</button>)}</nav>
+{section === 'reports' && activeBatchId && <BatchCyclePanel key={`reports-${activeBatchId}`} batchId={activeBatchId} role="instructor" mode="reports" />}
+{showReactivate && <ConfirmModal tone="confirm" title="Reactivate this batch?" message={`Reactivate ${viewedBatch?.name}? Its published assessments can become available again, and recommendations are reviewed using current inputs. Saved closeout reports and previous attempts remain preserved. Students must not have another active batch.`} confirmLabel="Reactivate batch" onCancel={() => setShowReactivate(false)} onConfirm={async () => { await handleUnarchiveBatch(); setShowReactivate(false) }} />}
+{isArchived && <p className="mt-3 text-xs leading-6 text-gray-500 dark:text-gray-400">Use saved closeout reports for the recorded cycle details. Personal details in this roster reflect the student's current account.</p>}
+{section === 'students' && <>
 <BatchEmailProgress key={`email-progress-${activeBatchId}`} batchId={activeBatchId} onView={() => setShowEmails(true)} />
-<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="roster-stats" count={8} label="Loading batch totals">
+<DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} layout="roster-stats" count={4} label="Loading batch totals">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Total enrolled', value: students.length, sub: 'all courses',      green: false },
-            { label: 'BSIT',           value: bsit.length,    sub: 'students',         green: false },
-            { label: 'BSIS',           value: bsis.length,    sub: 'students',         green: false },
-            { label: 'Required completion', value: `${Math.round((completed.length / (students.length || 1)) * 100)}%`, sub: `${completed.length} of ${students.length} students`, green: true },
-            { label: 'Required assessments', value: students[0]?.totalRequiredCount ?? 0, sub: 'published, competency included', green: false },
-            { label: 'Stopped / flagged', value: students.filter(s => s.status === 'stopped').length, sub: 'integrity review', green: false },
-            { label: 'Retakes approved', value: students.filter(s => s.assessmentResults.some(a => a.retake_allowed)).length, sub: 'students', green: false },
-            { label: 'Recommendations unlocked', value: students.filter(s => !s.recommendationsLocked).length, sub: 'final profiles ready', green: true },
+            { label: 'Enrolled students', icon: UsersIcon, value: students.length, sub: `BSIT ${bsit.length} · BSIS ${bsis.length}`, green: false },
+            { label: 'Required assessments complete', icon: CheckCircleIcon, value: `${completed.length} of ${students.length}`, sub: students.length ? `${students[0].totalRequiredCount} required assessments` : 'No students enrolled', green: true },
+            { label: 'Recommendations available', icon: ReportIcon, value: students.filter(s => !s.recommendationsLocked && s.top_recommendations.length > 0).length, sub: 'students with current ranked matches', green: true },
+            { label: 'Awaiting coordinator review', icon: ClockIcon, value: students.filter(s => !s.recommendationsLocked && !s.hasCurrentApproval && s.top_recommendations.length > 0).length, sub: 'current matches, no approved decision', green: false },
           ].map(c => (
             <div key={c.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{c.label}</p>
+              <div className="mb-3 flex items-start gap-2.5"><span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 [&_svg]:stroke-[1.8]"><c.icon size={18} /></span><p className="pt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{c.label}</p></div>
               <p className={`text-2xl font-bold mb-1 ${c.green ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>{c.value}</p>
               <p className="text-xs text-gray-400 dark:text-gray-600">{c.sub}</p>
             </div>
@@ -231,50 +242,16 @@ export default function EnrolledStudents() {
 
 </DataSection>
         {/* Controls */}
-        <section className="sb-roster-toolbar" aria-label="Student filters">
-          <div className="sb-roster-primary">
-          <label className="sb-roster-field">
-            <span>Search students</span>
-            <span className="relative block">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, ID, or email…"
-              className="min-h-11 w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-green-500 focus-visible:ring-2 focus-visible:ring-green-500 transition-colors" />
-            </span>
-          </label>
-          <div className="sb-roster-field" role="group" aria-labelledby="roster-course-label">
-            <span id="roster-course-label">Course</span>
-            <div className="flex min-h-11 items-center gap-1.5 flex-wrap">
-            {[{v:'all',l:'All courses'},{v:'BSIT',l:'BSIT'},{v:'BSIS',l:'BSIS'}].map(f => (
-              <button key={f.v} type="button" aria-pressed={course === f.v} onClick={() => { setCourse(f.v); setPage(1) }}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${course===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
-            ))}
-            </div>
-          </div>
-          <EnrollmentRecoveryFilters className="sb-roster-recovery" enrollment={enrollment} onEnrollment={value => { setEnrollment(value); setStatus('all'); setPage(1) }} account={accountStatus} onAccount={setAccountStatus} />
-          </div>
-          <div className="sb-roster-secondary">
-          {enrollment === 'enrolled' && <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Student progress and placement">
-            {[{v:'all',l:'All'},{v:'completed',l:'Complete'},{v:'pending',l:'In progress'},{v:'stopped',l:'Stopped / flagged'},{v:'retake',l:'Retake approved'},{v:'unlocked',l:'Recommendations unlocked'},{v:'unplaced',l:'Unplaced'},{v:'placed',l:'Placed'}].map(f => (
-              <button key={f.v} type="button" aria-pressed={status === f.v} onClick={() => { setStatus(f.v); setPage(1) }}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${status===f.v?'bg-gray-900 dark:bg-white text-white dark:text-gray-900':'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{f.l}</button>
-            ))}
-          </div>}
-          <div className="sb-roster-view-tools">
-          <div role="group" aria-label="Student view" className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-            {[{v:'grid',Icon:GridIcon},{v:'list',Icon:ListIcon}].map(vi => (
-              <button key={vi.v} type="button" aria-pressed={view === vi.v} aria-label={vi.v === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(vi.v)} className={`p-1.5 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${view===vi.v?'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm':'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}><vi.Icon /></button>
-            ))}
-          </div>
-          {enrollment === 'enrolled' && <p role="status" className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{initialRosterPending ? 'Loading students…' : `${filtered.length} ${filtered.length === 1 ? 'student' : 'students'}`}</p>}
-          </div>
-          </div>
-        </section>
+        <StudentRosterToolbar key={`roster-toolbar-${activeBatchId}`} batchId={activeBatchId} students={students} pending={initialRosterPending}
+          filters={{ search, course, enrollment, accountStatus, assessmentStatus, recommendationStatus }}
+          onApply={values => { setEnrollment(values.enrollment); applyFilters(values) }} onSearch={setSearch}
+          view={view} onView={setView} gridIcon={GridIcon} listIcon={ListIcon} />
 {enrollment === 'unenrolled' && viewedBatch ? <PreviouslyUnenrolled key={activeBatchId} batch={viewedBatch} search={search} course={course} account={accountStatus} view={view} onChanged={handleEnroll} /> : <DataSection pending={initialRosterPending} urls={activeBatchId ? ['/api/instructor/batches/', `/api/instructor/batches/${activeBatchId}/students/`] : ['/api/instructor/batches/']} skeleton={<CollectionSkeleton view={view} />}>
         {/* Empty state */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-16 flex flex-col items-center gap-3">
-            <p className="text-sm font-medium text-gray-400 dark:text-gray-600">No students match your search.</p>
-            <button onClick={() => { setSearch(''); setCourse('all'); setStatus('all'); setAccountStatus('all') }} className="text-xs text-green-600 dark:text-green-400 hover:underline">Clear filters</button>
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-600">{hasActiveFilters ? 'No students match these filters.' : 'No students enrolled in this batch.'}</p>
+            {hasActiveFilters && <p className="text-xs text-gray-500 dark:text-gray-400">Try another selection or clear the filters above.</p>}
           </div>
         ) : (
           <>
@@ -348,6 +325,7 @@ export default function EnrolledStudents() {
           <p className="text-xs text-gray-400 dark:text-gray-600 mr-1">Score key:</p>
           {[{l:'≥ 80% Strong',c:'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'},{l:'60–79% Fair',c:'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300'},{l:'< 60% Needs work',c:'bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300'}].map(x => <span key={x.l} className={`text-xs font-medium px-2.5 py-1 rounded-full ${x.c}`}>{x.l}</span>)}
         </div>
+        </>}
       </section>
     </div>
   )

@@ -81,6 +81,7 @@ class Batch(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_batches')
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     archived_at = models.DateTimeField(blank=True, null=True)
+    closeout_snapshots = models.JSONField(default=list, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -92,6 +93,8 @@ class BatchEnrollment(models.Model):
     batch   = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='enrollments')
     student = models.ForeignKey(User,  on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
+    profile_confirmed_at = models.DateTimeField(null=True, blank=True)
+    profile_review_required = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('batch', 'student')
@@ -346,6 +349,7 @@ class CombinedCompetencyProfile(models.Model):
 
 # ── Company ───────────────────────────────────────────────────────────────────
 class Company(models.Model):
+    archived_at = models.DateTimeField(null=True, blank=True)
     name         = models.CharField(max_length=255)
     image_key    = models.CharField(max_length=255, blank=True, default='')
     address      = models.JSONField(blank=True, null=True)   # { province, city, barangay }
@@ -360,6 +364,7 @@ class Company(models.Model):
 
 # ── Position ──────────────────────────────────────────────────────────────────
 class Position(models.Model):
+    archived_at = models.DateTimeField(null=True, blank=True)
     company         = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='positions')
     title           = models.CharField(max_length=255)
     slots_available = models.PositiveIntegerField(default=1)
@@ -403,6 +408,9 @@ class Recommendation(models.Model):
 
 # ── OJT Placement ───────────────────────────────────────────────────────────────────────────
 class OJTPlacement(models.Model):
+    # Compatibility only for issued records from 0028; no action writes this state.
+    STATUS_LEGACY_COMPLETED = 'completed'
+    completed_at = models.DateTimeField(null=True, blank=True)
     STATUS_SUGGESTED = 'suggested'
     STATUS_APPROVED = 'approved'
     STATUS_REMOVED = 'removed'
@@ -410,6 +418,7 @@ class OJTPlacement(models.Model):
     STATUS_CHOICES = [
         (STATUS_SUGGESTED, 'Suggested'),
         (STATUS_APPROVED, 'Approved'),
+        (STATUS_LEGACY_COMPLETED, 'Legacy record'),
         (STATUS_REMOVED, 'Removed'),
         (STATUS_REJECTED, 'Rejected'),
     ]
@@ -490,10 +499,13 @@ class OJTPlacement(models.Model):
         ordering = ['-updated_at', '-id']
         constraints = [
             models.UniqueConstraint(
-                fields=['student'],
-                condition=models.Q(status='approved'),
-                name='unique_approved_placement_per_student',
+                fields=['student', 'batch'],
+                condition=models.Q(status='approved', batch__isnull=False),
+                name='unique_approved_student_batch',
             ),
+            models.UniqueConstraint(fields=['student'],
+                condition=models.Q(status='approved', batch__isnull=True),
+                name='unique_detached_approved_student'),
             models.UniqueConstraint(fields=['student'], condition=models.Q(is_active_suggestion=True),
                                     name='unique_active_suggestion_student'),
             models.CheckConstraint(condition=models.Q(is_active_suggestion=False) | models.Q(status='suggested'),

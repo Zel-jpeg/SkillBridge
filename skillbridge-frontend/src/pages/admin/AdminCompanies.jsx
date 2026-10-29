@@ -24,6 +24,8 @@ import AddressDropdowns from '../../components/AddressDropdowns'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
+import { invalidateCache, fetchWithDedup } from '../../hooks/useApi'
+import Pagination from '../../components/Pagination'
 import CompanyCollectionCard, { CompanyCollectionSkeleton } from '../../components/admin/CompanyCollectionCard'
 import { companyDisclosures } from '../../utils/companyCollection'
 import CompanyImageInput from '../../components/CompanyImageInput'
@@ -978,24 +980,42 @@ export default function AdminCompanies() {
   } = useAdminCompanies()
 
   const [search,        setSearch]        = useState('')
+  const [catalogStatus, setCatalogStatus] = useState('active')
+  const [catalogPage, setCatalogPage] = useState(1)
+  const [archiveTarget, setArchiveTarget] = useState(null)
+  const [lifecycleNote, setLifecycleNote] = useState('')
+  async function archiveCatalog() {
+    const target = archiveTarget
+    try {
+      await api.post(`/api/admin/${target.kind === 'partner' ? 'partners' : 'positions'}/${target.item.id}/archive/`, { restore: Boolean(target.item.archived_at) })
+      setArchiveTarget(null); setLifecycleNote(`${target.item.name || target.item.title} ${target.item.archived_at ? 'restored' : 'archived'}. Recorded history is preserved.`)
+      invalidateCache('/api/admin/companies/'); await fetchWithDedup('/api/admin/companies/')
+      return { ok: true }
+    } catch (error) { return { ok: false, message: error.response?.data?.error || 'Could not confirm this change. Refresh the catalog before retrying.' } }
+  }
   const [showMap, setShowMap] = useState(true)
   const [expandedPositions, setExpandedPositions] = useReducer(companyDisclosures, new Set())
   useEffect(() => { setExpandedPositions({ type: 'reconcile', companies }) }, [companies])
 
-  const displayed = search.trim()
+  const searched = search.trim()
     ? companies.filter(co =>
         co.name.toLowerCase().includes(search.toLowerCase()) ||
         co.address.toLowerCase().includes(search.toLowerCase()))
     : companies
+  const filtered = searched.filter(co => catalogStatus === 'all' || (catalogStatus === 'archived' ? Boolean(co.archived_at) : !co.archived_at))
+  const visiblePage = Math.min(catalogPage, Math.max(1, Math.ceil(filtered.length / 10)))
+  const displayed = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
 
-  const totalSlots  = companies.reduce((sum, co) => sum + co.positions.reduce((s, p) => s + p.slots, 0), 0)
-  const pinnedCount = companies.filter(c => c.lat != null && c.lng != null).length
+  const activeCompanies = companies.filter(co => !co.archived_at)
+  const totalSlots = activeCompanies.reduce((sum, co) => sum + co.positions.filter(p => !p.archived_at).reduce((s, p) => s + p.slots, 0), 0)
+  const pinnedCount = activeCompanies.filter(c => c.lat != null && c.lng != null).length
 
   return (
     <div className="min-w-0">
 
 
       {/* ── Modals ───────────────────────────────────────────────────── */}
+      {archiveTarget && <ConfirmModal archive title={`${archiveTarget.item.archived_at ? 'Restore' : 'Archive'} this ${archiveTarget.kind}?`} message={`${archiveTarget.item.name || archiveTarget.item.title}: ${archiveTarget.item.archived_at ? 'Restore availability after reviewing its openings and slots. Previously archived positions stay archived.' : 'Stop new matching and assignments. Current approved decisions must be reviewed first; historical batch records stay preserved. Previous records and other partners remain available.'}`} confirmLabel={archiveTarget.item.archived_at ? 'Restore' : 'Archive'} onConfirm={archiveCatalog} onCancel={() => setArchiveTarget(null)} tone={archiveTarget.item.archived_at ? 'confirm' : 'danger'} children={<a href="/admin/placements" className="inline-flex min-h-11 items-center text-xs font-semibold text-green-800 underline dark:text-green-300">Review current decisions</a>} />}
 
       {showAddCompany && (
         <CompanyModal
@@ -1063,7 +1083,7 @@ export default function AdminCompanies() {
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">OJT Partners & Positions</h1>
             <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="text" count={1}><p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {companies.length} partners · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} total slots
+              {companies.length} partners · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} active configured slots
             </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
@@ -1071,7 +1091,7 @@ export default function AdminCompanies() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
               </svg>
-              <input aria-label="Search partners" value={search} onChange={e => setSearch(e.target.value)}
+              <input aria-label="Search partners" value={search} onChange={e => { setSearch(e.target.value); setCatalogPage(1) }}
                 placeholder="Search partners…"
                 className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
             </div>
@@ -1083,6 +1103,9 @@ export default function AdminCompanies() {
         </div>
 
         <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
+        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status">{filtered.length} matching partners</p></div>
+        <p className="text-xs leading-6 text-gray-500">Reuse partners across OJT cycles. Archive discontinued partners or positions to retain their history; update total slots when the next cycle's capacity is confirmed.</p>
+        {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
           <button type="button" onClick={() => setShowMap(value => !value)} aria-expanded={showMap} aria-controls="partner-locations-map"
@@ -1094,7 +1117,7 @@ export default function AdminCompanies() {
               <div className="text-left">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Partner Locations</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {pinnedCount} of {companies.length} partners pinned
+                  {pinnedCount} of {activeCompanies.length} active partners pinned
                 </p>
               </div>
             </div>
@@ -1104,14 +1127,14 @@ export default function AdminCompanies() {
           </button>
 
           <div id="partner-locations-map" hidden={!showMap} style={{ isolation: 'isolate' }}>
-            <div className="px-4 pb-4"><CompaniesMap companies={companies} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
+            <div className="px-4 pb-4"><CompaniesMap companies={activeCompanies.map(c => ({ ...c, positions: c.positions.filter(p => !p.archived_at) }))} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
           </div>
         </div>
 
         {/* ── Company cards grid ────────────────────────────────────── */}
         {displayed.length === 0 && (
           <div className="text-center py-20 text-gray-400 dark:text-gray-600 text-sm">
-            {companies.length === 0 ? 'No partners yet — click "Add Partner" to get started.' : 'No partners match your search.'}
+            {companies.length === 0 ? 'No partners yet — click "Add Partner" to get started.' : 'No partners match these filters.'}
           </div>
         )}
 
@@ -1121,9 +1144,11 @@ export default function AdminCompanies() {
             onTogglePosition={key => setExpandedPositions({ type: 'toggle', key })}
             onEditCompany={setEditCompanyFor} onDeleteCompany={setConfirmDeleteComp}
             onEditPosition={setEditPositionFor} onDeletePosition={setConfirmDeletePos}
+            onArchive={setArchiveTarget}
             onAddPosition={setAddPositionFor} />)}
         </div>
 
+        <Pagination total={filtered.length} page={visiblePage} onPage={setCatalogPage} />
 </DataSection>
       </section>
     </div>

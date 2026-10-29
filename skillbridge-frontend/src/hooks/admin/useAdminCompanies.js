@@ -48,6 +48,7 @@ function addrToString(address) {
 function normalizeCompany(c) {
   return {
     id:          c.id,
+    archived_at: c.archived_at ?? null,
     name:        c.name,
     image_url:   c.image_url ?? null,
     // Compute display string from the stored JSON address
@@ -59,6 +60,7 @@ function normalizeCompany(c) {
     positions: Array.isArray(c.positions)
       ? c.positions.map(p => ({
           id:           p.id,
+          archived_at:  p.archived_at ?? null,
           title:        p.title,
           slots:        p.slots        ?? 1,
           tags:         p.tags         ?? [],

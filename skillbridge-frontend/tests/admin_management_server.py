@@ -11,13 +11,16 @@ ARTIFACTS = ROOT / 'skillbridge-frontend/tests/artifacts/admin-management'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(ROOT / 'skillbridge-backend'))
 os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
+os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(ARTIFACTS / f'browser-{os.getpid()}.sqlite3')
 settings.SECRET_KEY = 'synthetic-admin-management-test-key-not-for-production'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 settings.CORS_ALLOWED_ORIGINS = [f'http://127.0.0.1:{FRONTEND_PORT}', f'http://localhost:{FRONTEND_PORT}']
 settings.DEBUG = False
+settings.SECURE_SSL_REDIRECT = False  # This disposable server listens on localhost HTTP.
 import django
+print('Preparing disposable admin test database', flush=True)
 django.setup()
 from django.core.management import call_command
 from django.utils import timezone
@@ -26,11 +29,16 @@ from api import views
 from api.models import User, Batch, BatchEnrollment, Assessment, Question, AnswerChoice, SkillCategory, StudentResponse, SkillScore
 
 call_command('migrate', verbosity=0)
+print('Seeding synthetic admin workflow records', flush=True)
 admin = User.objects.create_user('management.admin@dnsc.edu.ph', name='Synthetic Admin', role='admin', is_approved=True)
 owner = User.objects.create_user('management.owner@dnsc.edu.ph', name='Synthetic Owner', role='instructor', is_approved=True)
 other = User.objects.create_user('management.other@dnsc.edu.ph', name='Synthetic Other', role='instructor', is_approved=True)
 student = User.objects.create_user('management.student@dnsc.edu.ph', name='Synthetic Student', role='student', is_approved=True,
     school_id='2099-90001', course='BSIT', phone='09123456789', address={'lat': 7.4, 'lng': 125.8})
+new_student = User.objects.create_user('management.new@dnsc.edu.ph', name='Synthetic New Student', role='student', is_approved=True,
+    school_id='2099-90002', course='BSIT', phone='09123456789', address={
+        'stayingAt': 'home', 'travelWilling': 'anywhere', 'pinLat': 7.4, 'pinLng': 125.8,
+        'home': {'province': 'Synthetic Province', 'city': 'Synthetic City', 'barangay': 'Synthetic Barangay'}})
 batch = Batch.objects.create(name='Main synthetic cohort', instructor=owner)
 second = Batch.objects.create(name='Historical membership', instructor=other, status='archived')
 BatchEnrollment.objects.create(batch=batch, student=student)
@@ -56,7 +64,7 @@ def identity(user):
         'is_approved': user.is_approved, 'phone': user.phone, 'course': user.course}}
 
 (ARTIFACTS / 'auth.json').write_text(json.dumps({'admin': identity(admin), 'owner': identity(owner),
-    'other': identity(other), 'student': identity(student), 'batch_id': batch.pk, 'other_id': other.pk,
+    'other': identity(other), 'student': identity(student), 'new_student': identity(new_student), 'batch_id': batch.pk, 'other_id': other.pk,
     'owner_id': owner.pk, 'student_id': student.pk, 'second_batch_id': second.pk,
     'draft_id': draft.pk, 'locked_id': locked.pk, 'unassigned_id': unassigned.pk}), encoding='utf-8')
 print('Synthetic admin-management API ready.', flush=True)

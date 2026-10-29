@@ -5,6 +5,12 @@ for Davao del Norte State College (DNSC). Students complete skill assessments;
 instructors manage assessments and batches; admins manage OJT partners, positions,
 users and placement workflows. Recommendations support placement decisions.
 
+Scope clarification, 28 October 2026: the user does not want internship-progress
+tracking. An approved coordinator decision does not establish that OJT is ongoing
+or completed. The [scope correction](OJT_CYCLE_SCOPE_REVIEW.md) removes that workflow
+and preserves assessment, recommendation, decision and archive history. Current
+slots follow active enrolled batches; historical approvals remain unchanged.
+
 ## Architecture
 
 | Area | Implementation | Entry points |
@@ -60,6 +66,17 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [29 October full branch verification](BRANCH_VERIFICATION_2026_10_29.md):
+  Fresh disposable PostgreSQL, frontend, production-build collection and real-API
+  journey results for the complete local cycle/filter branch, with fixture fixes
+  and explicit verification limits.
+
+- [OJT cycle closeout and rollover plan](OJT_CYCLE_CLOSEOUT_AND_ROLLOVER_PLAN.md):
+  Versioned recommendation reports, partner/position archives, returning profile/history
+  and explicit transfers; no new tables. The linked scope correction supersedes the
+  original training-completion assumptions and documents migration 0029, current
+  allocations, checkbox tracker, PAUSE/CONTINUE checkpoint and verification.
 
 - [28 October integration review](BRANCH_REVIEW_2026_10_28.md): Combined partner,
   email, enrollment/instructor recovery and assessment-collection scope; full
@@ -151,6 +168,8 @@ and fallback when explaining results.
   preserved result/placement meanings and synthetic interaction checks; matching
   admin instructor account cards and responsive editing.
 
+- [Grouped collection filters](GROUPED_COLLECTION_FILTERS.md): Compact staged chip
+  panels for instructor Students/Assessments and admin Users/Assessments.
 - [Student collection cards](STUDENT_CARD_COLLECTIONS.md): Shared dashboard-inspired
   instructor/admin student cards, combined evidence guards, preserved actions,
   corrected admin pagination and synthetic responsive checks.

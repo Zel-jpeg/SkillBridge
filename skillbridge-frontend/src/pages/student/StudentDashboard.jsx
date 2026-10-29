@@ -21,6 +21,7 @@ import { useStudentResults } from '../../hooks/student/useStudentResults'
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import { givenNamesForGreeting } from '../../utils/formatters'
 import { dashboardAssessmentAction } from './assessmentUiState'
+import StudentCycleNotice from '../../components/student/StudentCycleNotice'
 
 // Read the user object saved by the login response
 // This lets pages render instantly without a skeleton on every navigation.
@@ -82,8 +83,10 @@ export default function StudentDashboard() {
   const tile = 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl'
 
 
+  if (student && !student.batch) return <div className="mx-auto max-w-6xl px-4 py-6"><h1 className="text-xl font-semibold">Your OJT records</h1><StudentCycleNotice historyInitiallyOpen /></div>
   return (
     <div className="min-w-0">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6"><StudentCycleNotice /></div>
 
       {/*
         ── Bento grid CSS ───────────────────────────────────────

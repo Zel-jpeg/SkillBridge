@@ -2,7 +2,7 @@ from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import (Batch, Company, OJTPlacement, Position, PositionRequirement,
+from .models import (Batch, BatchEnrollment, Company, OJTPlacement, Position, PositionRequirement,
                      SkillCategory, User)
 
 
@@ -89,6 +89,7 @@ class CatalogValidationTests(APITestCase):
 
     def test_capacity_and_history_protected(self):
         batch = Batch.objects.create(name='Catalog history', instructor=self.owner)
+        BatchEnrollment.objects.create(student=self.student, batch=batch)
         OJTPlacement.objects.create(student=self.student, batch=batch, position=self.position,
                                     company=self.company, assigned_by=self.admin, status='approved')
         self.assertEqual(self.edit({'slots': 0}).status_code, 409)

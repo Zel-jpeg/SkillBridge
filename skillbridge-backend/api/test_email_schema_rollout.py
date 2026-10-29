@@ -1,17 +1,17 @@
-"""Optional email features must not break staff analytics before migration 0027."""
+"""Missing optional email tables must not break analytics on the current core schema."""
 from io import StringIO
 from unittest.mock import patch
 import uuid
 
 from django.core.management import call_command, CommandError
 from django.db import connection, OperationalError
-from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 from .email_outbox import email_storage_ready
-from .models import Batch, BatchEnrollment, EmailCommand, EmailNotice, User
+from .models import (Batch, BatchEnrollment, EmailCommand, EmailNotice, User,
+                     EmailAttempt, EmailDispatchControl, EmailProviderEvent)
 
 
 class EmailSchemaReadinessTests(TestCase):
@@ -30,10 +30,19 @@ class EmailSchemaReadinessTests(TestCase):
 
 
 class EmailSchemaRolloutTests(TransactionTestCase):
-    def test_analytics_survives_old_schema_and_email_controls_recover_after_migration(self):
-        executor = MigrationExecutor(connection)
-        latest = executor.loader.graph.leaf_nodes()
-        executor.migrate([('api', '0026_alter_studentresponse_retake_explanation')])
+    def test_analytics_survives_missing_email_tables_and_email_controls_recover(self):
+        # Keep mandatory lifecycle columns. Physically remove just the optional
+        # email tables, rather than running current models against an old core schema.
+        email_models = (EmailDispatchControl, EmailProviderEvent, EmailCommand, EmailNotice, EmailAttempt)
+        def restore_email_schema():
+            existing = set(connection.introspection.table_names())
+            with connection.schema_editor() as editor:
+                for model in email_models:
+                    if model._meta.db_table not in existing:
+                        editor.create_model(model)
+        with connection.schema_editor() as editor:
+            for model in reversed(email_models):
+                editor.delete_model(model)
         try:
             self.assertFalse(email_storage_ready())
             admin = User.objects.create_user('rollout-admin@example.invalid', role='admin', name='Admin')
@@ -75,7 +84,7 @@ class EmailSchemaRolloutTests(TransactionTestCase):
                 with self.assertRaisesMessage(CommandError, 'Apply backend migration 0027'):
                     call_command('process_email_outbox', once=True, stdout=StringIO())
 
-                MigrationExecutor(connection).migrate(latest)
+                restore_email_schema()
                 self.assertTrue(email_storage_ready())
                 client.force_authenticate(owner)
                 response = client.get(analytics_url)
@@ -88,4 +97,4 @@ class EmailSchemaRolloutTests(TransactionTestCase):
                 self.assertEqual(BatchEnrollment.objects.filter(batch=batch, student=student).count(), 1)
                 self.assertEqual(EmailNotice.objects.count(), 0)
         finally:
-            MigrationExecutor(connection).migrate(latest)
+            restore_email_schema()

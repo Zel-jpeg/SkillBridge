@@ -38,7 +38,11 @@ def eligible_evidence(student, batch):
     return included_ids, [score for score in scores if score.assessment_id in scored_ids]
 
 
-def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids=None, catalog=None):
+def combined_is_unlocked(student, batch, profile=None, progress=None, source_ids=None, catalog=None, review_required=None):
+    needs_review = (review_required if review_required is not None else
+                    BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists())
+    if needs_review:
+        return False
     progress = progress or required_progress(student, batch)
     if not (progress['has_required_assessments'] and progress['all_required_completed']):
         return False

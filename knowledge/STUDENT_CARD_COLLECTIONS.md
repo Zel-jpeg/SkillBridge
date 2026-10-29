@@ -52,6 +52,9 @@ database behavior changed.
 
 ## Instructor roster filter placement — 28 October 2026
 
+The initial pill-based layout and audit below are historical. The compact-filter
+follow-up at the end describes the current instructor controls.
+
 The instructor Students toolbar groups labelled Search students, Course,
 Enrollment and Account status controls on one row when its content width reaches
 1,000px. Progress/placement pills occupy the next row, with the compact view
@@ -88,3 +91,115 @@ Switching enrollment views also exposed a duplicate React sibling key shared
 by email progress and the unenrolled collection; email progress now uses a
 distinct key prefix. Browser verification checks for that warning and uncaught
 page errors. These fixes do not change access, assessment or placement rules.
+
+### Compact status dropdowns — superseded by grouped panel
+
+The long status-pill row is replaced by Assessment status and Recommendation
+status dropdowns. They stay side by side on phones with 44px minimum control
+heights. Both dimensions combine with search, course and account status; changes
+reset pagination and card/list views use the same filtered collection. Complete
+means all required assessments are complete. Available requires actual unlocked
+recommendations; Awaiting review excludes current approvals. Approved decision
+uses the recorded batch decision rather than inferring training progress.
+
+Clear filters appears when needed and resets search, course, account and both
+status selections. It retains the selected batch, enrollment collection and view.
+Changing enrollment collections resets the two status selections. An empty result
+points to the same toolbar reset. Labels and focus states use existing shared
+native-select presentation; no new dependency, API or database change is needed.
+
+Six focused filter tests cover intersections, stale/empty recommendations, optional
+flags, current approvals, identity searches and evidence preservation. All 282
+frontend tests, lint and production build pass. Browser verification uses synthetic
+API fixtures and blocks writes. All 15 browser groups pass: five widths in both
+themes, 540 enrolled combinations and 27 previous-enrollment combinations across
+phone cards, desktop cards and desktop lists. Exact identities, pagination, search,
+batch isolation, view switching and reset behavior pass, with zero page errors or
+API writes. Mobile and desktop screenshots were reviewed. Evidence is in
+`work/roster-dropdowns-browser.txt` and the ignored roster-toolbar artifacts.
+
+### Status menu opening direction — 29 October 2026, historical
+
+Chrome's native customizable picker uses `position-try-order: most-block-size`.
+On the desktop roster it chose the larger space above the status fields even
+though both option menus fitted below. The roster's two status pickers now use
+`position-try-order: normal`, preferring their native below-field position and
+retaining the upward fallback when there is too little space below. Other shared
+dropdowns retain their existing presentation.
+
+Four focused Chrome groups pass: both fields at 375px and 1440px, in light and
+dark themes, open below with space, flip above near the viewport edge and restore
+focus on Escape. Screenshots were inspected; no page errors or API writes occurred.
+Frontend lint and production build pass.
+Evidence: `work/roster-picker-verification.txt` and the ignored roster-toolbar
+`picker-results.json`. The focused run sets `UI_TEST_PICKER_ONLY=1` when running
+`tests/student_roster_toolbar_playwright.py` from the frontend directory against
+its local port-5178 server. These checks use synthetic API fixtures.
+
+### Grouped chip filter panel — 29 October 2026
+
+The panel and compact CSS are now shared with the [collection filter rollout](GROUPED_COLLECTION_FILTERS.md).
+The roster retains its async previous-enrollment preview and dependent group rules.
+Its original stylesheet is a compatibility import of `src/styles/collectionFilters.css`.
+
+The user approved the ImageGen concept based on a grouped shopping-filter example.
+The instructor toolbar now keeps search visible beside a Filters button and the
+existing desktop card/list toggle. Filters opens a desktop popover; phones and
+short landscape screens use a bottom sheet. Five labelled native radio groups
+cover Course, Enrollment, Account status, Assessment status and Recommendation
+status. Each allows one selection; the badge counts nondefault groups and does
+not count the separately visible search query. The summary names applied groups
+and shows the full filtered count out of the selected collection's total.
+
+Selections are staged. The preview count follows the draft and current search;
+Show students applies the draft and resets pagination. Escape, close and outside
+interaction discard the draft and restore focus to Filters. Clear filters inside
+the panel stages all defaults, including clearing search and returning Enrollment
+to Enrolled students; Show students confirms that reset. The toolbar reset applies
+those defaults immediately. Batch selection and card/list choice stay intact.
+This reset behavior supersedes the older dropdown reset that retained enrollment.
+
+Previously unenrolled previews and their actual collection share the same search,
+course and account helper. Assessment/recommendation controls are disabled for
+that collection and reset when enrollment scope changes. Its preview uses the
+existing authorized endpoint and shared query cache, with loading/error handling
+and Retry; it does not add an API or database table. Apply waits for initial
+roster/previous-enrollment data instead of presenting a premature zero count.
+
+The user explicitly requested the compact dimensions in their reference after
+the first implementation used larger controls. Search and Filters are 38px high;
+chips are 28px high. The original quiet card/list toggle uses 26px buttons in a
+34px frame with the white/gray selected treatment. The grouped panel uses compact
+spacing, scrolls its body when needed and keeps its footer accessible. These sizes
+are intentional user preferences and supersede earlier 44px roster-control notes.
+Desktop list controls retain their existing mobile hiding/card fallback behavior.
+
+Implementation: [StudentRosterToolbar](../skillbridge-frontend/src/components/instructor/StudentRosterToolbar.jsx),
+[filter helpers](../skillbridge-frontend/src/utils/studentRosterFilters.js) and
+[toolbar styles](../skillbridge-frontend/src/pages/instructor/studentRosterToolbar.css).
+React Aria provides popover/modal dismissal, focus containment and restoration;
+native radio inputs provide group names, selected state and arrow navigation.
+Shared icons and existing dependencies are reused.
+
+Verification: all 284 Node tests, lint and production build pass. Twelve
+responsive light/dark groups at 320x568, 375x812, 768x1024, 1024x768, 1440x1000 and
+812x375, keyboard interaction and batch isolation pass. A dedicated preview error/
+retry check passes. Review caught a duplicate sibling key and a Retry action that
+did not update the shared cache; both were fixed. The failure fixture now accepts
+the cache-busting query parameter. Final phone/desktop screenshots were inspected.
+The exact-identity matrix passed 180 enrolled and 9 previous-enrollment combinations
+in each of phone cards, desktop cards and desktop lists: 540 and 27 combinations
+respectively. The first combined run stopped at an applied-count mismatch in the
+desktop list after the two card matrices passed. The final isolated desktop-list
+replay passed its entire matrix without an application change; that initial
+mismatch was not reproduced and the combined run is not recorded as passing.
+An additional 40 repeated desktop-list one-result/all-result pointer applies passed
+with zero page errors or writes (`work/roster-panel-browser-apply-stress.txt`).
+Responsive/keyboard, error recovery and matrix checks amount to 17 passing groups
+across the scoped runs. Browser checks use synthetic API responses, block writes
+and do not establish live-service or physical-device behavior. Evidence:
+`work/roster-panel-browser.txt` (responsive checks),
+`work/roster-panel-browser-error.txt`, `work/roster-panel-browser-matrix.txt`
+(card passes and initial list mismatch), `work/roster-panel-browser-list.txt`
+(final list pass), `work/roster-panel-final-capture.txt`, lint/build/Node logs and
+ignored grouped roster-toolbar artifacts.

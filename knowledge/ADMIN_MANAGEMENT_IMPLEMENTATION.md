@@ -2,6 +2,14 @@
 
 Status: implemented and locally verified, 20 October 2026.
 
+29 October filter follow-up: [grouped collection filters](GROUPED_COLLECTION_FILTERS.md)
+applies the approved compact panel to admin Users and both staff assessment pages.
+Users keeps its existing role/archive/pending tabs; student Course, Assessment
+status and Instructor choices move into the staged panel. Other user tabs keep
+search and their existing scope, with no irrelevant student filters. Previews and
+actual records share filtering/sorting; pasted identity searches now trim spaces.
+Account operations and approval/enrollment safeguards retain their existing flows.
+
 26 October UI follow-up: [admin batch collection](ADMIN_BATCH_COLLECTION_UI.md)
 implements the approved batch cards and focused student roster, shared view
 toggles, clickable list rows and centered decision confirmations. Existing APIs,

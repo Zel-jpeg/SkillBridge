@@ -74,6 +74,11 @@ class AdminManagementTests(APITestCase):
     @patch('api.views.recalculate_enrolled_students')
     def test_admin_can_archive_restore_and_read_instructor_batch(self, recalculate):
         for endpoint, expected in [('instructor_batch_archive', 'archived'), ('instructor_batch_unarchive', 'active')]:
+            if endpoint == 'instructor_batch_unarchive':
+                conflict = self.client.post(reverse(endpoint, args=[self.batch.pk]), {}, format='json')
+                self.assertEqual(conflict.status_code, 409, conflict.data)
+                self.second.status = 'archived'
+                self.second.save(update_fields=['status'])
             result = self.client.post(reverse(endpoint, args=[self.batch.pk]), {}, format='json')
             self.assertEqual(result.status_code, 200, result.data)
             self.batch.refresh_from_db()

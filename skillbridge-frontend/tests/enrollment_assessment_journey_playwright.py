@@ -1,5 +1,6 @@
 """Real local API: enrollment, Google-boundary sign-in, setup, answering and results."""
 import json
+import os
 import base64
 from pathlib import Path
 import re
@@ -8,7 +9,8 @@ from playwright.sync_api import expect, sync_playwright
 
 OUT = Path(__file__).parent / 'artifacts/enrollment-assessment-journey'
 AUTH = json.loads((OUT / 'auth.json').read_text(encoding='utf-8'))
-BASE, API = 'http://127.0.0.1:5186', 'http://127.0.0.1:8026'
+BASE = os.environ.get('ENROLLMENT_JOURNEY_FRONTEND_URL', 'http://127.0.0.1:5186')
+API = os.environ.get('ENROLLMENT_JOURNEY_API_URL', 'http://127.0.0.1:8026')
 checks, findings, errors = [], [], []
 
 

@@ -4,9 +4,11 @@ import { fetchWithDedup } from '../../hooks/useApi'
 import { useAdminAssessments } from '../../hooks/admin/useAdminAssessments'
 import { ASSESSMENTS_URL, assessmentPage, assessmentViewReducer, DEFAULT_FILTERS, initialAssessmentView } from '../../utils/adminAssessmentState'
 import AssessmentCollection from '../../components/assessment/AssessmentCollection'
+import CollectionFilterToolbar from '../../components/CollectionFilterToolbar'
+import { assessmentFilterGroups } from '../../utils/assessmentFilterGroups'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import Pagination from '../../components/Pagination'
-import { ArchiveIcon, ListIcon, PlusIcon, ReportIcon, SearchIcon, WarnIcon } from '../../components/Icons'
+import { ArchiveIcon, ListIcon, PlusIcon, ReportIcon, WarnIcon } from '../../components/Icons'
 import { AssessmentRetry, AssessmentSkeleton } from '../../components/admin/AssessmentPresentation'
 import AssessmentManagementDialog from '../../components/admin/AssessmentManagementDialog'
 
@@ -14,7 +16,6 @@ const normalAssessments = data => Array.isArray(data) ? data.filter(a => !a.is_a
 
 const control = 'min-h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
 const surface = 'rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900'
-const statusTabs = [['all', 'All'], ['published', 'Published'], ['draft', 'Drafts'], ['closed', 'Closed']]
 const label = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
 
 const PAGE_SIZE = 4
@@ -24,7 +25,6 @@ export default function AdminAssessments() {
   const assessments = useMemo(() => normalAssessments(data), [data])
   const [state, dispatch] = useReducer(assessmentViewReducer, initialAssessmentView)
   const [selectedId, setSelectedId] = useState(null)
-  const [moreFilters, setMoreFilters] = useState(false)
   const { filters, view } = state
   const { records, total, page } = useMemo(() => assessmentPage(assessments, filters, state.page, PAGE_SIZE), [assessments, filters, state.page])
   if (state.page !== page) dispatch({ type: 'page', value: page })
@@ -40,12 +40,9 @@ export default function AdminAssessments() {
     availability: [...new Set(assessments.map(a => a.availability_status).filter(Boolean))].sort().map(value => [value, label(value)]),
   }), [assessments])
   const activeFilters = Object.entries(filters).filter(([key, value]) => key === 'search' ? value.trim() : value !== 'all')
-  const secondaryCount = activeFilters.filter(([key]) => ['required', 'category', 'completion', 'included', 'availability'].includes(key)).length
   const selected = assessments.find(a => a.id === selectedId)
   const unavailable = [403, 404].includes(errorStatus)
-  function selectFilter(key, title, values) {
-    return <label className="min-w-0"><span className="sr-only">{title}</span><select aria-label={title} className={`${control} w-full`} value={filters[key]} onChange={event => set(key, event.target.value)}><option value="all">{title}</option>{values.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>
-  }
+  const groups = assessmentFilterGroups({ batches: options.batch, instructors: options.instructor, categories: options.category, availability: options.availability, oversight: true })
 
   return <div className="min-w-0"><section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
     <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment oversight</h1><p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Create assessments and manage publication, completion, and assessment integrity.</p></div><div className="flex flex-wrap gap-2"><Link to="/admin/assessments/archives" className={`${control} inline-flex items-center`}>Assessment archives</Link><Link to="/admin/assessment/create" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"><PlusIcon size={15} />Create assessment</Link></div></header>
@@ -54,20 +51,13 @@ export default function AdminAssessments() {
     ].map(([name, count, icon]) => <div key={name} className={`${surface} flex items-center gap-3 px-4 py-4`}><span aria-hidden="true" className={`shrink-0 rounded-lg p-2 ${name === 'Published' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-gray-50 text-gray-400 dark:bg-gray-800'}`}>{icon}</span><div className="min-w-0"><strong className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{count}</strong><p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{name}</p></div></div>)}</div> : null}
     <section className="min-w-0 space-y-4" aria-label="Assessment results">
       <h2 className="sr-only">All assessments</h2>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Publication status">{statusTabs.map(([value, text]) => <button key={value} type="button" aria-pressed={filters.state === value} onClick={() => set('state', value)} className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 ${filters.state === value ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}>{text}{data != null && !unavailable && <span className={`rounded px-1.5 tabular-nums ${filters.state === value ? 'bg-white/15' : 'bg-gray-100 dark:bg-gray-800'}`}>{counts[value]}</span>}</button>)}</div>
-        <div className="ml-auto flex items-center gap-3">{data != null && !unavailable && <p className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">{total} assessment{total === 1 ? '' : 's'}</p>}<CollectionViewToggle label="Assessment view" view={view} onChange={value => dispatch({ type: 'view', value })} /></div>
-      </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label className="relative w-full min-w-0 sm:min-w-56 sm:flex-1"><span className="sr-only">Search assessments</span><span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 text-gray-400"><SearchIcon size={14} /></span><input type="search" className={`${control} w-full pl-9`} placeholder="Search title, instructor, or batch…" value={filters.search} onChange={event => set('search', event.target.value)} /></label>
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:w-auto">{selectFilter('instructor', 'All instructors', options.instructor)}{selectFilter('batch', 'All batches', options.batch)}</div>
-          <button type="button" className={`${control} flex items-center gap-2 ${secondaryCount ? 'border-green-600 text-green-800 dark:text-green-300' : ''}`} aria-expanded={moreFilters} aria-controls="assessment-more-filters" onClick={() => setMoreFilters(value => !value)}><ListIcon size={14} />More filters{secondaryCount ? ` (${secondaryCount})` : ''}<span aria-hidden="true">{moreFilters ? '−' : '+'}</span></button>
-
-        </div>
-        <div id="assessment-more-filters" hidden={!moreFilters} className={`${surface} p-4`}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
-          ['required', 'Requirement', [['required', 'Required'], ['optional', 'Optional']]], ['category', 'Category', options.category], ['completion', 'Completion', [['complete', '100% complete'], ['incomplete', 'Below 100%']]], ['included', 'Competency inclusion', [['included', 'Included'], ['excluded', 'Excluded']]], ['availability', 'Availability', options.availability],
-        ].map(([key, title, values]) => <label key={key} className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">{title}<select aria-label={title} className={`${control} mt-1 w-full`} value={filters[key]} onChange={event => set(key, event.target.value)}><option value="all">All</option>{values.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>)}</div></div>
-        {activeFilters.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span className="text-gray-500 dark:text-gray-400">{activeFilters.length} active filter{activeFilters.length === 1 ? '' : 's'}</span>{activeFilters.map(([key, value]) => <button key={key} className="max-w-full break-words rounded-lg bg-green-50 px-2 py-1.5 text-left text-green-800 dark:bg-green-950 dark:text-green-300" aria-label={`Remove ${key} filter: ${value}`} onClick={() => set(key, DEFAULT_FILTERS[key])}>{key === 'batch' ? options.batch.find(([id]) => id === value)?.[1] || value : label(value)} <span aria-hidden="true">×</span></button>)}<button className="min-h-9 px-2 font-medium text-gray-600 underline dark:text-gray-300" onClick={reset}>Clear all</button></div>}
+      <CollectionFilterToolbar filters={filters} defaults={DEFAULT_FILTERS} groups={groups}
+        onApply={value => dispatch({ type: 'filters', value })} onSearch={value => set('search', value)}
+        getPreviewCount={draft => assessmentPage(assessments, draft, 1, PAGE_SIZE).total}
+        count={total} total={assessments.length} pending={pending} error={unavailable || (data == null && error) ? 'Assessments unavailable' : undefined}
+        noun="assessments" label="Assessment filters" searchLabel="Search assessments" placeholder="Search title, instructor, or batch…">
+        <CollectionViewToggle label="Assessment view" view={view} onChange={value => dispatch({ type: 'view', value })} />
+      </CollectionFilterToolbar>
         {error && <AssessmentRetry onRetry={retry}>{data != null && !unavailable ? 'Could not refresh. Showing the last loaded assessments.' : error}</AssessmentRetry>}
         {pending ? <AssessmentSkeleton layout={view} count={4} /> : !unavailable && data != null && (total ? <AssessmentCollection records={records} total={total} view={view} onOpen={assessment => setSelectedId(assessment.id)} oversight /> : <div className="py-12 text-center"><span aria-hidden="true" className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-gray-400 dark:bg-gray-800"><ListIcon size={22} /></span><h3 className="text-sm font-semibold text-gray-900 dark:text-white">{assessments.length ? 'No matching assessments' : 'No assessments yet'}</h3><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create an assessment or ask an instructor to add one.'}</p>{activeFilters.length > 0 && <button className="mt-3 min-h-10 px-3 text-xs font-semibold text-green-800 dark:text-green-300" onClick={reset}>Reset filters</button>}</div>)}
       {!pending && !unavailable && data != null && <Pagination total={total} page={page} pageSize={PAGE_SIZE} onPage={value => dispatch({ type: 'page', value })} />}

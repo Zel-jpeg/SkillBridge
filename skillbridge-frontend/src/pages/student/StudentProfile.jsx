@@ -14,7 +14,8 @@ import MapStatus from '../../components/MapStatus'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import StudentProfileForm from '../../components/student/StudentProfileForm'
-import { useApi, invalidateCache, updateCachedData } from '../../hooks/useApi'
+import StudentCycleNotice from '../../components/student/StudentCycleNotice'
+import { useApi, invalidateCache, updateCachedData, getCachedData } from '../../hooks/useApi'
 import api from '../../api/axios'
 import { validPin } from '../../utils/recommendationResults'
 import { requestErrorMessage } from '../../api/requestErrors'
@@ -300,7 +301,11 @@ export default function StudentProfile() {
 
       // Update caches so the rest of the app sees fresh data instantly
       localStorage.setItem('sb-user', JSON.stringify(res.data))
-      updateCachedData('/api/students/me/', res.data)
+      // Profile PATCH returns identity fields, while the dashboard GET also
+      // carries batch/attempt/placement state used by the confirmation step.
+      const current = getCachedData('/api/students/me/')
+      updateCachedData('/api/students/me/', current?.id === res.data.id ? { ...current, ...res.data } : res.data)
+      invalidateCache('/api/students/me/')
       invalidateCache('/api/student/results/')
 
       setSaved(true)
@@ -336,7 +341,7 @@ export default function StudentProfile() {
     field.set(value); setErrors(previous => ({ ...previous, [field.key]: '' })); setSaved(false)
   } }))
 
-  return <StudentProfileForm
+  return <><div className="mx-auto max-w-6xl px-4 sm:px-6"><StudentCycleNotice review /></div><StudentProfileForm
     student={{ name: displayName, schoolId: displayId, course: displayCourse, photoUrl, loading: apiLoading }}
     fields={fields} errors={errors} travelOptions={TRAVEL_OPTIONS} travelWilling={travelWilling}
     onTravelChange={value => { setTravelWilling(value); setErrors(previous => ({ ...previous, travelWilling: '' })); setSaved(false) }}
@@ -349,5 +354,5 @@ export default function StudentProfile() {
     onRemovePin={() => { setPinnedLoc(null); setSaved(false) }}
     map={<PinMap center={mapCenter} pinned={pinnedLoc} onPin={loc => { setPinnedLoc(loc); setSaved(false) }} />}
     saving={saving} saved={saved} saveError={saveError} onSave={handleSave}
-  />
+  /></>
 }
