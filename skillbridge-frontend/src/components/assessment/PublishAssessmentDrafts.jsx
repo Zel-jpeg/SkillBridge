@@ -3,8 +3,9 @@ import api from '../../api/axios'
 import { applyDataChange } from '../../hooks/useApi'
 import { useToast } from '../../context/ToastContext'
 import DialogShell from '../DialogShell'
+import { assessmentPrimaryAction, assessmentSecondaryAction } from './assessmentActionStyles'
 
-const control = 'min-h-10 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
+const control = assessmentSecondaryAction
 const isDraft = item => item.publication_status === 'draft' && !item.is_archived && item.batch_id != null
 
 export default function PublishAssessmentDrafts({ assessments }) {
@@ -58,7 +59,7 @@ function PublishDialog({ assessments, onClose }) {
     onClose={close} closeDisabled={saving} closeLabel="Close draft publication"
     footer={<div className="flex flex-wrap justify-end gap-2">
       <button type="button" className={control} disabled={saving} onClick={reviewing ? () => { setReviewing(false); setError('') } : close}>{reviewing ? 'Back' : 'Cancel'}</button>
-      <button type="button" className={`${control} bg-green-700 font-semibold text-white dark:bg-green-700 dark:text-white`} disabled={saving || !selected.length}
+      <button type="button" className={assessmentPrimaryAction} disabled={saving || !selected.length}
         onClick={reviewing ? publish : () => setReviewing(true)}>{saving ? 'Publishing…' : reviewing ? `Publish ${selected.length} assessment${selected.length === 1 ? '' : 's'}` : 'Review publication'}</button>
     </div>}>
     <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-xs text-gray-700 dark:text-gray-200">

@@ -377,7 +377,7 @@ with sync_playwright() as p:
                 fixture.shot('mobile-modal-' + ('dark' if dark else 'light'))
             tab(page, 'Settings')
             pub = details(page).get_by_label('Publication state', exact=True).bounding_box()
-            order = details(page).get_by_label('Student display order', exact=True).bounding_box()
+            order = details(page).get_by_label('Staff display order', exact=True).bounding_box()
             assert abs(pub['width'] - order['width']) < 2 and abs(pub['y'] - order['y']) < 2
             assert abs(pub['height'] - order['height']) < 2
             fixture.shot(f'{width}-settings-' + ('dark' if dark else 'light'))

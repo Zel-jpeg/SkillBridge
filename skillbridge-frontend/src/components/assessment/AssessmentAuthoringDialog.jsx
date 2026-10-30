@@ -8,6 +8,7 @@ import { useInstructorAssessments } from '../../hooks/instructor/useInstructorAs
 import AssessmentPolicyNotice from './AssessmentPolicyNotice'
 import { assessmentChangeImpact, assessmentLocks } from '../../utils/assessmentPolicy'
 import { useAssessmentUpload } from '../../hooks/instructor/useAssessmentUpload'
+import AssessmentDurationSuggestions from './AssessmentDurationSuggestions'
 
 const field = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800'
 const button = 'min-h-10 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-green-950'
@@ -45,6 +46,7 @@ export default function AssessmentAuthoringDialog({ assessment, onClose, role = 
       <fieldset disabled={editor.saving || editor.loadingQuestions || assessment.is_archived} className="space-y-4">
         <label className="block text-xs font-semibold">Assessment title<input aria-label="Assessment title" className={field} value={editor.editTitle} onChange={event => editor.setEditTitle(event.target.value)} /></label>
         <label className="block text-xs font-semibold">Duration in minutes<input aria-label="Duration in minutes" className={field} type="number" min="1" disabled={locks.duration} value={editor.editDuration} onChange={event => editor.setEditDuration(event.target.value)} /></label>
+        <AssessmentDurationSuggestions value={editor.editDuration} onChange={editor.setEditDuration} disabled={locks.duration} />
         {!assessment.batch_id && <label className="block text-xs font-semibold">Assign draft to batch<select aria-label="Assign draft to batch" className={field} value={editor.editSettings.batch_id || ''} onChange={event => editor.setEditSettings(previous => ({ ...previous, batch_id: event.target.value }))}><option value="">Choose later</option>{editor.batchOptions.filter(batch => batch.status === 'active').map(batch => <option key={batch.id} value={batch.id}>{batch.name} · {batch.instructor_name}</option>)}</select></label>}
         <AssessmentSettings assessment={current} value={editor.editSettings} onChange={next => editor.setEditSettings(previous => ({ ...previous, ...next }))} />
         <AssessmentPolicyNotice assessment={current} value={editor.editSettings} />
