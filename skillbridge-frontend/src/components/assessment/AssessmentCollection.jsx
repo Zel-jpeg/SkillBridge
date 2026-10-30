@@ -9,11 +9,10 @@ const readable = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpp
 
 function Schedule({ assessment: a }) {
   return <div className="ac-schedule text-gray-500 dark:text-gray-400">
-    <span aria-hidden="true"><CalendarIcon size={14} /></span>
-    {!a.available_at && !a.due_at ? <p>No opening or due date set</p> : <div>
-      <p>{a.available_at ? `Opens ${manilaDateTime(a.available_at)}` : 'No scheduled opening'}</p>
-      <p>{a.due_at ? `Due ${manilaDateTime(a.due_at)}` : 'No due date set'}</p>
-    </div>}
+    {!a.available_at && !a.due_at ? <p className="ac-schedule-empty"><span aria-hidden="true"><CalendarIcon size={14} /></span>No opening or due date set</p> : <>
+      <div><span aria-hidden="true"><CalendarIcon size={14} /></span><p><span className="ac-schedule-label">Opens</span>{' '}{a.available_at ? manilaDateTime(a.available_at) : 'No scheduled opening'}</p></div>
+      <div><span aria-hidden="true"><CalendarIcon size={14} /></span><p><span className="ac-schedule-label">Due</span>{' '}{a.due_at ? manilaDateTime(a.due_at) : 'No due date set'}</p></div>
+    </>}
   </div>
 }
 
@@ -32,7 +31,7 @@ function Metadata({ assessment: a }) {
         ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'
   return <div className="ac-configuration text-gray-600 dark:text-gray-300">
     <div className="flex flex-wrap items-center gap-2">
-      <span className="rounded-md border border-gray-200 px-2 py-1 text-[11px] dark:border-gray-700">{a.is_required ? 'Required' : 'Optional'}</span>
+      <span>{a.is_required ? 'Required' : 'Optional'}</span><span aria-hidden="true">·</span>
       <span>{a.include_in_competency ? 'Competency included' : 'Result only'}</span>
     </div>
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -48,13 +47,13 @@ function CardActivity({ assessment: a, oversight }) {
       <div><dt className="text-gray-500 dark:text-gray-400">Questions</dt><dd className="text-gray-900 dark:text-white"><span aria-hidden="true"><SkillIcon size={17} /></span><strong>{a.question_count ?? '—'}</strong></dd></div>
       <div><dt className="text-gray-500 dark:text-gray-400">Submitted</dt><dd className="text-gray-900 dark:text-white"><span aria-hidden="true"><UserIcon size={17} /></span><strong>{a.submission_count ?? '—'}</strong>{oversight && <span className="text-[11px] text-gray-500 dark:text-gray-400">/ {a.assigned_count ?? '—'}</span>}</dd></div>
     </dl>
-    {oversight && <div className="space-y-1.5"><p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Completion</p><AssessmentProgress assessment={a} showSubmitted={false} /></div>}
-    <div className="flex min-w-0 items-center justify-between gap-2"><AssessmentIntegrity count={a.flagged_count} /><span aria-hidden="true" className="shrink-0 text-gray-400 transition-colors group-hover:text-green-700 dark:group-hover:text-green-400"><ChevronRightIcon size={17} /></span></div>
+    {oversight && <AssessmentProgress assessment={a} showSubmitted={false} compact />}
+    <div className="ac-card-footer flex min-w-0 items-center justify-between gap-2 border-gray-100 dark:border-gray-800"><AssessmentIntegrity count={a.flagged_count} /><span aria-hidden="true" className="shrink-0 text-gray-400 transition-colors group-hover:text-green-700 dark:group-hover:text-green-400"><ChevronRightIcon size={17} /></span></div>
   </div>
 }
 
 function AssessmentCards({ records, view, onOpen, oversight }) {
-  return <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4`}>
+  return <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} ac-card-grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3`}>
     {records.map(a => <article key={a.id} className={`${surface} ac-card group relative flex min-w-0 flex-col transition-[border-color,box-shadow] hover:border-green-300 hover:shadow-sm dark:hover:border-green-700`}>
       <div className="flex items-start justify-between gap-2.5">
         <h2 className="min-w-0 break-words text-sm font-semibold leading-6 text-gray-900 dark:text-white"><button type="button" aria-label={`${oversight ? 'View details for' : 'Open assessment'} ${a.title}`} aria-haspopup="dialog" onClick={event => { event.currentTarget.focus(); onOpen(a) }} className="cursor-pointer text-left after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-green-600 dark:focus-visible:after:outline-green-400">{a.title}</button></h2>
@@ -65,8 +64,10 @@ function AssessmentCards({ records, view, onOpen, oversight }) {
         <span className="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400"><ClockIcon size={14} />{a.duration_minutes} min</span>
       </div>
       <Metadata assessment={a} />
-      {oversight && <p className="break-words text-xs text-gray-600 dark:text-gray-300">{a.instructor_name || 'Instructor not provided'}</p>}
-      <CategoryPills categories={a.categories} />
+      <div className="ac-context">
+        {oversight && <p className="inline-flex min-w-0 items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"><span className="mt-0.5 shrink-0" aria-hidden="true"><UserIcon size={13} /></span><span className="min-w-0 break-words">{a.instructor_name || 'Instructor not provided'}</span></p>}
+        <CategoryPills categories={a.categories} />
+      </div>
       <div className="mt-auto"><Schedule assessment={a} /></div>
       <CardActivity assessment={a} oversight={oversight} />
     </article>)}
@@ -99,7 +100,7 @@ function AssessmentList({ records, total, pageSize, onOpen, oversight }) {
   </div>
 }
 
-export default function AssessmentCollection({ records, view, onOpen, total = records.length, pageSize = 4, oversight = false }) {
+export default function AssessmentCollection({ records, view, onOpen, total = records.length, pageSize = 6, oversight = false }) {
   return <><AssessmentCards records={records} view={view} onOpen={onOpen} oversight={oversight} />
     {view === 'list' && <AssessmentList records={records} total={total} pageSize={pageSize} onOpen={onOpen} oversight={oversight} />}</>
 }

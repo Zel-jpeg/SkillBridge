@@ -14,6 +14,72 @@ from .models import (Assessment, Batch, BatchEnrollment, Company, ManagementActi
                      SkillScore, StudentResponse, User)
 
 
+class StudentPreviousBatchTests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('history-owner@example.invalid', role='instructor')
+        self.student = User.objects.create_user('history-student@example.invalid', role='student', is_approved=True)
+        self.batch = Batch.objects.create(name='Current batch', instructor=self.owner)
+        self.enrollment = BatchEnrollment.objects.create(batch=self.batch, student=self.student)
+        self.client.force_authenticate(self.student)
+
+    def test_first_batch_has_no_previous_history_even_with_assessments(self):
+        Assessment.objects.create(title='Current private title', batch=self.batch, created_by=self.owner)
+        result = self.client.get('/api/students/me/')
+        self.assertEqual(result.status_code, 200)
+        self.assertFalse(result.data['has_previous_batches'])
+        self.assertEqual(self.client.get(reverse('student_history'), {'previous': '1'}).data['batches'], [])
+        # Keep the original full-history contract available to existing callers.
+        full = self.client.get(reverse('student_history'))
+        self.assertEqual([item['batch']['id'] for item in full.data['batches']], [self.batch.pk])
+
+    def test_previous_membership_is_visible_but_current_and_foreign_batches_are_excluded(self):
+        old = Batch.objects.create(name='Previous archived batch', instructor=self.owner, status='archived')
+        BatchEnrollment.objects.create(batch=old, student=self.student)
+        outsider = User.objects.create_user('history-other@example.invalid', role='student')
+        foreign = Batch.objects.create(name='Another student batch', instructor=self.owner, status='archived')
+        BatchEnrollment.objects.create(batch=foreign, student=outsider)
+        self.assertTrue(self.client.get('/api/students/me/').data['has_previous_batches'])
+        history = self.client.get(reverse('student_history'), {'previous': '1'})
+        self.assertEqual([item['batch']['id'] for item in history.data['batches']], [old.pk])
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(reverse('student_history'), {'previous': '1'}).status_code, 403)
+
+    def test_removed_membership_without_attempts_is_still_a_previous_batch(self):
+        old = Batch.objects.create(name='Transferred-from batch', instructor=self.owner)
+        ManagementAction.objects.create(actor=self.owner, action='enrollment.remove', target_type='student',
+            target_id=self.student.pk, batch_id_snapshot=old.pk)
+        self.assertTrue(self.client.get('/api/students/me/').data['has_previous_batches'])
+        rows = self.client.get(reverse('student_history'), {'previous': '1'}).data['batches']
+        self.assertEqual([item['batch']['id'] for item in rows], [old.pk])
+        self.assertEqual(rows[0]['batch']['status'], 'active')
+
+    def test_no_active_batch_retains_history_and_reactivation_removes_current_batch_from_previous(self):
+        self.batch.status = 'archived'
+        self.batch.save(update_fields=['status'])
+        me = self.client.get('/api/students/me/').data
+        self.assertIsNone(me['batch'])
+        self.assertTrue(me['has_previous_batches'])
+        self.assertEqual(len(self.client.get(reverse('student_history'), {'previous': '1'}).data['batches']), 1)
+        self.batch.status = 'active'
+        self.batch.save(update_fields=['status'])
+        self.assertFalse(self.client.get('/api/students/me/').data['has_previous_batches'])
+        self.assertEqual(self.client.get(reverse('student_history'), {'previous': '1'}).data['batches'], [])
+
+    def test_history_summary_uses_one_read_query_and_finds_detached_attempts_and_decisions(self):
+        from .student_batch_history import previous_batches
+        with self.assertNumQueries(1):
+            self.assertFalse(previous_batches(self.student, self.enrollment).exists())
+        old = Batch.objects.create(name='Retained attempt batch', instructor=self.owner)
+        assessment = Assessment.objects.create(title='Retained assessment', batch=old, created_by=self.owner)
+        StudentResponse.objects.create(student=self.student, assessment=assessment)
+        self.assertTrue(previous_batches(self.student, self.enrollment).exists())
+        StudentResponse.objects.all().delete()
+        company = Company.objects.create(name='Synthetic historical partner')
+        position = Position.objects.create(company=company, title='Support', slots_available=1)
+        OJTPlacement.objects.create(student=self.student, batch=old, company=company, position=position, status='approved')
+        self.assertTrue(previous_batches(self.student, self.enrollment).exists())
+
+
 class CycleLifecycleTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_user(email='cycle-admin@example.com', role='admin')

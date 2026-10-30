@@ -14,7 +14,7 @@ const stayingOptions = [
 export default function StudentProfileForm({ student, fields, errors, travelOptions, travelWilling, onTravelChange,
   stayingAt, onStayingChange, homeAddress, boardingAddress, onHomeChange, onBoardingChange,
   hasBoardingAddress, mapView, onMapViewChange, mapLabel, mapCenter, geocoding, pinned, onRemovePin, map,
-  saving, saved, saveError, onSave }) {
+  saving, saved, saveError, onSave, stickySave = true }) {
   const navigate = useNavigate()
   const [editingHome, setEditingHome] = useState(false)
   const homeOpen = editingHome || Boolean(errors.homeAddress) || stayingAt !== 'boarding'
@@ -88,7 +88,7 @@ export default function StudentProfileForm({ student, fields, errors, travelOpti
       </section>
 
       <p className="profile-muted">Result notification emails are not available. View your latest results on the Results page.</p>
-      <div className="profile-save-bar">
+      <div className={`profile-save-bar${stickySave ? '' : ' is-static'}`}>
         <div className="min-w-0"><p className="profile-muted">Changes apply after you save.</p>
           {saveError && <p role="alert" className="profile-error">{saveError}</p>}
           {!saveError && saved && <p role="status" className="profile-save-success">Profile saved successfully</p>}

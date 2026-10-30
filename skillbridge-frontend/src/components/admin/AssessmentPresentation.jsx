@@ -12,9 +12,10 @@ export function CategorySummary({ categories = [] }) {
   return <AssessmentCategoryPills categories={categories} />
 }
 
-export function AssessmentProgress({ assessment: a, showSubmitted = true }) {
+export function AssessmentProgress({ assessment: a, showSubmitted = true, compact = false }) {
   const percentage = Math.max(0, Math.min(100, a.completion_rate || 0))
-  return <div className="space-y-1.5 text-xs">
+  return <div className={compact ? 'ac-completion text-xs' : 'space-y-1.5 text-xs'}>
+    {compact && <p className="font-medium text-gray-500 dark:text-gray-400">Completion</p>}
     {showSubmitted && <p className="font-medium text-gray-700 dark:text-gray-200">{a.submission_count} of {a.assigned_count} submitted</p>}
     <div className="flex items-center gap-2"><div role="progressbar" aria-label={`${a.title} completion`} aria-valuenow={percentage} aria-valuemin={0} aria-valuemax={100} className="h-1.5 min-w-12 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div className="h-full rounded-full bg-green-600" style={{ width: `${percentage}%` }} /></div><span className="text-gray-500 dark:text-gray-400">{percentage}%</span></div>
     <p className="text-[11px] text-gray-500 dark:text-gray-400">{a.assigned_count ? `${a.completion_count ?? 0} completed` : 'No participants'}</p>
@@ -33,7 +34,7 @@ export function AssessmentPagination({ total, page, onPage, pageSize = 10, noun 
 }
 
 export function AssessmentSkeleton({ layout = 'grid', count }) {
-  return <ContentSkeleton layout={layout === 'stats' ? 'assessment-stats' : layout === 'grid' ? 'assessment-cards' : 'assessment-table'} count={count ?? (layout === 'stats' ? 5 : 4)} columns={layout === 'list' ? 6 : 4} label="Loading assessments" />
+  return <ContentSkeleton layout={layout === 'stats' ? 'assessment-stats' : layout === 'grid' ? 'assessment-cards' : 'assessment-table'} count={count ?? (layout === 'stats' ? 5 : 6)} columns={layout === 'list' ? 6 : 3} label="Loading assessments" />
 }
 
 export function AssessmentRetry({ onRetry, children = 'Could not load assessments. Please try again.' }) {

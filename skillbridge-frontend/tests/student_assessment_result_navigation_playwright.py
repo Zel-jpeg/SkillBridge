@@ -3,12 +3,13 @@ Run with Vite on 5178 and the backend venv's Python/installed headless Chrome.
 """
 import copy
 import json
+import os
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 
-BASE='http://127.0.0.1:5178'
+BASE=os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5178')
 OUT=Path(__file__).parent/'artifacts/student-assessment-result-navigation'
 OUT.mkdir(parents=True,exist_ok=True)
 USER={'id':1,'name':'Synthetic Student','role':'student','is_approved':True,'profile_completed':True,'course':'BSIT','school_id':'SYNTHETIC','batch':{'id':1,'name':'Synthetic Batch'}}
@@ -137,6 +138,10 @@ with sync_playwright() as p:
             else:
                 summary.get_by_role('button',name='All Assessments',exact=True).click()
                 expect(page).to_have_url(BASE+'/student/assessments')
+                card = page.locator('.sac-card')
+                expect(card).to_have_count(1)
+                expect(card).to_have_css('margin-top', '0px')
+                expect(card.locator('.sac-status')).to_have_css('background-color', 'rgba(0, 0, 0, 0)')
                 page.get_by_role('button',name='View Score',exact=True).click()
                 expect(page.get_by_role('heading',name=ASSESSMENT['title'],exact=True)).to_be_visible()
                 expect(page.locator('.sa-answer-panel:visible')).to_have_count(0)

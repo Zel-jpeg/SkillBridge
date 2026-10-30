@@ -233,13 +233,12 @@ def student_history(request):
         raise PermissionDenied('Students only.')
     from .views import serialize_student_assessment_results
     from .student_assessment_order import assessment_numbers, assessment_title
+    from .assessment_progress import current_enrollment
+    from .student_batch_history import recorded_batches, previous_batches
     records = []
-    batch_ids = set(BatchEnrollment.objects.filter(student=request.user).values_list('batch_id', flat=True))
-    batch_ids.update(request.user.responses.values_list('assessment__batch_id', flat=True))
-    batch_ids.update(request.user.ojt_placements.values_list('batch_id', flat=True))
-    batch_ids.update(ManagementAction.objects.filter(action='enrollment.remove', target_type='student',
-                     target_id=request.user.pk).values_list('batch_id_snapshot', flat=True))
-    for batch in Batch.objects.filter(pk__in=batch_ids).order_by('-created_at', '-id'):
+    batches = (previous_batches(request.user, current_enrollment(request.user))
+               if request.query_params.get('previous') == '1' else recorded_batches(request.user))
+    for batch in batches.order_by('-created_at', '-id'):
         # Reopened batches show current attempts; issued versions remain immutable
         # and downloadable through the separate saved-report endpoint.
         saved = batch.closeout_snapshots[-1] if batch.status == 'archived' and batch.closeout_snapshots else None

@@ -67,6 +67,11 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Student previous batches](STUDENT_PREVIOUS_BATCHES.md): Hide history for first-
+  time students, exclude the current batch, keep the full records section in
+  Profile with a small active-dashboard link, and preserve returning profile
+  confirmation; no migration.
+
 - [Student assessment randomization](STUDENT_ASSESSMENT_RANDOMIZATION.md): Saved
   per-enrollment card numbers, anonymous student titles, atomic draft publication,
   preserved results/retakes, migration 0030 with no new tables, and isolated

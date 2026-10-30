@@ -1,5 +1,18 @@
 # Instructor assessment library
 
+## Three-column cards and six assessments per page — 30 October 2026
+
+The approved [assessment card redesign](ASSESSMENT_CARDS_REDESIGN.md) supersedes
+the eight-item page size below. Both staff roles now use three desktop columns,
+six cards/list rows per page and pagination from seven matching records. Cards
+group schedules, identity and metrics horizontally to reduce height while retaining
+category disclosure, details, completion and integrity evidence. Loading geometry
+and the single-page footer follow the six-item size. Student cards receive their
+separate approved design without adding student pagination or changing actions.
+Final verification also resolves the older admin roster-retry fixture failure
+described below; all nine admin browser groups now pass. See the linked redesign
+record for the missing batch-envelope field and complete test evidence.
+
 ## Eight assessments per page — 30 October 2026
 
 Instructor and admin assessment libraries show up to eight assessments per page

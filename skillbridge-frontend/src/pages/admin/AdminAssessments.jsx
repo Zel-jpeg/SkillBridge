@@ -19,7 +19,7 @@ const normalAssessments = data => Array.isArray(data) ? data.filter(a => !a.is_a
 const surface = 'rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900'
 const label = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 6
 
 export default function AdminAssessments() {
   const { data, error, errorStatus } = useAdminAssessments()

@@ -1,5 +1,13 @@
 # Admin assessment oversight
 
+## Three-column cards and six assessments per page — 30 October 2026
+
+The [assessment card redesign](ASSESSMENT_CARDS_REDESIGN.md) replaces the older
+eight-record size below with six cards or six list rows per page, three desktop
+columns and matching loading placeholders. Submitted/assigned counts remain
+distinct from completion percentage/count. Details, authorization, filtering,
+category disclosures and publication actions retain their existing behavior.
+
 ## Eight assessments per page — 30 October 2026
 
 The admin and instructor libraries now show eight cards or eight list rows per

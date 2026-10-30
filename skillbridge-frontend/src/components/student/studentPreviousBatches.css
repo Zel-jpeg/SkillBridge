@@ -1,0 +1,36 @@
+@reference '../../index.css';
+
+.sb-previous-records { @apply mt-6; }
+.sb-previous-heading { @apply text-[15px] font-bold text-gray-900 dark:text-white; }
+.sb-previous-toggle { @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-500 dark:hover:bg-gray-800; }
+.sb-previous-batch { @apply overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700; }
+.sb-previous-batch-summary { @apply flex min-h-18 cursor-pointer list-none items-center gap-3 px-4 py-4 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600 dark:hover:bg-gray-800 sm:px-5; }
+.sb-previous-batch-summary::-webkit-details-marker { display: none; }
+.sb-previous-batch-chevron { @apply shrink-0 text-gray-400 transition-transform; }
+.sb-previous-batch[open] > summary .sb-previous-batch-chevron { transform: rotate(90deg); }
+.sb-previous-batch-badge { @apply shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300; }
+.sb-previous-batch-body { @apply grid min-w-0 gap-5 border-t border-gray-100 p-4 dark:border-gray-800 sm:p-5; }
+.sb-previous-assessments { @apply mt-1 divide-y divide-gray-100 dark:divide-gray-800; }
+.sb-previous-assessment { @apply space-y-3 py-4 last:pb-0; }
+.sb-previous-result-row { @apply grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2; }
+.sb-previous-result-identity { @apply min-w-0; }
+.sb-previous-result-identity h4 { overflow-wrap: anywhere; }
+.sb-previous-result-score { @apply col-span-2 min-w-0; }
+.sb-previous-attempt-status { @apply inline-flex w-fit items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300; }
+.sb-previous-attempt-status.is-submitted { @apply bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300; }
+.sb-previous-score-value { @apply flex min-w-0 items-center justify-end gap-3; }
+.sb-previous-score-number { @apply w-23 shrink-0 text-right font-medium tabular-nums text-gray-900 dark:text-gray-100; }
+.sb-previous-score-track { @apply block h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700; }
+.sb-previous-score-track > span { @apply block h-full rounded-full bg-green-500 dark:bg-green-400; }
+.sb-previous-decisions { @apply min-w-0 border-t border-gray-100 pt-5 dark:border-gray-800; }
+.sb-previous-decision { @apply flex items-start gap-3 rounded-xl bg-green-50 p-4 leading-5 text-green-700 dark:bg-green-950/50 dark:text-green-300; }
+.sb-previous-readonly { @apply mt-4 flex items-center gap-2 leading-5 text-gray-500 dark:text-gray-400; }
+.sb-previous-info { @apply inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-semibold; }
+@media (min-width: 640px) {
+  .sb-previous-result-row { grid-template-columns: minmax(0, 1.05fr) 104px minmax(0, 1.7fr); }
+  .sb-previous-result-score { grid-column: auto; }
+}
+@media (min-width: 1100px) {
+  .sb-previous-batch-body { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  .sb-previous-decisions { @apply border-t-0 border-l pt-0 pl-5; }
+}

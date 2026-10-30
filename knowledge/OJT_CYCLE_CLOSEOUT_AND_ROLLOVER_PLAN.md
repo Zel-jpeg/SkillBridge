@@ -1,5 +1,10 @@
 # OJT cycle closeout, returning students and partner reuse
 
+30 October student presentation correction: see
+[previous-batch records](STUDENT_PREVIOUS_BATCHES.md). The current active batch is
+excluded from the student **Previous batches** view; first-time students receive
+no history panel. Existing saved records and profile-confirmation gates remain.
+
 Prepared 28 October 2026. Status: **recommendation-only scope corrected, migrated and verified**.
 User authorized implementation and the proposed defaults on 28 October 2026.
 Branch: `ojt-cycle-closeout-rollover`. Migration authorized and applied on 28 October; no application deployment.

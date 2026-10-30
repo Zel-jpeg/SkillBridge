@@ -107,31 +107,31 @@ with sync_playwright() as p:
         expect(cards.first.locator('.ac-schedule')).to_have_text('No opening or due date set')
         expect(cards.first.get_by_text('Order 23', exact=True)).to_be_visible()
         expect(cards.first.get_by_role('progressbar')).to_have_count(0)
-        expect(cards).to_have_count(8)
+        expect(cards).to_have_count(6)
         expect(page.get_by_role('button', name=re.compile('Manage assessment'))).to_have_count(0)
         assert not any(path.endswith('/questions/') for _, path, _ in f.calls)
         expect(library.get_by_text('23 of 23 assessments', exact=True)).to_be_visible()
         page.get_by_role('button', name='Next', exact=False).click()
-        expect(page.get_by_text('Showing 9–16 of 23')).to_be_visible()
+        expect(page.get_by_text('Showing 7–12 of 23')).to_be_visible()
         before = cards.locator('h2').all_text_contents()
         page.get_by_role('button', name='List view', exact=True).click()
         expect(page.get_by_role('button', name='List view', exact=True)).to_have_attribute('aria-pressed', 'true')
-        expect(page.get_by_text('Showing 9–16 of 23')).to_be_visible()
+        expect(page.get_by_text('Showing 7–12 of 23')).to_be_visible()
         rows = library.locator('tbody tr')
         expect(library.get_by_role('columnheader', name='Configuration', exact=True)).to_be_visible()
         expect(rows.first.locator('dt')).to_have_text(['Opens', 'Due'])
         expect(rows.first.locator('dd')).to_have_text(['—', '—'])
         assert rows.locator('td:first-child button').all_text_contents() == before
-        page.get_by_role('button', name='3', exact=True).click()
-        expect(rows).to_have_count(7)
+        page.get_by_role('button', name='4', exact=True).click()
+        expect(rows).to_have_count(5)
         expect(page.get_by_role('button', name='Next', exact=False)).to_be_disabled()
         page.get_by_role('searchbox', name='Search assessments').fill('Assessment 23')
         expect(rows).to_have_count(1)
         expect(library.get_by_text('1 of 23 assessments', exact=True)).to_be_visible()
         expect(page.get_by_role('button', name='Next', exact=False)).to_have_count(0)
         page.get_by_role('button', name='Clear filters', exact=True).click()
-        expect(page.get_by_text('Showing 1–8 of 23')).to_be_visible()
-        checks.append('Eight records per page in cards/list; shared ordering, view/page preservation, filter reset and last-page boundaries')
+        expect(page.get_by_text('Showing 1–6 of 23')).to_be_visible()
+        checks.append('Six records per page in cards/list; shared ordering, view/page preservation, filter reset and last-page boundaries')
 
         set_library_filters(page, [('Requirement','Required'), ('Competency inclusion','Included'), ('Skill category','Database'), ('Availability','Available')])
         expect(library.get_by_text('4 of 23 assessments',exact=True)).to_be_visible()
@@ -193,13 +193,13 @@ with sync_playwright() as p:
         page.get_by_title('Close without saving', exact=True).click()
         checks.append('Card surface and table row clicks, keyboard Enter/Space/focus, inline category pills and keyboard expansion/collapse, lazy question requests')
 
-        f.records = f.records[:8]
+        f.records = f.records[:6]
         f.refresh()
-        expect(library.get_by_text('8 of 8 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('6 of 6 assessments', exact=True)).to_be_visible()
         expect(page.get_by_role('button', name='Next', exact=False)).to_have_count(0)
-        f.records = [assessment(i) for i in range(1, 10)]
+        f.records = [assessment(i) for i in range(1, 8)]
         f.refresh()
-        expect(library.get_by_text('9 of 9 assessments', exact=True)).to_be_visible()
+        expect(library.get_by_text('7 of 7 assessments', exact=True)).to_be_visible()
         page.get_by_role('button', name='Next', exact=False).click()
         expect(rows).to_have_count(1)
         f.records = f.records[:2]
@@ -207,7 +207,7 @@ with sync_playwright() as p:
         expect(rows).to_have_count(2)
         f.records = [assessment(i) for i in range(1, 24)]
         f.refresh()
-        expect(page.get_by_text('Showing 1–8 of 23')).to_be_visible()
+        expect(page.get_by_text('Showing 1–6 of 23')).to_be_visible()
         checks.append('Live result shrink clamps page and subsequent growth does not jump back')
 
         reports = page.get_by_role('region', name='Individual assessment report controls')
@@ -254,7 +254,7 @@ with sync_playwright() as p:
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                         if view == 'List view':
                             expect(library.get_by_text('Showing 1–2 of 2 assessments', exact=True)).to_be_visible()
-                            expect(library.get_by_text('8 per page', exact=True)).to_be_visible()
+                            expect(library.get_by_text('6 per page', exact=True)).to_be_visible()
                             if width == 1440:
                                 assert library.locator('table').evaluate('n => n.scrollWidth <= n.parentElement.clientWidth')
                                 assert rows.first.locator('td:last-child div.grid > span').last.bounding_box()['height'] < 24
@@ -482,7 +482,7 @@ with sync_playwright() as p:
                 expect(page.get_by_role('alert').first).to_contain_text('Could not load')
                 f.fail = False
                 page.get_by_role('button', name='Retry', exact=True).first.click()
-                expect(page.locator('article')).to_have_count(8)
+                expect(page.locator('article')).to_have_count(6)
             else:
                 expect(page.get_by_text('No assessments yet', exact=True)).to_be_visible()
             f.close()

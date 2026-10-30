@@ -86,7 +86,7 @@ export default function StudentDashboard() {
   if (student && !student.batch) return <div className="mx-auto max-w-6xl px-4 py-6"><h1 className="text-xl font-semibold">Your OJT records</h1><StudentCycleNotice historyInitiallyOpen /></div>
   return (
     <div className="min-w-0">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6"><StudentCycleNotice /></div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6"><StudentCycleNotice historyMode="link" /></div>
 
       {/*
         ── Bento grid CSS ───────────────────────────────────────

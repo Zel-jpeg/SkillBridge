@@ -870,10 +870,12 @@ def student_me(request):
     has_submitted  = bool(progress and progress['all_required_completed'] and progress['total_required_count'])
     retake_allowed = latest_response.retake_allowed if latest_response else False
     approved_placement = _approved_student_placement(user.id)
+    from .student_batch_history import previous_batches
 
     return Response({
         **UserSerializer(user).data,
         'has_submitted':      has_submitted,
+        'has_previous_batches': previous_batches(user, enrollment).exists(),
         'profile_review_required': bool(enrollment and enrollment.profile_review_required),
         'profile_confirmed_at': enrollment.profile_confirmed_at if enrollment else None,
         'retake_allowed':     retake_allowed,

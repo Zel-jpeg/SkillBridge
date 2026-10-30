@@ -341,7 +341,7 @@ export default function StudentProfile() {
     field.set(value); setErrors(previous => ({ ...previous, [field.key]: '' })); setSaved(false)
   } }))
 
-  return <><div className="mx-auto max-w-6xl px-4 sm:px-6"><StudentCycleNotice review /></div><StudentProfileForm
+  return <><div className="mx-auto max-w-6xl px-4 sm:px-6"><StudentCycleNotice review historyMode="none" /></div><StudentProfileForm
     student={{ name: displayName, schoolId: displayId, course: displayCourse, photoUrl, loading: apiLoading }}
     fields={fields} errors={errors} travelOptions={TRAVEL_OPTIONS} travelWilling={travelWilling}
     onTravelChange={value => { setTravelWilling(value); setErrors(previous => ({ ...previous, travelWilling: '' })); setSaved(false) }}
@@ -353,6 +353,6 @@ export default function StudentProfile() {
     mapLabel={pinAddrLabel} mapCenter={mapCenter} geocoding={geocoding} pinned={pinnedLoc}
     onRemovePin={() => { setPinnedLoc(null); setSaved(false) }}
     map={<PinMap center={mapCenter} pinned={pinnedLoc} onPin={loc => { setPinnedLoc(loc); setSaved(false) }} />}
-    saving={saving} saved={saved} saveError={saveError} onSave={handleSave}
-  /></>
+    saving={saving} saved={saved} saveError={saveError} onSave={handleSave} stickySave={!apiStudent?.has_previous_batches}
+  /><div className="mx-auto max-w-[1160px] px-4 pb-8 sm:px-6"><StudentCycleNotice showNotices={false} /></div></>
 }
