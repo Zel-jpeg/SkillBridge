@@ -1,6 +1,23 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { givenNamesForGreeting } from './formatters.js'
+import { givenNamesForGreeting, nameFromEmail } from './formatters.js'
+
+test('email-derived instructor suggestions capitalize every space-separated name without dropping given names', () => {
+  assert.equal(nameFromEmail('reyes.juan@dnsc.edu.ph'), 'Juan Reyes')
+  assert.equal(nameFromEmail(' REYES.JUAN@DNSC.EDU.PH '), 'Juan Reyes')
+  assert.equal(nameFromEmail('dela_cruz.juan_jose@dnsc.edu.ph'), 'Juan Jose Dela Cruz')
+  assert.equal(nameFromEmail('reyes.juan.jose@dnsc.edu.ph'), 'Juan Jose Reyes')
+  assert.equal(nameFromEmail('bali-os.davidrey@dnsc.edu.ph'), 'Davidrey Bali-os')
+  assert.equal(nameFromEmail('peña.josé@dnsc.edu.ph'), 'José Peña')
+})
+
+test('email name suggestions handle clearing, partial input and usernames without a surname separator', () => {
+  assert.equal(nameFromEmail(''), '')
+  assert.equal(nameFromEmail(null), '')
+  assert.equal(nameFromEmail(), '')
+  assert.equal(nameFromEmail('reyes.'), 'Reyes')
+  assert.equal(nameFromEmail('mtreyes@dnsc.edu.ph'), 'Mtreyes')
+})
 
 test('student greeting keeps all given names and excludes one-word surname', () => {
   assert.equal(givenNamesForGreeting('David Rey Bali-os', 'bali-os.davidrey@dnsc.edu.ph'), 'David Rey')

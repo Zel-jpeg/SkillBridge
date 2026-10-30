@@ -50,7 +50,7 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
   }
 
   const field = key => ({ id: `${id}-${key}`, 'aria-invalid': Boolean(errors[key]),
-    'aria-describedby': errors[key] ? `${id}-${key}-error` : undefined,
+    'aria-describedby': [key === 'name' ? `${id}-name-hint` : '', errors[key] ? `${id}-${key}-error` : ''].filter(Boolean).join(' ') || undefined,
     className: `min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-600 ${errors[key] ? 'border-rose-400' : 'border-gray-300 dark:border-gray-600'}` })
   const label = 'mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300'
   const error = key => errors[key] && <p id={`${id}-${key}-error`} className="mt-1 text-xs text-rose-700 dark:text-rose-300">{errors[key]}</p>
@@ -69,13 +69,14 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
             onChange={event => {
               const value = event.target.value
               setEmail(value); setErrors(current => ({ ...current, email: '' }))
-              if (!nameEdited && value.includes('.')) setName(nameFromEmail(value.trim().toLowerCase()))
+              if (!nameEdited) setName(nameFromEmail(value))
             }} placeholder="e.g. mtreyes@dnsc.edu.ph" />{error('email')}
         </div>
         <div><label htmlFor={`${id}-name`} className={label}>Full Name</label>
           <input {...field('name')} autoComplete="name" maxLength={255} value={name}
             onChange={event => { setName(event.target.value); setNameEdited(true); setErrors(current => ({ ...current, name: '' })) }}
             placeholder="e.g. Ma. Lourdes T. Reyes" />{error('name')}
+          <p id={`${id}-name-hint`} className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Check spelling, spacing and capitalization before saving.</p>
         </div>
         <div><label htmlFor={`${id}-instructorId`} className={label}>Instructor ID</label>
           <input {...field('instructorId')} maxLength={20} value={instructorId}

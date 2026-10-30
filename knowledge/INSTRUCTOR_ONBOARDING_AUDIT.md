@@ -9,6 +9,36 @@ databases, with no real messages, schema changes or production migrations.
 
 ## Original findings and implemented fixes
 
+### Email-derived name suggestions — 30 October 2026
+
+Add Instructor uses the DNSC `surname.givenname` convention to suggest a reviewed
+display name. Suggestions capitalize each space-separated word, treat underscores
+as word separators and retain additional dot-separated given-name parts. Emptying
+the email clears an untouched suggestion; manually edited names stay authoritative
+when the email changes. The form reminds staff to review spelling, spacing and
+capitalization. It cannot infer missing spaces in joined names such as `juan jose`
+encoded as `juanjose`, or determine intentional casing from an email alone.
+
+The existing API already trims/lowercases the email and stores the submitted name
+with its reviewed capitalization. Lowercasing display names in storage would lose
+intentional spelling, initials and casing; this change adds no frontend casing
+transform to retrieved names, backend mutation or migration. Hyphenated spellings
+follow the existing word-based suggestion convention and remain editable.
+
+Verification: frontend lint/build and all six formatter tests passed. Synthetic
+production-preview browser checks passed at 1366px light and 375px dark, covering
+simple/multiword suggestions, cleared input, manual casing after email edits,
+normalized email versus preserved name payloads, generated-name submission and
+display after a mocked save/reload. All API writes were intercepted; no real
+instructor accounts, email sends, database writes or hosted changes were made.
+
+Publication preflight for the combined UI-polish update: a fresh lint/build and
+all **301 frontend Node tests** passed. Ten synthetic browser groups passed:
+four email-dismissal groups, four existing enrollment-email workflow groups and
+the two production-preview name-suggestion groups above. Git publication is
+authorized separately by the owner; these checks do not test real email delivery
+or alter the production database.
+
 ### P2, fixed: Concurrent duplicate creation returned a server error
 
 The original [admin_instructors](../skillbridge-backend/api/views.py) checked

@@ -37,6 +37,97 @@ def fixture(role):
                              next_allowance_check='2026-10-28T01:05:00Z', allowance_checked_at='2026-10-28T01:00:00Z'))
 
 
+def check_dismissal(page, payload, width, role):
+    """Exercise the shared compact card using the real staff pages and fake time."""
+    page.clock.install()
+    card = page.get_by_role('region', name='Enrollment email progress', exact=True).filter(
+        has=page.get_by_role('button', name='View progress', exact=True))
+    dismiss = page.get_by_role('button', name='Dismiss delivered email confirmation', exact=True)
+
+    def refresh():
+        page.evaluate("async () => { const { invalidateCache } = await import('/src/hooks/useApi.js'); invalidateCache('/api/instructor/batches/1/email-progress/'); }")
+
+    expect(card).to_be_visible()
+    expect(dismiss).to_have_count(0)
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    payload['groups'][0].update(state='submitted', submitted=15, waiting=0)
+    refresh()
+    expect(card.get_by_role('heading', name='All enrollment emails submitted', exact=True)).to_be_visible()
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    expect(dismiss).to_have_count(0)
+    payload['groups'][0].update(state='delivered', delivered=15)
+    refresh()
+    expect(card.get_by_role('heading', name='Enrollment emails delivered', exact=True)).to_be_visible()
+    page.clock.run_for(9_000)
+    expect(card).to_be_visible()
+    page.clock.run_for(1_100)
+    expect(card).to_have_count(0)
+    page.reload()
+    page.wait_for_load_state('networkidle')
+    expect(card).to_have_count(0)
+
+    # Dismissing the summary does not hide delivery history in the email dialog.
+    page.get_by_role('button', name='Enrollment emails', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Enrollment emails', exact=True)
+    expect(dialog.get_by_role('heading', name='Enrollment emails delivered', exact=True)).to_be_visible()
+    page.clock.run_for(12_000)
+    expect(dialog.get_by_role('heading', name='Enrollment emails delivered', exact=True)).to_be_visible()
+    dialog.get_by_role('button', name='Close', exact=True).click()
+
+    payload['groups'][0]['id'] = 'another-delivered-group'
+    refresh()
+    expect(card).to_be_visible()
+    card.hover()
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    page.mouse.move(0, 0)
+    view = card.get_by_role('button', name='View progress', exact=True)
+    view.focus()
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    page.keyboard.press('Enter')
+    expect(dialog).to_be_visible()
+    page.clock.run_for(12_000)
+    dialog.get_by_role('button', name='Close', exact=True).click()
+    expect(view).to_be_focused()
+    expect(card).to_be_visible()
+    if width < 800:
+        page.evaluate('document.documentElement.classList.add("dark")')
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    assert card.evaluate('el => el.scrollWidth <= el.clientWidth')
+    bounds = dismiss.bounding_box()
+    assert bounds['width'] >= 44 and bounds['height'] >= 44
+    page.screenshot(path=str(OUT / f'{role}-{width}-delivered-dismissible.png'), full_page=True)
+    dismiss.focus()
+    page.keyboard.press('Enter')
+    expect(card).to_have_count(0)
+    page.reload()
+    page.wait_for_load_state('networkidle')
+    expect(card).to_have_count(0)
+
+    # Later problems must reappear, even for an already dismissed group.
+    payload['groups'][0].update(state='attention', delivered=14, failed=1)
+    refresh()
+    expect(card.get_by_role('heading', name='Some emails need attention', exact=True)).to_be_visible()
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    expect(dismiss).to_have_count(0)
+    payload['groups'][0].update(state='delivered', delivered=15, failed=0)
+    refresh()
+    expect(card).to_have_count(0)
+    payload['_progress_error'] = True
+    refresh()
+    expect(card.get_by_text('Progress could not refresh.', exact=False)).to_be_visible()
+    page.clock.run_for(12_000)
+    expect(card).to_be_visible()
+    expect(dismiss).to_have_count(0)
+    payload.pop('_progress_error')
+    refresh()
+    expect(card).to_have_count(0)
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     checks = []
@@ -72,6 +163,8 @@ with sync_playwright() as p:
             if path == '/api/admin/batch-instructors/':
                 return route.fulfill(json=[{'id': 50, 'name': 'Synthetic Staff'}])
             if path == '/api/instructor/batches/1/email-progress/':
+                if payload.get('_progress_error'):
+                    return route.fulfill(status=503, json={'error': 'Synthetic refresh failure'})
                 return route.fulfill(json={'groups': copy.deepcopy(payload['groups']), 'storage_ready': True})
             if path == '/api/management/analytics/':
                 value = {key: [] for key in ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity']}
@@ -120,8 +213,16 @@ with sync_playwright() as p:
         path = '/instructor/students' if role == 'instructor' else '/admin/batches?batch_id=1'
         page.goto(BASE + path)
         page.wait_for_load_state('networkidle')
+        if os.environ.get('EMAIL_DISMISSAL_ONLY') == '1':
+            check_dismissal(page, payload, width, role)
+            assert not errors, errors
+            assert not writes and not enrollment_writes, 'Dismissal must never send emails or change enrollments'
+            checks.append(f'{role} {width}px: 10-second delivered-only timeout, persisted automatic/manual dismissal, new groups, pending/submitted/error retention, hover/focus/dialog pause, preserved history, keyboard close, responsive target')
+            print('PASS', checks[-1], flush=True)
+            context.close()
+            continue
         page.get_by_role('button', name='Batch actions', exact=True).click()
-        expect(page.get_by_role('menuitem', name='Archive batch', exact=True)).to_be_visible()
+        expect(page.get_by_role('menuitem', name='Archive without final report' if role == 'instructor' else 'Archive batch', exact=True)).to_be_visible()
         page.keyboard.press('Escape')
         expect(page.get_by_role('button', name='Batch actions', exact=True)).to_be_focused()
         page.screenshot(path=str(OUT / f'{role}-{width}-page.png'), full_page=True)

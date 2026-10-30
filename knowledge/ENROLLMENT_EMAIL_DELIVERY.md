@@ -77,6 +77,44 @@ groups appear in the bell without replaying historical toasts on every navigatio
 The existing per-account browser read state prevents unchanged reminders becoming
 unread repeatedly. These are recent reminders, not a permanent server inbox.
 
+### Delivered confirmation dismissal — 30 October 2026
+
+The compact progress card on instructor Students and admin batch details can be
+dismissed only after its current group reaches confirmed **Delivered**. It hides
+after ten uninterrupted seconds while the page is visible and the card is not
+being hovered, focused or reviewed in the Enrollment emails dialog. Interaction
+or a hidden tab cancels that timer; a fresh ten-second window starts afterward.
+Polling the same group does not restart the timer. A keyboard-accessible 44px
+close control also dismisses the delivered confirmation immediately.
+
+Dismissals survive navigation/reload in the same browser when local storage is
+available. Only the latest 100 opaque group IDs are stored, separately by staff
+account and role; no recipient details are stored. New groups show independently.
+Sending, submitted-but-awaiting-delivery, held, quota, failed, uncertain and stale
+refresh states stay visible and have no dismissal control. A later problem for a
+previously dismissed group is shown again. The compact card observes the existing
+query store's error state so a transient background failure cannot hide behind a
+cached success. No extra request, email send, backend change or migration is added.
+
+Viewing progress opens the existing dialog without dismissing it; the timer stays
+paused while that dialog is open so focus can return to its opener. Full group
+progress/history inside Enrollment emails remains visible, regardless of compact
+card dismissal. Header-bell read state and completion toasts remain separate.
+
+Verification: frontend lint/build and all 299 Node tests passed. The synthetic
+email browser suite passed four dismissal groups and four existing workflow
+groups on instructor desktop/tablet and admin phone/desktop pages, with light/dark
+layout checks. These cover timeout, manual/keyboard dismissal, reload persistence,
+new groups, submitted/pending/error retention, interaction/dialog pauses, focus
+return and unchanged history/send/recovery controls. Storage tests cover account
+isolation, bounded records, malformed data and unavailable browser storage. The
+older workflow fixture's instructor archive-menu label now matches the current
+closeout workflow. All API/provider requests were intercepted; no real emails,
+database writes, migrations or hosted deployments were performed. Logs are in
+`work/dashboard-ui/email-dismiss-{node-tests,browser,regression,build}.log`.
+
+### Enrollment confirmation and email controls
+
 Enrollment confirmation now sends a frozen request UUID, reviewed rows and email
 timing. A same-actor/same-payload replay returns the original saved result before
 checking review expiry; batch authorization/activity is still checked first.

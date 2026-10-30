@@ -184,7 +184,7 @@ export default function AdminBatches() {
             { id: 'status', label: selected.status === 'active' ? 'Archive batch' : 'Reactivate batch', icon: <ArchiveIcon size={14} />, danger: selected.status === 'active' },
           ]} onAction={action => action === 'manage' ? setEditor({ batch: selected }) : setConfirm({ type: selected.status === 'active' ? 'archive' : 'unarchive' })}><MoreHorizontalIcon /></ActionMenu>
         </div></header>
-        <div className="mt-4"><BatchEmailProgress key={selected.id} batchId={selected.id} onView={() => setShowEmails(true)} /></div>
+        <div className="mt-4"><BatchEmailProgress key={selected.id} batchId={selected.id} onView={() => setShowEmails(true)} paused={showEmails || emailRouteOpen} /></div>
         {selected.status === 'archived' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">This batch is archived. Student assessment availability and final recommendations are locked. Reactivate it before enrolling students or starting assessments.</p>}
       </section>
       <BatchCyclePanel key={`cycle-${selected.id}`} batchId={selected.id} role="admin" />

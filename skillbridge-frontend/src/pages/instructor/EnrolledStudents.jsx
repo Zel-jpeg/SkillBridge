@@ -222,7 +222,7 @@ export default function EnrolledStudents() {
 {showReactivate && <ConfirmModal tone="confirm" title="Reactivate this batch?" message={`Reactivate ${viewedBatch?.name}? Its published assessments can become available again, and recommendations are reviewed using current inputs. Saved closeout reports and previous attempts remain preserved. Students must not have another active batch.`} confirmLabel="Reactivate batch" onCancel={() => setShowReactivate(false)} onConfirm={async () => { await handleUnarchiveBatch(); setShowReactivate(false) }} />}
 {isArchived && <p className="mt-3 text-xs leading-6 text-gray-500 dark:text-gray-400">Use saved closeout reports for the recorded cycle details. Personal details in this roster reflect the student's current account.</p>}
 {section === 'students' && <>
-<BatchEmailProgress key={`email-progress-${activeBatchId}`} batchId={activeBatchId} onView={() => setShowEmails(true)} />
+<BatchEmailProgress key={`email-progress-${activeBatchId}`} batchId={activeBatchId} onView={() => setShowEmails(true)} paused={showEmails || emailRouteOpen} />
 <DataSection pending={initialRosterPending} urls={rosterUrl ? ['/api/instructor/batches/', rosterUrl] : ['/api/instructor/batches/']} layout="roster-stats" count={4} label="Loading batch totals">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -9,12 +9,14 @@
  * Extract a display name from a DNSC email address.
  * e.g. "villanueva.azel@dnsc.edu.ph" → "Azel Villanueva"
  */
-export function nameFromEmail(email) {
-  const local = email.split('@')[0]               // "villanueva.azel"
-  const parts = local.split('.')                  // ["villanueva", "azel"]
-  const cap   = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
-  if (parts.length >= 2) return `${cap(parts[1])} ${cap(parts[0])}`
-  return cap(parts[0])
+export function nameFromEmail(email = '') {
+  const local = String(email ?? '').trim().split('@')[0]
+  const [surname, ...givenNames] = local.split('.')
+  const words = givenNames.length ? [...givenNames, surname] : [surname]
+  // Suggest casing only; a reviewed name may intentionally use McDonald, initials,
+  // or different punctuation. Do not apply this formatter to saved/manual names.
+  return words.join(' ').replace(/_/g, ' ').trim().split(/\s+/).filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
 }
 
 /**
