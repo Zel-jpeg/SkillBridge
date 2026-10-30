@@ -30,6 +30,11 @@ Hover/focus, independent category controls and existing detail dialogs remain.
 
 ## Student
 
+The later approved [card-state presentation](STUDENT_ASSESSMENT_CARD_STATES.md)
+adds distinct state surfaces/icons and unfinished-first display grouping. It
+preserves saved assessment numbers and existing actions; this supersedes the
+original unchanged display-order statement below.
+
 [StudentAssessments](../skillbridge-frontend/src/pages/student/StudentAssessments.jsx)
 uses anonymous numbered headings, requirement and status at opposite ends,
 paired duration/question facts, due/opening and inclusion rows, and aligned full-width

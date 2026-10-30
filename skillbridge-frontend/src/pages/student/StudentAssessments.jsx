@@ -3,7 +3,8 @@ import StudentCycleNotice from '../../components/student/StudentCycleNotice'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { assessmentAction } from './assessmentUiState'
-import { CalendarIcon, CheckCircleIcon, ChevronRightIcon, ClockIcon, ListIcon, ReportIcon } from '../../components/Icons'
+import { assessmentCardPresentation, orderAssessmentCards } from './assessmentCardPresentation'
+import { CalendarIcon, CheckCircleIcon, ChevronRightIcon, ClockIcon, ListIcon, LockIcon, RefreshIcon, ReportIcon, WarnIcon } from '../../components/Icons'
 import './studentAssessmentCards.css'
 
 function dateLabel(value) {
@@ -11,33 +12,33 @@ function dateLabel(value) {
   return new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function statusLabel(item) {
-  if (item.retake_allowed && item.availability_status === 'available') return 'Retake approved'
-  if (item.attempt_status === 'stopped') return 'Stopped / awaiting retake approval'
-  if (item.attempt_status === 'submitted') return 'Submitted'
-  if (item.availability_status === 'upcoming') return 'Upcoming'
-  if (item.availability_status === 'overdue') return 'Deadline passed'
-  if (item.availability_status === 'closed') return 'Closed'
-  if (item.attempt_status === 'in_progress') return 'In progress'
-  return 'Ready to start'
+const statusIcons = {
+  progress: ClockIcon, retake: RefreshIcon, stopped: WarnIcon, flagged: WarnIcon,
+  upcoming: CalendarIcon, overdue: ClockIcon, closed: LockIcon, unavailable: LockIcon,
+  submitted: ReportIcon, completed: CheckCircleIcon,
 }
+const requestLabels = { pending: 'Pending', approved: 'Approved', declined: 'Declined' }
 
 function AssessmentCard({ item }) {
   const navigate = useNavigate()
   const action = assessmentAction(item)
+  const presentation = assessmentCardPresentation(item)
+  const StatusIcon = statusIcons[presentation.key]
+  const showRetakeRequest = Boolean(item.is_flagged && item.can_request_retake || item.retake_request?.status)
+  const pairedActions = showRetakeRequest && ['stopped', 'flagged'].includes(presentation.key)
   const dateText = item.availability_status === 'upcoming'
     ? `Opens ${dateLabel(item.available_at)}`
     : item.due_at ? `Due ${dateLabel(item.due_at)}` : 'No deadline set'
 
   return (
-    <article className="sac-card min-w-0 flex flex-col rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <article className={`sac-card sac-card--${presentation.key}`} data-assessment-state={presentation.key}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${item.is_required ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300' : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300'}`}>
           {item.is_required ? 'Required' : 'Optional'}
         </span>
-        <span className={`sac-status text-xs ${item.attempt_status === 'stopped' && !item.retake_allowed ? 'text-rose-700 dark:text-rose-300' : action.kind === 'disabled' ? 'text-gray-600 dark:text-gray-300' : 'text-green-700 dark:text-green-300'}`}><span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />{statusLabel(item)}</span>
+        <span className="sac-status"><span aria-hidden="true" className="sac-state-icon">{StatusIcon ? <StatusIcon size={16} /> : <span className="sac-ready-dot" />}</span>{presentation.label}</span>
       </div>
-      <div className="sac-title"><span aria-hidden="true" className="shrink-0 text-gray-600 dark:text-gray-300"><ReportIcon size={23} /></span><h2 className="min-w-0 break-words text-base font-bold leading-snug text-gray-900 dark:text-white">{item.title}</h2></div>
+      <div className="sac-title"><span aria-hidden="true" className={`sac-title-icon${presentation.key === 'completed' ? ' sac-completed-mark' : ''}`}>{presentation.key === 'completed' ? <CheckCircleIcon size={23} /> : <ReportIcon size={23} />}</span><h2 className="min-w-0 break-words text-base font-bold leading-snug text-gray-900 dark:text-white">{item.title}</h2></div>
       <div className="sac-facts text-gray-600 dark:text-gray-300">
         <p><span aria-hidden="true"><ClockIcon size={17} /></span>{item.duration_minutes} minutes</p>
         <p><span aria-hidden="true"><ListIcon size={17} /></span>{item.question_count} question{item.question_count === 1 ? '' : 's'}</p>
@@ -46,21 +47,21 @@ function AssessmentCard({ item }) {
         <p className="sac-detail"><span aria-hidden="true"><CalendarIcon size={16} /></span>{dateText}</p>
         <p className="sac-detail"><span aria-hidden="true">{item.include_in_competency ? <CheckCircleIcon size={16} /> : <ReportIcon size={16} />}</span>{item.include_in_competency ? 'Included in your final skill profile' : 'Not included in your final skill profile'}</p>
         {!item.is_required && <p>Optional work does not block final results.</p>}
-        {item.attempt_status === 'stopped' && <p className="text-rose-700 dark:text-rose-300">{item.stopped_reason_display || 'Completed answers were recorded.'}</p>}
-        {item.retake_allowed && <p className="text-blue-700 dark:text-blue-300">Your next attempt will replace this assessment’s current score. Your earlier attempt remains on record.</p>}
-        {item.retake_request?.status && <p className="font-medium">Retake request: {item.retake_request.status}</p>}
+        {item.attempt_status === 'stopped' && (presentation.key !== 'retake' || item.stopped_reason_display) && <p className="sac-notice"><span aria-hidden="true"><WarnIcon size={15} /></span>{item.stopped_reason_display || 'Your recorded attempt is available.'}</p>}
+        {item.retake_allowed && <details className="sac-retake-details"><summary>Retake replaces the current score</summary><p>Your next attempt will replace this assessment’s current score. Your earlier attempt remains on record.</p></details>}
+        {item.retake_request?.status && !(presentation.key === 'retake' && item.retake_request.status === 'approved') && <p className="sac-request-status">Retake request: {requestLabels[item.retake_request.status] || item.retake_request.status}</p>}
       </div>
-      <div className="sac-actions mt-auto">
+      <div className={`sac-actions${pairedActions ? ' sac-actions--pair' : ''}`}>
         <button
           type="button"
           disabled={action.kind === 'disabled'}
           onClick={() => navigate(action.kind === 'result'
             ? `/student/assessments/${item.id}/results`
             : `/student/assessments/${item.id}/take`)}
-          className="inline-flex w-full min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-600 dark:bg-green-700 dark:hover:bg-green-800 dark:focus-visible:outline-green-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-300"
+          className={`sac-primary-action${action.kind === 'result' ? ' sac-primary-action--result' : ''}`}
         >{action.label}{action.kind !== 'disabled' && <span aria-hidden="true"><ChevronRightIcon size={16} /></span>}</button>
-        {(item.is_flagged && item.can_request_retake || item.retake_request?.status) && <button type="button"
-          onClick={() => navigate(`/student/assessments/${item.id}/retake-request`)} className="mt-3 min-h-11 w-full cursor-pointer rounded-lg border border-green-700 px-4 py-2 text-xs font-semibold text-green-800 transition-colors hover:border-green-800 hover:bg-green-50 hover:text-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:border-green-500 dark:text-green-300 dark:hover:border-green-400 dark:hover:bg-green-950 dark:hover:text-green-200">
+        {showRetakeRequest && <button type="button"
+          onClick={() => navigate(`/student/assessments/${item.id}/retake-request`)} className="sac-request-action">
           {item.retake_request?.status ? 'View retake request' : 'Request retake'}
         </button>}
       </div>
@@ -75,7 +76,7 @@ export default function StudentAssessments() {
   const total = data?.total_required_count || 0
   const remaining = data?.remaining_required_count || 0
   const percentage = total ? Math.round(completed / total * 100) : 0
-  const assessments = data?.assessments || []
+  const assessments = orderAssessmentCards(data?.assessments || [])
 
   return (
     <div className="min-w-0">

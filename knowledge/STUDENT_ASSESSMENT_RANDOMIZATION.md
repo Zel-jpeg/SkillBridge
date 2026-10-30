@@ -5,6 +5,10 @@ The shared staff publication dialogs received a
 responsive selection/review layouts and a pending spinner. The publication and
 student-order contracts below remain unchanged.
 
+The [student card-state update](STUDENT_ASSESSMENT_CARD_STATES.md) groups unfinished
+work before completed cards on the collection page. Saved IDs/numbers remain
+unchanged, and the server order is preserved within each visual group.
+
 ## Active implementation checkpoint — 30 October 2026
 
 Branch: `codex/student-assessment-order`. Keep the existing enrolled student.

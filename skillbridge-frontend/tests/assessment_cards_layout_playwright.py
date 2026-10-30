@@ -189,18 +189,21 @@ with sync_playwright() as p:
             student_record(6, action='start', availability_status='overdue'),
         ]
         f.refresh()
-        expect(cards.nth(0).get_by_role('button', name='Continue Assessment', exact=True)).to_be_enabled()
-        expect(cards.nth(1).get_by_role('button', name='View Score', exact=True)).to_be_enabled()
-        expect(cards.nth(2).get_by_role('button', name='View Recorded Attempt', exact=True)).to_be_enabled()
-        expect(cards.nth(2).get_by_role('button', name='Request retake', exact=True)).to_be_enabled()
-        expect(cards.nth(2).get_by_text('Synthetic interruption', exact=True)).to_be_visible()
-        expect(cards.nth(3).get_by_role('button', name='Retake Assessment', exact=True)).to_be_enabled()
-        expect(cards.nth(3).get_by_role('button', name='View retake request', exact=True)).to_be_enabled()
-        expect(cards.nth(3)).to_contain_text('Your earlier attempt remains on record.')
-        for index in (4, 5):
-            expect(cards.nth(index).get_by_role('button', name='Unavailable', exact=True)).to_be_disabled()
-        expect(cards.nth(4)).to_contain_text('Not included in your final skill profile')
-        expect(cards.nth(4)).to_contain_text('Optional work does not block final results.')
+        def assigned(number):
+            return cards.filter(has=page.get_by_role('heading', name=f'Assessment {number}', exact=True))
+        expect(cards.locator('h2')).to_have_text(['Assessment 1', 'Assessment 4', 'Assessment 3', 'Assessment 5', 'Assessment 6', 'Assessment 2'])
+        expect(assigned(1).get_by_role('button', name='Continue Assessment', exact=True)).to_be_enabled()
+        expect(assigned(2).get_by_role('button', name='View Score', exact=True)).to_be_enabled()
+        expect(assigned(3).get_by_role('button', name='View Recorded Attempt', exact=True)).to_be_enabled()
+        expect(assigned(3).get_by_role('button', name='Request retake', exact=True)).to_be_enabled()
+        expect(assigned(3).get_by_text('Synthetic interruption', exact=True)).to_be_visible()
+        expect(assigned(4).get_by_role('button', name='Retake Assessment', exact=True)).to_be_enabled()
+        expect(assigned(4).get_by_role('button', name='View retake request', exact=True)).to_be_enabled()
+        expect(assigned(4)).to_contain_text('Your earlier attempt remains on record.')
+        for number in (5, 6):
+            expect(assigned(number).get_by_role('button', name='Unavailable', exact=True)).to_be_disabled()
+        expect(assigned(5)).to_contain_text('Not included in your final skill profile')
+        expect(assigned(5)).to_contain_text('Optional work does not block final results.')
         page.set_viewport_size({'width': 320, 'height': 568})
         layout(page, cards, 1)
         page.screenshot(path=str(OUT / 'student-mixed-states-phone.png'), full_page=True)
