@@ -36,6 +36,13 @@ restored assessment uses its existing slot. Visible cards may have numbering gap
 Staff display order and titles remain staff metadata. Aliases do not change IDs,
 questions, answers, grading, attempt rules, combined eligibility or recommendations.
 
+Staff authoring/editing forms and the admin overview label the existing
+`display_order` field **Staff display order**. This frontend wording update needs
+no migration. The creation form already suggests the selected batch's highest
+existing order plus one (starting at 1 for an empty batch); an existing order of
+1 therefore suggests 2. Restored drafts keep their saved value, and staff can
+edit the suggestion. This value does not assign student card numbers.
+
 Use **Publish drafts together** to release the initial set in one transaction,
 after reviewing all drafts. Existing individual publication remains available;
 publishing and exposing assessments individually can reserve their numbers in

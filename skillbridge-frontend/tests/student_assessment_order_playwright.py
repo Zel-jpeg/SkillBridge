@@ -48,6 +48,41 @@ def session(browser, key, width=1440, dark=False):
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     try:
+        for role in ('instructor', 'admin'):
+            for dark in (False, True):
+                context, page = session(browser, role, dark=dark)
+                page.goto(BASE + f'/{role}/assessments', wait_until='networkidle')
+                for kind, name in [('button', 'Publish drafts together'), ('link', 'Assessment archives'), ('link', 'Create assessment')]:
+                    action = page.get_by_role(kind, name=name, exact=True)
+                    page.mouse.move(0, 0)
+                    page.wait_for_timeout(200)
+                    original = action.evaluate('node => getComputedStyle(node).backgroundColor')
+                    action.hover()
+                    expect(action).not_to_have_css('background-color', original)
+                    expect(action).to_have_css('cursor', 'pointer')
+                    page.keyboard.press('Tab')
+                    action.focus()
+                    expect(action).to_be_focused()
+                    expect(action).to_have_css('outline-style', 'solid')
+                    expect(action).to_have_css('outline-width', '2px')
+                page.screenshot(path=str(OUT / f'{role}-header-{"dark" if dark else "light"}.png'), full_page=True)
+                context.close()
+            context, page = session(browser, role, width=375, dark=True)
+            page.goto(BASE + f'/{role}/assessment/create', wait_until='networkidle')
+            suggestions = page.get_by_role('group', name='Suggested time limits', exact=True)
+            duration = page.get_by_role('spinbutton', name='Time limit (minutes)', exact=True)
+            for label, minutes in [('30 min', '30'), ('60 min (1 hour)', '60'), ('120 min (2 hours)', '120')]:
+                suggestion = suggestions.get_by_role('button', name=label, exact=True)
+                suggestion.click()
+                expect(duration).to_have_value(minutes)
+                expect(suggestion).to_have_attribute('aria-pressed', 'true')
+            duration.fill('45')
+            expect(suggestions.locator('[aria-pressed="true"]')).to_have_count(0)
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+            suggestions.screenshot(path=str(OUT / f'{role}-duration-presets-phone-dark.png'))
+            context.close()
+            checked(f'{role}: all three header actions have hover/focus feedback in both themes; phone presets select 30/60/120 minutes and allow custom 45 minutes')
+
         # Existing student can visit an empty/draft-only batch without freezing order.
         student_context, student = session(browser, 'student', width=390)
         student.goto(BASE + '/student/assessments', wait_until='networkidle')

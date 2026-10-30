@@ -2,6 +2,7 @@ import { lazy, Suspense, useId } from 'react'
 import { assessmentLocks } from '../../utils/assessmentPolicy'
 import { LockIcon } from '../Icons'
 import { AssessmentTimingGuidance } from '../assessment/AssessmentPolicyNotice'
+import AssessmentDurationSuggestions from '../assessment/AssessmentDurationSuggestions'
 
 const ScheduleDateTimePicker = lazy(() => import('./ScheduleDateTimePicker'))
 
@@ -36,11 +37,12 @@ export default function AssessmentSettings({ value, onChange, errors = {}, varia
           <select aria-label="Publication state" disabled={locks.publication} className={`${modalControl} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/60 dark:disabled:text-gray-400`} value={value.publication_status} onChange={e => field('publication_status', e.target.value)}><option value="draft" disabled={locks.attempted}>Draft</option><option value="published">Published</option><option value="closed">Closed</option></select>
           {errors.publication_status && <span className="text-red-600">{errors.publication_status}</span>}
         </label>
-        <label className={label}>Student display order
-          <input aria-label="Student display order" className={modalControl} type="number" min="0" step="1" value={value.display_order} onChange={e => field('display_order', e.target.value)} />
+        <label className={label}>Staff display order
+          <input aria-label="Staff display order" className={modalControl} type="number" min="0" step="1" value={value.display_order} onChange={e => field('display_order', e.target.value)} />
           {errors.display_order && <span className="text-red-600">{errors.display_order}</span>}
         </label>
       </div>
+      <AssessmentDurationSuggestions value={duration} onChange={onDurationChange} disabled={locks.duration} />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-green-100 bg-green-50/30 p-3 text-xs dark:border-green-900/60 dark:bg-green-950/15">
           <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-green-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600" checked={value.is_required} onChange={e => field('is_required', e.target.checked)} />
@@ -61,7 +63,7 @@ export default function AssessmentSettings({ value, onChange, errors = {}, varia
       </select>
       {errors.publication_status && <span className="text-red-600">{errors.publication_status}</span>}
     </label>
-    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Student display order
+    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Staff display order
       <input className={`${control} mt-1`} type="number" min="0" step="1" value={value.display_order} onChange={e => field('display_order', e.target.value)} />
       {errors.display_order && <span className="text-red-600">{errors.display_order}</span>}
     </label>

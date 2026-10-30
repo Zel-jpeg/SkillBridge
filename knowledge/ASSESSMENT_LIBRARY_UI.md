@@ -1,5 +1,34 @@
 # Instructor assessment library
 
+## Time-limit suggestions and action feedback — 30 October 2026
+
+Staff creation forms offer **30 min**, **60 min (1 hour)** and
+**120 min (2 hours)** shortcuts alongside custom minute entry. The shared
+instructor/admin settings and question-authoring dialogs offer the same shortcuts;
+existing duration locks disable them after an attempt. Shortcuts update the draft
+duration; server saves still use the existing save/publication flow. Existing
+[attempt cutoff rules](ASSESSMENT_LIFECYCLE_AND_TIMING.md) remain in force.
+
+The instructor/admin header actions and grouped-publication dialog use shared
+button styles with visible light/dark hover feedback, pointer cursors and keyboard
+focus outlines. Disabled actions remain inactive. The existing staff order field
+is labeled **Staff display order**, as described in the
+[student order contract](STUDENT_ASSESSMENT_RANDOMIZATION.md).
+These UI changes require no backend change or migration.
+
+Verification: frontend lint/build pass; the production-build browser suite passes
+eight groups with zero page errors. New cases check all three header actions in
+both themes for each staff role, phone duration shortcuts and custom 45-minute
+entry. Existing real-local-API cases confirm admin review/cancel, instructor
+publication of all six drafts, stable student aliases on refresh and preserved
+submission/results. Screenshots of header focus and phone shortcuts were reviewed.
+All 166 disposable PostgreSQL regression tests pass, including atomic invalid-draft
+rejection, safe publication retries, scope checks and concurrent first reads during
+release. Evidence: `skillbridge-frontend/tests/artifacts/student-assessment-order/`
+and `work/student-assessment-order-postgres-ajez1auh/tests.txt`. Initial sandboxed
+runs were blocked by localhost permissions; the successful reruns used local
+network access. Test helpers stopped after completion. No live data was changed.
+
 ## Grouped filters — 29 October 2026
 
 The library now uses the [shared grouped filter panel](GROUPED_COLLECTION_FILTERS.md)

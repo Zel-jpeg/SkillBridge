@@ -8,11 +8,11 @@ import CollectionViewToggle from '../CollectionViewToggle'
 import AssessmentReportPanel from '../AssessmentReportPanel'
 import AssessmentCollection from '../assessment/AssessmentCollection'
 import PublishAssessmentDrafts from '../assessment/PublishAssessmentDrafts'
+import { assessmentPrimaryAction, assessmentSecondaryAction } from '../assessment/assessmentActionStyles'
 import { ListIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon } from '../Icons'
 import { ASSESSMENTS_URL, assessmentPage, assessmentViewReducer, DEFAULT_FILTERS, initialAssessmentView } from '../../utils/adminAssessmentState'
 
 const surface = 'rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900'
-const control = 'min-h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
 const PAGE_SIZE = 4
 const readable = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
 
@@ -30,7 +30,7 @@ export default function AssessmentLibrary({ assessments, stats, batches, onOpen,
   return <section className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessments</h1><p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Manage assessments, batches, and competency settings.</p></div>
-      <div className="flex flex-wrap gap-2"><PublishAssessmentDrafts assessments={assessments} /><Link to="/instructor/assessments/archives" className={`${control} inline-flex items-center`}>Assessment archives</Link><Link to="/instructor/assessment/create" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"><PlusIcon size={15} />Create assessment</Link></div>
+      <div className="flex flex-wrap gap-2"><PublishAssessmentDrafts assessments={assessments} /><Link to="/instructor/assessments/archives" className={`${assessmentSecondaryAction} inline-flex items-center`}>Assessment archives</Link><Link to="/instructor/assessment/create" className={`${assessmentPrimaryAction} inline-flex items-center gap-2 px-4`}><PlusIcon size={15} />Create assessment</Link></div>
     </header>
     <DataSection url={ASSESSMENTS_URL} layout="library-stats" count={4}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Assessment totals">{[

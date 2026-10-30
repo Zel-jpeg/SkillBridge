@@ -319,7 +319,7 @@ with sync_playwright() as p:
                 settings.evaluate('n => n.scrollTop = 0')
                 assert settings.evaluate('n => n.scrollWidth <= n.clientWidth')
                 publication = settings.get_by_label('Publication state', exact=True).bounding_box()
-                order = settings.get_by_label('Student display order', exact=True).bounding_box()
+                order = settings.get_by_label('Staff display order', exact=True).bounding_box()
                 assert abs(publication['width'] - order['width']) < 1
                 assert abs(publication['height'] - order['height']) < 1
                 assert abs(publication['y'] - order['y']) < 1
@@ -389,7 +389,7 @@ with sync_playwright() as p:
         expect(settings.get_by_text('Some settings are locked', exact=True)).to_have_count(0)
         settings.get_by_label('Duration', exact=True).fill('45')
         settings.get_by_label('Publication state', exact=True).select_option('closed')
-        settings.get_by_label('Student display order', exact=True).fill('6')
+        settings.get_by_label('Staff display order', exact=True).fill('6')
         settings.get_by_role('checkbox', name='Required assessment', exact=False).uncheck()
         settings.get_by_role('checkbox', name='Include in competency profile', exact=False).uncheck()
         def set_schedule(label, value):
@@ -427,7 +427,7 @@ with sync_playwright() as p:
         checks.append('Styled picker replaces native date/time UI; selection, AM/PM, Apply/Cancel/Clear and due-date validation work')
         expect(settings.get_by_label('Duration', exact=True)).to_have_value('45')
         expect(settings.get_by_label('Publication state', exact=True)).to_have_value('closed')
-        expect(settings.get_by_label('Student display order', exact=True)).to_have_value('6')
+        expect(settings.get_by_label('Staff display order', exact=True)).to_have_value('6')
         expect(settings.get_by_role('button', name=re.compile('^Due at:'))).to_have_accessible_name(re.compile(r'5:00\s*pm', re.I))
         page.get_by_title('Close without saving', exact=True).click()
         page.get_by_role('dialog', name='Discard unsaved changes?', exact=True).get_by_role('button', name='Discard changes', exact=True).click()
@@ -440,7 +440,7 @@ with sync_playwright() as p:
                 page.evaluate('dark => document.documentElement.classList.toggle("dark", dark)', dark)
                 settings.evaluate('n => n.scrollTop = 0')
                 publication = settings.get_by_label('Publication state', exact=True).bounding_box()
-                order = settings.get_by_label('Student display order', exact=True).bounding_box()
+                order = settings.get_by_label('Staff display order', exact=True).bounding_box()
                 assert abs(publication['width'] - order['width']) < 1
                 assert abs(publication['height'] - order['height']) < 1
                 assert abs(publication['y'] - order['y']) < 1

@@ -1,4 +1,5 @@
 import DataSection from '../../components/DataSection'
+import AssessmentDurationSuggestions from '../../components/assessment/AssessmentDurationSuggestions'
 // src/pages/instructor/InstructorUpload.jsx
 //
 // Assessment Creator — fully wired to the backend.
@@ -247,13 +248,14 @@ export default function InstructorUpload({ role = 'instructor' }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Time limit (minutes)</label>
               <div className="relative">
-                <input type="number" value={duration} min={1}
+                <input aria-label="Time limit (minutes)" type="number" value={duration} min={1}
                   onChange={e => { setDuration(e.target.value); setErrors(er => ({ ...er, duration: '' })) }}
                   placeholder="e.g. 60"
                   className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white pr-12 ${errors.duration ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`} />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500 pointer-events-none">min</span>
               </div>
               {errors.duration && <p className="text-xs text-red-500 mt-1.5">{errors.duration}</p>}
+              <div className="mt-2"><AssessmentDurationSuggestions value={duration} onChange={value => { setDuration(value); setErrors(previous => ({ ...previous, duration: '' })) }} /></div>
             </div>
 
             {role === 'admin' && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter batches by instructor<select aria-label="Filter creation batches by instructor" value={instructorFilter} onChange={event => { setInstructorFilter(event.target.value); setSelectedBatchId(null) }} className="mt-2 min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800"><option value="all">All instructors</option>{[...new Map(batches.map(batch => [batch.instructor_id, batch.instructor_name])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>}
