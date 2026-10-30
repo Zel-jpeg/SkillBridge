@@ -49,6 +49,31 @@ leaderboard subsequently returns focus to its dashboard skill card. The existing
 native dialog stack and shared body-scroll lock handle modality; no scoring,
 ranking, retake, placement or authorization behavior changed.
 
+## Instructor first-use setup card — 30 October 2026
+
+The approved ImageGen setup card replaces the amber empty-dashboard warning in
+[InstructorDashboard](../skillbridge-frontend/src/pages/instructor/InstructorDashboard.jsx).
+Its white/dark surface, subtle green border and shared group icon match the
+dashboard cards. It explains the two steps, Create a batch and Enroll students,
+and keeps a secondary reminder that archived batches remain on the Students page.
+The green Go to Students link opens the existing `/instructor/students` workflow;
+it does not create a batch automatically. It has hover/keyboard-focus feedback,
+a minimum 44px touch height and a full-width placement below the guidance on
+smaller screens.
+
+The original visibility guard is preserved: only a successfully loaded dashboard
+collection with no students shows setup guidance. Loading, request failures and
+an empty filtered search do not become setup states. No additional batch request,
+notification, data mutation, authorization or recommendation behavior was added.
+
+Verification: frontend lint, production build and all 296 frontend Node tests
+passed before merging. Local production-preview browser checks used synthetic
+intercepted APIs, covering 320, 375, 768, 1024,
+1366 and 1920px widths in light/dark mode (12 combinations), keyboard/hover
+feedback, touch target size, overflow and navigation. Three additional checks
+verified pending requests, failed requests and populated/filter-empty dashboards.
+No database writes, live deployment or physical-device checks were performed.
+
 ## Highlights and student details
 
 - Top matches displays up to four students, ordered by their current top position

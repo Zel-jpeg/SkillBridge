@@ -6,7 +6,8 @@ import { useRef } from 'react'
 // All data + logic now in useInstructorDashboard.js
 // StudentModal now in components/instructor/StudentModal.jsx
 
-import { useNavigate }          from 'react-router-dom'
+import { Link, useNavigate }    from 'react-router-dom'
+import { ChevronRightIcon, UsersIcon } from '../../components/Icons'
 import StudentModal             from '../../components/instructor/StudentModal'
 import DashboardHighlights from '../../components/dashboard/DashboardHighlights'
 import DashboardOverview from '../../components/dashboard/DashboardOverview'
@@ -117,18 +118,33 @@ export default function InstructorDashboard() {
 
         <DashboardOverview role="instructor" />
 
-        {/* No active batch banner */}
+        {/* First-use guidance stays visible until there are students in scope. */}
         {!loading && getCachedData("/api/instructor/students/recommendations/") != null && studentsList.length === 0 && (
-          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-5 flex items-start gap-4">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-amber-600">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          <section aria-labelledby="instructor-batch-setup-title" className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-4 rounded-2xl border border-green-200/70 bg-white p-4 sm:gap-x-5 sm:p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center dark:border-green-900/70 dark:bg-gray-900">
+            <div aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600 sm:h-12 sm:w-12 dark:bg-green-950/50 dark:text-green-400">
+              <UsersIcon size={24} />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">No active batch</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Create a new batch and enroll students to see live performance data here. Archived batches are not shown on the dashboard.</p>
-              <button onClick={() => navigate('/instructor/students')} className="mt-3 text-xs font-semibold text-amber-800 dark:text-amber-300 underline underline-offset-2 hover:no-underline">Go to Students page →</button>
+            <div className="min-w-0">
+              <h2 id="instructor-batch-setup-title" className="text-base font-semibold text-gray-900 dark:text-white">Set up your first batch</h2>
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Create a batch and enroll students to see assessment results and placement recommendations here.</p>
+              <ol aria-label="Batch setup steps" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600 dark:text-gray-300">
+                <li className="flex items-center gap-2">
+                  <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-green-300 bg-green-50 font-semibold text-green-700 dark:border-green-700 dark:bg-green-950/50 dark:text-green-300">1</span>
+                  Create a batch
+                  <span aria-hidden="true" className="ml-1 text-gray-400 dark:text-gray-500"><ChevronRightIcon /></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">2</span>
+                  Enroll students
+                </li>
+              </ol>
+              <p className="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">Archived batches remain available on the Students page.</p>
             </div>
-          </div>
+            <Link to="/instructor/students" className="col-span-2 inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-green-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 lg:col-span-1 lg:w-auto dark:focus-visible:outline-green-400">
+              Go to Students
+              <span aria-hidden="true"><ChevronRightIcon /></span>
+            </Link>
+          </section>
         )}
 
         <DashboardHighlights loadingUrl="/api/instructor/students/recommendations/" students={studentsList} onSelectStudent={selectStudent} />
