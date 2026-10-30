@@ -71,7 +71,9 @@ def student_request(request, assessment_id):
     if attempt is None:
         return Response({'error': 'No recorded attempt for this assessment.'}, status=404)
     if request.method == 'GET':
-        return Response({'assessment_id': assessment_id, 'student_id': request.user.id, 'assessment': attempt.assessment.title,
+        from .student_assessment_order import assessment_numbers, assessment_title
+        numbers = assessment_numbers(request.user, attempt.assessment.batch)
+        return Response({'assessment_id': assessment_id, 'student_id': request.user.id, 'assessment': assessment_title(numbers, assessment_id),
                          'attempt_started_at': attempt.started_at.isoformat() if attempt.started_at else None,
                          'status': attempt.status, 'retake_allowed': attempt.retake_allowed,
                          'request': summary(attempt),

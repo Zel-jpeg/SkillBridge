@@ -67,6 +67,11 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Student assessment randomization](STUDENT_ASSESSMENT_RANDOMIZATION.md): Saved
+  per-enrollment card numbers, anonymous student titles, atomic draft publication,
+  preserved results/retakes, migration 0030 with no new tables, and isolated
+  PostgreSQL/production-build browser verification.
+
 - [Database improvement](DATABASE_IMPROVEMENT.md): Repeated-query fixes,
   paginated staff collections, on-demand student history, measured local payload
   reductions and read-only PostgreSQL diagnostics before hosted verification.

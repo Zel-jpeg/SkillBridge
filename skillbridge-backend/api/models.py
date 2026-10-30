@@ -95,6 +95,8 @@ class BatchEnrollment(models.Model):
     enrolled_at = models.DateTimeField(auto_now_add=True)
     profile_confirmed_at = models.DateTimeField(null=True, blank=True)
     profile_review_required = models.BooleanField(default=False)
+    # IDs retain their student-facing number even when a card is withdrawn.
+    assessment_order = models.JSONField(default=list, blank=True)
 
     class Meta:
         unique_together = ('batch', 'student')

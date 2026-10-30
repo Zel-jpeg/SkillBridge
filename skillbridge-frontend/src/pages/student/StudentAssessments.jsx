@@ -36,11 +36,6 @@ function AssessmentCard({ item }) {
         <span className="text-xs text-gray-600 dark:text-gray-300">{statusLabel(item)}</span>
       </div>
       <h2 className="text-lg font-bold leading-snug break-words text-gray-900 dark:text-white">{item.title}</h2>
-      <div className="flex flex-wrap gap-1.5 mt-3" aria-label="Skill categories">
-        {item.categories?.length ? item.categories.map(category => (
-          <span key={category} className="max-w-full break-words rounded-lg bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs text-gray-700 dark:text-gray-200">{category}</span>
-        )) : <span className="text-xs text-gray-500 dark:text-gray-400">General skills</span>}
-      </div>
       <div className="mt-4 space-y-1 text-sm text-gray-600 dark:text-gray-300">
         <p>{item.duration_minutes} minutes · {item.question_count} question{item.question_count === 1 ? '' : 's'}</p>
         <p>{dateText}</p>

@@ -232,6 +232,7 @@ def student_history(request):
     if request.user.role != 'student':
         raise PermissionDenied('Students only.')
     from .views import serialize_student_assessment_results
+    from .student_assessment_order import assessment_numbers, assessment_title
     records = []
     batch_ids = set(BatchEnrollment.objects.filter(student=request.user).values_list('batch_id', flat=True))
     batch_ids.update(request.user.responses.values_list('assessment__batch_id', flat=True))
@@ -247,6 +248,11 @@ def student_history(request):
         # Student history exposes score summaries, never staff-only retake answers/notes.
         assessments = [{key: a.get(key) for key in ('id', 'title', 'attempt_status', 'submitted_at', 'category_scores')}
                        for a in assessments]
+        numbers = assessment_numbers(request.user, batch)
+        assessments = sorted(
+            [{**item, 'title': assessment_title(numbers, item['id'])} for item in assessments],
+            key=lambda item: numbers.get(item['id'], float('inf')),
+        )
         placements = ([p for p in saved['placements'] if p['student']['id'] == request.user.pk
                        and p['status'] in ('approved', 'completed')] if saved else [
             {'id': p.pk, 'status': p.status, 'company': {'id': p.company_id, 'name': p.company.name},
@@ -363,11 +369,13 @@ def transfer_student(request, batch_id):
         return Response({'error': 'The enrollment or identity changed. Review the transfer again.'}, status=409)
     source_id = source.batch_id
     request._transfer_source_batch_id = source_id
+    source_order = source.assessment_order
     source.delete()
     Recommendation.objects.filter(student=student, batch_id=source_id).update(is_current=False)
     CombinedCompetencyProfile.objects.filter(student=student, batch_id=source_id).update(is_finalized=False, finalized_at=None)
     release_suggestions(request.user, student_id=student.pk, batch_id=source_id)
-    record_action(request.user, 'enrollment.remove', 'student', student.pk, source_id, reason='explicit_transfer', target_batch_id=target.pk)
+    record_action(request.user, 'enrollment.remove', 'student', student.pk, source_id,
+                  reason='explicit_transfer', target_batch_id=target.pk, assessment_order=source_order)
     from .enrollment_import import review_rows, confirm_rows
     rows = review_rows([{'school_id': student.school_id, 'email': student.email,
                          'name': student.name, 'course': student.course}], target)
