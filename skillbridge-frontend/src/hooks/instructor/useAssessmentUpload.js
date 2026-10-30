@@ -93,14 +93,15 @@ export function useAssessmentUpload({ assessmentId, onImport }) {
 
       raw.forEach((row, i) => {
         const rowNum   = i + 2
-        const question = String(row['question'] || '').trim()
+        const question = String(row['question'] ?? '').trim()
         const type     = String(row['type']     || 'mcq').trim().toLowerCase()
-        const choiceA  = String(row['choice_a'] || '').trim()
-        const choiceB  = String(row['choice_b'] || '').trim()
-        const choiceC  = String(row['choice_c'] || '').trim()
-        const choiceD  = String(row['choice_d'] || '').trim()
-        const correct  = String(row['correct']  || '').trim()
-        const category = String(row['category'] || '').trim()
+        // Preserve typed zero/false cells; only missing values become blank.
+        const choiceA  = String(row['choice_a'] ?? '').trim()
+        const choiceB  = String(row['choice_b'] ?? '').trim()
+        const choiceC  = String(row['choice_c'] ?? '').trim()
+        const choiceD  = String(row['choice_d'] ?? '').trim()
+        const correct  = String(row['correct']  ?? '').trim()
+        const category = String(row['category'] ?? '').trim()
         const rowErrors = []
 
         if (!question)  rowErrors.push('Question text is required')
