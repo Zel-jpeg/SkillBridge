@@ -8,6 +8,21 @@ work. The four remaining gates
 are V05 hosted integration, V09 provider backup/rollback, V10 hosted recovery and
 S02 final hosted acceptance. Their live criteria are not completed by local tests.
 
+30 October hosted update: the owner deployed the web service through native
+dashboard settings. The image built, migration pre-deploy reported no migrations
+to apply, Gunicorn started and the Railway healthcheck passed. Independent public
+HTTP checks confirmed health 200/status ok, exact Vercel CORS, anonymous account
+401 and frontend homepage 200. Real login/provider/storage/load/email-worker
+acceptance remains pending; see the latest
+[configuration checkpoint](RAILWAY_CONFIGURATION_MIGRATION.md).
+
+Later that morning, the owner changed the frontend domain to
+https://skillbridge-ic.vercel.app and the old hostname now redirects there.
+Google Authorized JavaScript origins and the deployed backend FRONTEND_URL/CORS
+must be updated to that canonical origin. The observed login failure is Google's
+origin_mismatch; a separate live CORS check also denied the new origin. Earlier
+successful CORS evidence below applies to the old origin only.
+
 ## Release identity and existing services
 
 Preparation commit `a55c664` on `codex/redeployment-preparation` was merged and
@@ -44,6 +59,13 @@ explains build-time configuration. The local production build and exact policy
 checks passed; see [browser policy](PRODUCTION_BROWSER_POLICY.md).
 
 ## Owner-run backend release
+
+30 October update: Railway now deprecates TOML Config as Code. The commands below
+remain the intended application settings; the TOML selection instructions are
+legacy references. Follow [the configuration migration](RAILWAY_CONFIGURATION_MIGRATION.md)
+to import the existing web service, preserve dashboard-managed variables, preview
+and review the supported replacement before hosted cutover. New workers must
+use dashboard/supported IaC settings rather than opting into the worker TOML.
 
 Railway root: `skillbridge-backend`. The repository pins hosted Python 3.13.15,
 matching the owner screenshots.

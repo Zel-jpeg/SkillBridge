@@ -13,7 +13,7 @@ import { ListIcon, PlusIcon, ReportIcon, SkillIcon, UserIcon } from '../Icons'
 import { ASSESSMENTS_URL, assessmentPage, assessmentViewReducer, DEFAULT_FILTERS, initialAssessmentView } from '../../utils/adminAssessmentState'
 
 const surface = 'rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900'
-const PAGE_SIZE = 4
+const PAGE_SIZE = 8
 const readable = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
 
 export default function AssessmentLibrary({ assessments, stats, batches, onOpen, pending = false, error }) {
@@ -44,8 +44,8 @@ export default function AssessmentLibrary({ assessments, stats, batches, onOpen,
         count={total} total={assessments.length} pending={pending} error={error} noun="assessments" label="Assessment filters" searchLabel="Search assessments" placeholder="Search assessments…">
         <CollectionViewToggle label="Assessment view" view={view} onChange={value => dispatch({ type: 'view', value })} />
       </CollectionFilterToolbar>
-      <DataSection url={ASSESSMENTS_URL} layout={view === 'grid' ? 'assessment-cards' : 'assessment-table'} count={4} columns={view === 'grid' ? 4 : 6}>
-        {total ? <><AssessmentCollection records={records} total={total} view={view} onOpen={onOpen} /><Pagination total={total} page={page} pageSize={PAGE_SIZE} onPage={value => dispatch({ type: 'page', value })} /></> : <div className={`${surface} px-6 py-12 text-center`}><h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{assessments.length ? 'No assessments match your filters' : 'No assessments yet'}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create your first assessment using the button above.'}</p></div>}
+      <DataSection url={ASSESSMENTS_URL} layout={view === 'grid' ? 'assessment-cards' : 'assessment-table'} count={PAGE_SIZE} columns={view === 'grid' ? 4 : 6}>
+        {total ? <><AssessmentCollection records={records} pageSize={PAGE_SIZE} total={total} view={view} onOpen={onOpen} /><Pagination total={total} page={page} pageSize={PAGE_SIZE} onPage={value => dispatch({ type: 'page', value })} /></> : <div className={`${surface} px-6 py-12 text-center`}><h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{assessments.length ? 'No assessments match your filters' : 'No assessments yet'}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create your first assessment using the button above.'}</p></div>}
       </DataSection>
     </section>
     <AssessmentReportPanel />

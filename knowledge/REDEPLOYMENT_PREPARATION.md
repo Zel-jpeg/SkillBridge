@@ -47,14 +47,42 @@ not validate the updated versions or hosted runtime.
 
 ## Active checkpoint
 
+Current login blocker, 30 October: owner changed the canonical Vercel domain to
+https://skillbridge-ic.vercel.app. Google popup reports origin_mismatch. The live
+API responds 200 to health but omits CORS allowance for that new Origin. Next:
+owner adds the new JavaScript origin to the existing Google OAuth client and
+updates/deploys Railway FRONTEND_URL to the new origin, then retries sign-in.
+See the [configuration checkpoint](RAILWAY_CONFIGURATION_MIGRATION.md).
+
+Latest owner update, 30 October: native dashboard deployment
+`c8706027-8dda-410c-a979-9eda296d3798` is Active. Screenshots confirm actual image
+build/static collection, no pending migrations, two Gunicorn gevent workers on
+8080 and passed healthcheck. Independent public GETs confirm /api/health/ 200
+with status ok, exact Vercel CORS/no-store, anonymous /api/auth/me/ 401 and Vercel
+homepage 200. Next: real hosted owner login/dashboard, remaining provider/storage
+and load checks, then separate email worker/delivery setup. No live mail or
+authenticated production workflow has been tested by the agent. The earlier
+local-preparation/CLI notes below are historical, not a pending deployment.
+
+30 October follow-up: local migration preparation is on
+`codex/railway-configuration-migration`. Official CLI 5.71.0 reports that owner
+login is required. The [configuration migration guide](RAILWAY_CONFIGURATION_MIGRATION.md)
+supersedes the legacy TOML activation instructions below. The owner reports they
+have resubscribed, but have not completed CLI login or started a new deployment.
+No Railway cutover or apply has occurred. Later owner screenshots confirm the
+expected source/root/branch, blank custom commands/healthcheck and no selected
+custom config path. Current next step is native dashboard configuration, starting
+with the build command; CLI login/import is optional for an IaC migration.
+
 Git publication and post-merge local verification are complete. Preparation
 commit `a55c664` was pushed to `codex/redeployment-preparation`; merge `2b0c435`
 was pushed to `main` without force. All post-merge checks below passed against
 that published application tree. This verification record is a later docs-only
 update; it does not alter the tested application files.
 
-Exact next step: the owner reactivates Railway, reviews the service configuration
-and pending migrations/backups, then verifies the first Linux build and hosted
+The earlier next step was owner reactivation; the owner now reports that complete.
+Next, review the service configuration and pending migrations/backups, then
+verify the first Linux build and hosted
 health/login behavior. Keep the saved webhook disabled and inspect the email
 queue before enabling delivery processing. Local tests do not complete these
 remaining hosted release gates.

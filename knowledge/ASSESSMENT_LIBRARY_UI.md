@@ -1,5 +1,30 @@
 # Instructor assessment library
 
+## Eight assessments per page — 30 October 2026
+
+Instructor and admin assessment libraries show up to eight assessments per page
+in both card and list views. A full desktop card page has two rows of four cards;
+the existing two-column and phone layouts remain responsive. Both views preserve
+the same ordered page when switching. Pagination starts at nine records, and the
+single-page list footer and loading placeholders use the same eight-record size.
+Search/filter resets and live result-shrink clamping retain their existing behavior.
+This frontend-only update supersedes the older four-record page-size notes below;
+it requires no migration and does not change student assessment numbering.
+
+Verification for this update: frontend lint/build and all 11 instructor browser
+groups pass with zero page errors. Admin browser assertions also pass card/list
+pagination, page preservation, filtered counts and shrinking/growing result sets.
+The broader admin suite stops at the separate student-roster retry assertion
+(`admin_assessments_playwright.py`, the expected `Showing 1–10 of 23` after a
+simulated 503); a repeat run fails at the same check. No roster behavior was
+changed for this request. Existing browser expectations now cover eight/nine-item
+boundaries and all five matching rows in the admin combined-filter fixture.
+The desktop eight-card layout was visually reviewed. Logs are under ignored
+`work/assessment_page_size/`; all API data was intercepted and synthetic, with no
+live reads or writes. Test previews were stopped. Separate publication-dialog
+and student-detail styling edits that appeared during verification were preserved
+outside this pagination change.
+
 ## Time-limit suggestions and action feedback — 30 October 2026
 
 Staff creation forms offer **30 min**, **60 min (1 hour)** and

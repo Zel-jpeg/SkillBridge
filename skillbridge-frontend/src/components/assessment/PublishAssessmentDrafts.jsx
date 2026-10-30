@@ -3,7 +3,9 @@ import api from '../../api/axios'
 import { applyDataChange } from '../../hooks/useApi'
 import { useToast } from '../../context/ToastContext'
 import DialogShell from '../DialogShell'
+import { CheckCircleIcon, ChevronRightIcon, ReportIcon, UsersIcon, WarnIcon } from '../Icons'
 import { assessmentPrimaryAction, assessmentSecondaryAction } from './assessmentActionStyles'
+import './publishAssessmentDrafts.css'
 
 const control = assessmentSecondaryAction
 const isDraft = item => item.publication_status === 'draft' && !item.is_archived && item.batch_id != null
@@ -55,31 +57,41 @@ function PublishDialog({ assessments, onClose }) {
     }
   }
   return <DialogShell title={reviewing ? 'Review assessment publication' : 'Publish drafts together'}
+    size="publication"
+    avatar={<span className="publication-heading-icon" aria-hidden="true">{reviewing ? <CheckCircleIcon size={22} /> : <ReportIcon size={22} />}</span>}
     description="Choose drafts in one batch and publish them together after review."
     onClose={close} closeDisabled={saving} closeLabel="Close draft publication"
-    footer={<div className="flex flex-wrap justify-end gap-2">
-      <button type="button" className={control} disabled={saving} onClick={reviewing ? () => { setReviewing(false); setError('') } : close}>{reviewing ? 'Back' : 'Cancel'}</button>
-      <button type="button" className={assessmentPrimaryAction} disabled={saving || !selected.length}
-        onClick={reviewing ? publish : () => setReviewing(true)}>{saving ? 'Publishing…' : reviewing ? `Publish ${selected.length} assessment${selected.length === 1 ? '' : 's'}` : 'Review publication'}</button>
+    footer={<div className="publication-footer">
+      <p className="publication-selection-count" role="status">{selected.length} assessment{selected.length === 1 ? '' : 's'} {reviewing ? 'to publish' : 'selected'}</p>
+      <div className="publication-footer-actions">
+        <button type="button" className={control} disabled={saving} onClick={reviewing ? () => { setReviewing(false); setError('') } : close}>{reviewing ? 'Back' : 'Cancel'}</button>
+        <button type="button" className={`${assessmentPrimaryAction} inline-flex items-center justify-center gap-2`} disabled={saving || !selected.length} aria-busy={saving}
+          onClick={reviewing ? publish : () => setReviewing(true)}>{saving && <span className="publication-spinner" aria-hidden="true" />}{saving ? 'Publishing…' : reviewing ? `Publish ${selected.length} assessment${selected.length === 1 ? '' : 's'}` : 'Review publication'}{!reviewing && <span aria-hidden="true"><ChevronRightIcon size={14} /></span>}</button>
+      </div>
     </div>}>
-    <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-xs text-gray-700 dark:text-gray-200">
+    <ol className="publication-steps" aria-label="Publication progress">
+      <li aria-current={!reviewing ? 'step' : undefined} className="publication-step publication-step--active"><span className="publication-step-number" aria-hidden="true">{reviewing ? <CheckCircleIcon size={16} /> : '1'}</span>Select drafts</li>
+      <li aria-current={reviewing ? 'step' : undefined} className={`publication-step${reviewing ? ' publication-step--active' : ''}`}><span className="publication-step-number" aria-hidden="true">2</span>Review &amp; publish</li>
+    </ol>
+    <div className="publication-body">
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800 dark:bg-rose-950 dark:text-rose-200">{error}</p>}
-      <p className="leading-5">Release the initial set together so students can receive a shuffled order across the full set. Existing student assessment numbers stay the same; later releases receive new numbers.</p>
+      <p className="publication-intro">Release the initial set together so students can receive a shuffled order across the full set. Existing student assessment numbers stay the same; later releases receive new numbers.</p>
       {!reviewing ? <>
-        <label className="block font-semibold">Batch<select className={`${control} mt-1 w-full`} value={batch} onChange={event => chooseBatch(event.target.value)}>
+        <label className="block font-semibold text-gray-900 dark:text-white">Batch<select className={`${control} mt-2 w-full`} value={batch} onChange={event => chooseBatch(event.target.value)}>
           <option value="">Choose a batch</option>{batches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select></label>
-        {batch && <fieldset className="space-y-2"><legend className="mb-2 font-semibold">Draft assessments ({available.length})</legend>
-          <div className="flex gap-2"><button type="button" className={control} onClick={() => setIds(available.map(item => item.id))}>Select all drafts</button><button type="button" className={control} onClick={() => setIds([])}>Clear selection</button></div>
-          {available.map(item => <label key={item.id} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-            <input type="checkbox" className="mt-0.5 accent-green-700" checked={ids.includes(item.id)} onChange={event => setIds(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} />
-            <span className="min-w-0 break-words"><strong className="block font-semibold">{item.title}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{item.question_count} questions · {item.duration_minutes} minutes · {item.is_required ? 'Required' : 'Optional'} · {item.include_in_competency ? 'Included in competency' : 'Excluded from competency'}</span></span>
-          </label>)}
+        {batch && <fieldset className="min-w-0"><legend className="mb-3 font-semibold text-gray-900 dark:text-white">Draft assessments ({available.length})</legend>
+          <div className="publication-selection-toolbar"><span className="publication-selected-badge">{selected.length} selected</span><div className="flex flex-wrap gap-2"><button type="button" className={control} onClick={() => setIds(available.map(item => item.id))}>Select all drafts</button><button type="button" className={control} onClick={() => setIds([])}>Clear selection</button></div></div>
+          <div className="publication-drafts">{available.map(item => <label key={item.id} className={`publication-draft${ids.includes(item.id) ? ' publication-draft--selected' : ''}`}>
+            <input type="checkbox" checked={ids.includes(item.id)} onChange={event => setIds(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} />
+            <span className="min-w-0 break-words"><strong className="block font-semibold text-gray-900 dark:text-gray-100">{item.title}</strong><span className="publication-draft-meta"><span>{item.question_count} questions · {item.duration_minutes} minutes</span><span className="publication-requirement">{item.is_required ? 'Required' : 'Optional'}</span><span>{item.include_in_competency ? 'Included in competency' : 'Excluded from competency'}</span></span></span>
+          </label>)}</div>
         </fieldset>}
       </> : <>
-        <p className="font-semibold">Batch: {batches.find(([id]) => id === batch)?.[1]}</p>
-        <ul className="list-disc space-y-2 pl-5">{selected.map(item => <li key={item.id} className="break-words">{item.title}</li>)}</ul>
-        <p className="rounded-lg bg-amber-50 p-3 leading-5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">These assessments will become visible to enrolled students together. Each keeps its configured opening time, deadline, duration, required status and competency inclusion. Publishing required work can lock final results until that work is completed.</p>
+        <div className="publication-batch-summary"><span className="publication-heading-icon" aria-hidden="true"><UsersIcon size={20} /></span><div className="min-w-0 break-words"><p className="font-semibold text-gray-900 dark:text-white">Batch: {batches.find(([id]) => id === batch)?.[1]}</p><p className="mt-1 text-gray-500 dark:text-gray-400">{selected.length} assessment{selected.length === 1 ? '' : 's'} ready to publish</p></div></div>
+        <section aria-label="Assessments to publish"><h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Assessments to publish</h3><ul className="publication-review-list">{selected.map(item => <li key={item.id}><span className="shrink-0 text-green-700 dark:text-green-400" aria-hidden="true"><CheckCircleIcon size={17} /></span><span className="min-w-0 break-words">{item.title}</span></li>)}</ul></section>
+        <div className="publication-notice"><span aria-hidden="true"><ReportIcon size={18} /></span><p>These assessments will become visible to enrolled students together. Each keeps its configured opening time, deadline, duration, required status and competency inclusion.</p></div>
+        <div className="publication-notice publication-notice--warning"><span aria-hidden="true"><WarnIcon size={18} /></span><p>Publishing required work can lock final results until that work is completed.</p></div>
       </>}
     </div>
   </DialogShell>

@@ -19,7 +19,7 @@ const normalAssessments = data => Array.isArray(data) ? data.filter(a => !a.is_a
 const surface = 'rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900'
 const label = value => value.replaceAll('_', ' ').replace(/^\w/, c => c.toUpperCase())
 
-const PAGE_SIZE = 4
+const PAGE_SIZE = 8
 
 export default function AdminAssessments() {
   const { data, error, errorStatus } = useAdminAssessments()
@@ -60,7 +60,7 @@ export default function AdminAssessments() {
         <CollectionViewToggle label="Assessment view" view={view} onChange={value => dispatch({ type: 'view', value })} />
       </CollectionFilterToolbar>
         {error && <AssessmentRetry onRetry={retry}>{data != null && !unavailable ? 'Could not refresh. Showing the last loaded assessments.' : error}</AssessmentRetry>}
-        {pending ? <AssessmentSkeleton layout={view} count={4} /> : !unavailable && data != null && (total ? <AssessmentCollection records={records} total={total} view={view} onOpen={assessment => setSelectedId(assessment.id)} oversight /> : <div className="py-12 text-center"><span aria-hidden="true" className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-gray-400 dark:bg-gray-800"><ListIcon size={22} /></span><h3 className="text-sm font-semibold text-gray-900 dark:text-white">{assessments.length ? 'No matching assessments' : 'No assessments yet'}</h3><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create an assessment or ask an instructor to add one.'}</p>{activeFilters.length > 0 && <button className="mt-3 min-h-10 px-3 text-xs font-semibold text-green-800 dark:text-green-300" onClick={reset}>Reset filters</button>}</div>)}
+        {pending ? <AssessmentSkeleton layout={view} count={PAGE_SIZE} /> : !unavailable && data != null && (total ? <AssessmentCollection records={records} pageSize={PAGE_SIZE} total={total} view={view} onOpen={assessment => setSelectedId(assessment.id)} oversight /> : <div className="py-12 text-center"><span aria-hidden="true" className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-gray-400 dark:bg-gray-800"><ListIcon size={22} /></span><h3 className="text-sm font-semibold text-gray-900 dark:text-white">{assessments.length ? 'No matching assessments' : 'No assessments yet'}</h3><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{assessments.length ? 'Try another search or clear your filters.' : 'Create an assessment or ask an instructor to add one.'}</p>{activeFilters.length > 0 && <button className="mt-3 min-h-10 px-3 text-xs font-semibold text-green-800 dark:text-green-300" onClick={reset}>Reset filters</button>}</div>)}
       {!pending && !unavailable && data != null && <Pagination total={total} page={page} pageSize={PAGE_SIZE} onPage={value => dispatch({ type: 'page', value })} />}
     </section>
     <p className="text-xs text-gray-500 dark:text-gray-400">Open an assessment to review settings, student attempts, and authorized answer keys. Summary cards show totals for assessments outside the archive.</p>

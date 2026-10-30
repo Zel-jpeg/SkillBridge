@@ -1,5 +1,14 @@
 # Admin assessment oversight
 
+## Eight assessments per page — 30 October 2026
+
+The admin and instructor libraries now show eight cards or eight list rows per
+page. Desktop cards retain four columns, giving two rows on a full page. The list
+footer and loading placeholders share the page size. View switching preserves the
+current page, and pagination starts at nine matching assessments. This supersedes
+the older four-record collection page-size notes below. Detail-dialog lists keep
+their existing page sizes; backend access, grading and student aliases are unchanged.
+
 ## Grouped filters — 29 October 2026
 
 Admin now reuses the [compact grouped filter panel](GROUPED_COLLECTION_FILTERS.md)

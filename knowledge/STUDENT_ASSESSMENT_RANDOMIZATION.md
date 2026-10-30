@@ -1,5 +1,10 @@
 # Student assessment order and anonymous labels
 
+The shared staff publication dialogs received a
+[presentation update](ASSESSMENT_PUBLICATION_UI.md) on 30 October 2026, including
+responsive selection/review layouts and a pending spinner. The publication and
+student-order contracts below remain unchanged.
+
 ## Active implementation checkpoint — 30 October 2026
 
 Branch: `codex/student-assessment-order`. Keep the existing enrolled student.

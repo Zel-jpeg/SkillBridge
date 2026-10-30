@@ -1,0 +1,65 @@
+.sb-detail-dialog.sb-detail-dialog--publication { width: min(720px, calc(100% - 32px)); height: fit-content; max-height: calc(100dvh - 32px); margin: auto; border-radius: 16px; padding: 0; box-shadow: 0 24px 80px #0f172a33; }
+.sb-detail-dialog--publication .sb-detail-header { align-items: center; border-bottom: 0; padding: 20px 24px 12px; }
+.publication-heading-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid #d1eadb; border-radius: 10px; background: #edf8f1; color: #15803d; }
+.publication-steps { display: flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 32px; padding: 8px 24px 20px; font-size: 12px; }
+.publication-step { position: relative; display: flex; align-items: center; gap: 8px; color: #6b7280; }
+.publication-step + .publication-step::before { content: ''; position: absolute; right: calc(100% + 8px); width: 16px; height: 1px; background: #d1d5db; }
+.publication-step-number { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; background: #f3f4f6; font-weight: 600; }
+.publication-step--active { color: #166534; font-weight: 600; }
+.publication-step--active .publication-step-number { background: #15803d; color: #fff; }
+.publication-step-number svg, .publication-heading-icon svg, .publication-notice svg, .publication-review-list svg { stroke: currentColor; }
+.publication-step--active + .publication-step--active::before { background: #15803d; }
+.publication-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 24px 24px; font-size: 12px; line-height: 1.65; }
+.publication-body > * + * { margin-top: 20px; }
+.publication-intro { color: #4b5563; }
+.publication-selection-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.publication-selected-badge { padding: 3px 9px; border-radius: 6px; background: #edf8f1; color: #166534; font-weight: 600; font-variant-numeric: tabular-nums; }
+.publication-drafts { display: grid; gap: 8px; }
+.publication-draft { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.publication-draft--selected { border-color: #cce6d6; background: #f3faf6; }
+.publication-draft:hover { border-color: #16a34a; background: #eaf7ef; }
+.publication-draft:focus-within { outline: 2px solid #15803d; outline-offset: 2px; }
+.publication-draft input { width: 16px; height: 16px; flex-shrink: 0; accent-color: #15803d; cursor: pointer; }
+.publication-draft-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; color: #6b7280; }
+.publication-requirement { padding: 0 6px; border: 1px solid #dce5df; border-radius: 4px; color: #4b5563; }
+.publication-batch-summary { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
+.publication-review-list { overflow: hidden; border: 1px solid #e5e7eb; border-radius: 10px; }
+.publication-review-list li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 10px 14px; }
+.publication-review-list li + li { border-top: 1px solid #edf0f2; }
+.publication-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; color: #4b5563; }
+.publication-notice > span { flex-shrink: 0; margin-top: 2px; }
+.publication-notice--warning { margin-top: 10px; border-color: #fde8b5; background: #fffbeb; color: #92400e; }
+.publication-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.publication-selection-count { color: #6b7280; font-variant-numeric: tabular-nums; }
+.publication-footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.publication-spinner { width: 14px; height: 14px; flex-shrink: 0; border: 2px solid #ffffff66; border-top-color: #fff; border-radius: 50%; animation: publication-spin .8s linear infinite; }
+@keyframes publication-spin { to { transform: rotate(360deg); } }
+.dark .publication-heading-icon, .dark .publication-selected-badge { border-color: #24533a; background: #173526; color: #86efac; }
+.dark .publication-step, .dark .publication-draft-meta, .dark .publication-selection-count { color: #9ca3af; }
+.dark .publication-step-number { background: #1f2937; }
+.dark .publication-step--active { color: #86efac; }
+.dark .publication-step--active .publication-step-number { background: #15803d; color: #fff; }
+.dark .publication-step + .publication-step::before { background: #4b5563; }
+.dark .publication-step--active + .publication-step--active::before { background: #4ade80; }
+.dark .publication-intro, .dark .publication-requirement { color: #d1d5db; }
+.dark .publication-draft, .dark .publication-review-list, .dark .publication-review-list li + li, .dark .publication-requirement, .dark .publication-batch-summary, .dark .publication-notice { border-color: #374151; }
+.dark .publication-draft--selected { border-color: #28513b; background: #14291f; }
+.dark .publication-draft:hover { border-color: #4ade80; background: #193b29; }
+.dark .publication-draft:focus-within { outline-color: #4ade80; }
+.dark .publication-batch-summary, .dark .publication-notice { background: #18212f; color: #d1d5db; }
+.dark .publication-notice--warning { border-color: #655024; background: #302817; color: #fde68a; }
+@media (max-width: 479px) {
+  .sb-detail-dialog.sb-detail-dialog--publication { width: calc(100% - 16px); max-height: calc(100dvh - 16px); border-radius: 12px; }
+  .sb-detail-dialog--publication .sb-detail-header { gap: 10px; padding: 16px 16px 8px; }
+  .sb-detail-dialog--publication .sb-detail-header h2 { font-size: 14px; }
+  .sb-detail-dialog--publication .sb-detail-header > .publication-heading-icon { display: none; }
+  .publication-steps { gap: 24px; padding: 8px 16px 16px; }
+  .publication-step { gap: 6px; }
+  .publication-step + .publication-step::before { right: calc(100% + 6px); width: 12px; }
+  .publication-body { padding: 0 16px 16px; }
+  .publication-draft { align-items: flex-start; padding: 12px; }
+  .publication-draft input { margin-top: 2px; }
+  .publication-footer { gap: 8px; }
+  .publication-footer-actions { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .publication-draft { transition: none; } .publication-spinner { animation: none; } }

@@ -55,6 +55,14 @@ venv/Scripts/python.exe -m pip check
 venv/Scripts/python.exe manage.py check
 ```
 
+For an existing checkout, rerun the install and compatibility commands in its
+existing venv after requirements change; a Railway deployment does not update
+local packages. A startup error such as `No module named 'whitenoise'` means the
+interpreter running Django lacks a required package, even if the preliminary
+system check passed. Use `venv/Scripts/python.exe` explicitly to avoid confusing
+the normal environment with an ignored verification runtime. Dependency repair
+does not require a database migration.
+
 Alternatively install `requirements.txt`, then `requirements-nlp-spacy.txt`.
 The latter pins spaCy/Medium and downloads its official compatible wheel during
 installation, never during a request. Reconcile the tested lock when updating

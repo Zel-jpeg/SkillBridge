@@ -72,6 +72,18 @@ and fallback when explaining results.
   preserved results/retakes, migration 0030 with no new tables, and isolated
   PostgreSQL/production-build browser verification.
 
+- [30 October hosted test results](HOSTED_TEST_RESULTS_2026_10_30.md): Instructor-first
+  isolated Railway API workflow, ten-student submissions, two observed 502s,
+  reconciled recovery, keepalive diagnostic, latency findings and cleanup.
+
+- [Isolated hosted workflow and concurrency test plan](HOSTED_WORKFLOW_AND_CONCURRENCY_TEST_PLAN.md):
+  Separate staged Railway API/database, synthetic workflow coverage, initial ten
+  concurrent students, cost/cleanup gates and explicit unverified integrations.
+
+- [Railway configuration migration](RAILWAY_CONFIGURATION_MIGRATION.md): Prepared
+  migration from legacy TOML, verified CLI commands, variable preservation and
+  owner sign-in/remote-plan steps before hosted cutover.
+
 - [Database improvement](DATABASE_IMPROVEMENT.md): Repeated-query fixes,
   paginated staff collections, on-demand student history, measured local payload
   reductions and read-only PostgreSQL diagnostics before hosted verification.
