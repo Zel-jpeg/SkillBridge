@@ -781,7 +781,7 @@ export default function StudentAssessment() {
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src="/SB-logov1.png" alt="SkillBridge" className="w-7 h-7 rounded-md object-cover" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">SkillBridge</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{activeInfo?.title || 'Assessment'}</span>
         </div>
         <span className="inline-flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-3 py-1.5 rounded-full">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Integrity monitoring active
@@ -828,12 +828,8 @@ export default function StudentAssessment() {
             {/* ── QUESTION ─ */}
             {started && !isReview && question && (
               <div>
-                <span className="inline-block bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-                  {question.category || question.skill_category || 'General'}
-                </span>
-
                 <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-5 sm:mb-6 leading-snug">
-                  {question.question_text || question.text}
+                  <span className="whitespace-pre-wrap">{question.question_text || question.text}</span>
                 </h2>
 
                 {/* MCQ / True-False choices */}
@@ -938,7 +934,7 @@ export default function StudentAssessment() {
                     return (
                       <div key={q.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Q{i + 1} · {q.category || q.skill_category || 'General'} · {isIdent ? 'Identification' : q.question_type === 'truefalse' ? 'True/False' : 'MCQ'}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Q{i + 1} · {isIdent ? 'Identification' : q.question_type === 'truefalse' ? 'True/False' : 'MCQ'}</p>
                           <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{q.question_text || q.text}</p>
                           {displayAnswer
                             ? <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">"{displayAnswer}"</p>

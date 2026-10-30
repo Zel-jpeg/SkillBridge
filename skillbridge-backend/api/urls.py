@@ -9,6 +9,7 @@ from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
 from .assessment_archives import assessment_archive
+from .assessment_release import publish_assessments
 from .assessment_lifecycle import assessment_duplicate, assessment_attempt_timing, assessment_extra_time
 from .assessment_interruptions import assessment_interruption
 from .retake_requests import student_request, request_queue, review_request, evidence
@@ -17,6 +18,7 @@ from .health import health
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('instructor/batches/<int:batch_id>/publish-assessments/', publish_assessments, name='publish_assessments'),
     path('admin/partners/<int:object_id>/archive/', catalog_archive, {'kind': 'partner'}, name='partner_archive'),
     path('admin/positions/<int:object_id>/archive/', catalog_archive, {'kind': 'position'}, name='position_archive'),
     path('instructor/batches/<int:batch_id>/closeout/', batch_closeout, name='batch_closeout'),

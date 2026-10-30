@@ -188,7 +188,9 @@ class CombinedCompetencyTests(APITestCase):
         self.assertEqual(excluded.status_code, 200)
         combined = self.combined().data
         self.assertEqual({row['category'] for row in combined['combined_category_scores']}, {'Database'})
-        self.assertEqual(combined['included_assessments'], [{'id': completed.id, 'title': completed.title}])
+        saved_order = BatchEnrollment.objects.get(student=self.student, batch=self.batch).assessment_order
+        self.assertEqual(combined['included_assessments'],
+                         [{'id': completed.id, 'title': f'Assessment {saved_order.index(completed.id) + 1}'}])
         self.assertEqual(SkillScore.objects.filter(student=self.student, assessment=optional).count(), 1)
 
         self.client.force_authenticate(self.instructor)

@@ -41,6 +41,7 @@ from .admin_accounts import instructor_payload
 from .catalog_validation import company_fields, position_data, invalid, tags_value
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
+from .student_assessment_order import assessment_numbers, assessment_title
 from .attempt_timing import check_attempt_identity, timing, snapshot_timing, mark_expired_for_review, EXPIRY_REVIEW_REASON, EXPIRY_REVIEW_MESSAGE
 from .retake_requests import request_snapshot, summary as retake_summary, request_eligible
 from .assessment_interruptions import state as interruption_state
@@ -836,10 +837,11 @@ def student_me(request):
 
     active_assessment = None
     if enrollment:
+        numbers = assessment_numbers(user, enrollment.batch)
         assessment = None
-        for candidate in Assessment.objects.filter(
+        for candidate in sorted(Assessment.objects.filter(
             batch=enrollment.batch, publication_status='published', is_required=True,
-        ).select_related('batch').order_by('display_order', 'created_at', 'id'):
+        ).select_related('batch'), key=lambda item: numbers.get(item.id, float('inf'))):
             if assessment_availability(candidate) != 'available':
                 continue
             attempt = StudentResponse.objects.filter(student=user, assessment=candidate).first()
@@ -849,7 +851,7 @@ def student_me(request):
         if assessment:
             active_assessment = {
                 'id':               assessment.id,
-                'title':            assessment.title,
+                'title':            assessment_title(numbers, assessment.id),
                 'duration_minutes': assessment.duration_minutes,
             }
 
@@ -1274,7 +1276,8 @@ def instructor_student_remove(request, student_id):
             batches = batches.filter(instructor=request.user)
     # Serialize membership removal with attempt start and cycle closeout.
     list(batches.select_for_update().order_by('id'))
-    removed_batches = list(BatchEnrollment.objects.filter(batch__in=batches, student_id=student_id).values_list('batch_id', flat=True))
+    removed_orders = dict(BatchEnrollment.objects.filter(batch__in=batches, student_id=student_id).values_list('batch_id', 'assessment_order'))
+    removed_batches = list(removed_orders)
     deleted, _ = BatchEnrollment.objects.filter(
         batch__in=batches, student_id=student_id
     ).delete()
@@ -1283,7 +1286,8 @@ def instructor_student_remove(request, student_id):
     Recommendation.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_current=False)
     CombinedCompetencyProfile.objects.filter(student_id=student_id, batch_id__in=removed_batches).update(is_finalized=False, finalized_at=None)
     for removed_batch in removed_batches:
-        record_action(request.user, 'enrollment.remove', 'student', student_id, removed_batch)
+        record_action(request.user, 'enrollment.remove', 'student', student_id, removed_batch,
+                      assessment_order=removed_orders[removed_batch])
     return Response({'deleted': True, 'student_id': student_id})
 
 
@@ -2306,6 +2310,7 @@ def _student_assessment(request, assessment_id, *, require_available=True, allow
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def assessment_list(request):
     """Student's current batch assessments, attempts and required progress."""
     if request.user.role != 'student':
@@ -2313,6 +2318,7 @@ def assessment_list(request):
     enrollment = current_enrollment(request.user)
     if enrollment is None:
         return Response({'error': 'not_enrolled'}, status=404)
+    numbers = assessment_numbers(request.user, enrollment.batch)
     assessments = list(Assessment.objects.filter(
         batch=enrollment.batch,
         publication_status__in=[Assessment.PUBLICATION_PUBLISHED, Assessment.PUBLICATION_CLOSED],
@@ -2323,7 +2329,7 @@ def assessment_list(request):
         student=request.user, assessment__in=assessments,
     ).select_related('assessment__batch')}
     items = []
-    for assessment in assessments:
+    for assessment in sorted(assessments, key=lambda item: numbers.get(item.id, float('inf'))):
         response = responses.get(assessment.id)
         if assessment.publication_status == Assessment.PUBLICATION_CLOSED and not (
             response and response.submitted_at and response.status in (
@@ -2331,18 +2337,17 @@ def assessment_list(request):
             )
         ):
             continue
-        categories = sorted({q.skill_category.name for q in assessment.questions.all() if q.skill_category})
         items.append({
             'id': assessment.id,
-            'title': assessment.title,
+            'title': assessment_title(numbers, assessment.id),
             'duration_minutes': assessment.duration_minutes,
             'question_count': len(assessment.questions.all()),
-            'categories': categories,
+            'categories': [],
             'is_required': assessment.is_required,
             'include_in_competency': assessment.include_in_competency,
             'publication_status': assessment.publication_status,
             'availability_status': assessment_availability(assessment),
-            'display_order': assessment.display_order,
+            'display_order': numbers.get(assessment.id),
             'available_at': assessment.available_at,
             'due_at': assessment.due_at,
             'attempt_status': response.status if response else None,
@@ -2366,7 +2371,7 @@ def assessment_list(request):
 def assessment_active(request):
     """
     Temporary compatibility API for the current single-assessment frontend.
-    Selects the first incomplete required published assessment deterministically.
+    Selects the first incomplete required assessment in this student's saved order.
     """
     user = request.user
     if user.role != 'student':
@@ -2376,12 +2381,13 @@ def assessment_active(request):
     if not enrollment:
         return Response({'error': 'not_enrolled'}, status=404)
 
+    numbers = assessment_numbers(user, enrollment.batch)
     candidates = Assessment.objects.filter(
         batch=enrollment.batch, publication_status='published', is_required=True,
     ).order_by('display_order', 'created_at', 'id')
     assessment = None
     existing = None
-    for candidate in candidates:
+    for candidate in sorted(candidates, key=lambda item: numbers.get(item.id, float('inf'))):
         if assessment_availability(candidate) != 'available':
             continue
         attempt = StudentResponse.objects.filter(student=user, assessment=candidate).first()
@@ -2399,14 +2405,14 @@ def assessment_active(request):
     if existing and existing.status == StudentResponse.STATUS_STOPPED and not existing.retake_allowed:
         return Response({
             'id': assessment.id,
-            'title': assessment.title,
+            'title': assessment_title(numbers, assessment.id),
             'duration_minutes': assessment.duration_minutes,
             'batch_name': enrollment.batch.name,
             **serialize_attempt_integrity(existing),
         })
     return Response({
         'id':               assessment.id,
-        'title':            assessment.title,
+        'title':            assessment_title(numbers, assessment.id),
         'duration_minutes': assessment.duration_minutes,
         'batch_name':       enrollment.batch.name,
         **serialize_attempt_integrity(existing),
@@ -2434,6 +2440,7 @@ def assessment_start(request, assessment_id):
         return access_error
 
     Batch.objects.select_for_update().get(pk=assessment.batch_id)
+    numbers = assessment_numbers(user, assessment.batch)
     # Lock the response while its layout is first created. This prevents two
     # near-simultaneous /start/ requests from returning different arrangements.
     was_retake = False
@@ -2561,7 +2568,7 @@ def assessment_start(request, assessment_id):
             'id':            q.id,
             'question_text': q.question_text,
             'question_type': q.question_type,
-            'category':      q.skill_category.name if q.skill_category else '',
+            'category':      '',
             'choices': [
                 {'id': choice.id, 'text': choice.choice_text}
                 for choice in ordered_choices(q, response_obj.question_layout)
@@ -2570,6 +2577,7 @@ def assessment_start(request, assessment_id):
 
     return Response({
         'response_id':    response_obj.id,
+        'title':          assessment_title(numbers, assessment.id),
         'started_at':     response_obj.started_at,
         'time_limit_sec': response_obj.duration_seconds,
         'questions':      q_list,
@@ -3093,9 +3101,10 @@ def student_results(request):
     )
     approved_placement = _approved_student_placement(user.id)
 
+    numbers = assessment_numbers(user, assessment.batch)
     return Response({
         'assessment': {
-            'id': assessment.id, 'title': assessment.title,
+            'id': assessment.id, 'title': assessment_title(numbers, assessment.id),
             'publication_status': assessment.publication_status,
             'attempt_status': latest.status, 'submitted_at': latest.submitted_at,
             'stopped_reason_display': latest.stopped_reason_display,
@@ -3135,7 +3144,7 @@ def student_combined_results(request):
     batch = enrollment.batch
     profile, progress, unlocked = ensure_combined(user, batch)
     included_ids = profile.included_assessment_ids if profile else []
-    titles = dict(Assessment.objects.filter(id__in=included_ids).values_list('id', 'title'))
+    numbers = assessment_numbers(user, batch)
     recommendations = Recommendation.objects.filter(
         student=user, batch=batch, is_current=True,
     ).select_related('position', 'position__company').order_by('-match_score', 'position_id', 'id') if unlocked else []
@@ -3149,7 +3158,8 @@ def student_combined_results(request):
         'overall_max_score': overall_max if unlocked else None,
         'overall_percentage': round(overall_raw / overall_max * 100, 2) if overall_max else None,
         'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
-        'included_assessments': [{'id': aid, 'title': titles.get(aid, '')} for aid in included_ids] if unlocked else [],
+        'included_assessments': [{'id': aid, 'title': assessment_title(numbers, aid)}
+                                 for aid in sorted(included_ids, key=lambda aid: numbers.get(aid, float('inf')))] if unlocked else [],
         'is_finalized': unlocked,
         'recommendations_locked': not unlocked,
         'recommendations_stale': recommendations_stale(profile, user),
