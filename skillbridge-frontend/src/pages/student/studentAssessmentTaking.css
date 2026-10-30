@@ -1,0 +1,54 @@
+/* Keep the existing design; apply the narrow-screen alignment fixes only. */
+.sat-compact-monitor {
+  display: none;
+}
+
+@media (width < 1024px) {
+  .sat-header { gap: 8px; }
+  .sat-heading { min-width: 0; }
+  .sat-heading img { flex-shrink: 0; }
+  .sat-heading > span { overflow-wrap: anywhere; }
+  .sat-monitor { flex-shrink: 0; gap: 5px; white-space: nowrap; }
+  .sat-monitor-dot { display: none; }
+  .sat-compact-monitor { display: inline; flex-shrink: 0; }
+
+  .sat-timing-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+  .sat-reminder {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 16px;
+  }
+  .sat-timer { grid-column: 2; grid-row: 1; justify-self: center; white-space: nowrap; }
+  .sat-answered { grid-column: 3; grid-row: 1; justify-self: end; white-space: nowrap; }
+  .sat-cutoff { overflow-wrap: anywhere; }
+
+  .sat-main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .sat-choice { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+  .sat-choice-letter { margin-right: 0; }
+  .sat-choice-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+  .sat-choice:focus-visible, .sat-nav-toggle:focus-visible { outline: 2px solid #15803d; outline-offset: 3px; }
+  .sat-nav-toggle {
+    min-height: 44px;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .dark .sat-choice:focus-visible, .dark .sat-nav-toggle:focus-visible { outline-color: #86efac; }
+}
+
+@media (width < 360px) {
+  .sat-heading { gap: 6px; }
+  .sat-heading > span { font-size: 12px; }
+  .sat-monitor { padding-inline: 8px; font-size: 10px; }
+  .sat-monitor svg { width: 14px; height: 14px; }
+  .sat-answered { font-size: 11px; }
+}
+
+@media (width < 1024px) and (prefers-reduced-motion: reduce) {
+  .sat-timer, .sat-choice, .sat-nav-toggle { animation: none; transition: none; }
+}

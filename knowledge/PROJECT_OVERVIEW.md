@@ -67,6 +67,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Student assessment taking layout](STUDENT_ASSESSMENT_TAKING_LAYOUT.md): Original
+  phone/tablet design with centered timer/choice letters, red shield badge,
+  preserved desktop presentation and existing unanswered-question submission rules.
+
 - [Student previous batches](STUDENT_PREVIOUS_BATCHES.md): Hide history for first-
   time students, exclude the current batch, keep the full records section in
   Profile with a small active-dashboard link, and preserve returning profile
