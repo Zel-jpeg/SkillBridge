@@ -1,5 +1,13 @@
 # Accepted questionnaire import format
 
+30 October numeric-answer follow-up: both new-assessment and existing-assessment
+Excel/CSV imports preserve numeric `0` in every choice column and in identification
+answer keys. Typed Boolean `false` remains a valid False key. Missing/empty required
+choices and answer keys are still rejected. The downloadable headers and type/key
+contract below are unchanged; instructors do not need to write `0 (zero)`.
+This is a frontend conversion fix with no database migration. Verification is
+recorded in [numeric-answer import checks](ASSESSMENT_NUMERIC_IMPORT.md).
+
 25 October follow-up: instructor and admin existing-assessment imports now append
 to the local authoring draft and persist only through the confirmed assessment
 save. Cancel/discard and failed-save recovery preserve the expected draft boundary.
