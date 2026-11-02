@@ -41,7 +41,7 @@ def eligible_evidence(student, batch):
 _PROFILE_NOT_LOADED = object()
 
 
-def combined_is_unlocked(student, batch, profile=_PROFILE_NOT_LOADED, progress=None, source_ids=None, catalog=None, review_required=None):
+def combined_is_unlocked(student, batch, profile=_PROFILE_NOT_LOADED, progress=None, source_ids=None, catalog=None, review_required=None, *, require_current_ranking=True):
     needs_review = (review_required if review_required is not None else
                     BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists())
     if needs_review:
@@ -58,7 +58,8 @@ def combined_is_unlocked(student, batch, profile=_PROFILE_NOT_LOADED, progress=N
         return False
     if source_ids is None:
         source_ids, _ = eligible_evidence(student, batch)
-    return profile.included_assessment_ids == source_ids and not recommendations_stale(profile, student, catalog)
+    return profile.included_assessment_ids == source_ids and (
+        not require_current_ranking or not recommendations_stale(profile, student, catalog))
 
 
 def recalculate_combined(student, batch):

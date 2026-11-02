@@ -1,3 +1,4 @@
+import { recommendationDisplay } from '../../utils/recommendationResults'
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
 // src/pages/instructor/EnrolledStudents.jsx  (SLIMMED — 1273 → ~200 lines)
@@ -272,7 +273,7 @@ export default function EnrolledStudents() {
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Required progress</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Placement</th>
                     <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
-                    <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
+                    <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top suggestion</th>
                     <th className="text-center px-4 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Overall</th>
                     <th className="px-3 py-3.5" />
                   </tr></thead>
@@ -303,7 +304,7 @@ export default function EnrolledStudents() {
                             <span className="text-xs text-gray-300 dark:text-gray-700 italic">Not assessed</span>
                           )}
                         </td>
-                        <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{s.top_recommendations[0].company}<br/><span className="font-normal text-gray-400">{s.top_recommendations[0].match_score}%</span></span> : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
+                        <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{s.top_recommendations[0].company}<br/><span className="font-normal text-gray-400">{recommendationDisplay(s.top_recommendations[0])}</span></span> : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
                         <td className="px-4 py-4 text-center"><span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall!==null?`${overall}%`:'—'}</span></td>
                         <td className="px-3 py-4 text-center">
                           {!isArchived && !s.archived && <button onClick={e => { e.stopPropagation(); setConfirmRemove(s) }} className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Unenroll from this batch" aria-label={`Unenroll ${s.name} from this batch`}><TrashIcon /></button>}

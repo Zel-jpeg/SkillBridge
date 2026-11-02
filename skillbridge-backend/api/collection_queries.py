@@ -5,12 +5,12 @@ serializers shared with legacy dashboard/report consumers. No recalculation.
 """
 from collections import Counter
 
-from django.db.models import Max
 from rest_framework.exceptions import ValidationError
 
 from .models import (Assessment, BatchEnrollment, CombinedCategoryScore, OJTPlacement,
                      Recommendation, SkillScore, StudentResponse, User)
 from .placement_scope import current_approvals
+from .recommendation_policy import coverage_or_legacy, order_fields
 
 
 def _integer(params, key, default, maximum):
@@ -69,9 +69,9 @@ def admin_collection(params):
     latest = {}
     for sid, status in StudentResponse.objects.filter(student_id__in=ids).order_by('student_id', '-started_at', '-id').values_list('student_id', 'status'):
         latest.setdefault(sid, status)
-    top = {(row['student_id'], row['batch_id']): row['score'] for row in
-           Recommendation.objects.filter(student_id__in=ids, is_current=True).order_by()
-           .values('student_id', 'batch_id').annotate(score=Max('match_score'))}
+    top = {}
+    for row in Recommendation.objects.filter(student_id__in=ids, is_current=True).order_by(*order_fields('student_id', 'batch_id')):
+        top.setdefault((row.student_id, row.batch_id), coverage_or_legacy(row))
     instructors = {}
     for sid, name in BatchEnrollment.objects.filter(student_id__in=ids).values_list('student_id', 'batch__instructor__name'):
         instructors.setdefault(sid, name)
@@ -85,15 +85,16 @@ def admin_collection(params):
         counts['all'] += int(bucket in ('students', 'instructors'))
         enrollment = current.get(user.id)
         unlocked = states.get(user.id, ({}, False))[1]
+        evidence_ready = states.get(user.id, ({}, False))[0].get('competency_locked', not unlocked) is False
         instructor = (enrollment.batch.instructor.name if enrollment else instructors.get(user.id)) or 'TBD'
         if bucket == 'students':
             instructor_options.add(instructor)
         row = {'id': user.id, 'name': user.name, 'email': user.email, 'school_id': user.school_id,
                'course': user.course if user.role == 'student' else None,
                'bucket': bucket, 'instructor': instructor,
-               'status': 'stopped' if latest.get(user.id) == 'stopped' else 'completed' if unlocked else 'pending',
+               'status': 'stopped' if latest.get(user.id) == 'stopped' else 'completed' if evidence_ready else 'pending',
                'match': round(top[(user.id, enrollment.batch_id)], 2)
-               if enrollment and unlocked and (user.id, enrollment.batch_id) in top else -1}
+               if enrollment and unlocked and top.get((user.id, enrollment.batch_id)) is not None else -1}
         rows.append(row)
     query = params.get('search', '').strip().lower()
     tab = filters['tab']

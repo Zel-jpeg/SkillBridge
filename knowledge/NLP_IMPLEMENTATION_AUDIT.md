@@ -1,4 +1,116 @@
-# NLP rollback audit
+# NLP and recommendation implementation audit
+
+## Rerun request handling audit — 3 November 2026
+
+The dashboard rerun uses the shared Axios 30-second default while the model
+settings page allows 120 seconds for the same synchronous endpoint. The dashboard
+catch unconditionally reports failure even when completion is uncertain. The API
+loops active enrollments, commits results and publishes normal invalidations;
+client timeout does not establish that this processing was cancelled. No original
+network trace was available to prove the screenshot's individual error cause.
+
+Authorized follow-up is a focused frontend request/status fix: share a 120-second
+limit, distinguish uncertain completion from confirmed rejection, expose partial
+errors instead of unconditional success, revalidate existing GET data after an
+outcome, and never automatically replay a rerun after a timeout. Preserve all card
+layouts, grading, ranking/NLP/location rules, role checks and schema. Test with
+controlled clients and intercepted browser requests; do not rerun real students
+or modify the configured database. Use the recommendation audit, React guidance
+and webapp-testing workflows. The existing source changes and unrelated catalog
+work remain preserved. Verification will be recorded in the assessment-led note.
+
+Completed verification: 321 frontend tests passed, including eight focused rerun
+cases; ESLint and Vite production build passed. Eight intercepted browser checks
+passed across both admin entry points, including confirmed success after 31.6
+seconds, timeout, lost connection, HTTP 500, HTTP 403 and partial processing.
+The fixture confirms a single POST and authorized GET revalidation without a real
+backend/database. Initial browser fixture failures were corrected missing mock
+analytics fields and selectors, superseded by the complete final receipt under
+`work/recommendation_rerun_20261103/`. Temporary preview stopped automatically.
+No backend tests were needed because backend code was unchanged. No migration,
+real-student rerun or deployment was performed for this correction. Eight unrelated
+catalog/UI file hashes remain unchanged. See the implemented rerun section in
+[the assessment-led note](ASSESSMENT_LED_RECOMMENDATIONS.md).
+
+## Completed local integration — 3 November 2026
+
+See [the implemented contract](ASSESSMENT_LED_RECOMMENDATIONS.md) for ordering,
+compatibility, activation and final verification. User correction: preserve the
+original cards and category-based profiles across every role. Added explanation
+sections were removed. Numerical evidence visibility and completed status are now
+separate from recommendation freshness; grading is unchanged.
+
+Final checks: 593 backend tests on a fresh owned PostgreSQL database; 313 frontend
+tests; lint/build; 13 real-local-API browser checks, including stale recommendations
+with retained category scores for all roles; migration upgrade preservation;
+system/drift/diff checks; original card classes and eight unrelated file hashes.
+All final checks passed. Preliminary overlapping test runs were stopped and replaced
+by the clean final run; do not use their logs as final evidence.
+
+Authorized configured Supabase migration 0031 is applied: two Recommendation columns,
+no table. Protected record hashes match before/after; zero real recommendations
+were recalculated. No deployment occurred. The active plan records the final state.
+Existing NLP inputs, model, preprocessing, raw similarity and grading remain unchanged.
+This is application regression evidence, not independent NLP effectiveness or
+population-level suitability/fairness validation.
+
+## Active assessment-led integration audit — 3 November 2026
+
+The user authorizes local main-source integration of the tested assessment-led
+workflow, followed by an additive migration for testing after implementation and
+isolated verification. No deployment or automatic real-student recommendation
+refresh is authorized by this implementation. Question-topic extraction, NLP input
+redesign, model changes and training remain outside scope. Keep coverage visible;
+exclude the recently previewed minimum-count UI block.
+
+Branch is `main`. Unrelated company/position-dialog work was identified by Git
+status and eight files were hashed in ignored
+`work/assessment_led_integration_20261103/unrelated-hashes.json`. Preserve them.
+There are no nested application AGENTS.md files. React/Vite/DRF/JWT role guards
+and shared Axios/response contracts are the current architecture; no new endpoint,
+authoring form or dependency is needed. Student/instructor/admin access stays
+server-scoped through existing managed-batch/current-enrollment checks.
+
+Verified source map: scoring.py `_rank_recommendations`; combined_competency.py
+eligible evidence/raw-max pooling/finalization; recommendation_freshness.py
+catalog/model/pin fingerprints; views.py shared and manually assembled student,
+staff, report and placement serializers; collection_queries.py maximum-score
+collection sorting; analytics.py score bands/top selection; placement_drafts.py
+revision signatures/manual choices and placement_allocator.py shared-capacity
+matching; models.py Recommendation and immutable placement component snapshots;
+cycle_lifecycle.py versioned closeout JSON. Frontend consumers include results,
+dashboard highlights, staff student cards/details, company/position dialogs,
+placement workspaces, analytics and PDF/CSV/history exporters. Current sorting
+and banding repeatedly depend on match_score and must be changed consistently.
+
+Change contract: retain legacy score components as clearly identified references,
+persist assessment_rank/assessment_details on Recommendation, use new order and
+coverage explicitly, retain existing NLP generation/model behavior. Fingerprint
+the policy and require explicit refresh of old results. Require fully assessed,
+met minima for automatic shared proposals while retaining below-target/unknown
+alternatives for coordinator review and preserving valid manual choices and
+approved occupancy. Use actual required-category performance for cross-student
+competition, never the personal demand ratio. Preserve future approval evidence
+in existing ManagementAction metadata without a new snapshot table/column.
+Existing archived payloads and original grade/answer/retake evidence remain intact.
+
+Boundary checks: dotenv is disabled for tests; a new owned loopback PostgreSQL
+cluster uses core.sse_postgres_test_settings and explicit SB_TEST_DB_* values,
+never normal DB credentials. No personal records were queried for this audit.
+Frontend baseline: all 308 existing Node tests passed. Focused PostgreSQL baseline
+is running with captured output; no backend pass is claimed before completion.
+Windows CREATE_NO_WINDOW initially suppressed child output; the task-only runner
+was corrected to capture it, and the baseline is rerun rather than guessed.
+Baseline Django, frontend lint/build and broader regression evidence will be
+recorded in the active plan. Hosted latency, independent NLP effectiveness and
+real-world placement suitability remain unverified; the existing synthetic
+comparison found no NLP first-choice benefit under Option 3.
+
+Implementation tracker/checkpoint:
+[recommendation review and fix plan](RECOMMENDATION_MATCHING_REVIEW_AND_FIX_PLAN.md).
+Earlier entries below describe prior work and do not override this scope.
+
+# Historical NLP rollback audit
 
 **Latest20 October:user restored the expanded Python catalog while retaining the
 relevance fix and requested a general solution proposal.**35/33 lists restored,

@@ -9,9 +9,10 @@ import heapq
 import math
 
 
-def allocate(edges, capacities):
+def allocate(edges, capacities, utility_key=None):
     edges = sorted(edges, key=lambda row: (row['student_id'], row['position_id'], row['id']))
-    edges = [row for row in edges if math.isfinite(row['match_score']) and capacities.get(row['position_id'], 0) > 0]
+    edges = [row for row in edges if (type(row.get(utility_key)) is int if utility_key
+             else math.isfinite(row['match_score'])) and capacities.get(row['position_id'], 0) > 0]
     students = sorted({row['student_id'] for row in edges})
     positions = sorted({row['position_id'] for row in edges})
     student_nodes = {key: i + 1 for i, key in enumerate(students)}
@@ -30,10 +31,12 @@ def allocate(edges, capacities):
         add(0, student_nodes[student], 1, 0)
     for position in positions:
         add(position_nodes[position], sink, capacities[position], 0)
-    maximum = max((Decimal(str(row['match_score'])) for row in edges), default=Decimal(0))
+    maximum = max((row[utility_key] for row in edges), default=0) if utility_key else max(
+        (Decimal(str(row['match_score'])) for row in edges), default=Decimal(0))
     references = []
     for row in edges:
-        cost = int(((maximum - Decimal(str(row['match_score']))) * 1_000_000).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        cost = ((maximum - row[utility_key]) if utility_key else
+                int(((maximum - Decimal(str(row['match_score']))) * 1_000_000).quantize(Decimal(1), rounding=ROUND_HALF_UP)))
         references.append((row, add(student_nodes[row['student_id']], position_nodes[row['position_id']], 1, cost)))
     potentials = [0] * len(graph)
     while True:

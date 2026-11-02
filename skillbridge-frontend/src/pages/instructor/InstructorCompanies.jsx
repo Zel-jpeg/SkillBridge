@@ -1,3 +1,4 @@
+import { recommendationDisplay, recommendationValue, coverageDisplay, isAssessmentLed, comparePositionCandidates } from '../../utils/recommendationResults'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
 import { validPin } from '../../utils/recommendationResults'
@@ -587,9 +588,9 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
                                   <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{stu.school_id} · {stu.course}</p>
                                 </div>
                                 <div className="shrink-0 text-right">
-                                  <p className={`text-sm font-bold leading-none ${matchColor(stu.match_score)}`}>{stu.match_score}%</p>
+                                  <p className={`text-sm font-bold leading-none ${matchColor(recommendationValue(stu))}`}>{isAssessmentLed(stu) ? coverageDisplay(stu) : recommendationDisplay(stu)}</p>
                                   <div className="w-12 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
-                                    <div className={`h-full rounded-full ${matchBg(stu.match_score)}`} style={{ width: `${stu.match_score}%` }} />
+                                    <div className={`h-full rounded-full ${matchBg(recommendationValue(stu))}`} style={{ width: `${recommendationValue(stu) ?? 0}%` }} />
                                   </div>
                                 </div>
                               </div>
@@ -618,7 +619,7 @@ function CompanyCard({ company, onClick }) {
 
   const topEntry = company.positions
     .flatMap(p => p.matched_students.slice(0, 1).map(s => ({ ...s, posTitle: p.title })))
-    .sort((a, b) => b.match_score - a.match_score)[0]
+    .sort(comparePositionCandidates)[0]
 
   return (
     <button onClick={onClick}
@@ -666,7 +667,7 @@ function CompanyCard({ company, onClick }) {
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{topEntry.posTitle}</p>
           </div>
-          <span className="text-xs font-bold text-green-600 dark:text-green-400 shrink-0">{topEntry.match_score}%</span>
+          <span className="text-xs font-bold text-green-600 dark:text-green-400 shrink-0">{isAssessmentLed(topEntry) ? coverageDisplay(topEntry) : recommendationDisplay(topEntry)}</span>
         </div>
       )}
     </button>

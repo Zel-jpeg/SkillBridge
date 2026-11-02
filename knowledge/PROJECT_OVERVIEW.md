@@ -20,7 +20,7 @@ slots follow active enrolled batches; historical approvals remain unchanged.
 | Persistence | PostgreSQL; Django models and migrations | [Models](../skillbridge-backend/api/models.py), [settings](../skillbridge-backend/core/settings.py) |
 | Assessment scoring | MCQ, true/false and identification; per-category raw, maximum and percentage scores | [Scoring](../skillbridge-backend/api/scoring.py) |
 | Combined competency | Batch-scoped totals from eligible assessment evidence and required completion gates | [Combined competency](../skillbridge-backend/api/combined_competency.py), [progress rules](../skillbridge-backend/api/assessment_progress.py) |
-| Recommendations | Category cosine similarity, NLP TF-IDF similarity and location similarity | [Ranking](../skillbridge-backend/api/scoring.py), [NLP helpers](../skillbridge-backend/api/recommendation_nlp.py) |
+| Recommendations | Assessment-led coverage and demand alignment, with supporting NLP/location; legacy hybrid reference retained | [Ordering contract](ASSESSMENT_LED_RECOMMENDATIONS.md), [ranking](../skillbridge-backend/api/scoring.py), [NLP helpers](../skillbridge-backend/api/recommendation_nlp.py) |
 
 Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 [requirements.txt](../skillbridge-backend/requirements.txt) and
@@ -33,7 +33,7 @@ Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 3. The backend grades answers and stores assessment-level `SkillScore` rows.
 4. Combined competency aggregates eligible category raw and maximum totals across assessments; it does not simply average percentages.
 5. Required completion and active-batch gates control finalization and recommendation visibility.
-6. Ranking combines category, NLP and location similarity. The current implementation uses weights of 60%, 25% and 15%; inspect current code when auditing rather than assuming these remain fixed.
+6. Personal position order uses numerical requirement coverage, then requirement-demand alignment, then NLP/location support. The previous 60/25/15 score is retained as a legacy reference. Ranking staleness hides suggestions without removing valid category-based assessment profiles. See the [assessment-led contract](ASSESSMENT_LED_RECOMMENDATIONS.md).
 7. Placement approval applies additional rules and saves snapshots. A high recommendation score alone does not establish approval eligibility.
 
 ## Frontend data freshness
@@ -287,6 +287,13 @@ and fallback when explaining results.
 
 - [Recommendation contract](RECOMMENDATION_CONTRACT.md): Preserved weights,
   coordinate validation, stable ranking, eligibility boundaries and isolated tests.
+
+- [Recommendation matching review and fix plan](RECOMMENDATION_MATCHING_REVIEW_AND_FIX_PLAN.md):
+  Read-only two-case reconciliation, reproduced category/text components, cosine
+  limitations, category identity and catalog coverage concerns, and proposed
+  requirement-coverage/NLP evaluation, explanation and versioned rollout phases.
+  Later checkpoints record the implemented assessment-led workflow; use the
+  [current contract](ASSESSMENT_LED_RECOMMENDATIONS.md) for application behavior.
 
 - [Saved recommendation freshness](RECOMMENDATION_FRESHNESS.md): Catalog/model/pin
   provenance, stale-result locks, explicit refresh, legacy migration and preserved

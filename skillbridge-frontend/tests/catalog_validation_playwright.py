@@ -1,5 +1,6 @@
 """Catalog form recovery checks; synthetic API only, no external writes."""
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -7,6 +8,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 
 ARTIFACTS = Path(__file__).parent / 'artifacts/catalog-validation'
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5178')
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 checks, errors, mutations = [], [], []
 company = {'id': 1, 'name': 'Synthetic Company', 'address': None, 'lat': None, 'lng': None,
@@ -60,10 +62,10 @@ with sync_playwright() as p:
     page = context.new_page()
     page.on('pageerror', lambda error: errors.append(str(error)))
     try:
-        page.goto('http://127.0.0.1:5178/admin/companies', wait_until='domcontentloaded')
+        page.goto(BASE + '/admin/companies', wait_until='domcontentloaded')
         expect(page.get_by_role('article', name='Synthetic Company')).to_be_visible(timeout=15000)
         page.get_by_role('button', name='Add position to Synthetic Company').click()
-        modal = page.locator('div.fixed.inset-0').filter(has=page.get_by_role('heading', name='Add Position', exact=True)).last
+        modal = page.get_by_role('dialog', name='Add Position', exact=True)
         title = modal.get_by_placeholder('e.g. Frontend Developer Intern')
         title.fill('Recoverable role')
         slots = modal.locator('input[type="number"]')
@@ -85,7 +87,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Delete position Original role', exact=True).click()
         confirmation = page.get_by_role('dialog', name='Delete position?', exact=True)
         confirmation.get_by_role('button', name='Delete', exact=True).evaluate('(button) => { button.click(); button.click() }')
-        expect(confirmation.get_by_role('alert')).to_have_text('Synthetic placement history protects this position.')
+        expect(confirmation.locator('p[role="alert"]:not(.sb-toast-message)')).to_have_text('Synthetic placement history protects this position.')
         expect(page.get_by_role('heading', name='Original role', exact=True)).to_be_visible()
         assert len(mutations) == 3
         checks.append('Protected deletion keeps row/dialog and shows error; repeated activation sends one delete')

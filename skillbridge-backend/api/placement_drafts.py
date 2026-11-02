@@ -1,4 +1,6 @@
 """Shared provisional allocation. Reads never generate rankings or approvals."""
+from .recommendation_policy import VERSION as ALLOCATION_POLICY_VERSION, needs_review as recommendation_needs_review
+from .recommendation_policy import order_fields
 from collections import Counter
 from functools import wraps
 import hashlib
@@ -97,12 +99,13 @@ def context():
             latest.setdefault((row['student_id'], row['position_id']), row['status'])
     recommendations = []
     for row in Recommendation.objects.filter(student_id__in=eligible, is_current=True,
-            position__archived_at__isnull=True, position__company__archived_at__isnull=True).order_by('student_id', '-match_score', 'position_id').values(
+            position__archived_at__isnull=True, position__company__archived_at__isnull=True).order_by(*order_fields('student_id')).values(
         'id', 'student_id', 'batch_id', 'position_id', 'match_score', 'generated_at',
+        'assessment_rank', 'assessment_details', 'nlp_score_component', 'location_score_component',
     ):
         if row['batch_id'] == eligible[row['student_id']].batch_id and latest.get((row['student_id'], row['position_id'])) not in ('removed', 'rejected'):
             recommendations.append(row)
-    signature = digest({'catalog': catalog, 'positions': positions, 'approvals': approvals,
+    signature = digest({'policy': ALLOCATION_POLICY_VERSION, 'catalog': catalog, 'positions': positions, 'approvals': approvals,
                         'memberships': [(key, value.batch_id) for key, value in by_student.items()],
                         'eligible': sorted(eligible), 'recommendations': recommendations, 'decisions': sorted(latest.items())})
     return {'signature': signature, 'recommendations': recommendations, 'capacities': capacities,
@@ -141,7 +144,8 @@ def coordinator_choices(ctx, state):
 def calculate(ctx, state):
     fixed, review, remaining = coordinator_choices(ctx, state)
     edges = [row for row in ctx['recommendations'] if row['student_id'] not in fixed and row['student_id'] not in review]
-    return {**allocate(edges, remaining), **fixed}
+    from .assessment_allocation import allocate_assessment_led
+    return {**allocate_assessment_led(edges, remaining), **fixed}
 
 
 def save_revision(state, actor, operation, signature):
@@ -185,7 +189,7 @@ def payload(user, ctx, state, proposed=None):
               Counter(row_by_id[rid]['position_id'] for sid, rid in selected.items() if rid in row_by_id and row_by_id[rid]['student_id'] == sid))
     visible_recs = Recommendation.objects.filter(id__in=[row['id'] for row in ctx['recommendations'] if row['student_id'] in own]).select_related('position__company').prefetch_related('position__requirements__skill_category')
     ranked = {}
-    for recommendation in visible_recs.order_by('-match_score', 'position_id'):
+    for recommendation in visible_recs.order_by(*order_fields()):
         ranked.setdefault(recommendation.student_id, []).append(serialize_recommendation(recommendation))
     entries = []
     for student_id in sorted(own):
@@ -200,8 +204,13 @@ def payload(user, ctx, state, proposed=None):
             reason = 'suggestions_declined'
         if options and not state.revision and proposed is None:
             reason = 'awaiting_draft'
-        elif reason == 'awaiting_capacity' and any(ctx['capacities'].get(row['position_id'], 0) > counts[row['position_id']] for row in options):
-            reason = 'awaiting_update'
+        elif reason == 'awaiting_capacity':
+            eligible_options = [row for row in options if not row.get('assessment_details') or
+                                row['assessment_details'].get('all_targets_met')]
+            if not eligible_options:
+                reason = 'coordinator_review'
+            elif any(ctx['capacities'].get(row['position_id'], 0) > counts[row['position_id']] for row in eligible_options):
+                reason = 'awaiting_update'
         if student_id in needs_review and student_id in ctx['eligible']:
             reason = 'coordinator_review'
         entries.append({'student': {'id': student_id, 'name': enrollment.student.name,
@@ -210,14 +219,14 @@ def payload(user, ctx, state, proposed=None):
                         'batch': {'id': enrollment.batch_id, 'name': enrollment.batch.name},
                         'status': reason, 'proposal': chosen, 'alternatives': options,
                         'coordinator_choice': str(student_id) in state.manual_choices,
-                        'needs_review': bool(chosen and chosen['match_score'] < 60)})
+                        'needs_review': bool(chosen and recommendation_needs_review(chosen))})
     return {'revision': state.revision, 'generated': state.revision > 0,
             'sync_key': digest([ctx['signature'], state.revision]),
             'stale': bool(state.revision and ctx['signature'] != state.input_signature),
             'updated_at': state.updated_at if state.revision else None,
             'students': entries, 'proposed_counts': dict(counts),
             'scope': 'All active batches; student records limited to your access.',
-            'policy': 'Maximize allocated students, then total match score. No score cutoff. Ties use stable student/position IDs.',
+            'policy': 'Automatic proposals require all assessed numerical minimums met. Maximize assignments, then available personal preference, actual required-category performance and NLP/location support. Coordinator choices are retained; ties use stable IDs.',
             'can_generate': user.role == 'admin'}
 
 

@@ -3,6 +3,11 @@
 api/scoring.py — SkillBridge NLP & Scoring Engine
 ================================================================================
 
+Current recommendation order is assessment-led: requirement coverage, then
+declared requirement-demand alignment, then NLP/location support. The old cosine
+and 60/25/15 calculations below are retained as reference components, not the
+ordering policy. Assessment grading and NLP inputs/model remain unchanged.
+
 This file contains ALL of the Natural Language Processing (NLP) and algorithmic
 logic used by SkillBridge. It is the core "intelligence" of the system.
 
@@ -315,8 +320,12 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
     from .models import Position, Recommendation, RecommendationConfiguration
     from .recommendation_nlp import (build_position_description, location_similarity, preprocess_texts,
                                      company_address_text, valid_coordinates)
+    from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key
+    from .nlp_explanations import explain_overlap
 
     categories = list(categories)
+    skill_scores = list(skill_scores)
+    scores, totals, names, mapping = pooled_evidence(skill_scores, categories)
     score_lookup = {score.skill_category_id: score.percentage for score in skill_scores}
     student_vec = np.array([score_lookup.get(category.id, 0.0) / 100.0 for category in categories], dtype=float)
 
@@ -342,6 +351,7 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         requested_model,
     )
 
+    matrix = tfidf = None
     try:
         tfidf = TfidfVectorizer(ngram_range=(1, 3), min_df=1, sublinear_tf=True)
         matrix = tfidf.fit_transform(processed)
@@ -382,6 +392,13 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
             'distance_km': round(distance_km, 2) if distance_km is not None else None,
             'generated_at': timezone.now(),
         }
+        details = describe(scores, totals, names, position_requirements(position, mapping))
+        details.update(support=(25 * component_values['nlp_score_component']
+                                + 15 * component_values['location_score_component']) / 40,
+                       legacy_hybrid_reference=component_values['match_score'],
+                       nlp_evidence={**explain_overlap(tfidf, matrix, index),
+                                     'similarity_percent': component_values['nlp_score_component']})
+        component_values.update(assessment_rank=None, assessment_details=details)
         pending.append((position, component_values))
         coordinates = valid_coordinates(position.company.location_lat, position.company.location_lng)
         results.append({
@@ -403,6 +420,15 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
             )),
         })
 
+    results.sort(key=lambda row: numerical_key(row['assessment_details'], row['position_id']))
+    by_position = {row['position_id']: rank for rank, row in enumerate(results, 1)}
+    for position, values in pending:
+        values['assessment_rank'] = by_position[position.id]
+    for row in results:
+        row.update(assessment_rank=by_position[row['position_id']],
+                   recommendation_rank=by_position[row['position_id']], ranking_policy='assessment-led-option3',
+                   requirement_coverage=row['assessment_details']['coverage'])
+
     # A batch has a unique (student, batch, position) key. Update in place so
     # placement links keep the same recommendation IDs, without one savepoint
     # and round trip per candidate. Nullable legacy batches retain their old
@@ -423,7 +449,6 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
                     student=student, batch=batch, position=position, defaults=values,
                 )
 
-    results.sort(key=lambda item: (-item['match_score'], item['position_id']))
     return results
 
 

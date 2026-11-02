@@ -1,4 +1,5 @@
 """Explicit OJT lifecycle transitions. History never grants current placement access."""
+from .recommendation_policy import order_fields, api_fields, attach_placement_evidence
 import json
 from functools import wraps
 
@@ -110,7 +111,7 @@ def closeout_state(batch):
                         serialize_combined_profile, _serialize_placement, _placement_select_related)
     from .models import CombinedCompetencyProfile
     profiles = {p.student_id: p for p in CombinedCompetencyProfile.objects.filter(batch=batch)}
-    placements = list(_placement_select_related(OJTPlacement.objects.filter(batch=batch, is_active_suggestion=False)).order_by('id'))
+    placements = attach_placement_evidence(_placement_select_related(OJTPlacement.objects.filter(batch=batch, is_active_suggestion=False)).order_by('id'))
     serialized_placements = []
     for row in placements:
         item = _serialize_placement(row)
@@ -121,8 +122,8 @@ def closeout_state(batch):
     for row in serialized_placements:
         by_student.setdefault(row['student']['id'], []).append(row)
     matches = {}
-    for row in Recommendation.objects.filter(batch=batch).select_related('position__company').order_by('student_id', '-match_score', 'position_id'):
-        matches.setdefault(row.student_id, []).append({'position_id': row.position_id, 'position': row.position.title,
+    for row in Recommendation.objects.filter(batch=batch).select_related('position__company').order_by(*order_fields('student_id')):
+        matches.setdefault(row.student_id, []).append({**api_fields(row), 'position_id': row.position_id, 'position': row.position.title,
             'partner': row.position.company.name, 'is_current': row.is_current, 'match_score': row.match_score,
             'category': row.category_score_component, 'nlp': row.nlp_score_component,
             'location': row.location_score_component, 'distance_km': row.distance_km,

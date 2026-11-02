@@ -183,6 +183,8 @@ def position(page, title=ROLE):
 
 
 def modal(page, title):
+    if title in ['Add Position', 'Edit Position']:
+        return page.get_by_role('dialog', name=title, exact=True)
     return page.locator('div.fixed.inset-0').filter(has=page.get_by_role('heading', name=title, exact=True)).last
 
 

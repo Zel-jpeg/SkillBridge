@@ -1,5 +1,11 @@
 # Admin Companies and Positions presentation
 
+31 October position-editor update: the Add/Edit Position dialog now uses the
+approved responsive layout with one searchable, filtered skill list that grows
+or shrinks with the catalog. See [position editor layout](POSITION_EDITOR_LAYOUT.md)
+for its frontend-only scope and verification. Earlier editor-layout statements
+below describe the original collection change.
+
 28 October terminology update: the screen is now **OJT Partners & Positions**,
 with **OJT Partners** navigation and partner wording in controls and messages.
 Internal component/API names remain unchanged. See [verification and compatibility](PARTNER_TERMINOLOGY.md).

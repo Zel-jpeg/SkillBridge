@@ -60,10 +60,10 @@ export default function StudentDashboard() {
     topMatches,
     recommendedCompanies: allRecs,
     resultData,
-    recommendationsLocked,
+    recommendationsLocked, competencyLocked,
     studentPin,
   } = useStudentResults()
-  const hasTakenAssessment = !recommendationsLocked && resultData?.all_required_completed === true
+  const hasTakenAssessment = !competencyLocked && resultData?.all_required_completed === true
   const dashboardAction = dashboardAssessmentAction({ ...resultData, recommendations_locked: recommendationsLocked }, attempts)
 
   const enrichedCompanies = allRecs.filter(r => r.lat != null && r.lng != null)
@@ -239,7 +239,7 @@ export default function StudentDashboard() {
           {/* ── TOP MATCHES ──────────────────────────────────── */}
           <DataSection url="/api/student/results/combined/" layout="matches" className="sb-matches"><div className={`sb-matches ${tile} p-5`}>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Top partners for you</p>
-            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Best position match per partner</p>
+            <p className="mt-1 mb-3 text-xs text-gray-500 dark:text-gray-400">Best-ranked position per partner</p>
             {hasTakenAssessment ? (
               <DashboardCompanyHighlights companies={topMatches} onSelect={setCompanySelection} onSeeAll={() => navigate('/student/results')} />
             ) : (

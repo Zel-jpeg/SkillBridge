@@ -1,3 +1,4 @@
+import { recommendationDisplay } from '../../utils/recommendationResults'
 import { getCachedData } from '../../hooks/useApi'
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
@@ -239,7 +240,7 @@ export default function InstructorDashboard() {
                             <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-lg px-2.5 py-1.5">
                               <CompanyImage name={s.top_recommendations[0].company} imageUrl={s.top_recommendations[0].company_image_url} className="h-6 w-6 rounded-md" />
                               <span className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">{s.top_recommendations[0].company}</span>
-                              <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{s.top_recommendations[0].match_score}%</span>
+                              <span className="text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">{recommendationDisplay(s.top_recommendations[0])}</span>
                             </div>
                           )}
                         </div>
@@ -272,7 +273,7 @@ export default function InstructorDashboard() {
                         <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
                         <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Placement</th>
                         <th className="text-left px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skills</th>
-                        <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top Match</th>
+                        <th className="text-center px-3 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Top suggestion</th>
                         <th onClick={() => toggleSort('overall')} className="text-center px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none">Overall <SortIndicator col="overall" sortBy={sortBy} sortDir={sortDir} /></th>
                       </tr>
                     </thead>
@@ -316,7 +317,7 @@ export default function InstructorDashboard() {
                               )}
                             </td>
                             <td className="px-3 py-4 text-center">{s.top_recommendations?.[0] ? (
-                              <div className="text-center"><p className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap truncate max-w-24">{s.top_recommendations[0].company}</p><p className="text-xs text-gray-400">{s.top_recommendations[0].match_score}%</p></div>
+                              <div className="text-center"><p className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap truncate max-w-24">{s.top_recommendations[0].company}</p><p className="text-xs text-gray-400">{recommendationDisplay(s.top_recommendations[0])}</p></div>
                             ) : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
                             <td className={`px-5 py-4 text-center ${overall !== null ? scoreBg(overall) : ''}`}>
                               <span className={`text-sm font-bold ${scoreColor(overall)}`}>{overall !== null ? `${overall}%` : '—'}</span>

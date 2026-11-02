@@ -1,3 +1,4 @@
+import { isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../utils/recommendationResults'
 import CompetencyInsights from './CompetencyInsights'
 import GrantExtraTime from './assessment/GrantExtraTime'
 import { assessmentSummary, categoryPercentage, scorePercentage } from '../utils/assessmentSummary'
@@ -130,7 +131,7 @@ function Assessments({ student, state, canRetake, onRetake, archived, retakeAsse
 }
 
 function CombinedCompetency({ state }) {
-  if (state.locked && !state.historical) return <EmptyDetail title="Combined competency is locked" locked>{lockExplanation(state)}</EmptyDetail>
+  if (state.competencyLocked && !state.historical) return <EmptyDetail title="Combined competency is locked" locked>{lockExplanation(state)}</EmptyDetail>
   const sourceIds = [...new Set(state.combined.flatMap(score => score.source_assessment_ids || []))]
   const included = state.results.filter(result => sourceIds.includes(result.id))
   return <div>
@@ -156,12 +157,13 @@ function Recommendations({ student, state }) {
   return <div><PanelTitle title="Ranked placement recommendations">Fit scores support a placement decision. Rank does not grant placement approval.</PanelTitle>
     <ol>{state.recommendations.map((rec, i) => <li key={rec.id ?? i} className="sb-detail-recommendation">
       <span aria-label={`Rank ${i + 1}`} className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-sm font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">{i + 1}</span>
-      <div className="min-w-0"><div className="sb-detail-recommendation-main"><div className="sb-detail-company"><CompanyImage name={rec.company} imageUrl={rec.company_image_url} className="h-11 w-11 rounded-lg" /><div className="min-w-0"><h4 className="sb-detail-heading">{rec.company || 'Partner not provided'}</h4><p>{rec.position || 'Position not provided'}</p></div></div><div className="sb-detail-hybrid"><div><ScoreLabel label="Hybrid match" /><strong>{percentLabel(rec.match_score)}</strong></div><ScoreBar value={rec.match_score} /></div></div>
+      <div className="min-w-0"><div className="sb-detail-recommendation-main"><div className="sb-detail-company"><CompanyImage name={rec.company} imageUrl={rec.company_image_url} className="h-11 w-11 rounded-lg" /><div className="min-w-0"><h4 className="sb-detail-heading">{rec.company || 'Partner not provided'}</h4><p>{rec.position || 'Position not provided'}</p></div></div><div className="sb-detail-hybrid"><div><ScoreLabel label={isAssessmentLed(rec) ? "Recommendation order" : "Hybrid match"} /><strong>{recommendationDisplay(rec)}</strong></div><ScoreBar value={recommendationValue(rec)} /></div></div>
         {isCurrentPlacement(rec, student.placement) && <span className="sb-detail-status mt-2">Current approved placement</span>}
-        <dl className="sb-detail-components">{components.slice(1).map(([name, key]) => <div key={key}><dt><ScoreLabel label={name} /></dt><dd><strong>{percentLabel(rec[key])}</strong></dd></div>)}</dl>
+        <dl className="sb-detail-components">{components.slice(1).map(([name, key]) => <div key={key}><dt><ScoreLabel label={isAssessmentLed(rec) ? key === "category_score_component" ? "Requirement coverage" : key === "nlp_score_component" ? "NLP text similarity" : "Location score" : name} /></dt><dd><strong>{isAssessmentLed(rec) && key === "category_score_component" ? coverageDisplay(rec) : percentLabel(rec[key])}</strong></dd></div>)}</dl>
+
         {rec.distance_km != null && <p className="sb-detail-muted mt-3">Distance: {Number(rec.distance_km).toFixed(1)} km</p>}
       </div>
-    </li>)}</ol><details className="sb-detail-disclosure mt-4"><summary>How scores work<ChevronRightIcon size={16} /></summary><div><p>Hybrid match combines 60% category fit, 25% NLP fit and 15% location fit.</p><p className="sb-detail-muted mt-2">Match scores measure fit, not the probability of placement.</p></div></details>
+    </li>)}</ol><details className="sb-detail-disclosure mt-4"><summary>How scores work<ChevronRightIcon size={16} /></summary><div><p>{state.recommendations.some(isAssessmentLed) ? "Requirement coverage leads, followed by requirement-demand alignment and supporting NLP/location." : "Legacy hybrid combines 60% category fit, 25% NLP fit and 15% location fit."}</p><p className="sb-detail-muted mt-2">Match scores measure fit, not the probability of placement.</p></div></details>
   </div>
 }
 

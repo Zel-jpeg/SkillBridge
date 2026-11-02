@@ -7,6 +7,9 @@ import DataSection from '../../components/DataSection'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import { readBrowserSession } from '../../api/sessionRenewal'
+import { rerunRecommendations, RECOMMENDATION_REFRESH_URLS } from '../../api/recommendationRerun'
+import { invalidateCache } from '../../hooks/useApi'
 import Pagination  from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import PageHeader  from '../../components/PageHeader'
@@ -62,21 +65,21 @@ export default function AdminDashboard() {
   }
 
   const [rerunning,  setRerunning]  = useState(false)
-  const [rerunMsg,   setRerunMsg]   = useState('')
+  const [rerunResult, setRerunResult] = useState(null)
+  const rerunMsg = rerunResult?.message || ''
 
   async function handleRerun() {
     setRerunning(true)
-    setRerunMsg('')
+    setRerunResult(null)
     try {
-      const res = await api.post('/api/admin/rerun-recommendations/')
-      setRerunMsg(res.data.message || 'Done!')
-      showToast(res.data.message || 'Recommendations refreshed.')
-    } catch {
-      setRerunMsg('Re-run failed. Try again.')
-      showToast('Could not refresh recommendations. Please try again.', 'error')
+      const result = await rerunRecommendations(api, readBrowserSession().id)
+      if (result.state === 'cancelled') return
+      if (result.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
+      setRerunResult(result)
+      showToast(result.message, result.type)
+      if (result.type === 'success') setTimeout(() => setRerunResult(current => current === result ? null : current), 4000)
     } finally {
       setRerunning(false)
-      setTimeout(() => setRerunMsg(''), 4000)
     }
   }
 
@@ -114,10 +117,10 @@ export default function AdminDashboard() {
         {/* Re-run status message */}
         {rerunMsg && (
           <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium ${
-            rerunMsg.includes('failed') ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+            rerunResult.type === 'error' ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' : rerunResult.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' : 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
           }`}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              {rerunMsg.includes('failed') ? <><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
+              {rerunResult.type !== 'success' ? <><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
             </svg>
             {rerunMsg}
           </div>

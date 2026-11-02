@@ -1,3 +1,4 @@
+import { recommendationDisplay } from '../../utils/recommendationResults'
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminUsers.jsx  (SLIMMED — 1676 → ~280 lines)
@@ -249,9 +250,9 @@ export default function AdminUsers() {
                       {role === 'student' && u.match != null && (
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${u.match >= 80 ? 'bg-green-500' : u.match >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${u.match}%` }} />
+                            <div className={`h-full rounded-full ${u.match >= 80 ? 'bg-green-500' : u.match >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${u.topRecommendation ? recommendationDisplay(u.topRecommendation) : `${u.match}%`}` }} />
                           </div>
-                          <span className={`text-xs font-bold shrink-0 ${matchColor(u.match)}`}>{u.match}%</span>
+                          <span className={`text-xs font-bold shrink-0 ${matchColor(u.match)}`}>{u.topRecommendation ? recommendationDisplay(u.topRecommendation) : `${u.match}%`}</span>
                         </div>
                       )}
                       {role === 'instructor' && <p className="text-xs text-gray-400 dark:text-gray-500">{u.department}</p>}
@@ -299,7 +300,7 @@ export default function AdminUsers() {
                             <td className="px-3 py-4 text-xs text-gray-500 dark:text-gray-400">{role === 'student' ? u.status : u.department}</td>
                             <td className="px-5 py-4 text-center">
                               {role === 'student' && u.match != null
-                                ? <span className={`text-sm font-bold ${matchColor(u.match)}`}>{u.match}%</span>
+                                ? <span className={`text-sm font-bold ${matchColor(u.match)}`}>{u.topRecommendation ? recommendationDisplay(u.topRecommendation) : `${u.match}%`}</span>
                                 : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
                               }
                             </td>

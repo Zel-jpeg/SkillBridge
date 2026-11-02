@@ -45,7 +45,7 @@ export function useStudentResults() {
 
   // ── Skill scores — formatted for bar charts ─────────────────────────────
   const skillScores = useMemo(() => {
-    if (data?.recommendations_locked !== false || !data?.combined_category_scores?.length) return []
+    if ((data?.competency_locked ?? data?.recommendations_locked) !== false || !data?.combined_category_scores?.length) return []
     return data.combined_category_scores.map((s, i) => ({
       label:    s.category,
       pct:      scorePercentage(s.percentage),
@@ -56,7 +56,7 @@ export function useStudentResults() {
     })).sort((left, right) => (right.pct ?? -1) - (left.pct ?? -1))
   }, [data])
 
-  const overallScore = data?.recommendations_locked === false ? data?.overall_percentage : null
+  const overallScore = (data?.competency_locked ?? data?.recommendations_locked) === false ? data?.overall_percentage : null
 
   // ── Recommendations — enriched with distance + scores ───────────────────
   const enrichedRecs = useMemo(() => {
@@ -73,6 +73,7 @@ export function useStudentResults() {
     competencyProfile: data?.combined_competency_profile ?? null,
     resultData: data,
     recommendationsLocked: data?.recommendations_locked !== false,
+    competencyLocked: (data?.competency_locked ?? data?.recommendations_locked) !== false,
     placement: data?.placement ?? null,
     recommendations, recommendedCompanies, topMatches,
     loading, error,

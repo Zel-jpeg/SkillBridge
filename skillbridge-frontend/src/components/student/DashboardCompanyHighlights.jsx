@@ -1,11 +1,12 @@
 import CompanyImage from '../CompanyImage'
 import { ChevronRightIcon, PinIcon } from '../Icons'
 import './dashboardCompanyHighlights.css'
+import { isAssessmentLed, recommendationDisplay, recommendationValue } from '../../utils/recommendationResults'
 
 export default function DashboardCompanyHighlights({ companies, nearest = false, onSelect, onSeeAll }) {
   return <div className={`student-company-highlights ${nearest ? 'is-nearest' : 'is-ranked'}`}>
     {companies.length ? <ol className="student-company-list">{companies.map((company, index) => {
-      const score = company.match_score
+      const score = recommendationValue(company)
       const hasScore = Number.isFinite(score)
       const tone = !hasScore ? 'unavailable' : score >= 80 ? 'strong' : score >= 60 ? 'fair' : 'low'
       return <li key={company.companyKey}>
@@ -16,7 +17,7 @@ export default function DashboardCompanyHighlights({ companies, nearest = false,
           <span className="student-company-identity"><span className="student-company-name"><span className="student-company-rank">#{index + 1}</span><span title={company.company}>{company.company}</span></span><span className="student-company-position" title={company.position}>{company.position}</span></span>
           <span className="student-company-metric">
             {nearest && <span className="student-company-distance" title="Straight-line distance from your saved location"><PinIcon size={13} />{Number.isFinite(company.distKm) ? `${company.distKm.toFixed(1)} km` : 'Distance unavailable'}</span>}
-            <span className={`student-company-score score-${tone}`}>{hasScore ? `${score}%` : 'No score'}<span className="student-company-match-label">{hasScore ? 'match' : 'available'}</span></span>
+            <span className={`student-company-score score-${tone}`}>{hasScore ? recommendationDisplay(company) : 'No score'}<span className="student-company-match-label">{hasScore ? isAssessmentLed(company) ? 'position order' : 'legacy match' : 'available'}</span></span>
             {!nearest && hasScore && <span className={`student-company-track score-${tone}`} aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, score))}%` }} /></span>}
           </span>
           <span className="student-company-chevron" aria-hidden="true"><ChevronRightIcon size={16} /></span>

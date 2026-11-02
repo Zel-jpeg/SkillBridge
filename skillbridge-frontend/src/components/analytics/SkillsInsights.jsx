@@ -10,9 +10,12 @@ const scoreBands = [
   { key: 'needs_work', label: 'Needs work', guide: 'Below 60%' },
 ]
 const matchBands = [
-  { key: 'Strong', label: 'Strong fit', guide: '80% and above', tone: 'strong' },
-  { key: 'Fair', label: 'Fair fit', guide: '60% to below 80%', tone: 'fair' },
-  { key: 'Low', label: 'Low fit', guide: 'Below 60%', tone: 'needs_work' },
+  { key: 'Minimums met', label: 'Minimums met', guide: 'All listed numerical targets met; not approval', tone: 'strong' },
+  { key: 'Below minimums', label: 'Below minimums', guide: 'At least one assessed requirement below target', tone: 'fair' },
+  { key: 'Unassessed requirements', label: 'Unassessed requirements', guide: 'Required category evidence is unavailable', tone: 'needs_work' },
+  { key: 'Strong', label: 'Legacy strong fit', guide: '80% and above', tone: 'strong' },
+  { key: 'Fair', label: 'Legacy fair fit', guide: '60% to below 80%', tone: 'fair' },
+  { key: 'Low', label: 'Legacy low fit', guide: 'Below 60%', tone: 'needs_work' },
 ]
 const unavailableBands = [
   { key: 'No current match', label: 'No current recommendation', icon: <ReportIcon size={17} /> },
@@ -33,6 +36,8 @@ export default function SkillsInsights({ data, selection, onSelect }) {
   if (page !== current) setPage(current)
   const rows = data.skills.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
   const counts = new Map(data.match_bands.map(row => [row.name, row.count]))
+  const currentBands = new Set(['Minimums met', 'Below minimums', 'Unassessed requirements'])
+  const hasAssessmentLed = data.match_bands.some(row => currentBands.has(row.name))
   const withMatch = matchBands.reduce((sum, row) => sum + (counts.get(row.key) ?? 0), 0)
   const withoutMatch = unavailableBands.reduce((sum, row) => sum + (counts.get(row.key) ?? 0), 0)
   return <div className="si-panels">
@@ -49,7 +54,7 @@ export default function SkillsInsights({ data, selection, onSelect }) {
     </section>
     <section className="si-panel" aria-label="Current partner matches">
       <header className="si-header"><span className="si-icon" aria-hidden="true"><CompanyIcon size={23} /></span><div><h3>Current partner matches</h3><p>Each student counts once, using their highest current recommendation match.</p></div></header>
-      <div className="si-match-group"><div className="si-match-heading"><h4>With a current match</h4><span className="si-badge">{withMatch} {withMatch === 1 ? 'student' : 'students'}</span></div>{matchBands.map(band => <MatchRow key={band.key} band={band} count={counts.get(band.key) ?? 0} selection={selection} onSelect={onSelect} />)}</div>
+      <div className="si-match-group"><div className="si-match-heading"><h4>With a current match</h4><span className="si-badge">{withMatch} {withMatch === 1 ? 'student' : 'students'}</span></div>{matchBands.filter(band => hasAssessmentLed ? currentBands.has(band.key) || (counts.get(band.key) ?? 0) > 0 : !currentBands.has(band.key)).map(band => <MatchRow key={band.key} band={band} count={counts.get(band.key) ?? 0} selection={selection} onSelect={onSelect} />)}</div>
       <div className="si-match-group si-match-group-neutral"><div className="si-match-heading"><h4>Without a current match</h4><span className="si-badge">{withoutMatch} {withoutMatch === 1 ? 'student' : 'students'}</span></div>{unavailableBands.map(band => <MatchRow key={band.key} band={band} count={counts.get(band.key) ?? 0} selection={selection} onSelect={onSelect} />)}</div>
       <p className="si-helper si-approval-note">A partner match supports review. Placement still needs approval.</p>
     </section>

@@ -21,7 +21,7 @@ import CompetencyInsights, { HighestScoringAreas } from '../../components/Compet
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import PlacementGuidance from '../../components/placements/PlacementGuidance'
 import StudentCompanyDetails from '../../components/StudentCompanyDetails'
-import { sortCompanyPositions } from '../../utils/recommendationResults'
+import { sortCompanyPositions, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
 
 
 
@@ -46,7 +46,7 @@ export default function StudentResults() {
     loading: resultsLoading,
     error: resultsError,
     resultData,
-    recommendationsLocked,
+    recommendationsLocked, competencyLocked,
     sortMode,
     setSortMode,
     hasPin,
@@ -56,7 +56,7 @@ export default function StudentResults() {
   // ── All companies tab ───────────────────────────────────────────
   const [companyTab, setCompanyTab] = useState('recommended') // 'recommended' | 'all'
   const [companySelection, setCompanySelection] = useState(null)
-  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: recommendationsLocked || companyTab !== 'all' })
+  const { data: allCompaniesRaw, loading: allCompLoading } = useApi('/api/student/companies/', { skip: competencyLocked || companyTab !== 'all' })
   const allCompanies = allCompaniesRaw ?? []
 
   // Animated skill bars
@@ -67,7 +67,7 @@ export default function StudentResults() {
   const displayId = apiStudent?.school_id ?? ''
   const displayCourse = apiStudent?.course ?? ''
 
-  if (resultsLoading || !resultData || resultsError || recommendationsLocked) return (
+  if (resultsLoading || !resultData || resultsError || competencyLocked) return (
     <div className="min-w-0">
 
       <DataSection url="/api/student/results/combined/" layout="result-summary"><section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -187,6 +187,7 @@ export default function StudentResults() {
         <div className="flex flex-col gap-5">
 
           <PlacementGuidance />
+          {recommendationsLocked && <p role="status" className="text-sm text-amber-700 dark:text-amber-300">Suggestions need refreshing. Your skill category scores remain available. Ask your administrator to re-run recommendations.</p>}
 
           {/* Tab bar: Recommended vs All Companies */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -228,7 +229,7 @@ export default function StudentResults() {
             {companyTab === 'recommended' && (
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 self-start sm:self-auto">
               {[
-                { key: 'match',    label: 'Hybrid Match' },
+                { key: 'match',    label: 'Recommendation Order' },
                 { key: 'distance', label: 'Nearest',    disabled: !hasPin },
                 { key: 'combined', label: 'Score Details' },
               ].map(({ key, label, disabled }) => (
@@ -257,14 +258,14 @@ export default function StudentResults() {
           {companyTab === 'recommended' && sortMode === 'combined' && (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p className="text-xs text-blue-700 dark:text-blue-300">Hybrid match = 60% Category fit + 25% NLP fit + 15% Location fit</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Requirement coverage leads, followed by requirement-demand alignment and supporting NLP/location. Rank is an order, not a confidence percentage.</p>
             </div>
           )}
 
           {companyTab === 'recommended' && !hasPin && sortMode === 'match' && (
             <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                📍 Pin your location to unlock <strong>Nearest</strong> and <strong>Combined</strong> sorting.
+                📍 Pin your location to use <strong>Nearest</strong> sorting. All partner locations remain available.
               </p>
               <button onClick={() => navigate('/student/profile')}
                 className="text-xs font-medium text-green-600 dark:text-green-400 hover:underline whitespace-nowrap shrink-0">
@@ -307,7 +308,7 @@ export default function StudentResults() {
                         <div className="shrink-0 text-right">
                           {pos.match_score != null ? (
                             <>
-                              <p className={`text-sm font-bold ${matchColor(pos.match_score)}`}>{pos.match_score}%</p>
+                              <p className={`text-sm font-bold ${matchColor(recommendationValue(pos))}`}>{recommendationDisplay(pos)}</p>
                               <p className="text-[10px] text-gray-400 dark:text-gray-500">match</p>
                             </>
                           ) : (
@@ -329,7 +330,7 @@ export default function StudentResults() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {sorted.length === 0 && !resultsLoading && (
               <div className="col-span-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No eligible partner positions are currently available.</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{recommendationsLocked ? 'Current suggestions are awaiting recalculation.' : 'No eligible partner positions are currently available.'}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You can still browse partners.</p>
                 <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all partners →</button>
               </div>
@@ -362,8 +363,8 @@ export default function StudentResults() {
                   <div className="relative z-10 max-w-24 text-right shrink-0">
                     {sortMode === 'combined' ? (
                       <>
-                        <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{r.combined}%</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label="Best position match" /></p>
+                        <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{recommendationDisplay(r)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label={isAssessmentLed(r) ? 'Recommendation order' : 'Best position match'} /></p>
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
                       <>
@@ -372,8 +373,8 @@ export default function StudentResults() {
                       </>
                     ) : (
                       <>
-                        <p className={`text-lg font-bold ${matchColor(r.match)}`}>{r.match}%</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label="Best position match" /></p>
+                        <p className={`text-lg font-bold ${matchColor(r.match)}`}>{recommendationDisplay(r)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label={isAssessmentLed(r) ? 'Recommendation order' : 'Best position match'} /></p>
                       </>
                     )}
                   </div>
@@ -419,13 +420,14 @@ export default function StudentResults() {
                 {/* Sub-scores if combined */}
                 {sortMode === 'combined' && (
                   <div className="relative z-10 mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label="Category fit" /> {Math.round(r.category_score_component ?? 0)}%</span>
-                    <span>· <ScoreLabel label="NLP fit" /> {Math.round(r.nlp_score_component ?? 0)}%</span>
-                    <span>· <ScoreLabel label="Location fit" /> {Math.round(r.location_score_component ?? 0)}%</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label={isAssessmentLed(r) ? 'Requirement coverage' : 'Category fit'} /> {isAssessmentLed(r) ? coverageDisplay(r) : `${Math.round(r.category_score_component ?? 0)}%`}</span>
+                    <span>· <ScoreLabel label="NLP text similarity" /> {r.nlp_score_component?.toFixed(1) ?? '—'}%</span>
+                    <span>· <ScoreLabel label="Location score" /> {r.location_score_component?.toFixed(1) ?? '—'}%</span>
                     {r.distKm != null && <span>· {r.distKm.toFixed(1)} km straight-line</span>}
                     <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
                   </div>
                 )}
+
                 <div className="mt-auto pt-3">
                   <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"
                     className="min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View partner details <span aria-hidden="true">→</span></button>

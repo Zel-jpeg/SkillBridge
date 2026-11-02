@@ -1,3 +1,4 @@
+import { placementRecommendation, recommendationDisplay, recommendationValue } from './recommendationResults.js'
 import api from '../api/axios'
 
 const REPORT_META = {
@@ -174,8 +175,8 @@ function addCompanyTables(doc, autoTable, records, startY) {
     autoTable(doc, tableTheme({
       startY: y + 8,
       head: [[
-        'Student', 'School ID', 'Course', 'Batch', 'Status', 'Hybrid match',
-        'Category fit', 'NLP fit', 'Location fit', 'Distance', 'Approved at', 'Remarks',
+        'Student', 'School ID', 'Course', 'Batch', 'Status', 'Order / legacy match',
+        'Legacy category fit', 'NLP similarity', 'Location score', 'Distance', 'Approved at', 'Remarks',
       ]],
       body: group.map(record => [
         record.student.name,
@@ -183,7 +184,7 @@ function addCompanyTables(doc, autoTable, records, startY) {
         clean(record.student.course),
         clean(record.batch?.name),
         STATUS_LABELS[record.status] || record.status,
-        percent(record.match_score_at_assignment),
+        recommendationDisplay(placementRecommendation(record)),
         percent(record.category_score_component_at_assignment),
         percent(record.nlp_score_component_at_assignment),
         percent(record.location_score_component_at_assignment),
@@ -218,7 +219,7 @@ function addStudentTable(doc, autoTable, records, startY) {
       record.company.name,
       record.position.title,
       STATUS_LABELS[record.status] || record.status,
-      percent(record.match_score_at_assignment),
+      recommendationDisplay(placementRecommendation(record)),
       distance(record.distance_km_at_assignment),
       dateTime(record.approved_at),
       clean(record.remarks),
@@ -244,7 +245,7 @@ function addHistoryTable(doc, autoTable, records, startY) {
       STATUS_LABELS[record.status] || record.status,
       `Assigned: ${person(record.assigned_by)}\nApproved: ${person(record.approved_by)}\nRemoved: ${person(record.removed_by)}\nRejected: ${person(record.rejected_by)}`,
       `Created: ${dateTime(record.created_at)}\nUpdated: ${dateTime(record.updated_at)}\nApproved: ${dateTime(record.approved_at)}\nRemoved: ${dateTime(record.removed_at)}\nRejected: ${dateTime(record.rejected_at)}`,
-      `Hybrid match: ${percent(record.match_score_at_assignment)}\nCategory fit: ${percent(record.category_score_component_at_assignment)}\nNLP fit: ${percent(record.nlp_score_component_at_assignment)}\nLocation fit: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
+      `Recommendation order / legacy match: ${recommendationDisplay(placementRecommendation(record))}\nCategory fit: ${percent(record.category_score_component_at_assignment)}\nNLP fit: ${percent(record.nlp_score_component_at_assignment)}\nLocation fit: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
       clean(record.remarks),
     ]) : [['—', 'No placement records match the selected filters.']],
     columnStyles: {
@@ -329,7 +330,9 @@ function spreadsheetRows(payload) {
     'Approved Count': record.position.approved_count,
     'Remaining Slots': record.position.remaining_slots,
     Status: STATUS_LABELS[record.status] || record.status,
-    'Hybrid match': record.match_score_at_assignment,
+    'Recommendation order': record.recommendation_evidence?.recommendation_rank ?? null,
+    'Requirement coverage': recommendationValue(placementRecommendation(record)),
+    'Legacy hybrid reference': record.match_score_at_assignment,
     'Category fit': record.category_score_component_at_assignment,
     'NLP fit': record.nlp_score_component_at_assignment,
     'Location fit': record.location_score_component_at_assignment,

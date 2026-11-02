@@ -1,4 +1,5 @@
 """Read-only staff analytics. Current cohort state is never a historical snapshot."""
+from .recommendation_policy import order_fields, api_fields, assessment_band, top_api_fields
 from collections import Counter, defaultdict
 from zoneinfo import ZoneInfo
 
@@ -112,7 +113,7 @@ def analytics_payload(user, params):
     analysis_ids = [assessment.id for assessment in analysis_assessments]
     recs = defaultdict(list)
     for rec in (Recommendation.objects.filter(student_id__in=current, batch_id__in=selected_ids, is_current=True)
-            .select_related('position__company').order_by('student_id', '-match_score', 'position_id', 'id')):
+            .select_related('position__company').order_by(*order_fields('student_id'))):
         if current[rec.student_id].batch_id == rec.batch_id:
             recs[(rec.student_id, rec.batch_id)].append(rec)
     placements = list(OJTPlacement.objects.filter(student_id__in=current, batch_id__in=selected_ids,
@@ -171,7 +172,7 @@ def analytics_payload(user, params):
         if batch.status != 'active':
             reasons = []  # Archived records are history, not a current action queue.
         waiting = bool(top and not placement and student_id not in other_approved)
-        band = 'Locked' if not unlocked else 'No current match' if top is None else 'Strong' if top.match_score >= 80 else 'Fair' if top.match_score >= 60 else 'Low'
+        band = 'Locked' if not unlocked else 'No current match' if top is None else assessment_band(top)
         match_bands[band] += 1
         scores = state['combined_category_scores']
         for score in scores:
@@ -185,10 +186,11 @@ def analytics_payload(user, params):
         batch_rows[batch.id]['completed'] += int(complete)
         batch_rows[batch.id]['approved'] += int(placement is not None)
         students.append({'id': student_id, 'name': student.name, 'school_id': student.school_id or '',
+            **top_api_fields(top),
             'course': student.course or '', 'batch_id': batch.id, 'batch': batch.name, 'batch_status': batch.status,
             'instructor': batch.instructor.name, 'required_completed': state['completed_required_count'],
             'required_total': state['total_required_count'], 'required_complete': complete,
-            'recommendations_locked': not unlocked, 'awaiting_review': waiting,
+            'recommendations_locked': not unlocked, 'competency_locked': state.get('competency_locked', not unlocked), 'awaiting_review': waiting,
             'match_band': band, 'top_match': round(top.match_score, 2) if top else None,
             'top_company': top.position.company.name if top else '',
             'top_position': top.position.title if top else '',

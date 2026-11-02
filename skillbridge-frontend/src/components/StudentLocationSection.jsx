@@ -1,3 +1,4 @@
+import { recommendationDisplay } from '../utils/recommendationResults'
 import { escapeHtml } from '../utils/escapeHtml'
 import { loadLeaflet } from '../utils/externalServices'
 import { validPin } from '../utils/recommendationResults'
@@ -98,7 +99,7 @@ function PreviewMap({ pinLat, pinLng, companies }) {
         allCoords.push([c.lat, c.lng])
         L.marker([c.lat, c.lng], { icon: makeCompanyIcon(L, i) })
           .addTo(map)
-          .bindPopup(`<b>#${i + 1} ${escapeHtml(c.company)}</b><br/>${escapeHtml(c.position)}<br/><b>${escapeHtml(c.match_score)}% match</b>`)
+          .bindPopup(`<b>#${i + 1} ${escapeHtml(c.company)}</b><br/>${escapeHtml(c.position)}<br/><b>${escapeHtml(recommendationDisplay(c))} recommendation</b>`)
       })
 
       if (allCoords.length > 1) {

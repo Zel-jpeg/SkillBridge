@@ -4,6 +4,7 @@ import json
 
 from .models import Position, PositionRequirement, RecommendationConfiguration, SkillCategory
 from .recommendation_nlp import TEXT_GENERATION_VERSION, extract_coordinates
+from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
 
 
 def _digest(value):
@@ -31,7 +32,8 @@ def catalog_fingerprint():
 
 
 def input_fingerprint(student, catalog=None):
-    return _digest({'catalog': catalog if catalog is not None else catalog_fingerprint(),
+    return _digest({'ranking_policy': RANKING_POLICY_VERSION,
+                    'catalog': catalog if catalog is not None else catalog_fingerprint(),
                     'student_coordinates': extract_coordinates(student.address)})
 
 

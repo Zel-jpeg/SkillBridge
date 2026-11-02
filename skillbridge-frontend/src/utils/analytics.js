@@ -1,3 +1,4 @@
+import { recommendationDisplay, summaryRecommendation } from './recommendationResults.js'
 export const ANALYTICS_URL = '/api/management/analytics/'
 export const FILTER_KEYS = ['batch_id', 'instructor_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
 
@@ -68,8 +69,8 @@ export function analyticsTable(data, tab, group, students) {
   if (group === 'activity') return { title: 'Recorded submission activity', columns: [data.scope?.activity_interval === 'month' ? 'Philippine month' : data.scope?.activity_interval === 'year' ? 'Philippine year' : 'Philippine date', 'Valid submitted attempts'], rows: data.activity.map(row => [data.scope?.activity_interval === 'month' ? row.date.slice(0, 7) : data.scope?.activity_interval === 'year' ? row.date.slice(0, 4) : row.date, row.submissions]) }
   if (group === 'skills') return { title: 'Combined skill distribution', columns: ['Category', 'Students with evidence', 'Missing / locked', 'Strong', 'Fair', 'Needs work', 'Mean of final student percentages'], rows: data.skills.map(row => [row.name, row.sample, row.missing, row.strong, row.fair, row.needs_work, row.average]) }
   return { title: tab === 'placements' ? 'Placement records' : tab === 'skills' ? 'Student competency records' : 'Student progress and follow-up',
-    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved partner', 'Approved position', 'Best current match %', 'Follow-up reasons', 'Top recommended position', 'Top recommended partner', ...(tab === 'skills' ? data.skills.map(row => `${row.name} %`) : [])],
-    rows: students.map(row => [row.name, row.school_id, row.course, row.batch, row.instructor, `${row.required_completed}/${row.required_total}`, row.recommendations_locked ? 'Locked / unavailable' : 'Current', row.placement_status.replaceAll('_', ' '), row.company, row.position, row.top_match, row.reasons.join('; '), row.top_position || null, row.top_company || null, ...(tab === 'skills' ? data.skills.map(skill => row.scores[skill.id] ?? null) : [])]) }
+    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved partner', 'Approved position', 'Recommendation order / legacy match', 'Follow-up reasons', 'Top recommended position', 'Top recommended partner', ...(tab === 'skills' ? data.skills.map(row => `${row.name} %`) : [])],
+    rows: students.map(row => [row.name, row.school_id, row.course, row.batch, row.instructor, `${row.required_completed}/${row.required_total}`, (row.competency_locked ?? row.recommendations_locked) ? 'Locked / unavailable' : 'Current', row.placement_status.replaceAll('_', ' '), row.company, row.position, recommendationDisplay(summaryRecommendation(row)), row.reasons.join('; '), row.top_position || null, row.top_company || null, ...(tab === 'skills' ? data.skills.map(skill => row.scores[skill.id] ?? null) : [])]) }
 }
 
 export function analyticsSelectionLabel(data, group) {

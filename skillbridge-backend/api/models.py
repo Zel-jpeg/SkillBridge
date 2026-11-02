@@ -398,6 +398,8 @@ class Recommendation(models.Model):
     location_score_component = models.FloatField(default=0.0)
     model_used               = models.CharField(max_length=40, blank=True, default='')
     distance_km              = models.FloatField(blank=True, null=True)
+    assessment_rank = models.PositiveIntegerField(null=True, blank=True)
+    assessment_details = models.JSONField(default=dict, blank=True)
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -543,6 +545,23 @@ class OJTPlacement(models.Model):
         self.nlp_score_component_at_assignment = recommendation.nlp_score_component
         self.location_score_component_at_assignment = recommendation.location_score_component
         self.distance_km_at_assignment = recommendation.distance_km
+        from .recommendation_policy import approval_snapshot
+        self._pending_assessment_snapshot = approval_snapshot(recommendation)
+
+    def save(self, *args, **kwargs):
+        snapshot = getattr(self, '_pending_assessment_snapshot', None)
+        if self.status != self.STATUS_APPROVED or snapshot is None:
+            return super().save(*args, **kwargs)
+        from django.db import transaction
+        from .recommendation_policy import SNAPSHOT_ACTION
+        with transaction.atomic():
+            result = super().save(*args, **kwargs)
+            ManagementAction.objects.create(actor=self.approved_by or self.assigned_by,
+                action=SNAPSHOT_ACTION, target_type='placement', target_id=self.pk,
+                batch_id_snapshot=self.batch_id, metadata=snapshot)
+        self._assessment_snapshot = snapshot
+        del self._pending_assessment_snapshot
+        return result
 
     def __str__(self):
         return f'{self.student.name} → {self.position.title} ({self.status})'

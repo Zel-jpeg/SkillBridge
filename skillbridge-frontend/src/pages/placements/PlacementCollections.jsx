@@ -1,3 +1,4 @@
+import { placementRecommendation, recommendationDisplay, recommendationMetrics } from '../../utils/recommendationResults'
 import { Link } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import CompanyImage from '../../components/CompanyImage'
@@ -15,7 +16,6 @@ const states = {
   suggestions_declined: ['Available suggestions declined', 'Previous decisions remain recorded. Review other suitable positions when available.', 'neutral', BriefcaseIcon],
 }
 const decisions = { completed: 'Legacy record', approved: 'Approved', removed: 'Removed', rejected: 'Declined suggestion', suggested: 'Suggested' }
-const percentage = value => value == null ? 'Not recorded' : `${value}%`
 const stamp = value => {
   const parsed = value ? new Date(value) : null
   return parsed && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }).format(parsed) : 'Not recorded'
@@ -78,7 +78,7 @@ export function AllocationDetails({ item, role, onClose, onReview }) {
     <div className="pl-dialog-body"><PlacementIdentity student={item.student} batch={item.batch} /><div className="pl-target"><AllocationStatus status={item.status} /></div>
       <p className="pl-muted">This status describes the current allocation. It is separate from a placement approval or rejection.</p>
       <h3 className="pl-subheading">Available position matches</h3><p className="pl-muted">These matches reserve no slots. Review the current evidence and capacity before deciding.</p>
-      <div className="pl-alternatives">{item.alternatives?.slice(0, 3).map((option, index) => <button type="button" className="pl-alternative" key={option.id} onClick={() => onReview(option.id)}><strong>#{index + 1} · {option.position}</strong><span>{option.company} · {percentage(option.match_score)}</span><span className="pl-card-action pl-button">Review match <ChevronRightIcon size={14} /></span></button>)}</div>
+      <div className="pl-alternatives">{item.alternatives?.slice(0, 3).map((option, index) => <button type="button" className="pl-alternative" key={option.id} onClick={() => onReview(option.id)}><strong>#{index + 1} · {option.position}</strong><span>{option.company} · {recommendationDisplay(option)}</span><span className="pl-card-action pl-button">Review match <ChevronRightIcon size={14} /></span></button>)}</div>
       {!item.alternatives?.length && <p className="pl-muted pl-list-note">No current position matches are available for this student.</p>}
       <div className="pl-dialog-actions"><Link className="pl-button" to={recordsPath}>Review student records</Link><button type="button" className="pl-button pl-primary" onClick={onClose}>Close</button></div>
     </div>
@@ -92,7 +92,7 @@ export function DecisionHistory({ rows, total, page, onPage, onOpen, filtered })
         {rows.map(item => <tr className="pl-history-row" key={item.id}><td data-label="Student"><PlacementIdentity student={item.student} /></td>
           <td data-label="Partner / Position"><div className="pl-identity"><CompanyImage name={item.company.name} imageUrl={item.company.image_url} className="h-9 w-9 rounded-lg" /><div><strong>{item.company.name}</strong><p className="pl-muted">{item.position.title}</p></div></div></td>
           <td data-label="Decision"><span className={`pl-status pl-decision-status pl-decision-status--${item.status}`}>{decisions[item.status] || item.status}</span></td>
-          <td data-label="Score at decision" className="pl-history-score">{item.match_score_at_assignment == null ? <span className="pl-muted">Manual / no score</span> : percentage(item.match_score_at_assignment)}</td>
+          <td data-label="Score at decision" className="pl-history-score">{item.match_score_at_assignment == null ? <span className="pl-muted">Manual / no score</span> : recommendationDisplay(placementRecommendation(item))}</td>
           <td data-label="Recorded"><p>{stamp(recordedAt(item))}</p><p className="pl-muted">by {actor(item)}</p></td>
           <td><button type="button" className="pl-history-open pl-button" aria-haspopup="dialog" aria-label={`Decision details for ${item.student.name}`} onClick={() => onOpen(item.id)}><span className="pl-history-detail-label">Decision details</span><ChevronRightIcon size={17} /></button></td>
         </tr>)}
@@ -106,7 +106,7 @@ export function DecisionDetails({ item, onClose }) {
   return <DialogShell title="Placement decision details" description="Read-only historical placement decision and saved score components." size="placement" onClose={onClose} closeLabel="Close decision details">
     <div className="pl-dialog-body"><PlacementIdentity student={item.student} batch={item.batch} /><div className="pl-target"><h3>{item.company.name}</h3><p>{item.position.title}</p><span className={`pl-status pl-decision-status pl-decision-status--${item.status}`}>{decisions[item.status] || item.status}</span><p className="pl-muted">Recorded {stamp(recordedAt(item))} (Manila) · by {actor(item)}</p></div>
       <p className="pl-muted">Recorded scores are historical snapshots. They do not describe a newly calculated match or change current placement eligibility.</p>
-      <div className="pl-score-grid">{[['Hybrid match', item.match_score_at_assignment], ['Category fit', item.category_score_component_at_assignment], ['NLP fit', item.nlp_score_component_at_assignment], ['Location fit', item.location_score_component_at_assignment]].map(([label, value]) => <div key={label}><strong>{percentage(value)}</strong><span>{label}</span></div>)}</div>
+      <div className="pl-score-grid">{recommendationMetrics(placementRecommendation(item)).map(([label, value]) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}</div>
       <h3>Decision remarks</h3><p className="pl-decision-remarks">{item.remarks || 'No remarks recorded.'}</p><p className="pl-muted">Distance at assignment: {item.distance_km_at_assignment == null ? 'Not recorded' : `${item.distance_km_at_assignment} km`}</p>
       <div className="pl-dialog-actions"><button type="button" className="pl-button pl-primary" onClick={onClose}>Close</button></div>
     </div>

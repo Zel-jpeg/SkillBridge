@@ -1,3 +1,4 @@
+import { recommendationDisplay, coverageDisplay, isAssessmentLed, componentPercent } from './recommendationResults.js'
 import { assessmentSummary, categoryPercentage } from './assessmentSummary.js'
 import { manilaDateTime } from './assessmentDates.js'
 
@@ -29,8 +30,8 @@ export function studentCompetencySections(row) {
     suggestions: locked ? [] : interpretation.suggestions.map(item => [item.category, categoryPercentage(item.percentage), item.message]),
     recommendationState: locked ? 'Locked - required assessments remain incomplete' : 'Unlocked',
     recommendations: locked ? [] : (row.final_recommendations || []).map((rec, index) => [
-      String(rec.rank ?? index + 1), rec.company, rec.position, `${Number(rec.match_score).toFixed(1)}%`,
-      `${Number(rec.category_score_component).toFixed(1)}%`, `${Number(rec.nlp_score_component).toFixed(1)}%`,
+      String(rec.rank ?? index + 1), rec.company, rec.position, recommendationDisplay(rec),
+      isAssessmentLed(rec) ? coverageDisplay(rec) : componentPercent(rec.category_score_component), `${Number(rec.nlp_score_component).toFixed(1)}%`,
       `${Number(rec.location_score_component).toFixed(1)}%`,
     ]),
     placement: placement.status === 'approved'
@@ -104,7 +105,7 @@ export function buildAssessmentReportPdf(payload, filters, jsPDF, autoTable) {
       }
       section(`Final ranked recommendations - ${s.recommendationState}`)
       if (s.recommendationState.startsWith('Locked')) paragraph('Recommendations are locked. No current rankings are shown.')
-      else table(['Rank', 'Partner', 'Position', 'Match', 'Category', 'NLP', 'Location'],
+      else table(['Rank', 'Partner', 'Position', 'Order / legacy match', 'Coverage / legacy category', 'NLP', 'Location'],
         s.recommendations.length ? s.recommendations : [['', 'No eligible partner positions', '', '', '', '', '']],
         { columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 58 }, 2: { cellWidth: 80 }, 3: { cellWidth: 24 }, 4: { cellWidth: 30 }, 5: { cellWidth: 30 }, 6: { cellWidth: 36 } } })
     })

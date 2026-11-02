@@ -4,7 +4,7 @@ import { scoreColor } from '../../utils/formatters'
 import { reportTableStyles as styles } from './reportTableStyles'
 
 const compactOrder = ['0', '4', '5', '7', '12', '10']
-const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 10: 'Match', 12: 'Top recommendation' }
+const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 10: 'Recommendation order', 12: 'Top recommendation' }
 const matchSurface = value => value == null ? '' : value >= 80 ? 'bg-green-50/70 dark:bg-green-950/30' : value >= 60 ? 'bg-amber-50/70 dark:bg-amber-950/30' : 'bg-rose-50/70 dark:bg-rose-950/30'
 
 export default function AnalyticsRecordTable({ engine, report, page, pageSize = 10, studentTable, fullColumns, selectionLabel, onStudent }) {
@@ -28,7 +28,7 @@ export default function AnalyticsRecordTable({ engine, report, page, pageSize = 
         const value = row.original.values[index]
         const student = row.original.student
         const numeric = typeof value === 'number'
-        const score = studentTable ? index === 10 || index >= 14 : /%|Mean of final/.test(report.columns[index])
+        const score = studentTable ? index >= 14 : /%|Mean of final/.test(report.columns[index])
         let content = value ?? <span className="text-gray-400 dark:text-gray-500">—</span>
         if (studentTable && index === 0) content = <div className="flex items-center gap-3">
           <Avatar name={student.name} photoUrl={student.photo_url || student.photoUrl} className="h-7 w-7 rounded-full text-xs" />

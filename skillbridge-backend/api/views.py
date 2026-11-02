@@ -37,6 +37,8 @@ from .change_events import category_created, notify_changes
 from .management_access import managed_batches, managed_assessments, selected_instructor, batch_payload, record_action, assessment_state
 from .recommendation_freshness import catalog_fingerprint, recommendations_stale
 from .serializers import UserSerializer
+from .recommendation_policy import (api_fields, top_api_fields, order_fields, candidate_order_fields,
+                                    coverage_or_legacy, assessment_band, placement_evidence, attach_placement_evidence, report_label)
 from .admin_accounts import instructor_payload
 from .catalog_validation import company_fields, position_data, invalid, tags_value
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
@@ -173,7 +175,7 @@ def serialize_recommendation(recommendation):
     coordinates = valid_coordinates(company.location_lat, company.location_lng)
     requirements = (position.requirements.all() if 'requirements' in getattr(position, '_prefetched_objects_cache', {})
                     else position.requirements.select_related('skill_category').all())
-    return {
+    return {**api_fields(recommendation),
         'id': recommendation.id,
         'position_id': position.id,
         'position': position.title,
@@ -182,9 +184,9 @@ def serialize_recommendation(recommendation):
         **image_fields(company, 'company_'),
         'slots': position.slots_available,
         'match_score': recommendation.match_score,
-        'category_score_component': round(recommendation.category_score_component, 1),
-        'nlp_score_component': round(recommendation.nlp_score_component, 1),
-        'location_score_component': round(recommendation.location_score_component, 1),
+        'category_score_component': recommendation.category_score_component,
+        'nlp_score_component': recommendation.nlp_score_component,
+        'location_score_component': recommendation.location_score_component,
         'model_used': recommendation.model_used,
         'distance_km': round(recommendation.distance_km, 1) if recommendation.distance_km is not None else None,
         'lat': coordinates[0] if coordinates else None,
@@ -284,11 +286,13 @@ def management_combined_state(student, batch):
     progress = required_progress(student, batch)
     profile = CombinedCompetencyProfile.objects.filter(student=student, batch=batch).first()
     unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress)
+    evidence_unlocked = unlocked or combined_is_unlocked(student, batch, profile=profile, progress=progress, require_current_ranking=False)
     return {
         **progress,
         'recommendations_locked': not unlocked,
-        'combined_category_scores': serialize_combined_scores(student, batch) if unlocked else [],
-        'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+        'competency_locked': not evidence_unlocked,
+        'combined_category_scores': serialize_combined_scores(student, batch) if evidence_unlocked else [],
+        'combined_competency_profile': serialize_combined_profile(profile) if evidence_unlocked else None,
         'assessment_results': serialize_student_assessment_results(student, batch),
     }, unlocked
 
@@ -357,8 +361,10 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
         profile = profiles.get(student.id)
         unlocked = combined_is_unlocked(student, batch, profile=profile, progress=progress, source_ids=source_ids,
                                        catalog=catalog, review_required=student.id in review_required)
+        evidence_unlocked = unlocked or combined_is_unlocked(student, batch, profile=profile, progress=progress,
+            source_ids=source_ids, review_required=student.id in review_required, require_current_ranking=False)
         if summary_only:
-            result[student.id] = ({**progress, 'recommendations_locked': not unlocked,
+            result[student.id] = ({**progress, 'recommendations_locked': not unlocked, 'competency_locked': not evidence_unlocked,
                 'assessment_results': [{'id': r.assessment_id, 'attempt_status': r.status,
                     'is_flagged': r.is_flagged, 'retake_allowed': r.retake_allowed}
                     for r in responses_by_student.get(student.id, [])]}, unlocked)
@@ -389,9 +395,9 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
                 'category_scores': score_map.get((student.id, assessment.id), []),
                 'prior_attempts': histories.get(response.id, []) if response else [],
             })
-        result[student.id] = ({**progress, 'recommendations_locked': not unlocked,
-                              'combined_category_scores': combined_scores.get(student.id, []) if unlocked or historical else [],
-                              'combined_competency_profile': serialize_combined_profile(profile) if unlocked or historical else None,
+        result[student.id] = ({**progress, 'recommendations_locked': not unlocked, 'competency_locked': not evidence_unlocked,
+                              'combined_category_scores': combined_scores.get(student.id, []) if evidence_unlocked or historical else [],
+                              'combined_competency_profile': serialize_combined_profile(profile) if evidence_unlocked or historical else None,
                               'assessment_results': individual}, unlocked)
     return result
 
@@ -1354,7 +1360,7 @@ def _batch_students_payload(batch, student_ids=None, *, include_history=True):
         Recommendation.objects
         .filter(student_id__in=student_ids, batch=batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('student_id', '-match_score', 'position_id', 'id')
+        .order_by(*order_fields('student_id'))
     )
     recs_by_student = defaultdict(list)
     for r in all_recs:
@@ -1382,7 +1388,7 @@ def _batch_students_payload(batch, student_ids=None, *, include_history=True):
             'is_active':      s.is_active,
             'historical_evidence': not s.is_active,
             'has_current_approval': s.id in current_approved_ids,
-            'has_submitted': unlocked,
+            'has_submitted': combined_state.get('competency_locked', not unlocked) is False,
             **combined_state,
             'retake_allowed': resp.retake_allowed if resp else False,
             **serialize_attempt_integrity(resp),
@@ -1394,14 +1400,14 @@ def _batch_students_payload(batch, student_ids=None, *, include_history=True):
                 placements_by_student.get(s.id), include_unplaced=True,
             ),
             'top_recommendations': [
-                {
+                {**api_fields(r),
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     **image_fields(r.position.company, 'company_'),
                     'match_score': round(r.match_score, 2),
-                    'category_score_component': round(r.category_score_component, 2),
-                    'nlp_score_component': round(r.nlp_score_component, 2),
-                    'location_score_component': round(r.location_score_component, 2),
+                    'category_score_component': r.category_score_component,
+                    'nlp_score_component': r.nlp_score_component,
+                    'location_score_component': r.location_score_component,
                     'model_used': r.model_used,
                     'distance_km': r.distance_km,
                     'lat':         r.position.company.location_lat,
@@ -1526,7 +1532,7 @@ def management_assessment_reports(request):
     elif report_type == 'student_competency':
         rows = []
         rec_map = {}
-        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by('student_id', '-match_score', 'position_id', 'id'):
+        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by(*order_fields('student_id')):
             rec_map.setdefault((rec.student_id, rec.batch_id), []).append(rec)
         placements = {(sid, bid): row for bid in batch_ids for sid, row in
                       _visible_placements_by_student([e.student_id for e in enrollments], batch=bid).items()}
@@ -1582,7 +1588,7 @@ def management_assessment_reports(request):
             combined = '; '.join(f"{score['category']}: {score['raw_score']}/{score['max_score']} ({category_percentage(score['percentage'])})"
                                  for score in row['combined_category_scores'])
             included = '; '.join(assessment['title'] for assessment in row['included_assessments'])
-            recommendations = '; '.join(f"#{rec['rank']} {rec['company']} - {rec['position']} ({rec['match_score']}%)"
+            recommendations = '; '.join(f"#{rec['rank']} {rec['company']} - {rec['position']} ({report_label(rec)})"
                                         for rec in row['final_recommendations'])
             placement = row['placement']
             placement_text = (f"Approved: {placement['company']['name']} - {placement['position']['title']}"
@@ -1608,7 +1614,7 @@ def management_assessment_reports(request):
                                  row['recommendations_locked'],
                                  ', '.join(f"{score['category']}: {category_percentage(score['percentage'])}" for score in row.get('combined_category_scores', [])),
                                  assessment_summary(row.get('combined_category_scores', []))['summary'] if not row['recommendations_locked'] else '',
-                                 ', '.join(f"{rec['company']} — {rec['position']} ({rec['match_score']}%)" for rec in row.get('final_recommendations', []))])
+                                 ', '.join(f"{rec['company']} — {rec['position']} ({report_label(rec)})" for rec in row.get('final_recommendations', []))])
     return output
 
 
@@ -2006,7 +2012,7 @@ def instructor_assessment_add_questions(request, assessment_id):
     """
     Append new questions (from a parsed file upload) to an existing assessment.
     Once an attempt exists, edits are blocked to preserve submissions and scores.
- 
+
     Body:
     {
       "questions": [
@@ -2028,7 +2034,7 @@ def instructor_assessment_add_questions(request, assessment_id):
       ],
       "clear_submissions": true    // accepted for old clients; no records are cleared
     }
- 
+
     Returns:
     {
       "added":                5,
@@ -2038,7 +2044,7 @@ def instructor_assessment_add_questions(request, assessment_id):
     """
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
- 
+
     try:
         queryset = managed_assessments(request.user)
         assessment = queryset.select_for_update(of=('self',)).get(id=assessment_id)
@@ -2047,7 +2053,7 @@ def instructor_assessment_add_questions(request, assessment_id):
 
     if assessment.is_archived:
         return Response({'error': 'Archived assessments are read-only. Restore this assessment before editing.'}, status=409)
- 
+
     questions_data    = request.data.get('questions', [])
     try:
         if not isinstance(questions_data, list):
@@ -2055,7 +2061,7 @@ def instructor_assessment_add_questions(request, assessment_id):
         questions_data = [parse_question_fields(question) for question in questions_data]
     except (ValueError, AttributeError, TypeError) as exc:
         return Response({'error': str(exc) if isinstance(exc, ValueError) else 'Each question must be an object.'}, status=400)
- 
+
     if not questions_data:
         return Response({'error': 'at least one question is required'}, status=400)
     for question in questions_data:
@@ -2066,13 +2072,13 @@ def instructor_assessment_add_questions(request, assessment_id):
                 return Response({'error': error, 'field': 'questions'}, status=400)
     if StudentResponse.objects.filter(assessment=assessment).exists():
         return Response({'error': 'Questions cannot be added after an attempt exists; existing submissions are preserved.'}, status=409)
- 
+
     # Append after the last existing question
     from django.db.models import Max
     current_max = (
         assessment.questions.aggregate(max_order=Max('question_order'))['max_order'] or 0
     )
- 
+
     created_count = 0
     for i, q_data in enumerate(questions_data, start=1):
         q_text         = q_data.get('question_text', '').strip()
@@ -2080,12 +2086,12 @@ def instructor_assessment_add_questions(request, assessment_id):
         cat_name       = q_data.get('category', '').strip()
         choices        = q_data.get('choices', [])
         correct_answer = q_data.get('correct_answer', '')
- 
+
         if not q_text:
             continue
         if q_type not in ('mcq', 'truefalse', 'identification'):
             q_type = 'mcq'
- 
+
         # Auto-create category if needed (same pattern as assessment creation)
         cat = None
         if cat_name:
@@ -2094,7 +2100,7 @@ def instructor_assessment_add_questions(request, assessment_id):
                 defaults={'name': cat_name, 'created_by': request.user}
             )
             category_created(cat_created)
- 
+
         question = Question.objects.create(
             assessment=assessment,
             skill_category=cat,
@@ -2102,7 +2108,7 @@ def instructor_assessment_add_questions(request, assessment_id):
             question_type=q_type,
             question_order=current_max + i,
         )
- 
+
         if q_type == 'identification':
             if correct_answer:
                 AnswerChoice.objects.create(
@@ -2119,11 +2125,11 @@ def instructor_assessment_add_questions(request, assessment_id):
                         choice_text=text,
                         is_correct=c['is_correct'],
                     )
- 
+
         created_count += 1
- 
+
     submissions_cleared = False
- 
+
     total = assessment.questions.count()
     record_action(request.user, 'question.append', 'assessment', assessment.id, assessment.batch_id,
                   added_count=created_count)
@@ -2143,7 +2149,7 @@ def instructor_question_detail(request, question_id):
     """
     PATCH  → update question text, type, choices, category.
     DELETE → permanently remove the question.
- 
+
     PATCH body (all fields optional — only provided fields are updated):
     {
       "question_text":  "Updated question?",
@@ -2155,13 +2161,13 @@ def instructor_question_detail(request, question_id):
       ],
       "correct_answer": "Central Processing Unit"  // identification only
     }
- 
+
     When 'choices' OR 'correct_answer' is present all existing choices are
     replaced atomically.
     """
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
- 
+
     # Admins can edit any question; instructors only questions in their own assessments
     try:
         if request.user.role == 'admin':
@@ -2183,14 +2189,14 @@ def instructor_question_detail(request, question_id):
     question.refresh_from_db()
     if StudentResponse.objects.filter(assessment=question.assessment).exists():
         return Response({'error': 'Question changes are locked after an attempt exists.'}, status=409)
- 
+
     # ── DELETE ────────────────────────────────────────────────────────────────
     if request.method == 'DELETE':
         record_action(request.user, 'question.delete', 'question', question.id, question.assessment.batch_id,
                       assessment_id=question.assessment_id)
         question.delete()
         return Response({'ok': True})
- 
+
     # ── PATCH ─────────────────────────────────────────────────────────────────
     try:
         data = parse_question_fields(request.data, partial=True)
@@ -2215,15 +2221,15 @@ def instructor_question_detail(request, question_id):
         error = _question_error(candidate)
         if error:
             return Response({'error': error, 'field': 'question'}, status=400)
- 
+
     if 'question_text' in data:
         question.question_text = (data['question_text'] or '').strip()
- 
+
     if 'question_type' in data:
         new_type = (data['question_type'] or '').lower()
         if new_type in ('mcq', 'truefalse', 'identification'):
             question.question_type = new_type
- 
+
     if 'category' in data:
         cat_name = (data['category'] or '').strip()
         if cat_name:
@@ -2235,13 +2241,13 @@ def instructor_question_detail(request, question_id):
             question.skill_category = cat
         else:
             question.skill_category = None
- 
+
     question.save()
- 
+
     # Replace choices only when caller explicitly sends choice data
     if 'choices' in data or 'correct_answer' in data:
         question.choices.all().delete()
- 
+
         if question.question_type == 'identification':
             correct_answer = (data.get('correct_answer') or '').strip()
             if correct_answer:
@@ -2259,7 +2265,7 @@ def instructor_question_detail(request, question_id):
                         choice_text=text,
                         is_correct=c['is_correct'],
                     )
- 
+
     # Return refreshed question so the frontend can reconcile its local state
     record_action(request.user, 'question.update', 'question', question.id, question.assessment.batch_id,
                   assessment_id=question.assessment_id, changed_fields=sorted(data))
@@ -2821,7 +2827,7 @@ def instructor_student_recommendations(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, batch=active_batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('student_id', '-match_score', 'position_id', 'id')
+        .order_by(*order_fields('student_id'))
     )
     recs_by_student = defaultdict(list)
     for r in all_recs:
@@ -2859,7 +2865,7 @@ def instructor_student_recommendations(request):
             'school_id':   student.school_id,
             'course':      student.course,
             'photo_url':   student.photo_url,
-            'has_submitted': unlocked,
+            'has_submitted': combined_state.get('competency_locked', not unlocked) is False,
             **combined_state,
             'retake_allowed': attempt.retake_allowed if attempt else False,
             **serialize_attempt_integrity(attempt),
@@ -2872,7 +2878,7 @@ def instructor_student_recommendations(request):
                 placements_by_student.get(student.id), include_unplaced=True,
             ),
             'top_recommendations': [
-                {
+                {**api_fields(r),
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     **image_fields(r.position.company, 'company_'),
@@ -2907,7 +2913,7 @@ def instructor_companies(request):
     # Students belonging to this instructor's batches
     batches = managed_batches(request.user)
     enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch', 'student')
-    
+
     student_batch_info = {}
     for e in enrollments:
         student_batch_info[(e.student_id, e.batch_id)] = {
@@ -2927,7 +2933,7 @@ def instructor_companies(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('student', 'position')
-        .order_by('position_id', '-match_score', 'student_id', 'id')
+        .order_by(*candidate_order_fields())
     )
     recs_by_position = defaultdict(list)
     for r in all_recs:
@@ -2945,7 +2951,7 @@ def instructor_companies(request):
         positions_data = []
         for pos in company.positions.filter(archived_at__isnull=True).order_by('title'):
             matched = [
-                {
+                {**api_fields(r),
                     'id':          r.student.id,
                     'name':        r.student.name,
                     'school_id':   r.student.school_id,
@@ -3093,7 +3099,7 @@ def student_results(request):
         Recommendation.objects
         .filter(student=user, batch=assessment.batch, is_current=True)
         .select_related('position', 'position__company')
-        .order_by('-match_score', 'position_id', 'id')
+        .order_by(*order_fields())
     )
     competency_profile = (
         StudentCompetencyProfile.objects
@@ -3145,30 +3151,32 @@ def student_combined_results(request):
         return Response({'error': 'not_enrolled'}, status=404)
     batch = enrollment.batch
     profile, progress, unlocked = ensure_combined(user, batch)
+    evidence_unlocked = unlocked or combined_is_unlocked(user, batch, profile=profile, progress=progress, require_current_ranking=False)
     included_ids = profile.included_assessment_ids if profile else []
     numbers = assessment_numbers(user, batch)
     recommendations = Recommendation.objects.filter(
         student=user, batch=batch, is_current=True,
-    ).select_related('position', 'position__company').order_by('-match_score', 'position_id', 'id') if unlocked else []
-    combined_scores = serialize_combined_scores(user, batch) if unlocked else []
+    ).select_related('position', 'position__company').order_by(*order_fields()) if unlocked else []
+    combined_scores = serialize_combined_scores(user, batch) if evidence_unlocked else []
     overall_raw = sum(score['raw_score'] for score in combined_scores)
     overall_max = sum(score['max_score'] for score in combined_scores)
     return Response({
         'batch': {'id': batch.id, 'name': batch.name},
         'combined_category_scores': combined_scores,
-        'overall_raw_score': overall_raw if unlocked else None,
-        'overall_max_score': overall_max if unlocked else None,
+        'overall_raw_score': overall_raw if evidence_unlocked else None,
+        'overall_max_score': overall_max if evidence_unlocked else None,
         'overall_percentage': round(overall_raw / overall_max * 100, 2) if overall_max else None,
-        'combined_competency_profile': serialize_combined_profile(profile) if unlocked else None,
+        'combined_competency_profile': serialize_combined_profile(profile) if evidence_unlocked else None,
         'included_assessments': [{'id': aid, 'title': assessment_title(numbers, aid)}
-                                 for aid in sorted(included_ids, key=lambda aid: numbers.get(aid, float('inf')))] if unlocked else [],
-        'is_finalized': unlocked,
+                                 for aid in sorted(included_ids, key=lambda aid: numbers.get(aid, float('inf')))] if evidence_unlocked else [],
+        'is_finalized': evidence_unlocked,
+        'competency_locked': not evidence_unlocked,
         'recommendations_locked': not unlocked,
         'recommendations_stale': recommendations_stale(profile, user),
         'recommendations': [serialize_recommendation(rec) for rec in recommendations],
-        'active_model': profile.active_model if unlocked else RecommendationConfiguration.get_active().active_model,
-        'model_used': profile.model_used if unlocked else None,
-        'generated_at': profile.generated_at if unlocked else None,
+        'active_model': profile.active_model if evidence_unlocked else RecommendationConfiguration.get_active().active_model,
+        'model_used': profile.model_used if evidence_unlocked else None,
+        'generated_at': profile.generated_at if evidence_unlocked else None,
         'placement': _serialize_placement_visibility(_approved_student_placement(user.id)),
         **progress,
     })
@@ -3274,7 +3282,7 @@ def student_companies(request):
         return Response({'error': 'not_enrolled'}, status=404)
     _, progress, unlocked = ensure_combined(user, enrollment.batch)
     user_recs = {
-        r.position_id: r.match_score
+        r.position_id: r
         for r in Recommendation.objects.filter(student=user, batch=enrollment.batch, is_current=True)
         if unlocked
     }
@@ -3296,7 +3304,8 @@ def student_companies(request):
                 'id':          p.id,
                 'title':       p.title,
                 'slots':       p.slots_available,
-                'match_score': user_recs.get(p.id),
+                'match_score': user_recs[p.id].match_score if p.id in user_recs else None,
+                **api_fields(user_recs.get(p.id)),
                 'tags': [
                     req.skill_category.name
                     for req in p.requirements.all()
@@ -3338,7 +3347,7 @@ def admin_student_recommendations(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company', 'student')
-        .order_by('student_id', '-match_score', 'position_id', 'id')
+        .order_by(*order_fields('student_id'))
     )
 
     # Group top-3 per student
@@ -3378,9 +3387,10 @@ def admin_student_recommendations(request):
             'course':           student.course,
             'photo_url':        student.photo_url,
             'instructor_name':  instructor_by_student.get(student.id, ''),
-            'has_submitted':    unlocked,
+            'has_submitted':    combined_state.get('competency_locked', not unlocked) is False,
             **combined_state,
             'top_match_score':  round(top_one.match_score, 2) if top_one else None,
+            **top_api_fields(top_one),
             'top_position_name': top_one.position.title if top_one else None,
             'top_company_name':  top_one.position.company.name if top_one else None,
             'competency_profile': serialize_competency_profile(profile_map.get(student.id)),
@@ -3393,7 +3403,7 @@ def admin_student_recommendations(request):
                 'photo_url': student.photo_url,
             },
             'top_recommendations': [
-                {
+                {**api_fields(r),
                     'position':    r.position.title,
                     'company':     r.position.company.name,
                     **image_fields(r.position.company, 'company_'),
@@ -3507,7 +3517,7 @@ def _admin_users_payload(user_ids=None, *, include_history=True):
         .filter(student_id__in=student_ids, is_current=True)
         .select_related('position', 'position__company')
         .prefetch_related('position__requirements__skill_category')
-        .order_by('student_id', '-match_score', 'position_id', 'id')
+        .order_by(*order_fields('student_id'))
     )
     top_rec_by_student = {}
     recs_by_student = {}
@@ -3551,7 +3561,7 @@ def _admin_users_payload(user_ids=None, *, include_history=True):
         top_rec = top_rec_by_student.get((s.id, enrollment.batch_id)) if enrollment and unlocked else None
         student_status = (
             'stopped' if attempt and attempt.status == StudentResponse.STATUS_STOPPED
-            else 'completed' if unlocked
+            else 'completed' if combined_state.get('competency_locked', not unlocked) is False
             else 'pending'
         )
         students_out.append({
@@ -3565,6 +3575,7 @@ def _admin_users_payload(user_ids=None, *, include_history=True):
             'status':           student_status,
             **combined_state,
             'top_match_score':  round(top_rec.match_score, 2) if top_rec else None,
+            **top_api_fields(top_rec),
             'top_position_name': top_rec.position.title if top_rec else None,
             'top_company_name':  top_rec.position.company.name if top_rec else None,
             'top_recommendations': [serialize_recommendation(r) for r in recs_by_student.get((s.id, enrollment.batch_id), [])] if enrollment and unlocked else [],
@@ -3807,7 +3818,7 @@ def admin_company_detail(request, company_id):
                 'error': 'Partner cannot be deleted while placement history references it.',
             }, status=409)
         return Response(status=204)
- 
+
     # ── PATCH ─────────────────────────────────────────────────────────────────
     data = company_fields(company_data(request), partial=True)
     with CompanyImageChange(request, data) as image_change:
@@ -3823,7 +3834,7 @@ def admin_company_detail(request, company_id):
             if 'lat' in data: company.location_lat = data['lat']
             if 'lng' in data: company.location_lng = data['lng']
             image_change.save(company)
- 
+
     return Response({
         'id':      company.id,
         'name':    company.name,
@@ -3975,23 +3986,23 @@ def _skill_data(data):
 def admin_skills(request):
     if request.user.role != 'admin':
         return Response({'error': 'Forbidden'}, status=403)
-    
+
     if request.method == 'GET':
         cats = SkillCategory.objects.all().order_by('name')
         return Response([{
             'id': c.id, 'name': c.name, 'description': c.description, 'tags': c.tags or []
         } for c in cats])
-        
+
     elif request.method == 'POST':
         name, description, tags = _skill_data(request.data)
-            
+
         cat, created = SkillCategory.objects.get_or_create(
             name__iexact=name,
             defaults={'name': name, 'description': description, 'tags': tags, 'created_by': request.user}
         )
         if not created:
             return Response({'error': 'Skill category already exists'}, status=400)
-            
+
         return Response({
             'id': cat.id, 'name': cat.name, 'description': cat.description, 'tags': cat.tags or []
         }, status=201)
@@ -4003,18 +4014,18 @@ def admin_skills(request):
 def admin_skill_detail(request, skill_id):
     if request.user.role != 'admin':
         return Response({'error': 'Forbidden'}, status=403)
-        
+
     try:
         cat = SkillCategory.objects.get(id=skill_id)
     except SkillCategory.DoesNotExist:
         return Response({'error': 'Skill not found'}, status=404)
-        
+
     if request.method == 'PUT':
         name, description, tags = _skill_data(request.data)
-            
+
         if SkillCategory.objects.filter(name__iexact=name).exclude(id=skill_id).exists():
             return Response({'error': 'Another skill with this name already exists'}, status=400)
-            
+
         cat.name = name
         cat.description = description
         cat.tags = tags
@@ -4022,7 +4033,7 @@ def admin_skill_detail(request, skill_id):
         return Response({
             'id': cat.id, 'name': cat.name, 'description': cat.description, 'tags': cat.tags or []
         })
-        
+
     elif request.method == 'DELETE':
         if (Question.objects.filter(skill_category=cat).exists() or
                 PositionRequirement.objects.filter(skill_category=cat).exists() or
@@ -4134,9 +4145,15 @@ def admin_reports(request):
             'fair': fair_matches,
             'low': low_matches,
             'avg_score': avg_score,
+            'metric': 'legacy-hybrid-reference',
+            'not_current_order': True,
         },
         'skill_breakdown': skill_breakdown,
         'top_companies': top_companies_out,
+        'assessment_recommendation_stats': {
+            label: sum(assessment_band(row) == label for row in current_recs)
+            for label in ('Minimums met', 'Below minimums', 'Unassessed requirements')
+        },
         'batch_completion': batch_completion,
     })
 
@@ -4158,6 +4175,7 @@ def _placement_batch(student_id, instructor=None):
 
 def _serialize_placement(placement):
     return {
+        'recommendation_evidence': placement_evidence(placement),
         'id': placement.id,
         'student': {
             'id': placement.student_id,
@@ -4245,6 +4263,7 @@ def _serialize_placement_visibility(placement, include_unplaced=False):
             'title': placement.position.title,
         },
         'match_score_at_assignment': placement.match_score_at_assignment,
+        'recommendation_evidence': placement_evidence(placement),
         'approved_at': placement.approved_at,
         'updated_at': placement.updated_at,
     }
@@ -4262,7 +4281,7 @@ def _visible_placements_by_student(student_ids, batch=None):
         rows = _placement_select_related(OJTPlacement.objects.filter(student_id__in=student_ids,
             batch=batch, is_active_suggestion=False)).order_by('-updated_at', '-id')
         result = {}
-        for row in rows:
+        for row in attach_placement_evidence(rows):
             priority = {'approved': 2}
             if row.student_id not in result or priority.get(row.status, 0) > priority.get(result[row.student_id].status, 0):
                 result[row.student_id] = row
@@ -4275,7 +4294,7 @@ def _visible_placements_by_student(student_ids, batch=None):
     placements = _placement_select_related(
         OJTPlacement.objects.filter(student_id__in=student_ids, is_active_suggestion=False)
     ).order_by('student_id', '-updated_at', '-id')
-    for placement in placements:
+    for placement in attach_placement_evidence(placements):
         if placement.batch_id is None or placement.batch_id == current_batches.get(placement.student_id):
             latest.setdefault(placement.student_id, placement)
 
@@ -4283,7 +4302,7 @@ def _visible_placements_by_student(student_ids, batch=None):
     approved_rows = _placement_select_related(
         allocated_approvals(student_id__in=student_ids)
     ).order_by('student_id', '-approved_at', '-id')
-    for placement in approved_rows:
+    for placement in attach_placement_evidence(approved_rows):
         approved.setdefault(placement.student_id, placement)
 
     return {
@@ -4396,7 +4415,7 @@ def placement_suggestions(request):
         Recommendation.objects
         .filter(student_id__in=student_ids, position_id__in=position_ids, is_current=True)
         .select_related('student', 'position')
-        .order_by('position_id', '-match_score', 'student__name', 'id')
+        .order_by(*candidate_order_fields())
     )
     recommendations_by_position = {}
     for recommendation in recommendations:
@@ -4453,7 +4472,7 @@ def placement_suggestions(request):
                     continue
 
                 batch = batch_by_student.get(recommendation.student_id)
-                students.append({
+                students.append({**api_fields(recommendation),
                     'recommendation_id': recommendation.id,
                     'placement_id': status_placement.id if status_placement else None,
                     'placement_status': suggestion_status,
@@ -4901,7 +4920,7 @@ def placement_history(request):
         'count': total,
         'limit': limit,
         'offset': offset,
-        'placements': [_serialize_placement(placement) for placement in page],
+        'placements': [_serialize_placement(placement) for placement in attach_placement_evidence(page)],
     })
 
 
@@ -5176,7 +5195,7 @@ def placement_reports(request):
     }
     records = [
         _serialize_placement_report_record(placement, capacity_by_position)
-        for placement in placements
+        for placement in attach_placement_evidence(placements)
     ]
     status_counts = {status_name: 0 for status_name in valid_statuses}
     for record in records:

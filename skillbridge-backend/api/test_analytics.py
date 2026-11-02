@@ -94,7 +94,10 @@ class AnalyticsTests(APITestCase):
         locked = self.get()
         self.assertEqual(locked['summary']['required_complete'], 1)
         self.assertEqual(locked['summary']['awaiting_review'], 0)
-        self.assertEqual(locked['skills'], [])
+        # Ranking staleness cannot remove valid numerical assessment evidence.
+        self.assertEqual(locked['skills'][0]['average'], 0)
+        self.assertTrue(locked['students'][0]['recommendations_locked'])
+        self.assertFalse(locked['students'][0]['competency_locked'])
         self.assertIn('Final results unavailable', locked['students'][0]['reasons'])
 
     def test_followup_counts_distinct_students_overdue_requires_real_deadline(self):

@@ -4,7 +4,7 @@ import DialogShell from './DialogShell'
 import PlacementGuidance from './placements/PlacementGuidance'
 import { useApi } from '../hooks/useApi'
 import { matchColor } from '../hooks/student/useStudentResults'
-import { sortCompanyPositions } from '../utils/recommendationResults'
+import { sortCompanyPositions, recommendationDisplay, recommendationValue, isAssessmentLed } from '../utils/recommendationResults'
 import './studentCompanyDetails.css'
 
 const COMPANIES_URL = '/api/student/companies/'
@@ -33,7 +33,7 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
             <p className="mt-2 text-sm leading-relaxed wrap-anywhere text-gray-800 dark:text-gray-200">{company.address || 'Address not provided.'}</p>
           </section>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">OJT positions</h3>
-          <p className="mt-1 mb-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">Ranked within this partner by hybrid match, highest first. Positions without a current match score appear last.</p>
+          <p className="mt-1 mb-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">Positions follow your saved recommendation order. Positions without current evidence appear last.</p>
           {positions.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No positions are currently listed.</p>}
           <div className="space-y-4">
             {positions.map((position, index) => {
@@ -48,8 +48,8 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{position.slots} listed slot{position.slots !== 1 ? 's' : ''}</p>
                   </div>
                   {position.match_score != null ? <div className="shrink-0 text-right">
-                    <p className={`text-lg font-bold tabular-nums ${matchColor(position.match_score)}`}>{position.match_score}%</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Hybrid match</p>
+                    <p className={`text-lg font-bold tabular-nums ${matchColor(recommendationValue(position))}`}>{recommendationDisplay(position)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{isAssessmentLed(position) ? 'Recommendation order' : 'Legacy hybrid reference'}</p>
                   </div> : <span className="text-xs text-gray-500 dark:text-gray-400">No current match score</span>}
                 </div>
                 <p className="mt-4 mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Skills & requirements</p>

@@ -4,6 +4,8 @@ import NlpModelComparison from '../../components/admin/NlpModelComparison'
 import { useEffect, useRef, useState } from 'react'
 import { updateCachedData, useApi, invalidateCache } from '../../hooks/useApi'
 import api from '../../api/axios'
+import { readBrowserSession } from '../../api/sessionRenewal'
+import { rerunRecommendations, RECOMMENDATION_REFRESH_URLS } from '../../api/recommendationRerun'
 
 function SectionCard({ title, subtitle, children }) {
   return (
@@ -52,19 +54,18 @@ function NlpConfigurationCard() {
 
   async function rerun() {
     setBusy(true)
+    setMessage('')
     try {
-      const { data } = await api.post('/api/admin/rerun-recommendations/', {}, { timeout: 120000 })
-      setMessage(data.message || 'Recommendations refreshed.')
-      showToast(data.message || 'Recommendations refreshed.')
-      ;['/api/admin/reports/', '/api/admin/students/recommendations/', '/api/instructor/students/recommendations/'].forEach(invalidateCache)
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Could not re-run recommendations.')
-      showToast(err.response?.data?.error || 'Could not re-run recommendations.', 'error')
+      const result = await rerunRecommendations(api, readBrowserSession().id)
+      if (result.state === 'cancelled') return
+      if (result.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
+      setMessage(result.message)
+      showToast(result.message, result.type)
     } finally { setBusy(false) }
   }
 
   return (
-    <SectionCard title="Recommendation NLP Model" subtitle="Students automatically use the active preprocessing model; the 60/25/15 weights stay fixed.">
+    <SectionCard title="Recommendation NLP Model" subtitle="The active model supplies supporting text similarity. Assessment evidence leads the recommendation order.">
       <DataSection url="/api/admin/nlp-configuration/" layout="panel" count={1}><div className="flex flex-col lg:flex-row lg:items-end gap-3">
         <div className="flex-1">
           <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Current active model: {config?.active_model_label || 'Loading…'}</label>
