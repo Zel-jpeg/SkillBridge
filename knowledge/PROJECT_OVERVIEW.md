@@ -11,6 +11,15 @@ or completed. The [scope correction](OJT_CYCLE_SCOPE_REVIEW.md) removes that wor
 and preserves assessment, recommendation, decision and archive history. Current
 slots follow active enrolled batches; historical approvals remain unchanged.
 
+Proposed generalization scope, 4 November 2026: the user wants configurable DNSC
+institutes/programs, same-program category reuse and one program per new batch.
+IBPA is the confirmed current name; Entrepreneurship/Tourism are testing examples.
+Existing IC records stay in the normal IC section with their current statuses;
+IC will be left unused in practice because it uses InternLink. No special
+history-only/read-only mode, automatic archive or IC workflow restrictions are
+requested. Organization changes are planned, not implemented or migrated. See the
+[generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
+
 ## Architecture
 
 | Area | Implementation | Entry points |
@@ -66,6 +75,20 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Multi-institute implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md):
+  Active checkbox guide, one-feature-at-a-time gates, feature branches and local
+  merges, tested-migration authorization, no-push rule and resume checkpoint.
+
+- [DNSC program and starter competency research](DNSC_PROGRAM_AND_COMPETENCY_RESEARCH.md):
+  Official program/campus findings, IBPA/ILEGG naming discrepancy, proposed
+  Entrepreneurship/Tourism pilot, sourced editable category examples and confirmed
+  same-program sharing/one-program batch decisions; research only.
+
+- [Multi-institute generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md):
+  Proposed institute/program configuration, scoped access and competency frameworks,
+  recommendation isolation, supplied DNSC LMS AIKEN comparison, sixteen workstreams
+  and a bounded 4–8 November pilot sequence; documentation only, not implemented.
 
 - [Student assessment taking layout](STUDENT_ASSESSMENT_TAKING_LAYOUT.md): Original
   phone/tablet design with centered timer/choice letters, red shield badge,

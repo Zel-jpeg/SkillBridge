@@ -1,5 +1,20 @@
 # Accepted questionnaire import format
 
+4 November follow-up: the user supplied an actual DNSC LMS AIKEN export and
+requested AIKEN as the default text format. The sample contains 20 single-answer
+MCQs with lettered options and `ANSWER:` keys, without skill categories. It does
+not match the implemented `QUESTION:`/`CORRECT:`/`CATEGORY:` text parser described
+below. The [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md#9-aiken-as-the-default-exact-comparison-and-proposed-behavior)
+proposes a default AIKEN adapter, explicit category mapping and supported-question
+export while preserving current formats. This is a new requirement and source
+comparison, not a completed parser change or verified LMS round trip. The LMS
+vendor is not established by the sample.
+
+The user also confirmed that both formats remain supported instructor choices:
+AIKEN for MCQs, and SkillBridge structured text for MCQ, true/false and
+identification. AIKEN is the default text selection, not a replacement for the
+native format. This remains a proposed update, not implemented behavior.
+
 30 October numeric-answer follow-up: both new-assessment and existing-assessment
 Excel/CSV imports preserve numeric `0` in every choice column and in identification
 answer keys. Typed Boolean `false` remains a valid False key. Missing/empty required
