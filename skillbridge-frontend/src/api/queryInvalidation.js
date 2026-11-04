@@ -1,6 +1,6 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
-  competencies: [/^\/api\/management\/(?:competency-programs\/(?:\d+\/)?|programs\/\d+\/frameworks\/(?:\d+\/(?:categories\/(?:\d+\/)?)?)?)$/],
+  competencies: [/^\/api\/management\/(?:competency-programs\/(?:\d+\/)?|programs\/\d+\/frameworks\/(?:\d+\/(?:(?:categories\/(?:\d+\/)?)|authoring\/)?)?)$/],
   organization: [/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/(?:instructors\/|instructor-options\/)?)?)?)?$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
   assignments: [/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/(?:instructors\/|instructor-options\/)$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
   email: [/^\/api\/instructor\/batches\/\d+\/(?:emails|email-progress)\/$/],

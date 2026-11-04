@@ -209,6 +209,7 @@ class Assessment(models.Model):
     title            = models.CharField(max_length=255)
     created_by       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessments')
     batch            = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, blank=True)
+    framework        = models.ForeignKey('CompetencyFramework', on_delete=models.PROTECT, null=True, blank=True, related_name='assessments')
     duration_minutes = models.PositiveIntegerField(default=60)
     # Legacy UI flag: always mirrors publication_status. Batch archive is checked
     # separately and never changes either field.

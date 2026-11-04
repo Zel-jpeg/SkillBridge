@@ -14,11 +14,12 @@ import { useToast } from '../../context/ToastContext'
 
 import { useState, useRef, useEffect } from 'react'
 import api from '../../api/axios'
-import { useApi } from '../useApi'
+import { useApi, invalidateCache } from '../useApi'
 import { authoringDraftKey, readAuthoringDraft, authoringDraftSignature, isRecoverableAuthoringDraft, writeAuthoringDraft } from '../../utils/authoringDraft'
 import { requestErrorMessage } from '../../api/requestErrors'
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
+const EMPTY_CATEGORIES = []
 
 // ── Question type definitions ─────────────────────────────────────
 export const QUESTION_TYPES = [
@@ -215,6 +216,15 @@ export function useInstructorUpload() {
     const value = new URLSearchParams(window.location.search).get('batch_id')
     return value && /^\d+$/.test(value) ? Number(value) : null
   })
+  const [draftProgramId, setDraftProgramId] = useState('')
+  const [selectedFrameworkId, setSelectedFrameworkId] = useState(null)
+  const selectedBatch = batches.find(batch => batch.id === selectedBatchId)
+  const programId = selectedBatch?.program_id || (!selectedBatchId ? draftProgramId : null)
+  const frameworkId = selectedBatch?.framework_id || (programId ? selectedFrameworkId : null)
+  const scoped = Boolean(programId)
+  const catalogUrl = frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
+  const { data: catalog, error: catalogError } = useApi(catalogUrl)
+  const scopedFramework = catalog?.framework
   const [publicationStatus, setPublicationStatus] = useState('draft')
   const [isRequired, setIsRequired] = useState(true)
   const [includeInCompetency, setIncludeInCompetency] = useState(true)
@@ -245,10 +255,11 @@ export function useInstructorUpload() {
   }, [selectedBatchId, existingAssessments])
 
   // Skill categories — pre-populated from the global admin-managed list
-  const [categories, setCategories] = useState([])
+  const [manualCategories, setCategories] = useState([])
+  const categories = scoped ? catalog?.categories || EMPTY_CATEGORIES : manualCategories
   const [catInput,   setCatInput]   = useState('')
   const catRef = useRef(null)
-  const { data: sharedCategories } = useApi('/api/categories/')
+  const { data: sharedCategories } = useApi(scoped || selectedBatchId && !selectedBatch ? null : '/api/categories/')
   const categoriesSeeded = useRef(false)
 
   // Pre-load global skill categories so instructors see the shared list
@@ -316,7 +327,7 @@ export function useInstructorUpload() {
     clearTimeout(saveTimer.current)
     pendingSave.current = null
     if (published || draftBanner) return
-    const data = { title, duration, categories, questions, selectedBatchId,
+    const data = { title, duration, categories, questions, selectedBatchId, draftProgramId, selectedFrameworkId: frameworkId,
       publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt }
     if (authoringDraftSignature(data) === authoringDraftSignature(pristineDraft.current)) {
       // Do not remove an unclassified legacy save until shared categories arrive.
@@ -332,7 +343,7 @@ export function useInstructorUpload() {
     pendingSave.current = () => writeAuthoringDraft(draftKey, data)
     saveTimer.current = setTimeout(save, 1000)
     return () => clearTimeout(saveTimer.current)
-  }, [title, duration, categories, questions, selectedBatchId, publicationStatus,
+  }, [title, duration, categories, questions, selectedBatchId, draftProgramId, frameworkId, publicationStatus,
     isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published, draftKey,
     draftBanner, pendingDraft, sharedCategories])
 
@@ -357,6 +368,8 @@ export function useInstructorUpload() {
     setTitle(draftBanner.title || '')
     setDuration(String(draftBanner.duration || ''))
     setSelectedBatchId(draftBanner.selectedBatchId || null)
+    setDraftProgramId(draftBanner.draftProgramId || '')
+    setSelectedFrameworkId(draftBanner.selectedFrameworkId || null)
     if (draftBanner.selectedBatchId) {
       restoredOrder.current = { batchId: draftBanner.selectedBatchId, order: String(draftBanner.displayOrder ?? 0) }
       setSelectedBatchId(draftBanner.selectedBatchId)
@@ -415,7 +428,7 @@ export function useInstructorUpload() {
   function requestCategorySuggestion(qid, text) {
     dismissSuggestion(qid)
     const revision = suggestionRevisions.current[qid]
-    if (text.trim().length < 8) {
+    if (scoped || text.trim().length < 8) {
       setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
       return
     }
@@ -602,7 +615,7 @@ export function useInstructorUpload() {
     updatedCategories.forEach(c => { catMap[c.name.toLowerCase()] = c.id })
     uniqueCatNames.forEach(name => {
       const key = name.toLowerCase()
-      if (!catMap[key]) {
+      if (!catMap[key] && !scoped) {
         const newCat = makeCategory(nextCid(), name)
         updatedCategories.push(newCat); catMap[key] = newCat.id
       }
@@ -616,7 +629,7 @@ export function useInstructorUpload() {
       choices:     r.choices,
       correct:     r.correctIdx,
       identAnswer: r.identAnswer || '',
-      categoryId:  catMap[r.category.toLowerCase()],
+      categoryId:  catMap[r.category.toLowerCase()] || null,
       expanded:    false,
       source:      'upload',
     }))
@@ -660,6 +673,7 @@ export function useInstructorUpload() {
   // ── Validation ────────────────────────────────────────────────
   function validate() {
     const e = {}
+    if (scoped && (!frameworkId || !catalog || catalogError)) e.categories = 'Choose an available program framework and load its categories first.'
     if (!title.trim()) e.title = 'Assessment title is required'
     if (publicationStatus === 'published' && !selectedBatchId) e.batch_id = 'Choose a batch before publishing'
     if (!/^\d+$/.test(String(displayOrder))) e.display_order = 'Enter a non-negative order'
@@ -705,6 +719,7 @@ export function useInstructorUpload() {
     const payload = {
       title:            title.trim(),
       batch_id:         selectedBatchId || undefined,
+      ...(scoped ? { framework_id: frameworkId, framework_digest: scopedFramework?.digest } : {}),
       duration_minutes: Number(duration),
       publication_status: publicationStatus,
       is_required: isRequired,
@@ -719,7 +734,7 @@ export function useInstructorUpload() {
           return {
             question_text:  q.text.trim(),
             question_type:  'identification',
-            category:       categoryName,
+            ...(scoped ? { category_id: q.categoryId } : { category: categoryName }),
             choices:        [],
             correct_answer: q.identAnswer.trim(),
           }
@@ -729,7 +744,7 @@ export function useInstructorUpload() {
           return {
             question_text: q.text.trim(),
             question_type: 'truefalse',
-            category:      categoryName,
+            ...(scoped ? { category_id: q.categoryId } : { category: categoryName }),
             choices: [
               { text: 'True',  is_correct: q.correct === 0 },
               { text: 'False', is_correct: q.correct === 1 },
@@ -741,7 +756,7 @@ export function useInstructorUpload() {
         return {
           question_text: q.text.trim(),
           question_type: 'mcq',
-          category:      categoryName,
+          ...(scoped ? { category_id: q.categoryId } : { category: categoryName }),
           choices:       q.choices
             .map((c, i) => ({ text: c.trim(), is_correct: q.correct === i }))
             .filter(c => c.text),
@@ -751,6 +766,9 @@ export function useInstructorUpload() {
 
     try {
       const res = await api.post('/api/instructor/assessments/', payload)
+      invalidateCache('/api/instructor/batches/')
+      if (catalogUrl) invalidateCache(catalogUrl)
+      if (programId) invalidateCache(`/api/management/programs/${programId}/frameworks/`)
       clearTimeout(saveTimer.current)
       pendingSave.current = null
       clearDraft(draftKey)
@@ -777,6 +795,7 @@ export function useInstructorUpload() {
     orderSeededForBatch.current = null; restoredOrder.current = null
     pristineDraft.current = { ...pristineDraft.current, selectedBatchId: null, displayOrder: '0' }
     setTitle(''); setDuration(''); setSelectedBatchId(null)
+    setDraftProgramId(''); setSelectedFrameworkId(null)
     setPublicationStatus('draft'); setIsRequired(true); setIncludeInCompetency(true)
     setDisplayOrder('0'); setAvailableAt(''); setDueAt('')
     setCategories(pristineDraft.current.categories); setCatInput('')
@@ -801,7 +820,19 @@ export function useInstructorUpload() {
 
   return {
     // Batches
-    batches, loadingBatches, selectedBatchId, setSelectedBatchId,
+    batches, loadingBatches, selectedBatchId, setSelectedBatchId: value => {
+      setSelectedBatchId(value); setSelectedFrameworkId(null)
+      Object.keys(suggestionTimers.current).forEach(dismissSuggestion)
+      setQuestions(previous => previous.map(question => ({ ...question, categoryId: null })))
+    },
+    draftProgramId, setDraftProgramId: value => {
+      setDraftProgramId(value); setSelectedFrameworkId(null)
+      Object.keys(suggestionTimers.current).forEach(dismissSuggestion)
+      setQuestions(previous => previous.map(question => ({ ...question, categoryId: null })))
+    },
+    programId, frameworkId, scoped, scopedFramework, catalogUrl, catalogError,
+    refreshCatalog: () => catalogUrl && invalidateCache(catalogUrl),
+    chooseFramework: value => { setSelectedFrameworkId(value); setQuestions(previous => previous.map(question => ({ ...question, categoryId: null }))) },
     // Metadata
     title, setTitle, duration, setDuration,
     publicationStatus, setPublicationStatus, isRequired, setIsRequired,

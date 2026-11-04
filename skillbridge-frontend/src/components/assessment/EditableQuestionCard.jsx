@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import ScopedQuestionSuggestion from './ScopedQuestionSuggestion'
 
 const TYPE_META = {
   mcq:            { label: 'MCQ',   color: 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'       },
@@ -20,7 +21,7 @@ const ChevronIcon = ({ open }) => (
     <path d="M6 9l6 6 6-6"/>
   </svg>
 )
-export default function EditableQuestionCard({ q, index, categories, onUpdate, onChangeType, onUpdateChoice, onSetCorrect, onRemove }) {
+export default function EditableQuestionCard({ q, index, categories, framework, onUpdate, onChangeType, onUpdateChoice, onSetCorrect, onRemove }) {
   const typeMeta = TYPE_META[q.question_type] || TYPE_META.mcq
 
   const preview = q.question_text
@@ -30,7 +31,7 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
   const [suggestedCategory, setSuggestedCategory] = useState(null)
 
   useEffect(() => {
-    if (!q.question_text || q.question_text.trim() === '') {
+    if (framework || !q.question_text || q.question_text.trim() === '') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestedCategory(null)
       return
@@ -53,7 +54,7 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
       }
     }, 1000)
     return () => clearTimeout(timer)
-  }, [q.question_text, q.category?.name])
+  }, [q.question_text, q.category?.name, framework])
 
   return (
     <div
@@ -166,6 +167,8 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
                   <div key={ci} className="flex items-center gap-2">
                     <button
                       onClick={() => onSetCorrect(q._tempId, ci)}
+                      aria-label={`Mark choice ${CHOICE_LABELS[ci] || ci + 1} as correct`}
+                      aria-pressed={choice.is_correct}
                       className={`w-7 h-7 rounded-lg text-xs font-bold shrink-0 transition-colors border ${
                         choice.is_correct
                           ? 'bg-green-600 border-green-600 text-white'
@@ -177,6 +180,7 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
                     </button>
                     <input
                       type="text"
+                      aria-label={`Choice ${CHOICE_LABELS[ci] || ci + 1}`}
                       value={choice.text}
                       onChange={e => onUpdateChoice(q._tempId, ci, 'text', e.target.value)}
                       placeholder={`Choice ${CHOICE_LABELS[ci]}`}
@@ -241,8 +245,9 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
                     <button
                       key={cat.id}
                       onClick={() => onUpdate(q._tempId, { category: { id: cat.id, name: cat.name } })}
+                      aria-pressed={q.category?.id === cat.id}
                       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                        (q.category?.id === cat.id || q.category?.name?.toLowerCase() === cat.name.toLowerCase())
+                        (q.category?.id === cat.id || !framework && q.category?.name?.toLowerCase() === cat.name.toLowerCase())
                           ? 'bg-green-600 border-green-600 text-white'
                           : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-700 dark:hover:text-green-300'
                       }`}
@@ -251,7 +256,9 @@ export default function EditableQuestionCard({ q, index, categories, onUpdate, o
                     </button>
                   ))}
                 </div>
-                {suggestedCategory && (
+                {framework && q.category && <p className="text-xs leading-5 text-gray-500">{categories.find(category => category.id === q.category.id)?.description}</p>}
+                {framework && <ScopedQuestionSuggestion framework={framework} text={q.question_text} onAccept={category => onUpdate(q._tempId, { category: { id: category.id, name: category.name } })} />}
+                {!framework && suggestedCategory && (
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Suggested:</span>
                     <button

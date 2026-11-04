@@ -2,6 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { authoringDraftKey, readAuthoringDraft, authoringDraftSignature, isRecoverableAuthoringDraft, questionHasContent, writeAuthoringDraft } from './authoringDraft.js'
 
+test('program and framework identity distinguish drafts even when all category labels match', () => {
+  const draft = { categories: [{ id: 1, name: 'Shared label' }], questions: [], draftProgramId: 2, selectedFrameworkId: 3 }
+  assert.notEqual(authoringDraftSignature(draft), authoringDraftSignature({ ...draft, selectedFrameworkId: 4 }))
+  assert.notEqual(authoringDraftSignature(draft), authoringDraftSignature({ ...draft, draftProgramId: 5 }))
+})
+
 test('authoring drafts are owned by role and account; unowned legacy draft is not read', () => {
   const entries = new Map([['sb-user', JSON.stringify({ id: 1, role: 'instructor' })],
     ['sb_assessment_draft', JSON.stringify({ title: 'Another user secret' })]])

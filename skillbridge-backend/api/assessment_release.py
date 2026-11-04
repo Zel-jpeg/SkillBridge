@@ -25,7 +25,7 @@ def publish_assessments(request, batch_id):
     if (not isinstance(ids, list) or not 1 <= len(ids) <= 1000
             or any(type(pk) is not int or pk <= 0 for pk in ids) or len(set(ids)) != len(ids)):
         return Response({'error': 'Choose between 1 and 1000 distinct assessment IDs.'}, status=400)
-    assessments = list(managed_assessments(request.user).select_for_update().filter(
+    assessments = list(managed_assessments(request.user).select_for_update(of=('self',)).filter(
         batch=batch, pk__in=ids,
     ).order_by('id'))
     if len(assessments) != len(ids):
@@ -35,6 +35,8 @@ def publish_assessments(request, batch_id):
     # Validate the whole release before any writes. Published records make a
     # retry after a lost response idempotent, with no duplicate audit events.
     for assessment in assessments:
+        from .authoring_scope import resolve_framework
+        resolve_framework(request.user, batch, existing=assessment)
         if assessment.is_archived or assessment.publication_status not in ('draft', 'published'):
             return Response({'error': 'Only current drafts can be published together.'}, status=409)
         if assessment.publication_status == 'published':

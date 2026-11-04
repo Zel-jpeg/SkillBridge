@@ -54,7 +54,14 @@ def assessment_duplicate(request, assessment_id):
         batch = managed_batches(request.user).filter(pk=batch_id, status='active').first()
         if batch is None:
             return Response({'error': 'Active batch not found.', 'field': 'batch_id'}, status=404)
+    from .authoring_scope import resolve_framework, bind_batch, stored_scope_error
+    framework = resolve_framework(request.user, batch, source.framework_id, creating=True)
+    error = stored_scope_error(source)
+    if error:
+        return Response({'error': error}, status=400)
+    bind_batch(batch, framework)
     copy = Assessment.objects.create(title=title.strip(), created_by=request.user, batch=batch,
+        framework=framework,
         duration_minutes=source.duration_minutes, publication_status='draft', is_required=False,
         include_in_competency=False, display_order=0)
     for question in source.questions.prefetch_related('choices').order_by('question_order', 'id'):

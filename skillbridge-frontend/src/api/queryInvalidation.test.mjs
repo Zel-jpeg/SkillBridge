@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 test('competency invalidation stays within the affected program and never triggers legacy ranking reads', () => {
-  const urls = ['/api/management/programs/3/frameworks/?page=2', '/api/management/programs/3/frameworks/7/', '/api/management/programs/3/frameworks/7/categories/?search=Any', '/api/management/competency-programs/3/']
+  const urls = ['/api/management/programs/3/frameworks/?page=2', '/api/management/programs/3/frameworks/7/', '/api/management/programs/3/frameworks/7/categories/?search=Any', '/api/management/competency-programs/3/', '/api/management/programs/3/frameworks/7/authoring/']
   for (const url of urls) {
     assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [3] }), true, url)
     assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [4] }), false, url)

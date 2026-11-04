@@ -18,9 +18,10 @@ Existing IC records stay in the normal IC section with their current statuses;
 IC will be left unused in practice because it uses InternLink. No special
 history-only/read-only mode, automatic archive or IC workflow restrictions are
 requested. F01 catalog, F02 instructor/program assignments, F03 program-bound
-batches/enrollment, F04 dynamic profiles/onboarding and F05 program competency
-catalogs are implemented and verified. Framework-aware authoring, matching and
-reviewed existing-record mapping remain subsequent features. See the
+batches/enrollment, F04 dynamic profiles/onboarding, F05 program competency
+catalogs, F06 scoped assistance and F07 framework-aware authoring are implemented
+and verified. General text, scoped matching and reviewed existing-record mapping
+remain subsequent features. See the
 [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
 
 ## Architecture
@@ -78,6 +79,11 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Framework-aware assessment authoring](FRAMEWORK_ASSESSMENT_AUTHORING.md):
+  F07 program/version-bound drafts, category IDs, compatible assignment/copies,
+  publication and import validation, frozen definitions and nullable migration
+  0037; see the tracker for final migration/merge status.
 
 - [Scoped competency assistance](SCOPED_COMPETENCY_ASSISTANCE.md):
   F06 optional saved-definition category checks and tag reuse, explicit manual

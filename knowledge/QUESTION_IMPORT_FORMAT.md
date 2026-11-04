@@ -1,5 +1,12 @@
 # Accepted questionnaire import format
 
+5 November F07: for a program-scoped assessment, native imports map a recognized
+category name only within its chosen saved framework. Unknown names remain
+uncategorized for manual review and do not create global categories. Imports stay
+in the local authoring draft until save; publication requires valid category IDs
+and answer keys. See [framework authoring](FRAMEWORK_ASSESSMENT_AUTHORING.md).
+The AIKEN adapter below remains planned for F11.
+
 4 November follow-up: the user supplied an actual DNSC LMS AIKEN export and
 requested AIKEN as the default text format. The sample contains 20 single-answer
 MCQs with lettered options and `ANSWER:` keys, without skill categories. It does

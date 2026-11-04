@@ -27,6 +27,10 @@ test('competency pages reject malformed definition flags, tags and program ident
   const program = { id: 3, institute_id: 1, code: 'ANY', name: 'Any Degree', institute_name: 'Any Institute', institute_code: 'ANY', is_active: true }
   const framework = { id: 7, program_id: 3, version: 1, program, name: 'Knowledge', description: 'Defined scope', is_active: true, locked: false, can_edit: true, can_manage: true, category_count: 1, digest: 'a'.repeat(64) }
   const category = { id: 8, framework_id: 7, name: 'Shared', description: 'Defined knowledge', tags: ['Manual'], can_edit: true, digest: 'b'.repeat(64) }
+  const authoring = { framework, categories: [category] }
+  const authoringConfig = { method: 'get', url: '/api/management/programs/3/frameworks/7/authoring/' }
+  assert.doesNotThrow(() => validateApiResponse({ config: authoringConfig, status: 200, data: authoring }))
+  assert.throws(() => validateApiResponse({ config: authoringConfig, status: 200, data: { ...authoring, categories: [{ ...category, framework_id: 9 }] } }))
   for (const [url, row, bad] of [
     ['/api/management/competency-programs/', program, { ...program, is_active: 'true' }],
     ['/api/management/programs/3/frameworks/', framework, { ...framework, program_id: 9 }],

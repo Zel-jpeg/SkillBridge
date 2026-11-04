@@ -23,8 +23,10 @@ def managed_batches(user):
 
 def managed_assessments(user):
     require_manager(user)
+    from .program_scope import assigned_program_ids
     return Assessment.objects.all() if user.role == 'admin' else Assessment.objects.filter(
-        Q(batch__in=managed_batches(user)) | Q(batch__isnull=True, created_by=user))
+        Q(batch__in=managed_batches(user)) | (Q(batch__isnull=True, created_by=user) &
+        (Q(framework__isnull=True) | Q(framework__program_id__in=assigned_program_ids(user)))))
 
 
 def selected_instructor(value):
@@ -39,6 +41,7 @@ def selected_instructor(value):
 def batch_payload(batch, student_count=None):
     from .instructor_assignments import program_payload
     return {'id': batch.id, 'name': batch.name, 'status': batch.status,
+            'framework_id': batch.framework_id,
             'program_id': batch.program_id, 'institute_id': batch.institute_id,
             'program': program_payload(batch.program) if batch.program_id else None,
             'created_at': batch.created_at, 'archived_at': batch.archived_at,

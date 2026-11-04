@@ -12,10 +12,11 @@ BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 OUT = Path(tempfile.mkdtemp(prefix='program-migration-operator-', dir=ROOT / 'work'))
 DATA = OUT / 'source-cluster'
 PYTHON = ROOT / 'skillbridge-backend/venv/Scripts/python.exe'
-MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0036_program_competency_frameworks'
+MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0037_assessment_framework'
 PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0035_neutral_user_department': '0034_program_batch_context',
-            '0036_program_competency_frameworks': '0035_neutral_user_department'}[MIGRATION]
+            '0036_program_competency_frameworks': '0035_neutral_user_department',
+            '0037_assessment_framework': '0036_program_competency_frameworks'}[MIGRATION]
 with socket.socket() as sock:
     sock.bind(('127.0.0.1', 0))
     port = sock.getsockname()[1]
@@ -68,6 +69,7 @@ apps.get_model('api','SkillCategory').objects.create(name='Retained IC category'
         '0034_program_batch_context': {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']},
         '0035_neutral_user_department': {},
         '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
+        '0037_assessment_framework': {'api_assessment': ['framework_id']},
     }[MIGRATION]
     assert receipt['new_empty_tables'] == (['api_competencyframework'] if MIGRATION.startswith('0036') else [])
     summary = {'passed': True, 'migration': MIGRATION, 'synthetic_source_only': True, 'preserved_tables': receipt['preserved_tables'],

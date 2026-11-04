@@ -49,7 +49,7 @@ function rowsToPayload(rows) {
   })
 }
 
-export function useAssessmentUpload({ assessmentId, onImport }) {
+export function useAssessmentUpload({ assessmentId, onImport, scoped = false }) {
   const { showToast } = useToast()
   // ── Tab ───────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState('excel')  // 'excel' | 'text'
@@ -137,6 +137,7 @@ export function useAssessmentUpload({ assessmentId, onImport }) {
 
       const rowsWithSuggestions = await Promise.all(rows.map(async (r) => {
         try {
+          if (scoped) return r
           const res = await api.post('/api/categories/suggest/', { question_text: r.question })
           if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
             return { ...r, suggestedCategory: res.data.suggested_category }
@@ -169,6 +170,7 @@ export function useAssessmentUpload({ assessmentId, onImport }) {
       const { rows, errs } = parseTextFileContent(content)
       const rowsWithSuggestions = await Promise.all(rows.map(async (r) => {
         try {
+          if (scoped) return r
           const res = await api.post('/api/categories/suggest/', { question_text: r.question })
           if (res.data.suggested_category && res.data.suggested_category.toLowerCase() !== r.category.toLowerCase()) {
             return { ...r, suggestedCategory: res.data.suggested_category }

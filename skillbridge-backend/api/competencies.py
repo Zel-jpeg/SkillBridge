@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from .change_events import notify_changes
 from .instructor_assignments import program_payload
 from .management_access import record_action
-from .models import (Batch, CombinedCategoryScore, CompetencyFramework, Institute, Program,
+from .models import (Assessment, Batch, CombinedCategoryScore, CompetencyFramework, Institute, Program,
                      PositionRequirement, Question, SkillCategory, SkillScore)
 from .organization import page_payload
 from .program_scope import assigned_program_ids
@@ -75,6 +75,7 @@ def framework_rows(program):
     return CompetencyFramework.objects.filter(program=program).select_related('program__institute').prefetch_related(
         'categories').annotate(
         has_batches=Exists(Batch.objects.filter(framework_id=OuterRef('pk'))),
+        has_assessments=Exists(Assessment.objects.filter(framework_id=OuterRef('pk'))),
         has_questions=Exists(Question.objects.filter(skill_category__framework_id=OuterRef('pk'))),
         has_requirements=Exists(PositionRequirement.objects.filter(skill_category__framework_id=OuterRef('pk'))),
         has_scores=Exists(SkillScore.objects.filter(skill_category__framework_id=OuterRef('pk'))),
@@ -83,7 +84,7 @@ def framework_rows(program):
 
 def frozen(framework):
     return bool(framework.locked_at or any(getattr(framework, field) for field in
-        ('has_batches', 'has_questions', 'has_requirements', 'has_scores', 'has_combined')))
+        ('has_batches', 'has_assessments', 'has_questions', 'has_requirements', 'has_scores', 'has_combined')))
 
 
 def framework_payload(framework, user):

@@ -30,6 +30,7 @@ SUPPORTED = {
     '0034_program_batch_context': set(),
     '0035_neutral_user_department': set(),
     '0036_program_competency_frameworks': {'api_competencyframework'},
+    '0037_assessment_framework': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -42,6 +43,7 @@ ADDED_TABLES = SUPPORTED[args.migration]
 ADDED_COLUMNS = {
     '0034_program_batch_context': {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']},
     '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
+    '0037_assessment_framework': {'api_assessment': ['framework_id']},
 }.get(args.migration, {})
 
 

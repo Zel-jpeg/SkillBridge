@@ -130,7 +130,7 @@ export default function InstructorAssessments() {
     editTitle, setEditTitle,
     editDuration, setEditDuration,
     editSettings, setEditSettings,
-    visibleQuestions, questionStats, categories,
+    visibleQuestions, questionStats, categories, framework,
     expandAll, collapseAll, allExpanded,
     updateQuestion, changeQuestionType, updateChoice, setCorrectChoice,
     addQuestion, removeQuestion,
@@ -152,6 +152,7 @@ export default function InstructorAssessments() {
   function closeUpload() { setShowUpload(false); upload.reset() }
   const upload = useAssessmentUpload({
     assessmentId: selected?.id,
+    scoped: Boolean(selected?.framework_id),
     onImport: (rows) => {
       importQuestions(rows)
       setShowUpload(false)
@@ -188,6 +189,8 @@ export default function InstructorAssessments() {
             <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Assessment settings and questions"><fieldset disabled={saving || liveAssessment?.is_archived} className="min-w-0">
               <div className="space-y-5 bg-white px-5 pb-5 dark:bg-gray-900 sm:px-6">
                 <AssessmentPolicyNotice assessment={liveAssessment || selected} value={editSettings} variant="modal" />
+                {selected.framework_id && <p className="text-xs text-gray-500">{selected.framework_name} · v{selected.framework_version}. Categories use this saved framework. Imported names outside it remain unmapped for manual review.</p>}
+                {!selected.batch_id && <label className="block space-y-2 text-xs font-medium">Assign draft to batch<select aria-label="Assign draft to batch" value={editSettings.batch_id || ''} onChange={event => setEditSettings(previous => ({ ...previous, batch_id: event.target.value }))} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-gray-800"><option value="">Choose later</option>{batchOptions.filter(batch => batch.status === 'active' && (selected.framework_id ? batch.program_id === selected.program_id && (!batch.framework_id || batch.framework_id === selected.framework_id) : !batch.program_id)).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</select></label>}
                 <AssessmentSettings assessment={liveAssessment || selected} variant="modal" value={editSettings} onChange={setEditSettings} duration={editDuration} onDurationChange={setEditDuration} />
                 <div aria-label="Assessment reuse and archive" className="flex flex-wrap items-start gap-3 border-t border-gray-100 pt-4 dark:border-gray-800"><AssessmentDuplicateAction assessment={liveAssessment || selected} role="instructor" disabled={dirty || saving} onSuccess={closeAssessment} /><AssessmentArchiveAction assessment={liveAssessment || selected} disabled={dirty || saving} onSuccess={closeAssessment} variant="inline" /></div>
               </div>
@@ -219,6 +222,7 @@ export default function InstructorAssessments() {
                       q={q}
                       index={i}
                       categories={categories}
+                      framework={framework}
                       onUpdate={liveAssessment?.questions_locked ? () => {} : updateQuestion}
                       onChangeType={liveAssessment?.questions_locked ? () => {} : changeQuestionType}
                       onUpdateChoice={liveAssessment?.questions_locked ? () => {} : updateChoice}

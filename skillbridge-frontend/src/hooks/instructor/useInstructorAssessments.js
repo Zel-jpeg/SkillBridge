@@ -95,11 +95,11 @@ function normalizeQuestion(q, expanded = false) {
 }
 
 // ── Build the API payload for updating/adding a question ─────────────────────
-function questionPayload(q) {
+function questionPayload(q, scoped = false) {
   const base = {
     question_text: (q.question_text || '').trim(),
     question_type: q.question_type,
-    category:      q.category?.name || '',
+    ...(scoped ? { category_id: q.category?.id || null } : { category: q.category?.name || '' }),
   }
 
   if (q.question_type === 'identification') {
@@ -169,6 +169,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   // ── Question edit state ───────────────────────────────────────────────────
   const [editedQuestions, setEditedQuestions] = useState([])
   const [categories,      setCategories]      = useState([])
+  const [framework, setFramework] = useState(null)
 
   // Questions visible in the list (excludes deleted)
   const visibleQuestions = useMemo(
@@ -199,11 +200,12 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     try {
       const [qRes, catRes] = await Promise.all([
         fetchWithDedup(`/api/instructor/assessments/${a.id}/questions/`),
-        fetchWithDedup('/api/categories/'),
+        fetchWithDedup(a.framework_id ? `/api/management/programs/${a.program_id}/frameworks/${a.framework_id}/authoring/` : '/api/categories/'),
       ])
       if (load !== questionLoad.current) return
       setEditedQuestions((qRes.data?.questions ?? qRes.data ?? []).map(q => normalizeQuestion(q, false)))
-      setCategories(Array.isArray(catRes.data) ? catRes.data : [])
+      setCategories(a.framework_id ? catRes.data.categories : Array.isArray(catRes.data) ? catRes.data : [])
+      setFramework(a.framework_id ? catRes.data.framework : null)
     } catch {
       if (load === questionLoad.current) setQuestionError('Could not load questions and categories. Please try again.')
     } finally {
@@ -349,8 +351,8 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
         ...(editSettings.batch_id !== '' ? { batch_id: Number(editSettings.batch_id) } : {}),
         question_changes: {
           delete_ids: toDelete.map(question => question.id),
-          update: toPatch.map(question => ({ id: question.id, ...questionPayload(question) })),
-          add: toAdd.map(questionPayload),
+          update: toPatch.map(question => ({ id: question.id, ...questionPayload(question, Boolean(selected.framework_id)) })),
+          add: toAdd.map(question => questionPayload(question, Boolean(selected.framework_id))),
         },
         publication_status: editSettings.publication_status,
         is_required: editSettings.is_required,
@@ -406,7 +408,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     dirty,
     liveAssessment: selected ? assessmentsRaw?.find(a => a.id === selected.id) || selected : null,
     importQuestions: rows => setEditedQuestions(previous => [...previous, ...rows.map(row => normalizeQuestion({
-      ...row, category: categories.find(category => category.name.toLowerCase() === row.category.toLowerCase()) || { id: `import:${row.category}`, name: row.category },
+      ...row, category: categories.find(category => category.name.toLowerCase() === row.category.toLowerCase()) || (selected?.framework_id ? null : { id: `import:${row.category}`, name: row.category }),
       choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,
     }, true))]),
     // ── List ─────────────────────────────────────────────────────────────────
@@ -425,7 +427,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     editDuration, setEditDuration,
     editSettings, setEditSettings,
     // ── Question state ────────────────────────────────────────────────────────
-    visibleQuestions, questionStats, categories,
+    visibleQuestions, questionStats, categories, framework,
     expandAll, collapseAll, allExpanded,
     // ── Question edit functions ───────────────────────────────────────────────
     updateQuestion,

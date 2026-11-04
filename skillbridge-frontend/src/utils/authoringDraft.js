@@ -11,6 +11,7 @@ export function authoringDraftSignature(draft) {
   return JSON.stringify({
     title: draft.title || '', duration: String(draft.duration || ''),
     selectedBatchId: draft.selectedBatchId || null,
+    draftProgramId: draft.draftProgramId || null, selectedFrameworkId: draft.selectedFrameworkId || null,
     publicationStatus: draft.publicationStatus || 'draft',
     isRequired: draft.isRequired ?? true, includeInCompetency: draft.includeInCompetency ?? true,
     displayOrder: String(draft.displayOrder ?? 0), availableAt: draft.availableAt || '', dueAt: draft.dueAt || '',

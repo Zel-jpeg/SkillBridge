@@ -4,6 +4,7 @@ from rest_framework.exceptions import APIException, ValidationError
 from .change_events import category_created
 from .models import AnswerChoice, Question, SkillCategory, StudentResponse
 from .request_validation import parse_question_fields
+from .authoring_scope import category_fields
 
 
 class AuthoringConflict(APIException):
@@ -14,6 +15,7 @@ class AuthoringConflict(APIException):
 def question_state(question):
     choices = [{'text': choice.choice_text, 'is_correct': choice.is_correct} for choice in question.choices.all()]
     return {'question_text': question.question_text, 'question_type': question.question_type,
+            **({'category_id': question.skill_category_id} if question.assessment.framework_id else {}),
             'category': question.skill_category.name if question.skill_category else '', 'choices': choices,
             'correct_answer': next((choice['text'] for choice in choices if choice['is_correct']), '')}
 
@@ -47,11 +49,16 @@ def prepare_changes(assessment, changes, category_name, question_error):
             seen.add(pk)
             state = question_state(current[pk])
             fields = parse_question_fields({key: value for key, value in row.items() if key != 'id'}, partial=True)
-            fields['category'] = category_name(fields.get('category', state['category']))
-            planned.append((current[pk], {**state, **fields}))
+            # A newly selected ID need not repeat its saved label. Omitted category
+            # fields retain the original identity during partial question edits.
+            merged = {**state, **fields}
+            if 'category_id' in fields and 'category' not in fields:
+                merged['category'] = ''
+            category_fields(merged, assessment.framework, category_name)
+            planned.append((current[pk], merged))
         for row in additions:
             fields = parse_question_fields(row)
-            fields['category'] = category_name(fields['category'])
+            category_fields(fields, assessment.framework, category_name)
             planned.append((None, fields))
     except ValueError as exc:
         invalid(str(exc))
@@ -59,6 +66,8 @@ def prepare_changes(assessment, changes, category_name, question_error):
         raise AuthoringConflict()
     final = [question_state(question) for pk, question in current.items() if pk not in deletes and pk not in seen]
     final.extend(fields for _, fields in planned)
+    for row in final:
+        category_fields(row, assessment.framework, category_name)
     if assessment.publication_status == 'published':
         if not final: invalid('Add at least one question before publishing.')
         for row in final:
@@ -73,7 +82,9 @@ def apply_changes(assessment, plan, user):
     order = assessment.questions.aggregate(last=Max('question_order'))['last'] or 0
     for question, fields in planned:
         category = None
-        if fields['category']:
+        if assessment.framework_id:
+            category = fields.get('_category')
+        elif fields['category']:
             category, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(name__iexact=fields['category'],
                 defaults={'name': fields['category'], 'created_by': user})
             category_created(created)

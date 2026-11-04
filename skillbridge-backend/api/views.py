@@ -49,6 +49,7 @@ from .retake_requests import request_snapshot, summary as retake_summary, reques
 from .assessment_interruptions import state as interruption_state
 from .assessment_progress import current_enrollment, assessment_availability, required_progress, attempt_action
 from .assessment_archives import archive_metadata
+from .authoring_scope import metadata as authoring_metadata
 from .combined_competency import (
     combined_is_unlocked, ensure_combined, recalculate_combined,
     recalculate_enrolled_students, serialize_combined_scores,
@@ -142,6 +143,10 @@ def _question_error(question):
 
 
 def _stored_question_error(assessment):
+    from .authoring_scope import stored_scope_error
+    scope_error = stored_scope_error(assessment)
+    if scope_error:
+        return scope_error
     questions = list(assessment.questions.prefetch_related('choices'))
     if not questions:
         return 'Add at least one question before publishing.'
@@ -1637,7 +1642,7 @@ def instructor_assessments(request):
 
     if request.method == 'GET':
         assessments = (Assessment.objects.all()
-                       .select_related('batch', 'batch__instructor', 'created_by', 'archived_by')
+                       .select_related('batch', 'batch__instructor', 'created_by', 'archived_by', 'framework')
                        .prefetch_related('questions__skill_category')
                        .annotate(
                            submission_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED), distinct=True),
@@ -1653,6 +1658,7 @@ def instructor_assessments(request):
         return Response([{
             'id':               a.id,
             **archive_metadata(a),
+            **authoring_metadata(a),
             'title':            a.title,
             'batch_id':         a.batch_id,
             'batch_name':       a.batch.name if a.batch else None,
@@ -1707,8 +1713,6 @@ def instructor_assessments(request):
                 raise ValueError(f'questions.{index} must be a question object.')
             normalized_questions.append(parse_question_fields(question))
         questions_data = normalized_questions
-        for question in questions_data:
-            question['category'] = _question_category_name(question.get('category', ''))
     except ValueError as exc:
         return Response({'error': str(exc)}, status=400)
 
@@ -1727,6 +1731,12 @@ def instructor_assessments(request):
             return Response({'error': 'Batch not found or not yours'}, status=404)
 
     # Old clients omit publication_status and still publish; the new creator sends draft explicitly.
+    from .authoring_scope import UNSET, resolve_framework, category_fields, bind_batch
+    framework = resolve_framework(request.user, batch, data.get('framework_id', UNSET), creating=True)
+    if framework:
+        from .competencies import framework_payload, expect_digest
+        expect_digest(data.get('framework_digest'), framework_payload(framework, request.user)['digest'])
+    questions_data = [category_fields(question, framework, _question_category_name) for question in questions_data]
     publication_status = data.get('publication_status', 'closed' if legacy_active is False else 'published')
     if publication_status not in dict(Assessment.PUBLICATION_CHOICES):
         return Response({'error': 'Invalid publication_status'}, status=400)
@@ -1750,11 +1760,13 @@ def instructor_assessments(request):
     elif not questions_data:
         questions_data = []
 
+    bind_batch(batch, framework)
     # Create the assessment
     assessment = Assessment.objects.create(
         title=title,
         created_by=request.user,
         batch=batch,
+        framework=framework,
         duration_minutes=duration_minutes,
         publication_status=publication_status,
         is_required=is_required,
@@ -1779,7 +1791,9 @@ def instructor_assessments(request):
 
         # Auto-create category if needed
         cat = None
-        if cat_name:
+        if framework:
+            cat = q_data.get('_category')
+        elif cat_name:
             cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
@@ -1866,6 +1880,10 @@ def instructor_assessment_detail(request, assessment_id):
             return Response({'error': 'Active batch not found.', 'field': 'batch_id'}, status=404)
         assessment.batch = batch
 
+    from .authoring_scope import UNSET, resolve_framework, bind_batch
+    framework = resolve_framework(request.user, assessment.batch, request.data.get('framework_id', UNSET), existing=assessment,
+                                  creating=before['batch_id'] is None and assessment.batch_id is not None)
+
     # Only allow changing non-question fields after students may have submitted
     if 'title' in request.data:
         if not isinstance(request.data['title'], str) or len(request.data['title'].strip()) > 255:
@@ -1935,6 +1953,7 @@ def instructor_assessment_detail(request, assessment_id):
     if question_plan is not None:
         from .assessment_authoring import apply_changes
         apply_changes(assessment, question_plan, request.user)
+    bind_batch(assessment.batch, framework)
     assessment.save()
     record_action(request.user, 'assessment.update', 'assessment', assessment.id, assessment.batch_id,
                   before=before, after=assessment_state(assessment),
@@ -1960,6 +1979,7 @@ def instructor_assessment_detail(request, assessment_id):
         'due_at': assessment.due_at,
         'batch_id': assessment.batch_id,
         'batch_name': assessment.batch.name if assessment.batch else None,
+        **authoring_metadata(assessment),
         **({'questions': authoring_questions(assessment)} if question_plan is not None else {}),
     })
 
@@ -2000,6 +2020,7 @@ def instructor_assessment_questions(request, assessment_id):
             'title':            assessment.title,
             'duration_minutes': assessment.duration_minutes,
             'is_active':        assessment.is_active,
+            **authoring_metadata(assessment),
         },
         'questions': data,
     })
@@ -2067,8 +2088,10 @@ def instructor_assessment_add_questions(request, assessment_id):
 
     if not questions_data:
         return Response({'error': 'at least one question is required'}, status=400)
+    from .authoring_scope import resolve_framework, category_fields
+    framework = resolve_framework(request.user, assessment.batch, existing=assessment)
     for question in questions_data:
-        question['category'] = _question_category_name(question.get('category', ''))
+        category_fields(question, framework, _question_category_name)
         if assessment.publication_status == Assessment.PUBLICATION_PUBLISHED:
             error = _question_error(question)
             if error:
@@ -2097,7 +2120,9 @@ def instructor_assessment_add_questions(request, assessment_id):
 
         # Auto-create category if needed (same pattern as assessment creation)
         cat = None
-        if cat_name:
+        if framework:
+            cat = q_data.get('_category')
+        elif cat_name:
             cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
@@ -2192,6 +2217,8 @@ def instructor_question_detail(request, question_id):
     question.refresh_from_db()
     if StudentResponse.objects.filter(assessment=question.assessment).exists():
         return Response({'error': 'Question changes are locked after an attempt exists.'}, status=409)
+    from .authoring_scope import resolve_framework, category_fields
+    framework = resolve_framework(request.user, locked_assessment.batch, existing=locked_assessment)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
     if request.method == 'DELETE':
@@ -2205,8 +2232,8 @@ def instructor_question_detail(request, question_id):
         data = parse_question_fields(request.data, partial=True)
     except ValueError as exc:
         return Response({'error': str(exc), 'field': 'question'}, status=400)
-    if 'category' in data:
-        _question_category_name(data['category'])
+    if 'category' in data or 'category_id' in data:
+        category_fields(data, framework, _question_category_name)
     try:
         parsed_choices = parse_choice_flags(data['choices']) if 'choices' in data else None
     except ValueError as exc:
@@ -2233,7 +2260,9 @@ def instructor_question_detail(request, question_id):
         if new_type in ('mcq', 'truefalse', 'identification'):
             question.question_type = new_type
 
-    if 'category' in data:
+    if framework and ('category' in data or 'category_id' in data):
+        question.skill_category = data.get('_category')
+    elif 'category' in data:
         cat_name = (data['category'] or '').strip()
         if cat_name:
             cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(

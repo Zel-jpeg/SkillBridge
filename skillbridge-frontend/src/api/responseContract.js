@@ -38,7 +38,12 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/assist\/category\/$/.test(path)) {
+  if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/authoring\/$/.test(path)) {
+    valid = object(data) && frameworkRow(data.framework) && data.framework.id === Number(path.match(/frameworks\/(\d+)/)?.[1]) &&
+      data.framework.program_id === Number(path.match(/programs\/(\d+)/)?.[1]) && Array.isArray(data.categories) &&
+      data.categories.length === data.framework.category_count && data.categories.every(row => object(row) && id(row.id) &&
+        row.framework_id === data.framework.id && typeof row.name === 'string' && typeof row.description === 'string' && Array.isArray(row.tags) && row.tags.every(tag => typeof tag === 'string'))
+  } else if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/assist\/category\/$/.test(path)) {
     valid = assistanceEnvelope(data, path) && ['matched', 'ambiguous', 'no_match', 'empty_catalog', 'empty_text', 'unavailable'].includes(data.status) &&
       Array.isArray(data.candidates) && data.candidates.length <= 3 && data.candidates.every(assistanceCandidate) &&
       (data.status === 'matched' ? assistanceCandidate(data.suggested_category) && data.suggested_category.id === data.candidates[0]?.id : data.suggested_category === null)

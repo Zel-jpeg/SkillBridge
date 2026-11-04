@@ -1,5 +1,8 @@
 import DataSection from '../../components/DataSection'
 import AssessmentDurationSuggestions from '../../components/assessment/AssessmentDurationSuggestions'
+import ProgramSelect from '../../components/ProgramSelect'
+import FrameworkSelect from '../../components/assessment/FrameworkSelect'
+import ScopedQuestionSuggestion from '../../components/assessment/ScopedQuestionSuggestion'
 // src/pages/instructor/InstructorUpload.jsx
 //
 // Assessment Creator — fully wired to the backend.
@@ -104,6 +107,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
   const {
     // Batches
     batches, loadingBatches, selectedBatchId, setSelectedBatchId,
+    draftProgramId, setDraftProgramId, programId, frameworkId, scoped, scopedFramework, catalogUrl, catalogError, chooseFramework, refreshCatalog,
     // Metadata
     title, setTitle, duration, setDuration,
     publicationStatus, setPublicationStatus, isRequired, setIsRequired,
@@ -315,21 +319,26 @@ export default function InstructorUpload({ role = 'instructor' }) {
 
         {/* ── SECTION 2: Skill Categories ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+          {!selectedBatchId && <div className="space-y-3"><p className="text-xs">For a program draft, choose its program and framework before assigning categories.</p><ProgramSelect value={draftProgramId} onChange={setDraftProgramId} endpoint="/api/management/competency-programs/" />{draftProgramId && <button type="button" className="text-xs underline" onClick={() => setDraftProgramId('')}>Clear program selection</button>}</div>}
+          {scoped && <FrameworkSelect key={programId} programId={programId} value={frameworkId} onChange={chooseFramework} disabled={Boolean(batches.find(batch => batch.id === selectedBatchId)?.framework_id)} />}
+          {scoped && <p className="text-xs text-gray-500">Categories come from this program’s saved framework. Manage definitions in Program competencies. Changing batch, program or framework clears category assignments for review and keeps question text and answer keys.</p>}
+          {catalogError && <p role="alert" className="text-xs text-rose-700">Could not load the selected framework. Your question draft is preserved.</p>}
+          {scoped && catalogUrl && <button type="button" className="self-start text-xs underline" onClick={refreshCatalog}>Refresh framework definitions</button>}
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill categories</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              Define the skill areas this assessment will measure. The system will suggest categories as you type questions.
+              Choose the skill areas this assessment will measure. Review any suggested category before accepting it.
             </p>
           </div>
-          <DataSection url="/api/categories/" layout="category-editor" label="Loading skill categories">
-          <div className="flex gap-2">
+          <DataSection url={scoped ? catalogUrl : '/api/categories/'} layout="category-editor" label="Loading skill categories">
+          {!scoped && <div className="flex gap-2">
             <input ref={catRef} type="text" value={catInput}
               onChange={e => { setCatInput(e.target.value); setErrors(er => ({ ...er, catDupe: '', categories: '' })) }}
               onKeyDown={e => e.key === 'Enter' && addCategory()}
               placeholder="e.g. Web Development"
               className={`flex-1 px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${errors.catDupe ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`} />
             <button onClick={addCategory} className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0">Add</button>
-          </div>
+          </div>}
           {errors.catDupe    && <p className="text-xs text-red-500 -mt-2">{errors.catDupe}</p>}
           {errors.categories && <p className="text-xs text-red-500 -mt-2">{errors.categories}</p>}
           {categories.length > 0 ? (
@@ -340,7 +349,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
                   <div key={cat.id} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full">
                     <span>{cat.name}</span>
                     {count > 0 && <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-1.5 py-0.5 rounded-full">{count}</span>}
-                    <button onClick={() => removeCategory(cat.id)} className="ml-0.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors leading-none">×</button>
+                    {!scoped && <button onClick={() => removeCategory(cat.id)} className="ml-0.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors leading-none">×</button>}
                   </div>
                 )
               })}
@@ -413,7 +422,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
             const catName    = categories.find(c => c.id === q.categoryId)?.name
             const suggestion = suggestions[q.id]
             // Don't show suggestion if already tagged with that category
-            const showSuggestion = suggestion && !catName
+            const showSuggestion = !scoped && suggestion && !catName
 
             return (
               <div key={q.id}
@@ -581,6 +590,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
                           <div className="flex flex-wrap gap-1.5">
                             {categories.map(cat => (
                               <button key={cat.id}
+                                aria-pressed={q.categoryId === cat.id}
                                 onClick={() => { updateQuestion(q.id, 'categoryId', cat.id); setErrors(e => ({ ...e, [`q_${q.id}_categoryId`]: '' })) }}
                                 className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${q.categoryId === cat.id ? 'bg-green-600 border-green-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-700 dark:hover:text-green-300'}`}>
                                 {cat.name}
@@ -589,6 +599,8 @@ export default function InstructorUpload({ role = 'instructor' }) {
                           </div>
                         )}
                         {errors[`q_${q.id}_categoryId`] && <p className="text-xs text-red-500 mt-1">{errors[`q_${q.id}_categoryId`]}</p>}
+                        {scoped && q.categoryId && <p className="mt-2 text-xs leading-5 text-gray-500">{categories.find(category => category.id === q.categoryId)?.description}</p>}
+                        {scopedFramework && <ScopedQuestionSuggestion framework={scopedFramework} text={q.text} onAccept={category => updateQuestion(q.id, 'categoryId', category.id)} />}
                       </div>
                       {questions.length > 1 && (
                         <button onClick={() => removeQuestion(q.id)} className="text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 px-3 py-2 rounded-xl transition-colors shrink-0">Remove</button>

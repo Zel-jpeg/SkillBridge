@@ -167,12 +167,16 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F07 — Framework-aware assessment authoring
 
-- [ ] Branch `codex/framework-assessment-authoring` after F06.
-- [ ] Resolve category IDs within the batch/framework; drafts/publication,
+- [x] Branch `codex/framework-assessment-authoring` after F06 (`782d562`).
+- [x] Resolve category IDs within the batch/framework; drafts/publication,
   existing-assessment edits and copies enforce current scope and content locks.
-- [ ] Preserve timing, required completion, retakes and category raw/max grading.
-- [ ] Test mixed category payloads, draft atomicity, publication, retakes and
-  required/optional evidence with real-API browser checks; receipt/local merge.
+- [x] Preserve timing, required completion, retakes and category raw/max grading.
+- [x] Test mixed category payloads, draft atomicity, publication, retakes and
+  required/optional evidence with real-API browser checks;
+  [receipt](FRAMEWORK_ASSESSMENT_AUTHORING.md): 699 full backend tests and 54 final
+  focused tests, 275 frontend tests, lint/build/check/drift and six new/six retained
+  browser groups passed. Configured 0037 preserved all 43 old data tables/values.
+- [ ] Commit and merge F07 locally before F08.
 
 ### F08 — General result and NLP text
 
@@ -265,8 +269,34 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F06 complete and locally merged (5 November 2026):
+Current checkpoint — ACTIVE after CONTINUE, F07 implementation (5 November 2026):
 
+- Active branch `codex/framework-assessment-authoring`, HEAD `782d562`, same as
+  local main. User resumed explicitly. F07 changes are uncommitted on this branch.
+- F06 implementation `4776e3d` and receipt `782d562` are both already merged
+  locally. F07 now has nullable assessment/framework migration 0037, identity-
+  scoped creation/edit/assignment/copy/publication helpers and authoring UI.
+  No F07 configured migration or local merge yet. No GitHub push/deployment.
+- F07 inspection traced assessment create/update, append, individual question
+  edits, atomic authoring helpers, management scope and the existing React editor.
+  Current paths still resolve legacy category names globally; the editor loads
+  `/api/categories/` and its cards call legacy suggestion endpoints. These must
+  be addressed together with publication/copy validation, without changing the
+  preserved legacy IC path or scoring/retake rules.
+- F07 design: nullable Assessment.framework keeps batchless draft identity;
+  first scoped assessment binds its compatible program batch. Framework identity
+  is immutable, definitions freeze permanently and first saves require a current
+  digest. IDs are resolved only within that version. Legacy IC rows stay unmapped.
+- F07 preliminary checks: 62 focused tests, then 32 API/concurrency/migration
+  tests passed (`work/organization-postgres-5uqxempe/`). Synthetic operator 0037
+  backup/restore rehearsal passed (`work/program-migration-operator-sa1w0uau/`),
+  preserving 39 old synthetic data tables. Frontend 274 tests/lint/build passed.
+  Three initial browser groups passed (`work/organization-browser-6bbpurx8/`).
+  More assignment/recovery browser coverage and final checks are in progress.
+- Earlier full backend run: 691/693 passed; two presentation fixtures omitted
+  the new nullable framework field. Fixtures updated; final full run pending at
+  `work/organization-postgres-4d603fyn/`. No unresolved application failure yet;
+  do not mark F07 complete until final gates pass. F08–F16 remain open.
 - F06 branch `codex/scoped-category-assistance`, base `ef3f603`,
   implementation `4776e3d` fast-forward merged into local main. Optional saved
   definition matching/tag reuse, manual acceptance/fallback, scope and obsolete
@@ -306,7 +336,8 @@ Current checkpoint — F06 complete and locally merged (5 November 2026):
   were corrected. One frontend contract test incorrectly tried POST on a read-only
   program-options endpoint; corrected and final 271-test run passed.
 - All owned helpers stopped. No deployment or GitHub push.
-- Exact next step: merge this receipt locally, then create
-  `codex/framework-assessment-authoring` and implement/test F07. Resolve existing
-  authoring callers and category validation before edits; no next-feature work
-  starts before the F06 receipt merge.
+- Exact next step: finish enhanced F07 browser checks and inspect final regression
+  results, review the diff and fix any issues. Recheck mutation events and draft
+  identity; complete documentation/verification, then only after all gates pass
+  verify configured target, backup/restore/apply 0037 and reconcile preserved data.
+  Commit/merge F07 locally before F08; no push or deployment.
