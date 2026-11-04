@@ -30,6 +30,10 @@ for role in ['admin', 'instructor', 'student']:
 owner = User.objects.get(role='instructor')
 batch = Batch.objects.create(name='Existing IC mixed batch', instructor=owner)
 BatchEnrollment.objects.create(batch=batch, student=User.objects.get(role='student'))
+for number in range(9):
+    candidate = User.objects.create_user(f'candidate-{number}@example.invalid', role='instructor', name=f'Synthetic Coordinator {number:02}', is_approved=True)
+    if number == 0:
+        identities['other_instructor'] = {'token': str(AccessToken.for_user(candidate)), 'user': {'id': candidate.id, 'role': 'instructor', 'name': candidate.name, 'is_approved': True}}
 for index in range(12):
     institute = Institute.objects.create(code=f'SYN{index}', name=f'Synthetic Institute {index:02}', is_active=index != 11)
     if index == 0:

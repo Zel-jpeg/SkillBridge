@@ -213,14 +213,15 @@ def run(browser):
         context.close()
 
 
-try:
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(channel='chrome', headless=True)
-        try:
-            run(browser)
-        finally:
-            browser.close()
-    assert not errors, errors
-finally:
-    (OUT / 'results.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, indent=2), encoding='utf-8')
-print(json.dumps({'passed': len(checks), 'checks': checks, 'page_errors': errors}))
+if __name__ == '__main__':
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel='chrome', headless=True)
+            try:
+                run(browser)
+            finally:
+                browser.close()
+        assert not errors, errors
+    finally:
+        (OUT / 'results.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, indent=2), encoding='utf-8')
+    print(json.dumps({'passed': len(checks), 'checks': checks, 'page_errors': errors}))

@@ -1,5 +1,7 @@
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const id = value => Number.isSafeInteger(value) && value > 0
+const catalogPage = (data, row) => object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && id(data.page) && id(data.page_size) && data.page_size <= 50 &&
+  data.page <= Math.max(1, Math.ceil(data.count / data.page_size)) && Array.isArray(data.results) && data.results.length <= Math.min(data.count, data.page_size) && data.results.every(row)
 const pagination = (data, rows) => data.pagination === undefined || (
   object(data.pagination) && Number.isSafeInteger(data.pagination.count) && data.pagination.count >= 0 &&
   id(data.pagination.page) && id(data.pagination.page_size) && data.pagination.page_size <= 50 &&
@@ -22,12 +24,19 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/)?)?)?$/.test(path)) {
+  if (/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/instructors\/(?:\d+\/)?$/.test(path)) {
+    const row = item => object(item) && id(item.id) && id(item.instructor_id) && id(item.program_id) && id(item.institute_id) && typeof item.name === 'string' && typeof item.email === 'string' && typeof item.is_active === 'boolean' && typeof item.effective === 'boolean'
+    valid = method === 'get' ? catalogPage(data, row) : row(data)
+  } else if (/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/instructor-options\/$/.test(path)) {
+    valid = catalogPage(data, item => object(item) && id(item.id) && typeof item.name === 'string' && typeof item.email === 'string' && typeof item.assigned === 'boolean')
+  } else if (/^\/api\/management\/programs\/(?:\d+\/)?$/.test(path)) {
+    const row = item => object(item) && id(item.id) && id(item.institute_id) && typeof item.name === 'string' && typeof item.code === 'string' && typeof item.institute_name === 'string'
+    valid = path === '/api/management/programs/' ? catalogPage(data, row) : row(data)
+  } else if (/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/)?)?)?$/.test(path)) {
     const row = item => object(item) && id(item.id) && typeof item.name === 'string' && typeof item.code === 'string' && typeof item.description === 'string' && typeof item.is_active === 'boolean' &&
       (path.includes('/programs/') ? id(item.institute_id) && Array.isArray(item.aliases) && item.aliases.every(alias => typeof alias === 'string') : Number.isSafeInteger(item.program_count) && item.program_count >= 0)
     if (method === 'get' && (path === '/api/admin/institutes/' || /\/\d+\/programs\/$/.test(path))) {
-      valid = object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && id(data.page) && id(data.page_size) && data.page_size <= 50 &&
-        data.page <= Math.max(1, Math.ceil(data.count / data.page_size)) && Array.isArray(data.results) && data.results.length <= Math.min(data.count, data.page_size) && data.results.every(row)
+      valid = catalogPage(data, row)
     } else valid = row(data)
   } else if (method === 'post' && /^\/api\/instructor\/batches\/\d+\/enroll\/(?:preview\/)?$/.test(path)) {
     const preview = path.endsWith('/preview/')

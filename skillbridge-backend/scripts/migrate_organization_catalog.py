@@ -1,4 +1,4 @@
-"""Inspect or apply only 0032 after an owned backup/restore preservation check.
+"""Inspect or apply one reviewed additive catalog/assignment migration.
 
 Default is read-only. --apply requires the inspected target fingerprint. Private
 public-schema backups stay under ignored work/; receipts contain only hashes and
@@ -24,12 +24,18 @@ from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 import psycopg2
 
-TARGET = ('api', '0032_institute_program_catalog')
+SUPPORTED = {
+    '0032_institute_program_catalog': {'api_institute', 'api_program'},
+    '0033_instructor_program_assignment': {'api_instructorassignment'},
+}
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--apply', action='store_true')
 parser.add_argument('--expected-target')
+parser.add_argument('--migration', choices=SUPPORTED, default='0032_institute_program_catalog')
 args = parser.parse_args()
+TARGET = ('api', args.migration)
+ADDED_TABLES = SUPPORTED[args.migration]
 
 
 def digest(value):
@@ -81,7 +87,7 @@ if not args.apply:
     connection.close()
     raise SystemExit(0)
 assert args.expected_target == target_hash, 'Target changed or was not inspected'
-assert pending == [(TARGET[0], TARGET[1], False)], 'Only the reviewed forward 0032 migration may run'
+assert pending == [(TARGET[0], TARGET[1], False)], 'Only the single selected reviewed forward migration may run'
 OUT = Path(tempfile.mkdtemp(prefix='organization-configured-migration-', dir=ROOT / 'work'))
 DATA = OUT / 'restore-cluster'
 backup = OUT / 'private-public-schema.dump'
@@ -108,7 +114,7 @@ try:
             exported_snapshot = cursor.fetchone()[0]
         before = snapshot(connection)
         assert 'api_user' in before and 'api_batch' in before
-        assert not {'api_institute', 'api_program'} & set(before)
+        assert not ADDED_TABLES & set(before)
         run([BIN / 'pg_dump.exe', '--format=custom', '--schema=public', '--no-owner', '--no-acl',
              f'--snapshot={exported_snapshot}', f'--file={backup}'], source_env)
         assert backup.is_file() and backup.stat().st_size > 0
@@ -124,16 +130,16 @@ try:
         assert plan() == pending, 'Pending migrations changed'
         MigrationExecutor(connection).migrate([TARGET])
         after = snapshot(connection)
-        assert set(after) - set(before) == {'api_institute', 'api_program'}
+        assert set(after) - set(before) == ADDED_TABLES
         assert all(after[name] == facts for name, facts in before.items()), 'Preserved data changed; rollback'
-        assert after['api_institute']['count'] == after['api_program']['count'] == 0
+        assert all(after[table]['count'] == 0 for table in ADDED_TABLES)
     receipt = {'migration': list(TARGET), 'target_fingerprint': target_hash, 'backup_scope': 'public schema only',
                'backup_restored_and_hash_verified': True, 'preserved_tables': len(before),
-               'preserved_facts': before, 'new_empty_tables': ['api_institute', 'api_program'],
+               'preserved_facts': before, 'new_empty_tables': sorted(ADDED_TABLES),
                'pending_after': plan(), 'regraded_or_recalculated': False}
     (OUT / 'receipt.json').write_text(json.dumps(receipt, indent=2), encoding='utf-8')
     print(json.dumps({'applied': list(TARGET), 'existing_tables_unchanged': len(before), 'backup_restore_verified': True,
-                      'new_empty_tables': 2, 'receipt_directory': str(OUT)}))
+                      'new_empty_tables': len(ADDED_TABLES), 'receipt_directory': str(OUT)}))
 finally:
     connection.close()
     if started and (DATA / 'postmaster.pid').exists():

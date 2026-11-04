@@ -3,6 +3,16 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('assignment lists and grants require explicit current access flags and valid parent IDs', () => {
+  const row = { id: 1, instructor_id: 2, program_id: 3, institute_id: 4, name: 'Synthetic', email: 'synthetic@example.invalid', is_active: true, effective: true }
+  const config = { method: 'post', url: '/api/admin/institutes/4/programs/3/instructors/' }
+  assert.doesNotThrow(() => validateApiResponse({ data: row, config, status: 201 }))
+  for (const data of [{ ...row, effective: 'true' }, { ...row, instructor_id: null }, {}]) assert.throws(() => validateApiResponse({ data, config, status: 201 }))
+  const list = { count: 1, page: 1, page_size: 8, results: [row] }
+  assert.doesNotThrow(() => validateApiResponse({ data: list, config: { ...config, method: 'get' }, status: 200 }))
+  assert.throws(() => validateApiResponse({ data: { ...list, page: 3 }, config: { ...config, method: 'get' }, status: 200 }))
+})
+
 test('organization catalog rejects malformed success envelopes before they reach the cache', () => {
   const config = { method: 'get', url: '/api/admin/institutes/' }
   const row = { id: 1, code: 'EX', name: 'Example', description: '', is_active: true, program_count: 0 }

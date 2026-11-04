@@ -1,6 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+test('program assignment changes refresh grants/options without exposing unrelated student results', () => {
+  for (const path of ['/api/management/programs/', '/api/management/programs/5/', '/api/admin/institutes/2/programs/5/instructors/?page=2', '/api/admin/institutes/2/programs/5/instructor-options/?search=Name']) {
+    assert.equal(queryAffected(path, { topics: ['assignments'] }), true)
+    assert.equal(queryAffected(path, { topics: ['organization'] }), true)
+    assert.equal(queryAffected(path, { topics: ['users'] }), true)
+    assert.equal(queryAffected(path, { resync: true }), true)
+  }
+  assert.equal(queryAffected('/api/student/results/combined/', { topics: ['assignments'] }), false)
+})
+
 test('organization changes refresh catalog variants without invalidating private results', () => {
   for (const url of ['/api/admin/institutes/?search=Example&page=2', '/api/admin/institutes/3/', '/api/admin/institutes/3/programs/?status=active', '/api/admin/institutes/3/programs/5/']) {
     assert.equal(queryAffected(url, { topics: ['organization'] }), true)

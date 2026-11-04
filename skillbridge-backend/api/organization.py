@@ -79,27 +79,30 @@ def payload(row):
     return result
 
 
-def page_payload(rows, params):
+def page_payload(rows, params, *, serialize=payload, search_fields=('code', 'name'), inactive_label='archived', order_fields=('name', 'id')):
     if (set(params) - {'page', 'page_size', 'search', 'status', '_t'}
             or any(len(params.getlist(key)) != 1 for key in params)):
         raise ValidationError({'error': 'Unsupported collection parameter.'})
     state = params.get('status', 'all')
-    if state not in ('all', 'active', 'archived'):
-        raise ValidationError({'error': 'Choose all, active or archived.', 'field': 'status'})
+    if state not in ('all', 'active', inactive_label):
+        raise ValidationError({'error': f'Choose all, active or {inactive_label}.', 'field': 'status'})
     if state != 'all':
         rows = rows.filter(is_active=state == 'active')
     search = params.get('search', '').strip()
     if len(search) > 255:
         raise ValidationError({'error': 'Search must contain at most 255 characters.'})
     if search:
-        rows = rows.filter(Q(code__icontains=search) | Q(name__icontains=search))
+        query = Q()
+        for field in search_fields:
+            query |= Q(**{f'{field}__icontains': search})
+        rows = rows.filter(query)
     from .collection_queries import _integer
     page = _integer(params, 'page', 1, 1000000)
     size = _integer(params, 'page_size', 8, 50)
     total = rows.count()
     page = min(page, max(1, (total + size - 1) // size))
     return {'count': total, 'page': page, 'page_size': size,
-            'results': [payload(row) for row in rows.order_by('name', 'id')[(page - 1) * size:page * size]]}
+            'results': [serialize(row) for row in rows.order_by(*order_fields)[(page - 1) * size:page * size]]}
 
 
 def validated(data, program=False, partial=False):

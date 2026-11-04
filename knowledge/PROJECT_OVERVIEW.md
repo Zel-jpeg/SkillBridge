@@ -17,8 +17,8 @@ IBPA is the confirmed current name; Entrepreneurship/Tourism are testing example
 Existing IC records stay in the normal IC section with their current statuses;
 IC will be left unused in practice because it uses InternLink. No special
 history-only/read-only mode, automatic archive or IC workflow restrictions are
-requested. F01 institute/program admin catalog and additive migration 0032 are
-implemented and verified; instructor assignments, enrollment integration and
+requested. F01 institute/program catalog and F02 instructor/program assignments
+with additive migrations 0032/0033 are implemented and verified; enrollment integration and
 existing-record organization mapping remain subsequent features. See the
 [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
 
@@ -77,6 +77,10 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Instructor/program assignments](INSTRUCTOR_PROGRAM_ASSIGNMENTS.md):
+  F02 admin grant/revoke/restore, current program options, targeted invalidation,
+  real-API modal tests and additive migration 0033; see the tracker for status.
 
 - [Institute/program administration](INSTITUTE_PROGRAM_ADMINISTRATION.md):
   F01 admin catalog API/screen, additive migration 0032, real-API responsive checks

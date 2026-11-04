@@ -110,6 +110,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.name} ({self.role})'
+
+
+class InstructorAssignment(models.Model):
+    instructor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='program_assignments')
+    program = models.ForeignKey(Program, on_delete=models.PROTECT, related_name='instructor_assignments')
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_program_assignments')
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='updated_program_assignments')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['instructor', 'program'], name='unique_instructor_program_assignment')]
+
+
 # ── Batch ────────────────────────────────────────────────────────────────────
 class Batch(models.Model):
     STATUS_CHOICES = [('active', 'Active'), ('archived', 'Archived')]

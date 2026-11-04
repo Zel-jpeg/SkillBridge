@@ -93,17 +93,20 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Configured migration readiness/application receipt: 0032 applied after
   verified isolated restore; 39 pre-existing public data tables unchanged.
 - [x] Commit and merge locally: implementation `920afe8` fast-forward merged to
-  `main`; [receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md) complete. F02 has not started.
+  `main`; [receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md) complete.
 
 ### F02 — Instructor assignments
 
-- [ ] Branch `codex/instructor-program-assignments` from completed F01.
-- [ ] Admin assigns/revokes approved instructors to institutes/programs; UI/API
+- [x] Branch `codex/instructor-program-assignments` from completed F01 (`02e20f0`).
+- [x] Admin assigns/revokes approved instructors to institutes/programs; UI/API
   reject self-assignment, foreign program IDs and inactive contexts.
-- [ ] Authorized program options and current assignment checks; private batch
+- [x] Authorized program options and current assignment checks; private batch
   ownership remains distinct from shared program taxonomy.
-- [ ] Test multi-program assignments, revocation during a session, malformed IDs,
-  rollback, admin flows and required migrations; record receipt and merge locally.
+- [x] Test multi-program assignments, revocation during a session, malformed IDs,
+  rollback, admin flows and required migrations; 629 backend/267 frontend tests,
+  nine new and 11 retained browser groups pass. 0033 applied after backup restore;
+  [receipt](INSTRUCTOR_PROGRAM_ASSIGNMENTS.md) records preservation.
+- [ ] Commit and merge F02 locally before starting F03.
 
 ### F03 — Batch and enrollment context
 
@@ -246,20 +249,26 @@ may live in ignored `work/`; credentials and personal records must not be logged
 
 Current checkpoint:
 
-- Branch: local `main` after F01 merge; retained feature branch
-  `codex/institute-program-admin`, implementation `920afe8`, base `1fa6e1d`.
-- Completed: F01 catalog models/API/UI and verification; see
+- Branch: `codex/instructor-program-assignments`, base `02e20f0`.
+- Completed: F01 catalog models/API/UI, configured migration and local merge; see
   [feature receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md).
 - Checks: 614 PostgreSQL backend tests, 265 frontend tests, lint/build, Django
   check/drift and 11 real-API browser groups passed. Desktop/phone images reviewed.
-- Current milestone: F01 complete and merged locally. F02 has not started.
+- Current milestone: F02 implementation in progress. Assignment models, protected
+  API, current program options and admin dialogs are implemented; final regression,
+  browser, migration and local merge gates remain open. Development is continuous:
+  proceed to F03 automatically only after all F02 gates pass.
 - Configured database: 0032 applied after verified isolated backup restore; 39
   pre-existing public data tables unchanged, two empty tables added. Initial
   Windows pipe issue was fixed before the successful attempt; both owned restore
   helpers were stopped. No existing records reclassified or recalculated.
+- F02 configured migration: 0033 applied after verified isolated restore; 41
+  pre-existing public data tables unchanged, one empty assignment table added.
+  Receipt: `work/organization-configured-migration-w3op0r26/receipt.json`.
 - GitHub: no push performed or authorized.
-- Known failures: none remaining for F01. No claim that later features or hosted
-  deployment are complete.
-- Exact next step: begin F02 on `codex/instructor-program-assignments` from current
-  local main; implement and test admin instructor/program assignment end to end.
-  Keep the same sequential gates and no-push rule.
+- Known failures: no remaining application failure. Final 629-test PostgreSQL run,
+  267 frontend tests, lint/build, nine assignment browser groups and all 11 F01
+  browser groups passed, including the replay after retaining explicit ordering
+  in shared pagination (`work/organization-postgres-d56ir3zd/`).
+- Exact next step: commit/merge F02 locally; then
+  start F03 on a fresh feature branch without stopping for another permission.

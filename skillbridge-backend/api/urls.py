@@ -16,9 +16,15 @@ from .retake_requests import student_request, request_queue, review_request, evi
 from .sse import admin_events, instructor_events, student_events
 from .health import health
 from . import organization
+from . import instructor_assignments
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructors/', instructor_assignments.program_instructors, name='program_instructors'),
+    path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructors/<int:assignment_id>/', instructor_assignments.assignment_detail, name='instructor_assignment_detail'),
+    path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructor-options/', instructor_assignments.instructor_options, name='program_instructor_options'),
+    path('management/programs/', instructor_assignments.program_options, name='program_options'),
+    path('management/programs/<int:program_id>/', instructor_assignments.program_options, name='program_option_detail'),
     path('admin/institutes/', organization.institutes, name='admin_institutes'),
     path('admin/institutes/<int:object_id>/', organization.institute_detail, name='admin_institute_detail'),
     path('admin/institutes/<int:institute_id>/programs/', organization.programs, name='admin_programs'),

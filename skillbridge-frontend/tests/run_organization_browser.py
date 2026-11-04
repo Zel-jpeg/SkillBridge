@@ -40,7 +40,8 @@ try:
         else:
             raise RuntimeError('Owned server did not become ready')
     with (OUT / 'browser.txt').open('w', encoding='utf-8') as log:
-        result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_playwright.py')],
+        script = 'instructor_assignments_playwright.py' if '--assignments' in sys.argv else 'organization_playwright.py'
+        result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script)],
                                 cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
     print((OUT / 'browser.txt').read_text(encoding='utf-8')[-7000:])
     raise SystemExit(result.returncode)

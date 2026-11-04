@@ -1,6 +1,7 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
-  organization: [/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/)?)?)?$/],
+  organization: [/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/(?:instructors\/|instructor-options\/)?)?)?)?$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
+  assignments: [/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/(?:instructors\/|instructor-options\/)$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
   email: [/^\/api\/instructor\/batches\/\d+\/(?:emails|email-progress)\/$/],
   users: [/^\/api\/admin\/(users|stats|batch-instructors)\/$/, /^\/api\/auth\/me\/$/],
   management: [/^\/api\/admin\/management-actions\/$/, /^\/api\/retake-requests\/$/, /^\/api\/assessments\/\d+\/retake-request\/$/],
@@ -17,6 +18,7 @@ const paths = {
 
 // Account/enrollment/ownership changes can revoke or alter email management too.
 for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.email[0])
+paths.users.push(paths.assignments[0], paths.assignments[1])
 
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')

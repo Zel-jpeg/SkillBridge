@@ -119,6 +119,8 @@ class OrganizationTests(APITestCase):
         self.assertEqual(self.client.get(self.programs).data['count'], 1)
         self.assertEqual(self.client.get(reverse('admin_programs', args=[self.other.id])).data['count'], 0)
         self.assertEqual(self.client.get(self.institutes, {'search': 'no match'}).data['page'], 1)
+        rows = self.client.get(self.institutes, {'page_size': 50}).data['results']
+        self.assertEqual([row['name'] for row in rows], sorted(row['name'] for row in rows))
 
     def test_invalid_and_repeated_query_parameters_rejected(self):
         for query in ['?page=0', '?page=-1', '?page=1.5', '?page_size=51', '?status=wrong', '?x=1', '?page=1&page=2']:

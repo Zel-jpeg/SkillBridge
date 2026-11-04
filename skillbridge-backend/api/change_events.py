@@ -12,7 +12,7 @@ from django.db.models import Q
 
 from .models import (
     Assessment, Batch, BatchEnrollment, ChangeEvent, OJTPlacement, Question,
-    Recommendation, User,
+    Recommendation, User, InstructorAssignment,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ def category_created(created):
         marker.add('taxonomy')
 
 TOPICS = {
+    'assignment': ['assignments'],
     'organization': ['organization'],
     'student': ['students', 'results', 'placements', 'management'],
     'batch': ['batches', 'students', 'assessments', 'results', 'placements', 'management'],
@@ -99,6 +100,17 @@ def audience(kind, request, kwargs, response=None):
             people.add(person_id)
             students.update(User.objects.filter(pk=person_id, role='student').values_list('id', flat=True))
             batches.update(Batch.objects.filter(instructor_id=person_id).values_list('id', flat=True))
+    if kind == 'assignment':
+        instructor_id = _id(data.get('instructor_id') or body.get('instructor_id'))
+        if not instructor_id and kwargs.get('assignment_id'):
+            instructor_id = InstructorAssignment.objects.filter(pk=kwargs['assignment_id']).values_list('instructor_id', flat=True).first()
+        if instructor_id:
+            people.add(instructor_id)
+    if kind == 'organization':
+        institute_id = kwargs.get('institute_id') or kwargs.get('object_id')
+        if institute_id:
+            people.update(InstructorAssignment.objects.filter(program__institute_id=institute_id, is_active=True)
+                          .values_list('instructor_id', flat=True))
     # A student's change can affect each instructor who is authorized to see it.
     batches.update(BatchEnrollment.objects.filter(student_id__in=students).values_list('batch_id', flat=True))
     # Only batch-wide changes invalidate other students' private result views.
