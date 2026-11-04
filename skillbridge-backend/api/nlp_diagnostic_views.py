@@ -1,4 +1,5 @@
 """Read-only staff explainability endpoints; no assessment answers are queried."""
+from .management_access import managed_batches
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -24,12 +25,12 @@ def student_nlp_text(request, student_id):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Staff only'}, status=403)
     if request.user.role == 'instructor' and not BatchEnrollment.objects.filter(
-            student_id=student_id, batch__instructor=request.user).exists():
+            student_id=student_id, batch__in=managed_batches(request.user)).exists():
         return Response({'error': 'Student is outside your batches.'}, status=403)
     get_object_or_404(User, pk=student_id, role='student')
     responses = StudentResponse.objects.filter(student_id=student_id, status='submitted', submitted_at__isnull=False)
     if request.user.role == 'instructor':
-        responses = responses.filter(assessment__batch__instructor=request.user)
+        responses = responses.filter(assessment__batch__in=managed_batches(request.user))
     assessment_id = request.query_params.get('assessment_id')
     if assessment_id:
         try:

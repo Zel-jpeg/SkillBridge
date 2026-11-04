@@ -70,7 +70,7 @@ export function useEnrolledStudents() {
   const [batches, setBatches] = useState(() => {
     if (!batchesRaw || !Array.isArray(batchesRaw)) return []
     return batchesRaw.map(b => ({
-      id: b.id, name: b.name, status: b.status,
+      ...b, id: b.id, name: b.name, status: b.status,
       archivedAt: b.archived_at ?? null,
       students: (getCachedData(`/api/instructor/batches/${b.id}/students/`)?.students ?? []).map(normalizeStudent),
     }))
@@ -126,6 +126,7 @@ export function useEnrolledStudents() {
   const [confirmRemove,   setConfirmRemove]   = useState(null)
   const [showArchiveConf, setShowArchiveConf] = useState(false)
   const [showNewBatch,    setShowNewBatch]    = useState(false)
+  const [newBatchProgram, setNewBatchProgram] = useState('')
   const [newBatchName,    setNewBatchName]    = useState('')
   const [batchBusy, setBatchBusy] = useState(false)
   const [batchError, setBatchError] = useState('')
@@ -162,6 +163,7 @@ export function useEnrolledStudents() {
     if (!batchesRaw || !Array.isArray(batchesRaw)) return
 
     const normalized = batchesRaw.map(b => ({
+      ...b,
       id:         b.id,
       name:       b.name,
       status:     b.status,
@@ -253,12 +255,13 @@ export function useEnrolledStudents() {
 
   async function handleCreateBatch() {
     const name = newBatchName.trim() || `AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`
-    const data = await writeBatch('/api/instructor/batches/', { name })
+    if (!newBatchProgram) { setBatchError('Choose an assigned program for this batch.'); return }
+    const data = await writeBatch('/api/instructor/batches/', { name, program_id: Number(newBatchProgram) })
     if (!data) return
-    const batch = { id: data.id, name: data.name, status: data.status, archivedAt: null, students: [] }
+    const batch = { ...data, archivedAt: null, students: [] }
     setBatches(prev => [...prev.filter(row => row.id !== batch.id), batch])
     setActiveBatchId(batch.id)
-    setShowNewBatch(false); setNewBatchName('')
+    setShowNewBatch(false); setNewBatchName(''); setNewBatchProgram('')
     showToast(`New batch "${data.name}" created.`)
   }
 
@@ -365,7 +368,9 @@ export function useEnrolledStudents() {
     // Batch actions
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
-    newBatchName, setNewBatchName, handleCreateBatch, batchBusy, batchError,
+    newBatchName, setNewBatchName: value => { setNewBatchName(value); setBatchError('') },
+    newBatchProgram, setNewBatchProgram: value => { setNewBatchProgram(value); setBatchError('') },
+    handleCreateBatch, batchBusy, batchError,
     // Student actions
     handleEnroll, handleRemove, handleToggleRetake,
     // Modal state

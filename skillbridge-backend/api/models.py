@@ -74,6 +74,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     role         = models.CharField(max_length=20, choices=ROLE_CHOICES)
     school_id = models.CharField(max_length=20, blank=True, default='')
     course       = models.CharField(max_length=100, blank=True)
+    program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.PROTECT, related_name='students')
     department   = models.CharField(max_length=255, blank=True, default='Institute of Computing')
     phone        = models.CharField(max_length=20, blank=True)
     address      = models.JSONField(blank=True, null=True)
@@ -130,6 +131,8 @@ class Batch(models.Model):
     STATUS_CHOICES = [('active', 'Active'), ('archived', 'Archived')]
 
     name        = models.CharField(max_length=100)               # e.g. "AY 2025-2026"
+    institute = models.ForeignKey(Institute, null=True, blank=True, on_delete=models.PROTECT, related_name='batches')
+    program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.PROTECT, related_name='batches')
     instructor  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='batches')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_batches')
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')

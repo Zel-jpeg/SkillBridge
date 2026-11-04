@@ -11,7 +11,7 @@ const groups = [
   { key: 'recommendationStatus', label: 'Recommendation status', enrolledOnly: true, options: [['all', 'All'], ['available', 'Available'], ['awaiting', 'Awaiting review'], ['approved', 'Approved decision']] },
 ]
 
-function summary(filters) {
+function summary(filters, groups) {
   return groups.filter(group => filters[group.key] !== DEFAULT_ROSTER_FILTERS[group.key]).map(group => {
     const label = group.options.find(([value]) => value === filters[group.key])?.[1]
     if (group.key === 'assessmentStatus') return `Assessments: ${label}`
@@ -21,7 +21,8 @@ function summary(filters) {
   }).join(' · ')
 }
 
-export default function StudentRosterToolbar({ batchId, students, pending, filters, onApply, onSearch, view, onView, count: serverCount, total: serverTotal, previewUrl, gridIcon: GridIcon, listIcon: ListIcon }) {
+export default function StudentRosterToolbar({ courseOptions = [], batchId, students, pending, filters, onApply, onSearch, view, onView, count: serverCount, total: serverTotal, previewUrl, gridIcon: GridIcon, listIcon: ListIcon }) {
+  const contextualGroups = groups.map(group => group.key === 'course' ? { ...group, options: [['all', 'All courses'], ...[...new Set([...courseOptions, ...students.map(student => student.course), ...(filters.course !== 'all' ? [filters.course] : [])])].filter(Boolean).sort().map(code => [code, code])] } : group)
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(filters)
   const needsPrevious = filters.enrollment === 'unenrolled' || (open && draft.enrollment === 'unenrolled')
@@ -57,7 +58,7 @@ export default function StudentRosterToolbar({ batchId, students, pending, filte
         <input value={filters.search} onChange={event => onSearch(event.target.value)} placeholder="Search by name, ID, or email…" className="h-[38px] w-full rounded-xl border border-gray-200 bg-white py-2 pr-4 pl-9 text-xs text-gray-900 outline-none focus:border-green-500 focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
       </span></label>
       <div className="sb-roster-controls">
-        <GroupedFilterPanel groups={groups.map(group => ({ ...group, disabled: group.enrolledOnly && draft.enrollment !== 'enrolled', hint: group.enrolledOnly && draft.enrollment !== 'enrolled' ? 'Available for enrolled students.' : undefined }))}
+        <GroupedFilterPanel groups={contextualGroups.map(group => ({ ...group, disabled: group.enrolledOnly && draft.enrollment !== 'enrolled', hint: group.enrolledOnly && draft.enrollment !== 'enrolled' ? 'Available for enrolled students.' : undefined }))}
           draft={draft} onChange={change} open={open} onOpenChange={changeOpen} onApply={() => onApply(draft)}
           onClear={() => setDraft({ ...DEFAULT_ROSTER_FILTERS })} activeCount={activeCount} previewCount={previewCount}
           pending={previewPending} error={previewFailed ? draft.enrollment === 'unenrolled' ? 'Could not load previously unenrolled students.' : 'Could not load matching students.' : undefined}
@@ -70,7 +71,7 @@ export default function StudentRosterToolbar({ batchId, students, pending, filte
     </div>
     <div className="sb-roster-secondary">
       <p role="status">{(filters.enrollment === 'unenrolled' ? previousPending : pending) ? 'Loading students…' : `${count} of ${total} ${total === 1 ? 'student' : 'students'}`}</p>
-      {activeCount > 0 && <p className="sb-roster-filter-summary">{summary(filters)}</p>}
+      {activeCount > 0 && <p className="sb-roster-filter-summary">{summary(filters, contextualGroups)}</p>}
       {active && <button type="button" className="sb-roster-reset" onClick={() => onApply({ ...DEFAULT_ROSTER_FILTERS })}>Clear filters</button>}
     </div>
   </section>

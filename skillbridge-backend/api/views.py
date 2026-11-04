@@ -533,7 +533,7 @@ def get_student_enrollment_email_html(student_name, instructor_name, batch_name,
             </div>
         </div>
         <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0;">Institute of Computing • Panabo City, Davao del Norte</p>
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">Davao del Norte State College • Panabo City, Davao del Norte</p>
             <p style="color: #9ca3af; font-size: 12px; margin: 5px 0 0;">Please do not reply to this automated email.</p>
         </div>
     </div>
@@ -1041,18 +1041,27 @@ def instructor_batches(request):
 
     if request.method == 'GET':
         batches = managed_batches(request.user)
-        batches = batches.select_related('instructor').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
+        batches = batches.select_related('instructor', 'program__institute').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
         return Response([batch_payload(b, b.enrolled_total) for b in batches])
 
     # POST — create batch
+    from .program_scope import active_program, require_owner_assignment
+    if not request.user.is_active or (request.user.role == 'instructor' and not request.user.is_approved):
+        return Response({'error': 'Forbidden'}, status=403)
+    if not isinstance(request.data, dict) or set(request.data) - {'name', 'program_id', 'instructor_id'}:
+        return Response({'error': 'Provide only name, program_id and instructor_id.'}, status=400)
     name = request.data.get('name', '')
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 100:
         return Response({'error': 'Batch name must be text with 1 to 100 characters.', 'field': 'name'}, status=400)
 
-    owner = selected_instructor(request.data.get('instructor_id')) if request.user.role == 'admin' else request.user
-    if request.user.role == 'instructor' and 'instructor_id' in request.data and request.data['instructor_id'] != request.user.id:
+    program = active_program(request.user, request.data.get('program_id'), lock=True)
+    if request.user.role == 'instructor' and 'instructor_id' in request.data and (
+            type(request.data['instructor_id']) is not int or request.data['instructor_id'] != request.user.id):
         return Response({'error': 'You can create batches only for yourself.'}, status=403)
-    batch = Batch.objects.create(name=name.strip(), instructor=owner, created_by=request.user)
+    owner = selected_instructor(request.data.get('instructor_id') if request.user.role == 'admin' else request.user.id)
+    require_owner_assignment(owner, program)
+    batch = Batch.objects.create(name=name.strip(), instructor=owner, created_by=request.user,
+                                 program=program, institute=program.institute)
     record_action(request.user, 'batch.create', 'batch', batch.id, batch.id, instructor_id=owner.id)
     return Response(batch_payload(batch, 0), status=201)
 
@@ -1068,9 +1077,7 @@ def _enrollment_request(request, batch_id, preview=False):
         return Response({'error': 'Forbidden'}, status=403)
     if not isinstance(request.data, dict):
         return Response({'error': 'Provide a JSON object with student rows.'}, status=400)
-    batches = Batch.objects.filter(status='active')
-    if request.user.role == 'instructor':
-        batches = batches.filter(instructor=request.user)
+    batches = managed_batches(request.user).filter(status='active')
     if not preview:
         # Keep authorization/activity stable through the confirmed write, even
         # if another admin archives or reassigns the target batch concurrently.
@@ -1078,6 +1085,8 @@ def _enrollment_request(request, batch_id, preview=False):
     batch = batches.select_related('instructor').filter(pk=batch_id).first()
     if batch is None:
         return Response({'error': 'Active batch not found'}, status=404)
+    from .program_scope import enrollment_context
+    enrollment_context(batch, request.user, lock=not preview)
     items = request.data.get('students')
     email_mode = request.data.get('email_mode', 'now')
     if email_mode not in ('now', 'later'):
@@ -1237,7 +1246,7 @@ def instructor_student_retake(request, student_id):
         batch_id=attempt.assessment.batch_id, student_id=student_id,
     ).exists():
         return Response({'error': 'Student is not enrolled in the assessment batch'}, status=403)
-    if request.user.role == 'instructor' and attempt.assessment.batch.instructor_id != request.user.id:
+    if request.user.role == 'instructor' and not managed_batches(request.user).filter(pk=attempt.assessment.batch_id).exists():
         return Response({'error': 'Assessment is not in your batch'}, status=403)
     assessment = Assessment.objects.select_for_update().get(pk=attempt.assessment_id)
     if not User.objects.select_for_update().filter(pk=student_id, is_active=True).exists():
@@ -1277,11 +1286,9 @@ def instructor_student_remove(request, student_id):
         return Response({'error': error, 'field': 'batch_id'}, status=400)
     if request.user.role == 'admin' and batch_id is None:
         return Response({'error': 'Choose the batch to unenroll from.', 'field': 'batch_id'}, status=400)
-    batches = Batch.objects.filter(instructor=request.user)
+    batches = managed_batches(request.user)
     if batch_id is not None:
-        batches = Batch.objects.filter(pk=batch_id)
-        if request.user.role != 'admin':
-            batches = batches.filter(instructor=request.user)
+        batches = batches.filter(pk=batch_id)
     # Serialize membership removal with attempt start and cycle closeout.
     list(batches.select_for_update().order_by('id'))
     removed_orders = dict(BatchEnrollment.objects.filter(batch__in=batches, student_id=student_id).values_list('batch_id', 'assessment_order'))
@@ -1307,9 +1314,7 @@ def instructor_batch_students(request, batch_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        batch_query = Batch.objects.filter(id=batch_id)
-        if request.user.role == 'instructor':
-            batch_query = batch_query.filter(instructor=request.user)
+        batch_query = managed_batches(request.user).filter(id=batch_id)
         batch = batch_query.get()
     except Batch.DoesNotExist:
         return Response({'error': 'Batch not found'}, status=404)
@@ -1449,9 +1454,7 @@ def management_assessment_reports(request):
     for value in (batch_id, student_id, assessment_id):
         if value and (not str(value).isdigit() or int(value) < 1):
             return Response({'error': 'Invalid report filter'}, status=400)
-    batches = Batch.objects.select_related('instructor')
-    if request.user.role == 'instructor':
-        batches = batches.filter(instructor=request.user)
+    batches = managed_batches(request.user).select_related('instructor')
     if batch_id:
         batches = batches.filter(id=batch_id)
     batch_ids = list(batches.values_list('id', flat=True))
@@ -1645,7 +1648,7 @@ def instructor_assessments(request):
                            assigned_total=Count('batch__enrollments', distinct=True),
                        ).order_by('batch__name', 'display_order', 'created_at', 'id'))
         if request.user.role == 'instructor':
-            assessments = assessments.filter(Q(batch__instructor=request.user) | Q(batch__isnull=True, created_by=request.user)).distinct()
+            assessments = assessments.filter(Q(pk__in=managed_assessments(request.user))).distinct()
 
         return Response([{
             'id':               a.id,
@@ -2178,7 +2181,7 @@ def instructor_question_detail(request, question_id):
             question = Question.objects.select_related(
                 'assessment', 'skill_category'
             ).prefetch_related('choices').filter(
-                Q(assessment__batch__instructor=request.user) | Q(assessment__batch__isnull=True, assessment__created_by=request.user)
+                Q(assessment__in=managed_assessments(request.user))
             ).get(id=question_id)
     except Question.DoesNotExist:
         return Response({'error': 'Question not found'}, status=404)
@@ -4166,7 +4169,7 @@ def _placement_batch(student_id, instructor=None):
     """Use the student's newest active enrollment, then newest enrollment."""
     enrollments = BatchEnrollment.objects.filter(student_id=student_id).select_related('batch')
     if instructor is not None:
-        enrollments = enrollments.filter(batch__instructor=instructor)
+        enrollments = enrollments.filter(batch__in=managed_batches(instructor))
     enrollment = enrollments.filter(batch__status='active').order_by('-enrolled_at', '-id').first()
     if enrollment is None:
         enrollment = enrollments.order_by('-enrolled_at', '-id').first()
@@ -4349,7 +4352,7 @@ def _can_manage_placement_student(user, student_id):
     if user.role == 'admin':
         return True
     return user.role == 'instructor' and BatchEnrollment.objects.filter(
-        student_id=student_id, batch__instructor=user,
+        student_id=student_id, batch__in=managed_batches(user),
     ).exists()
 
 
@@ -4375,7 +4378,7 @@ def placement_suggestions(request):
 
     enrollments = BatchEnrollment.objects.all()
     if request.user.role == 'instructor':
-        enrollments = enrollments.filter(batch__instructor=request.user)
+        enrollments = enrollments.filter(batch__in=managed_batches(request.user))
     if batch_id:
         enrollments = enrollments.filter(batch_id=batch_id)
     student_ids = list(enrollments.values_list('student_id', flat=True).distinct())
@@ -4386,7 +4389,7 @@ def placement_suggestions(request):
 
     scoped_enrollments = BatchEnrollment.objects.filter(student_id__in=student_ids).select_related('batch')
     if request.user.role == 'instructor':
-        scoped_enrollments = scoped_enrollments.filter(batch__instructor=request.user)
+        scoped_enrollments = scoped_enrollments.filter(batch__in=managed_batches(request.user))
     batch_by_student = {}
     for enrollment in scoped_enrollments.filter(batch__status='active').order_by(
         'student_id', '-enrolled_at', '-id',
@@ -4535,7 +4538,7 @@ def placement_suggestions(request):
 
     current_approvals = _placement_select_related(allocated_approvals())
     if request.user.role == 'instructor':
-        current_approvals = current_approvals.filter(batch__instructor=request.user)
+        current_approvals = current_approvals.filter(batch__in=managed_batches(request.user))
     if batch_id:
         current_approvals = current_approvals.filter(batch_id=batch_id)
     return Response({
@@ -4566,7 +4569,7 @@ def placement_approve(request):
             if not _can_manage_placement_student(request.user, recommendation.student_id):
                 return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
             if request.user.role == 'instructor' and (
-                recommendation.batch_id is None or recommendation.batch.instructor_id != request.user.id
+                recommendation.batch_id is None or not managed_batches(request.user).filter(pk=recommendation.batch_id).exists()
             ):
                 return Response({'error': 'Recommendation is outside your batches.'}, status=403)
             student = User.objects.select_for_update().get(id=recommendation.student_id)
@@ -4578,7 +4581,7 @@ def placement_approve(request):
 
             current = _placement_select_related(allocated_approvals(student=student)).first()
             if current:
-                if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
+                if request.user.role == 'instructor' and (current.batch_id is None or not managed_batches(request.user).filter(pk=current.batch_id).exists()):
                     return Response({'error': 'Student already has an approved placement.'}, status=409)
                 if current.position_id == position.id:
                     return Response({'placement': _serialize_placement(current), 'idempotent': True})
@@ -4609,7 +4612,7 @@ def placement_approve(request):
                 status=OJTPlacement.STATUS_SUGGESTED,
             ).order_by('-id').first()
             if placement and request.user.role == 'instructor' and (
-                placement.batch_id is None or placement.batch.instructor_id != request.user.id
+                placement.batch_id is None or not managed_batches(request.user).filter(pk=placement.batch_id).exists()
             ):
                 return Response({'error': 'Placement is outside your batches.'}, status=403)
             created = placement is None
@@ -4668,7 +4671,7 @@ def _change_placement_status(request, new_status):
             recommendation = None
             if placement_id:
                 initial = OJTPlacement.objects.get(id=placement_id)
-                if request.user.role == 'instructor' and (initial.batch_id is None or initial.batch.instructor_id != request.user.id):
+                if request.user.role == 'instructor' and (initial.batch_id is None or not managed_batches(request.user).filter(pk=initial.batch_id).exists()):
                     return Response({'error': 'Placement is outside your batches.'}, status=403)
                 if not _can_manage_placement_student(request.user, initial.student_id):
                     return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
@@ -4687,7 +4690,7 @@ def _change_placement_status(request, new_status):
                 if not _can_manage_placement_student(request.user, recommendation.student_id):
                     return Response({'error': 'Student is not enrolled in one of your batches.'}, status=403)
                 if request.user.role == 'instructor' and (
-                    recommendation.batch_id is None or recommendation.batch.instructor_id != request.user.id
+                    recommendation.batch_id is None or not managed_batches(request.user).filter(pk=recommendation.batch_id).exists()
                 ):
                     return Response({'error': 'Recommendation is outside your batches.'}, status=403)
                 User.objects.select_for_update().get(id=recommendation.student_id)
@@ -4699,7 +4702,7 @@ def _change_placement_status(request, new_status):
                 ).order_by('-updated_at', '-id').first()
 
                 if placement and request.user.role == 'instructor' and (
-                    placement.batch_id is None or placement.batch.instructor_id != request.user.id
+                    placement.batch_id is None or not managed_batches(request.user).filter(pk=placement.batch_id).exists()
                 ):
                     return Response({'error': 'Placement is outside your batches.'}, status=403)
 
@@ -4805,7 +4808,7 @@ def placement_manual_assign(request):
                 return Response({'error': 'This partner or position is archived. Choose an available opening.'}, status=409)
             current = _placement_select_related(allocated_approvals(student=student)).first()
             if current:
-                if request.user.role == 'instructor' and (current.batch_id is None or current.batch.instructor_id != request.user.id):
+                if request.user.role == 'instructor' and (current.batch_id is None or not managed_batches(request.user).filter(pk=current.batch_id).exists()):
                     return Response({'error': 'Student already has an approved placement.'}, status=409)
                 return Response({
                     'error': 'Student already has an approved placement.',
@@ -4832,7 +4835,7 @@ def placement_manual_assign(request):
                     return Response({
                         'error': 'Student is not enrolled in the selected batch.',
                     }, status=400)
-                if request.user.role == 'instructor' and enrollment.batch.instructor_id != request.user.id:
+                if request.user.role == 'instructor' and not managed_batches(request.user).filter(pk=enrollment.batch_id).exists():
                     return Response({'error': 'Selected batch is outside your batches.'}, status=403)
                 batch = enrollment.batch
             else:
@@ -4879,7 +4882,7 @@ def placement_history(request):
     placements = _placement_select_related(OJTPlacement.objects.filter(is_active_suggestion=False))
     if request.user.role == 'instructor':
         placements = placements.filter(
-            batch__instructor=request.user,
+            batch__in=managed_batches(request.user),
         ).distinct()
 
     status_filter = request.query_params.get('status')
@@ -5036,7 +5039,7 @@ def _placement_report_queryset(user):
     placements = _placement_select_related(OJTPlacement.objects.filter(is_active_suggestion=False))
     if user.role == 'instructor':
         placements = placements.filter(
-            batch__instructor=user,
+            batch__in=managed_batches(user),
         ).distinct()
     return placements
 

@@ -1,4 +1,5 @@
 """Scoped enrollment email controls. GET is read-only; sends require reviewed IDs."""
+from .management_access import managed_batches
 from collections import Counter
 from datetime import timedelta
 import hashlib
@@ -54,7 +55,7 @@ def staff_batch(request, batch_id, *, lock=False):
     if lock:
         batches = batches.select_for_update(of=('self',))
     if request.user.role == 'instructor':
-        batches = batches.filter(instructor=request.user)
+        batches = batches.filter(pk__in=managed_batches(request.user))
     return get_object_or_404(batches, pk=batch_id)
 
 

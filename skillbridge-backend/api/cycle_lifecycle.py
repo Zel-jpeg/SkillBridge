@@ -320,6 +320,9 @@ def transfer_student(request, batch_id):
     """Explicitly move active membership; recorded evidence and removal audit remain."""
     manager(request.user)
     target = get_object_or_404(managed_batches(request.user).select_for_update(), pk=batch_id, status='active')
+    from .program_scope import enrollment_context, matches_program
+    from .enrollment_import import review_context
+    enrollment_context(target, request.user, lock=True)
     token = request.data.get('review_token')
     if token:
         try:
@@ -350,15 +353,19 @@ def transfer_student(request, batch_id):
     student = get_object_or_404(User.objects.select_for_update(), pk=student.pk, role='student', is_active=True)
     if not student.is_approved:
         return Response({'error': 'Approve the student account before transferring its active enrollment.'}, status=409)
-    if request.user.role == 'instructor' and source_batch.instructor_id != request.user.pk:
+    if request.user.role == 'instructor' and not managed_batches(request.user).filter(pk=source_batch.pk).exists():
         raise PermissionDenied('An administrator must handle a transfer between instructors.')
+    if target.program_id and (student.program_id and student.program_id != target.program_id or
+                              not matches_program(student.course, target.program)):
+        return Response({'error': 'The student program differs from this batch. An administrator must review a program change first.'}, status=409)
     if unfinished(source_batch).filter(student=student).exists():
         return Response({'error': 'Resolve this student’s unfinished assessment before transferring.'}, status=409)
     if StudentResponse.objects.filter(assessment__batch=source_batch, student=student).filter(
             Q(retake_request_status='pending') | Q(retake_allowed=True)).exists():
         return Response({'error': 'Resolve this student’s pending or approved retakes before transferring.'}, status=409)
     expected = {'student': student.pk, 'actor': request.user.pk, 'source': source.batch_id,
-                'enrollment': source.pk, 'target': target.pk, 'identity': [student.school_id, student.email, student.course]}
+                'enrollment': source.pk, 'target': target.pk, 'identity': [student.school_id, student.email, student.course],
+                'program_context': review_context(target), 'student_program': student.program_id}
     if not token:
         response = Response({'student': {'name': student.name, 'school_id': student.school_id},
                          'source': source.batch.name, 'target': target.name,

@@ -8,7 +8,7 @@ from .models import Batch, BatchEnrollment, SkillCategory, Question, Assessment,
 class BatchTaxonomyRecoveryTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_user(email='recovery-admin@example.com', role='admin')
-        self.owner = User.objects.create_user(email='recovery-owner@example.com', role='instructor')
+        self.owner = User.objects.create_user(email='recovery-owner@example.com', role='instructor', is_approved=True)
         self.batch = Batch.objects.create(name='Original batch', instructor=self.owner)
         self.category = SkillCategory.objects.create(name='Original category', created_by=self.admin)
         self.client.force_authenticate(self.owner)

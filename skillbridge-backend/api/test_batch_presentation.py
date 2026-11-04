@@ -10,7 +10,7 @@ class BatchPresentationTests(SimpleTestCase):
     def batch(self, photo_url):
         return SimpleNamespace(
             id=7, name='Synthetic batch', status='active', created_at=None,
-            archived_at=None, instructor_id=2,
+            archived_at=None, instructor_id=2, program_id=None, institute_id=None,
             instructor=SimpleNamespace(name='Synthetic Instructor', photo_url=photo_url),
             created_by_id=1, enrollments=Mock(), closeout_snapshots=[],
         )

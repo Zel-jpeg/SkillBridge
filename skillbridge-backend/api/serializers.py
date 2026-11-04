@@ -3,6 +3,11 @@ from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
     profile_review_required = serializers.SerializerMethodField()
+    program = serializers.SerializerMethodField()
+
+    def get_program(self, user):
+        from .instructor_assignments import program_payload
+        return program_payload(user.program) if user.program_id else None
 
     def get_profile_review_required(self, user):
         if user.role != 'student':
@@ -23,5 +28,5 @@ class UserSerializer(serializers.ModelSerializer):
                   'phone', 
                   'address', 
                   'photo_url', 
-                  'is_approved', 'profile_review_required'
+                  'is_approved', 'profile_review_required', 'program'
                   ]

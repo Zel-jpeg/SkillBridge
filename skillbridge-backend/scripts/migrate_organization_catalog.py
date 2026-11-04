@@ -20,13 +20,14 @@ os.chdir(ROOT / 'skillbridge-backend')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 import django
 django.setup()
-from django.db import connection, transaction
+from django.db import connection, connections, transaction
 from django.db.migrations.executor import MigrationExecutor
 import psycopg2
 
 SUPPORTED = {
     '0032_institute_program_catalog': {'api_institute', 'api_program'},
     '0033_instructor_program_assignment': {'api_instructorassignment'},
+    '0034_program_batch_context': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -36,6 +37,7 @@ parser.add_argument('--migration', choices=SUPPORTED, default='0032_institute_pr
 args = parser.parse_args()
 TARGET = ('api', args.migration)
 ADDED_TABLES = SUPPORTED[args.migration]
+ADDED_COLUMNS = {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']} if args.migration == '0034_program_batch_context' else {}
 
 
 def digest(value):
@@ -47,7 +49,7 @@ def plan():
     return [(m.app_label, m.name, backwards) for m, backwards in executor.migration_plan(executor.loader.graph.leaf_nodes())]
 
 
-def snapshot(conn):
+def snapshot(conn, *, exclude_added=False):
     with conn.cursor() as cursor:
         cursor.execute("SET TIME ZONE 'UTC'")
         cursor.execute("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")
@@ -57,7 +59,8 @@ def snapshot(conn):
             if table == 'django_migrations':
                 continue
             name = '"' + table.replace('"', '""') + '"'
-            cursor.execute(f'SELECT to_jsonb(t)::text FROM public.{name} t ORDER BY to_jsonb(t)::text')
+            excluded = ADDED_COLUMNS.get(table, []) if exclude_added else []
+            cursor.execute(f'SELECT (to_jsonb(t) - %s::text[])::text FROM public.{name} t ORDER BY 1', [excluded])
             checksum, count = hashlib.sha256(), 0
             while rows := cursor.fetchmany(500):
                 for row in rows:
@@ -65,6 +68,12 @@ def snapshot(conn):
                     count += 1
             result[table] = {'count': count, 'sha256': checksum.hexdigest()}
         return result
+
+
+def columns(conn):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public'")
+        return {(table, name) for table, name in cursor.fetchall()}
 
 
 def run(command, env, timeout=90):
@@ -113,6 +122,9 @@ try:
             cursor.execute('SELECT pg_export_snapshot()')
             exported_snapshot = cursor.fetchone()[0]
         before = snapshot(connection)
+        before_columns = columns(connection)
+        added_columns = {(table, name) for table, names in ADDED_COLUMNS.items() for name in names}
+        assert not added_columns & before_columns, 'Expected new columns already exist'
         assert 'api_user' in before and 'api_batch' in before
         assert not ADDED_TABLES & set(before)
         run([BIN / 'pg_dump.exe', '--format=custom', '--schema=public', '--no-owner', '--no-acl',
@@ -126,16 +138,39 @@ try:
              '--dbname=verify_organization_backup', backup], local_env)
         with psycopg2.connect(host='127.0.0.1', port=port, user='organization_restore', dbname='verify_organization_backup', sslmode='disable') as restored:
             assert snapshot(restored) == before, 'Restored public-schema data differs; migration stopped'
+            assert columns(restored) == before_columns, 'Restored column inventory differs'
+        # Apply the actual Django migration on the restored database first.
+        connections.databases['organization_restore'] = {**cfg, 'HOST': '127.0.0.1', 'PORT': str(port),
+            'USER': 'organization_restore', 'PASSWORD': '', 'NAME': 'verify_organization_backup',
+            'OPTIONS': {'sslmode': 'disable'}, 'CONN_MAX_AGE': 0}
+        rehearsal = connections['organization_restore']
+        try:
+            MigrationExecutor(rehearsal).migrate([TARGET])
+            rehearsed = snapshot(rehearsal, exclude_added=True)
+            assert all(rehearsed[name] == facts for name, facts in before.items()), 'Rehearsal changed preserved data'
+            assert set(rehearsed) - set(before) == ADDED_TABLES
+            if ADDED_COLUMNS:
+                assert columns(rehearsal) == before_columns | added_columns
+        finally:
+            rehearsal.close()
         # Live mutation begins only after the public-schema backup restores exactly.
         assert plan() == pending, 'Pending migrations changed'
         MigrationExecutor(connection).migrate([TARGET])
-        after = snapshot(connection)
+        after = snapshot(connection, exclude_added=True)
+        if ADDED_COLUMNS:
+            assert columns(connection) == before_columns | added_columns, 'Unexpected column changes; rollback'
+            with connection.cursor() as cursor:
+                for table, names in ADDED_COLUMNS.items():
+                    for name in names:
+                        cursor.execute(f'SELECT count(*) FROM public."{table}" WHERE "{name}" IS NOT NULL')
+                        assert cursor.fetchone()[0] == 0, 'New context was populated unexpectedly; rollback'
         assert set(after) - set(before) == ADDED_TABLES
         assert all(after[name] == facts for name, facts in before.items()), 'Preserved data changed; rollback'
         assert all(after[table]['count'] == 0 for table in ADDED_TABLES)
     receipt = {'migration': list(TARGET), 'target_fingerprint': target_hash, 'backup_scope': 'public schema only',
                'backup_restored_and_hash_verified': True, 'preserved_tables': len(before),
                'preserved_facts': before, 'new_empty_tables': sorted(ADDED_TABLES),
+               'new_nullable_columns': ADDED_COLUMNS, 'new_context_all_null': bool(ADDED_COLUMNS),
                'pending_after': plan(), 'regraded_or_recalculated': False}
     (OUT / 'receipt.json').write_text(json.dumps(receipt, indent=2), encoding='utf-8')
     print(json.dumps({'applied': list(TARGET), 'existing_tables_unchanged': len(before), 'backup_restore_verified': True,

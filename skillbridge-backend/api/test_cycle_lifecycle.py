@@ -455,9 +455,10 @@ class CycleMigrationTests(TransactionTestCase):
             # Verify this migration's no-new-table contract, not future features.
             MigrationExecutor(connection).migrate([('api', '0028_ojt_cycle_lifecycle')])
             self.assertEqual(set(connection.introspection.table_names()), tables)
-            self.assertEqual(Batch.objects.get(pk=batch.pk).closeout_snapshots, [])
-            self.assertIsNone(Company.objects.get(pk=company.pk).archived_at)
-            saved = OJTPlacement.objects.get(pk=placement.pk)
+            state = MigrationExecutor(connection).loader.project_state([('api', '0028_ojt_cycle_lifecycle')]).apps
+            self.assertEqual(state.get_model('api', 'Batch').objects.get(pk=batch.pk).closeout_snapshots, [])
+            self.assertIsNone(state.get_model('api', 'Company').objects.get(pk=company.pk).archived_at)
+            saved = state.get_model('api', 'OJTPlacement').objects.get(pk=placement.pk)
             self.assertEqual((saved.status, saved.completed_at, saved.match_score_at_assignment), ('approved', None, 72.5))
         finally:
             MigrationExecutor(connection).migrate(latest)

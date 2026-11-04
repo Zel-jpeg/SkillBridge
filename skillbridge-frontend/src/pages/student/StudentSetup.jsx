@@ -18,6 +18,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddressDropdowns from '../../components/AddressDropdowns'
 import api from '../../api/axios'
+import { useApi } from '../../hooks/useApi'
 import { requestErrorMessage } from '../../api/requestErrors'
 
 // ================================================================
@@ -167,6 +168,10 @@ export default function StudentSetup() {
   // Pre-fill from enrollment data if available (instructor already entered these)
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
 
+  const { data: currentUser } = useApi('/api/students/me/')
+  const assignedProgram = currentUser?.program || cachedUser?.program
+  const courses = assignedProgram ? [assignedProgram.code] : COURSES
+
   const [formData, setFormData] = useState({
     studentId: cachedUser?.school_id || '', course: cachedUser?.course || '', phone: '', stayingAt: '',
     homeProvince: '', homeCity: '', homeBarangay: '',
@@ -239,7 +244,7 @@ export default function StudentSetup() {
     const idPat = /^\d{4}-\d{5}$/
     if (!formData.studentId)                   e.studentId = 'Student ID is required'
     else if (!idPat.test(formData.studentId))  e.studentId = 'Format must be YYYY-NNNNN'
-    if (!formData.course)                      e.course    = 'Please select your course'
+    if (!assignedProgram && !formData.course)                      e.course    = 'Please select your course'
     const phPat = /^09\d{9}$/
     if (!formData.phone)                       e.phone     = 'Phone number is required'
     else if (!phPat.test(formData.phone))      e.phone     = 'Must be 11 digits starting with 09'
@@ -282,7 +287,7 @@ export default function StudentSetup() {
   
   
     try {
-      const res = await api.patch('/api/students/me/profile/', formData)
+      const res = await api.patch('/api/students/me/profile/', { ...formData, course: assignedProgram?.code || formData.course })
       localStorage.setItem('sb-user', JSON.stringify(res.data))
       showToast('Profile setup completed successfully.')
       navigate('/student/dashboard')
@@ -371,9 +376,9 @@ export default function StudentSetup() {
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Course</label>
               <div className="flex gap-3">
-                {COURSES.map(c => (
+                {courses.map(c => (
                   <button key={c} onClick={() => updateForm('course', c)}
-                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${formData.course === c ? 'bg-green-600 border-green-600 text-white' : 'border-gray-200 text-gray-700 hover:border-green-300'}`}>{c}</button>
+                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${(assignedProgram?.code || formData.course) === c ? 'bg-green-600 border-green-600 text-white' : 'border-gray-200 text-gray-700 hover:border-green-300'}`}>{c}</button>
                 ))}
               </div>
               {errors.course && <p className="text-xs text-red-500 mt-1.5">{errors.course}</p>}
@@ -535,7 +540,7 @@ export default function StudentSetup() {
             <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 sm:p-5 mb-5 divide-y divide-gray-100">
               {[
                 { label: 'Student ID',  value: formData.studentId },
-                { label: 'Course',      value: formData.course },
+                { label: 'Course',      value: assignedProgram?.code || formData.course },
                 { label: 'Phone',       value: formData.phone },
                 { label: 'Staying at',  value: formData.stayingAt === 'boarding' ? 'Boarding house' : formData.stayingAt === 'home' ? 'Family home' : 'Open' },
                 ...(formData.boardingProvince ? [{ label: 'Boarding address', value: [formData.boardingBarangay, formData.boardingCity, formData.boardingProvince].filter(Boolean).join(', ') }] : []),

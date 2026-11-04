@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from .change_events import notify_changes
 from .management_access import record_action
 from .models import Institute, Program
+from .program_scope import label_key
 
 
 class StrictBoolean(serializers.BooleanField):
@@ -20,10 +21,6 @@ class StrictBoolean(serializers.BooleanField):
         if type(data) is not bool:
             raise ValidationError('Use true or false.')
         return data
-
-
-def label_key(value):
-    return ''.join(c for c in value.casefold() if c.isalnum())
 
 
 class CatalogSerializer(serializers.Serializer):

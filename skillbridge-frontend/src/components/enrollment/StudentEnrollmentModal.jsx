@@ -256,7 +256,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
           {batches.map(b => <option key={b.id} value={b.id}>{b.name} — {b.instructor_name || 'Instructor unassigned'}</option>)}
         </select></DataSection>
       </label>
-      {selectedBatch && <p className="enrollment-caption">Assigned instructor: {selectedBatch.instructor_name || 'Unassigned'}</p>}
+      {selectedBatch && <p className="enrollment-caption">Assigned instructor: {selectedBatch.instructor_name || 'Unassigned'}{selectedBatch.program && ` · ${selectedBatch.program.institute_code} / ${selectedBatch.program.code}`}</p>}
       {error && <p role="alert" className="enrollment-error">{error}</p>}
 
       {!result && (tab === 'excel' ? <>
@@ -278,7 +278,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
             onChange={e => { readFile(e.target.files[0]); e.target.value = '' }} />
         </div>
         <p className="enrollment-caption">XLSX, XLS or CSV · Maximum 5 MB and 1,000 records. IAMS headers may appear within the first 50 rows.</p>
-      </> : <form className="enrollment-manual" onSubmit={e => { e.preventDefault(); preview([{ ...manual, source_row: 1, worksheet: 'Manual' }]) }}>
+      </> : <form className="enrollment-manual" onSubmit={e => { e.preventDefault(); preview([{ ...manual, course: initialStudent ? manual.course : selectedBatch?.program?.code || manual.course, source_row: 1, worksheet: 'Manual' }]) }}>
         <p className="enrollment-caption">Add one student at a time. Review the details before enrollment.</p>
         <label className="enrollment-field">DNSC Email
           <input type="email" value={manual.email} readOnly={Boolean(initialStudent)} disabled={locked} placeholder="e.g. villanueva.azel@dnsc.edu.ph"
@@ -293,7 +293,7 @@ export default function StudentEnrollmentModal({ batchId, onClose, onEnrolled, r
             onChange={e => setManual(current => ({ ...current, school_id: e.target.value }))} />
         </label>
         <div className="enrollment-field"><span>Course</span><div className="enrollment-course-options">
-          {['BSIT', 'BSIS'].map(course => <button type="button" key={course} aria-pressed={manual.course === course}
+          {(selectedBatch?.program ? [selectedBatch.program.code] : ['BSIT', 'BSIS']).map(course => <button type="button" key={course} aria-pressed={Boolean(selectedBatch?.program) || manual.course === course}
             disabled={locked || Boolean(initialStudent)} onClick={() => setManual(current => ({ ...current, course }))}>{course}</button>)}
         </div></div>
         <button className="enrollment-primary" disabled={locked || !selectedBatch}>Preview student</button>

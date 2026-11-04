@@ -1,3 +1,4 @@
+from .models import Institute, Program, InstructorAssignment
 """Isolated admin-created instructor journey; never contact identity/mail providers."""
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -54,7 +55,10 @@ class InstructorOnboardingTests(APITestCase):
         instructor.credentials(HTTP_AUTHORIZATION='Bearer ' + login.data['access'])
         self.assertEqual(instructor.get(reverse('admin_users')).status_code, 403)
         self.assertEqual(instructor.get(reverse('instructor_batches')).status_code, 200)
-        own = instructor.post(reverse('instructor_batches'), {'name': 'Synthetic new faculty batch'}, format='json')
+        institute = Institute.objects.create(code='SYN', name='Synthetic Institute')
+        program = Program.objects.create(institute=institute, code='ANY', name='Any Degree')
+        InstructorAssignment.objects.create(program=program, instructor=user)
+        own = instructor.post(reverse('instructor_batches'), {'name': 'Synthetic new faculty batch', 'program_id': program.id}, format='json')
         self.assertEqual(own.status_code, 201, own.data)
         self.assertEqual(Batch.objects.get(pk=own.data['id']).instructor_id, user.pk)
         notice.refresh_from_db()

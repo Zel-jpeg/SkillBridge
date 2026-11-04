@@ -110,13 +110,17 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F03 — Batch and enrollment context
 
-- [ ] Branch `codex/program-batches-enrollment` after F02.
-- [ ] New batch selects one assigned program; enrollments validate that context.
-- [ ] Replace BSIT/BSIS-only backend enrollment rules with configured program
+- [x] Branch `codex/program-batches-enrollment` after F02.
+- [x] New batch selects one assigned program; enrollments validate that context.
+- [x] Replace BSIT/BSIS-only backend enrollment rules with configured program
   aliases; preserve signed preview/confirm, identity checks and notification rules.
-- [ ] Existing mixed batches keep memberships and evidence without forced split.
-- [ ] Test direct foreign-context requests, import aliases, duplicate/concurrent
-  enrollment, existing mixed-batch compatibility and staff UI; receipt/merge.
+- [x] Existing mixed batches keep memberships and evidence without forced split.
+- [x] Test direct foreign-context requests, import aliases, duplicate/concurrent
+  enrollment, existing mixed-batch compatibility and staff UI;
+  [receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md): 644 PostgreSQL/268 frontend tests,
+  lint/build/check/drift and 26 browser groups passed; configured 0034 preserved
+  all 42 old data tables/columns with three null context additions.
+- [ ] Commit and merge F03 locally before F04 (all verification gates passed).
 
 ### F04 — Profiles, onboarding and dynamic program controls
 
@@ -247,27 +251,31 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint:
+Current checkpoint — F03 gates complete, preparing local merge (5 November 2026):
 
-- Branch: local `main` after F02 merge; retained feature branch
-  `codex/instructor-program-assignments`, implementation `1b237b0`, base `02e20f0`.
-- Completed: F01 catalog models/API/UI, configured migration and local merge; see
-  [feature receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md).
-- Checks: 614 PostgreSQL backend tests, 265 frontend tests, lint/build, Django
-  check/drift and 11 real-API browser groups passed. Desktop/phone images reviewed.
-- Current milestone: F02 complete, tested, migrated and locally merged.
-  Development is continuous: proceed directly to F03 on its own branch.
-- Configured database: 0032 applied after verified isolated backup restore; 39
-  pre-existing public data tables unchanged, two empty tables added. Initial
-  Windows pipe issue was fixed before the successful attempt; both owned restore
-  helpers were stopped. No existing records reclassified or recalculated.
-- F02 configured migration: 0033 applied after verified isolated restore; 41
-  pre-existing public data tables unchanged, one empty assignment table added.
-  Receipt: `work/organization-configured-migration-w3op0r26/receipt.json`.
-- GitHub: no push performed or authorized.
-- Known failures: no remaining application failure. Final 629-test PostgreSQL run,
-  267 frontend tests, lint/build, nine assignment browser groups and all 11 F01
-  browser groups passed, including the replay after retaining explicit ordering
-  in shared pagination (`work/organization-postgres-d56ir3zd/`).
-- Exact next step: start `codex/program-batches-enrollment` from local main and
-  implement/test F03 end to end. Keep future features separate and never push.
+- Branch `codex/program-batches-enrollment`, base `26edb37`; all F03 edits remain
+  on this feature branch until the local commit/merge below is recorded.
+- F01/F02 are complete and locally merged. F03 implements one-program new batches,
+  assigned owners, current-grant private access, program aliases and signed
+  enrollment context, required setup/profile support and transfer checks.
+  Existing IC/mixed batches remain ordinary records with their existing statuses.
+- Verification: 644 PostgreSQL tests (`work/organization-postgres-u9eihfls/`),
+  268 frontend tests, lint/build, Django check/drift and local documentation links
+  passed. Final browser suites: six F03 groups (`organization-browser-370oziqd`),
+  nine F02 groups (`organization-browser-0c3km7k8`), eleven F01 groups
+  (`organization-browser-p9lnfb49`), all under ignored `work/`, no page errors.
+- Configured 0034 applied after isolated public-schema restore and actual Django
+  migration rehearsal; all 42 existing public data tables retain their previous
+  values/counts, no new tables, three new nullable FK columns entirely null.
+  Receipt `work/organization-configured-migration-46agfz8m/receipt.json`.
+  No real records were mapped, archived, regraded or recalculated.
+- Operator also passed a fully synthetic source/restore run:
+  `work/program-migration-operator-ucwit4i2/results.json`.
+- Known failures: none remaining in F03. Earlier failed runs were fixed and
+  superseded; see [feature receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md).
+  Broader profiles, frameworks, matching isolation, AIKEN and mapping remain
+  future features, not claimed complete by these checks.
+- All owned test runners and migration restore helpers finished and stopped.
+  No deployment or GitHub push. No F04 implementation has begun.
+- Exact next step: commit F03 task files, merge into local main, record commit and
+  merge evidence here; only then create `codex/dynamic-program-profiles` for F04.

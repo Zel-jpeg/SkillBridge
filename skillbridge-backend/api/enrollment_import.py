@@ -15,6 +15,7 @@ from django.db.models.functions import Lower
 
 from .models import Batch, BatchEnrollment, ManagementAction, User, OJTPlacement
 from .name_formatting import format_person_name
+from .program_scope import matches_program
 
 logger = logging.getLogger(__name__)
 MAX_ROWS = 1000
@@ -50,7 +51,7 @@ def normalize_program(value):
     }.get(normalized, str(value).strip().upper())
 
 
-def normalize_row(item, index):
+def normalize_row(item, index, program=None):
     values = {key(k): v for k, v in item.items()}
     def field(*aliases):
         return next((str(values[k]).strip() for k in aliases if values.get(k) is not None), '')
@@ -94,9 +95,14 @@ def normalize_row(item, index):
         issues.append('A valid @dnsc.edu.ph email is required.')
     if issues:
         row['status'] = 'invalid'
-    if row['course'] not in ('BSIT', 'BSIS'):
+    supported = matches_program(field('course', 'program'), program) if program else row['course'] in ('BSIT', 'BSIS')
+    row['program_supported'] = supported
+    if supported and program:
+        row['course'] = program.code
+    if not supported:
         row['status'] = 'unsupported'
-        issues.append('Unsupported program; only BSIT and BSIS may enroll.')
+        issues.append(f'Use {program.code} or one of its configured program aliases for this batch.' if program else
+                      'This batch accepts its existing BSIT/BSIS program labels.')
     row['format'] = field('format')
     return row
 
@@ -114,7 +120,9 @@ def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None, act
     if users and (len(users) != 1 or student.role != 'student' or not student.is_active
                   or student.email.lower() != row['email']
                   or (student.school_id and student.school_id != row['school_id'])
-                  or (student.course and normalize_program(student.course) != row['course'])):
+                  or (student.program_id and student.program_id != batch.program_id)
+                  or (student.course and not (matches_program(student.course, batch.program) if batch.program_id else
+                                              normalize_program(student.course) == row['course']))):
         row.update(status='conflict', issues=['Existing account identity or program conflicts; ask an administrator to resolve it.'])
         return row, None
     if student:
@@ -138,7 +146,7 @@ def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None, act
 def review_rows(items, batch):
     if not isinstance(items, list) or not 1 <= len(items) <= MAX_ROWS or any(not isinstance(i, dict) for i in items):
         raise ValueError(f'Provide 1–{MAX_ROWS} student rows.')
-    rows = [normalize_row(item, i) for i, item in enumerate(items)]
+    rows = [normalize_row(item, i, batch.program if batch.program_id else None) for i, item in enumerate(items)]
     ids, emails = Counter(r['school_id'] for r in rows), Counter(r['email'] for r in rows)
     # One identity query and one enrollment query, even for multi-sheet imports.
     users = list(User.objects.annotate(normalized_email=Lower('email'),
@@ -167,7 +175,7 @@ def summary(rows):
     return {'total': len(rows), 'ready': sum(counts[s] for s in READY),
             'existing_students': sum(r.get('existing_student', False) for r in rows),
             **{s: counts[s] for s in ('already_enrolled', 'duplicate', 'invalid', 'conflict', 'enrolled', 'skipped', 'failed')},
-            'unsupported': sum(r['course'] not in ('BSIT', 'BSIS') for r in rows),
+            'unsupported': sum(not r.get('program_supported', r['course'] in ('BSIT', 'BSIS')) for r in rows),
             'notifications_queued': sum(r.get('notification_status') == 'queued' for r in rows),
             'notifications_held': sum(r.get('notification_status') == 'held' for r in rows),
             'notifications_failed': sum(r.get('notification_status') == 'dispatch_failed' for r in rows)}
@@ -177,8 +185,15 @@ def digest(items):
     return hashlib.sha256(json.dumps(items, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+def review_context(batch):
+    program = batch.program if batch.program_id else None
+    return [batch.instructor_id, batch.institute_id, batch.program_id,
+            [program.code, program.name, program.aliases, program.is_active, program.institute.is_active] if program else None]
+
+
 def review_token(rows, batch, actor):
-    return signing.dumps({'digest': digest(rows), 'batch': batch.pk, 'actor': actor.pk}, salt='enrollment-review')
+    return signing.dumps({'digest': digest(rows), 'batch': batch.pk, 'actor': actor.pk,
+                         'context': review_context(batch)}, salt='enrollment-review')
 
 
 def verify_token(token, rows, batch, actor):
@@ -186,7 +201,7 @@ def verify_token(token, rows, batch, actor):
         return False
     try:
         payload = signing.loads(token, salt='enrollment-review', max_age=1800)
-        return payload == {'digest': digest(rows), 'batch': batch.pk, 'actor': actor.pk}
+        return payload == {'digest': digest(rows), 'batch': batch.pk, 'actor': actor.pk, 'context': review_context(batch)}
     except (signing.BadSignature, TypeError):
         return False
 
@@ -218,7 +233,9 @@ def confirm_rows(items, batch, notify):
                     continue
                 if student is None:
                     student = User.objects.create_user(email=row['email'], name=row['name'], role='student',
-                                                       school_id=row['school_id'], course=row['course'], is_approved=True)
+                        school_id=row['school_id'], course=row['course'], is_approved=True,
+                        program_id=locked_batch.program_id,
+                        **({'department': locked_batch.program.institute.name} if locked_batch.program_id else {}))
                 else:
                     first_enrollment = (not student.is_approved and not student.school_id
                                         and not BatchEnrollment.objects.filter(student=student).exists())
@@ -230,6 +247,11 @@ def confirm_rows(items, batch, notify):
                     student.school_id = student.school_id or row['school_id']
                     student.course = student.course or row['course']
                     update_fields.extend(['school_id', 'course'])
+                    if locked_batch.program_id and not student.program_id:
+                        student.program_id = locked_batch.program_id
+                        student.course = locked_batch.program.code
+                        student.department = locked_batch.program.institute.name
+                        update_fields.extend(['program', 'department'])
                     student.save(update_fields=update_fields)
                 returning = (BatchEnrollment.objects.filter(student=student).exists()
                              or student.responses.exists() or student.ojt_placements.exists())

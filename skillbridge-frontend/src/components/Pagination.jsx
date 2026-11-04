@@ -28,7 +28,7 @@ export default function Pagination({ total, page, onPage, pageSize = 10, summary
         {summary ?? `Showing ${from}–${to} of ${total}`}
       </p>
       <div className="flex items-center gap-1 order-1 sm:order-2">
-        <button
+        <button type="button"
           onClick={() => onPage(page - 1)}
           disabled={page === 1}
           className={`${btnBase} px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400
@@ -44,7 +44,7 @@ export default function Pagination({ total, page, onPage, pageSize = 10, summary
         }, []).map((p, i) =>
           p === '…'
             ? <span key={`ellipsis-${i}`} className="text-xs text-gray-300 dark:text-gray-700 px-1">…</span>
-            : <button
+            : <button type="button"
                 key={p}
                 aria-current={p === page ? 'page' : undefined}
                 onClick={() => onPage(p)}
@@ -57,7 +57,7 @@ export default function Pagination({ total, page, onPage, pageSize = 10, summary
               </button>
         )}
 
-        <button
+        <button type="button"
           onClick={() => onPage(page + 1)}
           disabled={page === pages}
           className={`${btnBase} px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400

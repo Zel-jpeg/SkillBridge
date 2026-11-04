@@ -19,6 +19,8 @@ def text(value, field, maximum, *, blank=False):
 def profile_data(data, user):
     if not isinstance(data, dict):
         invalid('profile', 'Profile details must be an object.')
+    if {'program_id', 'institute_id', 'program', 'institute'} & set(data):
+        invalid('course', 'Your program is assigned through enrollment. Ask authorized staff to review a transfer.')
     result = {}
     for field, model_field, maximum in [('name', 'name', 255), ('studentId', 'school_id', 20),
                                          ('course', 'course', 100), ('phone', 'phone', 20)]:
@@ -30,8 +32,14 @@ def profile_data(data, user):
                 invalid(field, 'Student ID must use YYYY-NNNNN format.')
             if User.objects.filter(school_id=value).exclude(pk=user.pk).exists():
                 invalid(field, 'This student ID is already in use. Ask your instructor to check your enrollment.')
-        if field == 'course' and value not in ('BSIT', 'BSIS'):
-            invalid(field, 'Choose BSIT or BSIS.')
+        if field == 'course':
+            if user.program_id:
+                from .program_scope import matches_program
+                if not matches_program(value, user.program):
+                    invalid(field, 'Use your enrolled program. Ask authorized staff to review a transfer.')
+                value = user.program.code
+            elif value not in ('BSIT', 'BSIS'):
+                invalid(field, 'Choose your enrolled program.')
         if field == 'phone' and not re.fullmatch(r'09\d{9}', value):
             invalid(field, 'Phone must have 11 digits starting with 09.')
         result[model_field] = value

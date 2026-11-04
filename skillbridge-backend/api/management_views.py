@@ -14,8 +14,13 @@ from .cycle_lifecycle import lifecycle_lock
 def admin_batch_instructors(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
-    return Response([{'id': user.id, 'name': user.name} for user in
-        User.objects.filter(role='instructor', is_active=True, is_approved=True).order_by('name', 'id')])
+    rows = User.objects.filter(role='instructor', is_active=True, is_approved=True)
+    if 'program_id' in request.query_params:
+        from .program_scope import active_program
+        value = request.query_params['program_id']
+        program = active_program(request.user, int(value) if value.isdigit() else None)
+        rows = rows.filter(program_assignments__program=program, program_assignments__is_active=True)
+    return Response([{'id': user.id, 'name': user.name} for user in rows.order_by('name', 'id')])
 
 
 @api_view(['PATCH'])
@@ -38,7 +43,12 @@ def admin_batch_detail(request, batch_id):
         batch.name = name.strip()
         fields.append('name')
     if 'instructor_id' in request.data:
+        if batch.program_id:
+            from .program_scope import active_program, require_owner_assignment
+            program = active_program(request.user, batch.program_id, lock=True)
         batch.instructor = selected_instructor(request.data['instructor_id'])
+        if batch.program_id:
+            require_owner_assignment(batch.instructor, program)
         fields.append('instructor')
     if fields:
         batch.save(update_fields=fields)

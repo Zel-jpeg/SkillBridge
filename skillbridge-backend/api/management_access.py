@@ -13,6 +13,9 @@ def require_manager(user):
 def managed_batches(user):
     require_manager(user)
     rows = Batch.objects.all() if user.role == 'admin' else Batch.objects.filter(instructor=user)
+    if user.role != 'admin':
+        from .program_scope import assigned_program_ids
+        rows = rows.filter(Q(program__isnull=True) | Q(program_id__in=assigned_program_ids(user)))
     length = 'jsonb_array_length' if connection.vendor == 'postgresql' else 'json_array_length'
     return rows.annotate(closeout_version_count=Func(F('closeout_snapshots'), function=length,
                         output_field=IntegerField())).defer('closeout_snapshots')
@@ -21,7 +24,7 @@ def managed_batches(user):
 def managed_assessments(user):
     require_manager(user)
     return Assessment.objects.all() if user.role == 'admin' else Assessment.objects.filter(
-        Q(batch__instructor=user) | Q(batch__isnull=True, created_by=user))
+        Q(batch__in=managed_batches(user)) | Q(batch__isnull=True, created_by=user))
 
 
 def selected_instructor(value):
@@ -34,7 +37,10 @@ def selected_instructor(value):
 
 
 def batch_payload(batch, student_count=None):
+    from .instructor_assignments import program_payload
     return {'id': batch.id, 'name': batch.name, 'status': batch.status,
+            'program_id': batch.program_id, 'institute_id': batch.institute_id,
+            'program': program_payload(batch.program) if batch.program_id else None,
             'created_at': batch.created_at, 'archived_at': batch.archived_at,
             'instructor_id': batch.instructor_id, 'instructor_name': batch.instructor.name,
             'instructor_photo_url': batch.instructor.photo_url,

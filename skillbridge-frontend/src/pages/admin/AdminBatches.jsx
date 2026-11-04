@@ -6,6 +6,7 @@ import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../../components/DataSection'
 import DialogShell from '../../components/DialogShell'
+import ProgramSelect from '../../components/ProgramSelect'
 import BatchCyclePanel from '../../components/BatchCyclePanel'
 import StudentTransferAction from '../../components/StudentTransferAction'
 import ActionMenu from '../../components/ActionMenu'
@@ -35,23 +36,27 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
   const { showToast } = useToast()
   const [name, setName] = useState(batch?.name || '')
   const [owner, setOwner] = useState(String(batch?.instructor_id || ''))
+  const [programId, setProgramId] = useState(String(batch?.program_id || ''))
+  const ownerUrl = programId ? `${OWNERS}?program_id=${programId}` : OWNERS
+  const { data: scopedOwners } = useApi(programId ? ownerUrl : null)
+  owners = programId ? scopedOwners || [] : owners
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [review, setReview] = useState(false)
   const [discard, setDiscard] = useState(false)
   const pending = useRef(false)
-  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '')
+  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '') || programId !== String(batch?.program_id || '')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
   function prepare(event) {
     event.preventDefault()
-    if (!name.trim() || name.trim().length > 100 || !owner) { setError('Enter a batch name and choose an instructor.'); return }
+    if (!name.trim() || name.trim().length > 100 || !owner || !batch && !programId) { setError('Enter a batch name, program and assigned instructor.'); return }
     setReview(true)
   }
   async function save() {
     if (pending.current) return
     pending.current = true; setSaving(true); setError(''); setReview(false)
     try {
-      const data = { name: name.trim(), ...(!batch || owner !== String(batch.instructor_id) ? { instructor_id: Number(owner) } : {}) }
+      const data = { name: name.trim(), ...(!batch ? { program_id: Number(programId) } : {}), ...(!batch || owner !== String(batch.instructor_id) ? { instructor_id: Number(owner) } : {}) }
       const result = batch ? await api.patch(`/api/admin/batches/${batch.id}/`, data) : await api.post(BATCHES, data)
       showToast(batch ? 'Batch updated successfully.' : 'Batch created successfully.')
       onSaved(result.data)
@@ -59,9 +64,11 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
     finally { pending.current = false; setSaving(false) }
   }
   return <DialogShell title={batch ? 'Manage batch' : 'Create batch'} description="Choose the instructor responsible for the selected students." onClose={close} size="confirm" footer={<div className="flex gap-2"><button className={button} disabled={saving} onClick={close}>Cancel</button><button className={`${button} bg-green-700 text-white hover:bg-green-800`} disabled={saving || !changed} form="batch-editor" type="submit">{saving ? 'Saving…' : 'Review batch changes'}</button></div>}>
-    <form id="batch-editor" onSubmit={prepare} className="space-y-4 p-4 sm:p-5">
+    <form id="batch-editor" onSubmit={prepare} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
       <fieldset disabled={saving} className="space-y-4"><label className="block text-xs font-semibold">Batch name<input aria-label="Batch name" className={field} maxLength={100} value={name} onChange={event => setName(event.target.value)} /></label>
-        <label className="block text-xs font-semibold">Responsible instructor<DataSection url={OWNERS} layout="control" count={1}><select aria-label="Responsible instructor" className={field} value={owner} onChange={event => setOwner(event.target.value)}><option value="">Select an instructor</option>{batch && !owners.some(person => person.id === batch.instructor_id) && <option value={batch.instructor_id} disabled>{batch.instructor_name} (current owner unavailable for new assignments)</option>}{owners.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></DataSection></label>
+        {!batch && <ProgramSelect value={programId} onChange={value => { setProgramId(value); setOwner('') }} disabled={saving} />}
+        {batch?.program && <p className="text-xs">{batch.program.institute_code} · {batch.program.code} — {batch.program.name}</p>}
+        <label className="block text-xs font-semibold">Responsible instructor<DataSection url={ownerUrl} layout="control" count={1}><select aria-label="Responsible instructor" className={field} value={owner} onChange={event => setOwner(event.target.value)}><option value="">Select an instructor</option>{batch && !owners.some(person => person.id === batch.instructor_id) && <option value={batch.instructor_id} disabled>{batch.instructor_name} (current owner unavailable for new assignments)</option>}{owners.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></DataSection></label>
         {batch && <p className="text-xs text-gray-500">Reassignment transfers access to this batch, including its assessments and student history. Scores and placement snapshots are preserved.</p>}
       </fieldset>{error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
     </form>

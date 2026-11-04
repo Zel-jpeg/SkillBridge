@@ -1,4 +1,5 @@
 """Shared provisional allocation. Reads never generate rankings or approvals."""
+from .management_access import managed_batches
 from .recommendation_policy import VERSION as ALLOCATION_POLICY_VERSION, needs_review as recommendation_needs_review
 from .recommendation_policy import order_fields
 from collections import Counter
@@ -115,8 +116,9 @@ def context():
 
 
 def scoped_ids(user, ctx):
+    allowed = set(managed_batches(user).values_list('pk', flat=True)) if user.role != 'admin' else None
     return {key for key, enrollment in ctx['enrollments'].items()
-            if user.role == 'admin' or enrollment.batch.instructor_id == user.id}
+            if allowed is None or enrollment.batch_id in allowed}
 
 
 def mapping():
@@ -333,7 +335,7 @@ def placement_write_lock(view):
                 pid = rec.position_id if rec else numeric(request.data.get('position_id'))
                 if type(sid) is int and type(pid) is int and before:
                     # Preserve the existing view's authorization and idempotent paths.
-                    own = request.user.role == 'admin' or (bool(rec.batch_id and rec.batch.instructor_id == request.user.id) if rec else BatchEnrollment.objects.filter(student_id=sid, batch__instructor=request.user).exists())
+                    own = request.user.role == 'admin' or (bool(rec.batch_id and managed_batches(request.user).filter(pk=rec.batch_id).exists()) if rec else BatchEnrollment.objects.filter(student_id=sid, batch__in=managed_batches(request.user)).exists())
                     approved = current_approvals(student_id=sid).exists()
                     held = active_suggestions().filter(position_id=pid).exclude(student_id=sid).count()
                     if own and not approved and (not fresh or (held and held >= before['capacities'].get(pid, 0))):

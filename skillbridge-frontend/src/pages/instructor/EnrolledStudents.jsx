@@ -1,3 +1,5 @@
+import ProgramSelect from '../../components/ProgramSelect'
+import DialogShell from '../../components/DialogShell'
 import { recommendationDisplay } from '../../utils/recommendationResults'
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import DataSection from '../../components/DataSection'
@@ -68,7 +70,7 @@ export default function EnrolledStudents() {
     viewedBatch, isArchived, students, activeBatch, completed,
     showArchiveConf, setShowArchiveConf, handleArchiveBatch, handleUnarchiveBatch,
     showNewBatch, setShowNewBatch,
-    newBatchName, setNewBatchName, handleCreateBatch, batchBusy, batchError,
+    newBatchName, setNewBatchName, newBatchProgram, setNewBatchProgram, handleCreateBatch, batchBusy, batchError,
     handleEnroll, handleRemove, handleToggleRetake,
     showModal, setShowModal,
     selectedStudent, setSelectedStudent,
@@ -81,8 +83,7 @@ export default function EnrolledStudents() {
     categories,
   } = useEnrolledStudents()
 
-  const bsit = students.filter(s => s.course === 'BSIT')
-  const bsis = students.filter(s => s.course === 'BSIS')
+  const courseCounts = rosterSummary?.courses || students.reduce((counts, student) => ({ ...counts, [student.course]: (counts[student.course] || 0) + 1 }), {})
 
   return (
     <div className="min-w-0">
@@ -105,12 +106,11 @@ export default function EnrolledStudents() {
 
       {/* Archive confirmation */}
       {showArchiveConf && (
-        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <DialogShell title="Archive this batch?" onClose={() => { if (!batchBusy) setShowArchiveConf(false) }} size="confirm">
+          <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center shrink-0 text-amber-500"><ArchiveIcon /></div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Archive this batch?</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                   <strong>{viewedBatch?.name}</strong> will become read-only. Its current allocations will release their slots; student records and approved decision history stay preserved. This action does not save a final report.
                 </p>
@@ -122,31 +122,33 @@ export default function EnrolledStudents() {
               <button disabled={batchBusy} onClick={handleArchiveBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition-colors">{batchBusy ? 'Saving…' : 'Archive Batch'}</button>
             </div>
           </div>
-        </div>
+        </DialogShell>
       )}
 
       {batchError && !showArchiveConf && !showNewBatch && <p role="alert" className="px-4 py-2 text-sm text-rose-700 dark:text-rose-300">{batchError}</p>}
       {/* New batch modal */}
       {showNewBatch && (
-        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <DialogShell title="Start New Batch" onClose={() => { if (!batchBusy) setShowNewBatch(false) }} size="confirm">
+          <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2"><PlusIcon /> Start New Batch</h3>
+              <p className="text-xs">Select one of your assigned programs for this batch.</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Give this batch a school-year name.</p>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Batch Name</label>
               <input value={newBatchName} onChange={e => setNewBatchName(e.target.value)}
+                aria-label="Batch name" maxLength={100} disabled={batchBusy}
                 placeholder={`AY ${new Date().getFullYear()}–${new Date().getFullYear() + 1}`}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
+            <ProgramSelect value={newBatchProgram} onChange={setNewBatchProgram} disabled={batchBusy} />
             {batchError && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{batchError}</p>}
             <div className="flex gap-2">
               <button disabled={batchBusy} onClick={() => setShowNewBatch(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
               <button disabled={batchBusy} onClick={handleCreateBatch} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">{batchBusy ? 'Saving…' : 'Create Batch'}</button>
             </div>
           </div>
-        </div>
+        </DialogShell>
       )}
 
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
@@ -174,7 +176,7 @@ export default function EnrolledStudents() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {activeBatchId && <button className={headerButton} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>}
-            {!isArchived && !activeBatch && (
+            {(
                 <button onClick={() => setShowNewBatch(true)}
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
                   <PlusIcon /> Start new batch
@@ -194,12 +196,6 @@ export default function EnrolledStudents() {
             )}
             {isArchived && (
               <>
-                {!activeBatch && (
-                  <button onClick={() => setShowNewBatch(true)}
-                    className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
-                    <PlusIcon /> Start new batch
-                  </button>
-                )}
                 {activeBatch && (
                   <button onClick={() => { const ab = batches.find(b => b.status === 'active'); if (ab) setActiveBatchId(ab.id) }}
                     className="text-xs px-3 py-2 rounded-xl border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950 transition-colors font-medium">
@@ -228,7 +224,7 @@ export default function EnrolledStudents() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Enrolled students', icon: UsersIcon, value: rosterSummary?.student_count ?? students.length, sub: `BSIT ${rosterSummary?.courses?.BSIT ?? bsit.length} · BSIS ${rosterSummary?.courses?.BSIS ?? bsis.length}`, green: false },
+            { label: 'Enrolled students', icon: UsersIcon, value: rosterSummary?.student_count ?? students.length, sub: Object.entries(courseCounts).map(([code, count]) => `${code} ${count}`).join(' · ') || 'No students enrolled', green: false },
             { label: 'Required assessments complete', icon: CheckCircleIcon, value: `${rosterSummary?.completed_students ?? completed.length} of ${rosterSummary?.student_count ?? students.length}`, sub: (rosterSummary?.student_count ?? students.length) ? `${rosterSummary?.published_required_count ?? students[0]?.totalRequiredCount ?? 0} required assessments` : 'No students enrolled', green: true },
             { label: 'Recommendations available', icon: ReportIcon, value: rosterSummary?.recommendations_available_students ?? students.filter(s => !s.recommendationsLocked && s.top_recommendations.length > 0).length, sub: 'students with current ranked matches', green: true },
             { label: 'Awaiting coordinator review', icon: ClockIcon, value: rosterSummary?.awaiting_review_students ?? students.filter(s => !s.recommendationsLocked && !s.hasCurrentApproval && s.top_recommendations.length > 0).length, sub: 'current matches, no approved decision', green: false },
@@ -243,7 +239,7 @@ export default function EnrolledStudents() {
 
 </DataSection>
         {/* Controls */}
-        <StudentRosterToolbar key={`roster-toolbar-${activeBatchId}`} batchId={activeBatchId} students={students} pending={initialRosterPending}
+        <StudentRosterToolbar key={`roster-toolbar-${activeBatchId}`} batchId={activeBatchId} courseOptions={Object.keys(courseCounts)} students={students} pending={initialRosterPending}
           count={filteredCount} total={rosterSummary?.student_count} previewUrl={previewUrl}
           filters={{ search, course, enrollment, accountStatus, assessmentStatus, recommendationStatus }}
           onApply={values => { setEnrollment(values.enrollment); applyFilters(values) }} onSearch={setSearch}

@@ -1,4 +1,5 @@
 """One reviewed retake request per current attempt; history stays on existing rows."""
+from .management_access import managed_batches
 import json
 from uuid import UUID
 from django.db import transaction
@@ -49,7 +50,7 @@ def request_eligible(attempt):
 
 def can_manage(user, attempt):
     return user.role == 'admin' or (user.role == 'instructor' and attempt.assessment.batch_id and
-                                     attempt.assessment.batch.instructor_id == user.id)
+                                     managed_batches(user).filter(pk=attempt.assessment.batch_id).exists())
 
 
 def student_attempt(request, assessment_id):
@@ -166,7 +167,7 @@ def request_queue(request):
         raise PermissionDenied()
     rows = StudentResponse.objects.select_related('assessment__batch', 'student').exclude(retake_request_status='')
     if request.user.role == 'instructor':
-        rows = rows.filter(assessment__batch__instructor=request.user)
+        rows = rows.filter(assessment__batch__in=managed_batches(request.user))
     status = request.query_params.get('status', 'pending')
     if status not in ('pending', 'approved', 'declined', 'all', 'history'):
         raise ValidationError({'error': 'Invalid status filter.'})
@@ -183,7 +184,7 @@ def request_queue(request):
     if status == 'history':
         histories = AssessmentAttemptHistory.objects.select_related('response__assessment__batch', 'response__student').exclude(retake_request={})
         if request.user.role == 'instructor':
-            histories = histories.filter(response__assessment__batch__instructor=request.user)
+            histories = histories.filter(response__assessment__batch__in=managed_batches(request.user))
         if query:
             histories = histories.filter(Q(response__student__name__icontains=query) | Q(response__student__school_id__icontains=query) | Q(response__assessment__title__icontains=query))
         total = histories.count()

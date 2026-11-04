@@ -19,9 +19,8 @@ def available_programs(user):
         return rows
     if user.role != 'instructor':
         return rows.none()
-    return rows.filter(instructor_assignments__instructor_id=user.id,
-        instructor_assignments__is_active=True, instructor_assignments__instructor__is_active=True,
-        instructor_assignments__instructor__is_approved=True)
+    from .program_scope import assigned_program_ids
+    return rows.filter(pk__in=assigned_program_ids(user))
 
 
 def require_program(user, program_id):
@@ -151,4 +150,5 @@ def program_options(request, program_id=None):
         return Response({'error': 'Staff only'}, status=403)
     if program_id is not None:
         return Response(program_payload(require_program(request.user, program_id)))
-    return Response(page_payload(available_programs(request.user), request.query_params, serialize=program_payload))
+    return Response(page_payload(available_programs(request.user), request.query_params, serialize=program_payload,
+        search_fields=('code', 'name', 'institute__code', 'institute__name')))

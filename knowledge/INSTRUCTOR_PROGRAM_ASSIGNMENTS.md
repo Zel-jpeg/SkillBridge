@@ -1,5 +1,9 @@
 # Instructor/program assignments — F02
 
+Subsequent integration: [F03 program batches and enrollment](PROGRAM_BATCHES_AND_ENROLLMENT.md)
+now applies these current grants to program-bound cohorts. The F02 receipt below
+describes its original feature boundary and verification.
+
 Implemented on `codex/instructor-program-assignments`, based on completed F01 at
 `02e20f0`. See the [active tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md).
 Configured migration and local merge receipts are recorded below when completed.

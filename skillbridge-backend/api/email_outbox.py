@@ -116,7 +116,9 @@ def eligible(notice):
     # A request made by a former owner must not outlive their access assignment.
     return bool(notice.actor and notice.actor.is_active and (
         notice.actor.role == 'admin' or notice.actor.role == 'instructor' and
-        notice.actor.is_approved and enrollment.batch.instructor_id == notice.actor_id))
+        notice.actor.is_approved and enrollment.batch.instructor_id == notice.actor_id and
+        (not enrollment.batch.program_id or enrollment.batch.program.instructor_assignments.filter(
+            instructor_id=notice.actor_id, is_active=True).exists())))
 
 
 def _event_status(event):

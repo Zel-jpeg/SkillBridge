@@ -18,6 +18,8 @@ def port():
 api_port, frontend_port = port(), port()
 env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'PYTHONIOENCODING': 'utf-8', 'SB_ORGANIZATION_RUN': str(OUT),
        'SB_ORGANIZATION_API_PORT': str(api_port), 'SB_ORGANIZATION_FRONTEND_PORT': str(frontend_port)}
+if '--program-batches' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'program-batches'
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), 'preview', str(ROOT / 'skillbridge-frontend'),
       '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port)]
@@ -41,6 +43,8 @@ try:
             raise RuntimeError('Owned server did not become ready')
     with (OUT / 'browser.txt').open('w', encoding='utf-8') as log:
         script = 'instructor_assignments_playwright.py' if '--assignments' in sys.argv else 'organization_playwright.py'
+        if '--program-batches' in sys.argv:
+            script = 'program_batches_playwright.py'
         result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script)],
                                 cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
     print((OUT / 'browser.txt').read_text(encoding='utf-8')[-7000:])

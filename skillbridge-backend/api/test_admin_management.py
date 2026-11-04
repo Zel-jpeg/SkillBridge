@@ -1,3 +1,4 @@
+from .models import Institute, Program, InstructorAssignment
 from unittest.mock import patch
 from django.urls import reverse
 from django.utils import timezone
@@ -12,6 +13,9 @@ class AdminManagementTests(APITestCase):
         self.owner = User.objects.create_user('role-owner@example.invalid', role='instructor', is_approved=True)
         self.other = User.objects.create_user('role-other@example.invalid', role='instructor', is_approved=True)
         self.student = User.objects.create_user('role-student@example.invalid', role='student', is_approved=True)
+        institute = Institute.objects.create(code='SYN', name='Synthetic Institute')
+        self.program = Program.objects.create(institute=institute, code='ANY', name='Any Degree')
+        InstructorAssignment.objects.create(program=self.program, instructor=self.owner)
         self.batch = Batch.objects.create(name='Synthetic role batch', instructor=self.owner)
         self.second = Batch.objects.create(name='Synthetic second batch', instructor=self.other)
         BatchEnrollment.objects.create(batch=self.batch, student=self.student)
@@ -64,12 +68,12 @@ class AdminManagementTests(APITestCase):
         self.assertEqual(self.question.question_text, 'Original')
 
     def test_admin_batch_creation_assigns_selected_instructor_and_records_creator(self):
-        result = self.client.post(reverse('instructor_batches'), {'name': 'Admin requested instructor owner', 'instructor_id': self.owner.pk}, format='json')
+        result = self.client.post(reverse('instructor_batches'), {'program_id': self.program.id, 'name': 'Admin requested instructor owner', 'instructor_id': self.owner.pk}, format='json')
         self.assertEqual(result.status_code, 201, result.data)
         batch = Batch.objects.get(pk=result.data['id'])
         self.assertEqual(batch.instructor_id, self.owner.pk)
         self.assertEqual(batch.created_by_id, self.admin.pk)
-        self.assertEqual(self.client.post(reverse('instructor_batches'), {'name': 'Missing owner'}, format='json').status_code, 400)
+        self.assertEqual(self.client.post(reverse('instructor_batches'), {'program_id': self.program.id, 'name': 'Missing owner'}, format='json').status_code, 400)
 
     @patch('api.views.recalculate_enrolled_students')
     def test_admin_can_archive_restore_and_read_instructor_batch(self, recalculate):
@@ -207,8 +211,8 @@ class AdminManagementTests(APITestCase):
     def test_instructor_cannot_choose_different_owner_and_picker_is_active_only(self):
         self.sign_in(self.owner)
         self.assertEqual(self.client.post(reverse('instructor_batches'),
-            {'name': 'Forbidden owner', 'instructor_id': self.other.pk}, format='json').status_code, 403)
-        result = self.client.post(reverse('instructor_batches'), {'name': 'Own cohort'}, format='json')
+            {'program_id': self.program.id, 'name': 'Forbidden owner', 'instructor_id': self.other.pk}, format='json').status_code, 403)
+        result = self.client.post(reverse('instructor_batches'), {'program_id': self.program.id, 'name': 'Own cohort'}, format='json')
         self.assertEqual(result.status_code, 201, result.data)
         self.assertEqual(result.data['instructor_id'], self.owner.pk)
         self.sign_in(self.admin)

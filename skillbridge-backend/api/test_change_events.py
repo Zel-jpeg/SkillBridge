@@ -1,3 +1,4 @@
+from .models import Institute, Program, InstructorAssignment
 import json
 import os
 import subprocess
@@ -27,6 +28,9 @@ class ChangeEventTests(TestCase):
         self.other = User.objects.create_user('other@synthetic.invalid', role='instructor', name='Other', is_approved=True)
         self.student = User.objects.create_user('student@synthetic.invalid', role='student', name='Student', is_approved=True)
         self.foreign = User.objects.create_user('foreign@synthetic.invalid', role='student', name='Foreign', is_approved=True)
+        institute = Institute.objects.create(code='SYN', name='Synthetic Institute')
+        self.program = Program.objects.create(institute=institute, code='ANY', name='Any Degree')
+        InstructorAssignment.objects.create(program=self.program, instructor=self.teacher)
         self.batch = Batch.objects.create(name='Synthetic cohort', instructor=self.teacher)
         self.foreign_batch = Batch.objects.create(name='Foreign cohort', instructor=self.other)
         BatchEnrollment.objects.create(student=self.student, batch=self.batch)
@@ -56,7 +60,7 @@ class ChangeEventTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             try:
                 with transaction.atomic():
-                    self.client.post('/api/instructor/batches/', {'name': 'Rolled back'})
+                    self.client.post('/api/instructor/batches/', {'program_id': self.program.id, 'name': 'Rolled back'}, format='json')
                     raise ValueError('synthetic rollback')
             except ValueError:
                 pass
@@ -139,7 +143,7 @@ class ChangeEventTests(TestCase):
         with patch.object(ChangeEvent.objects, 'bulk_create', side_effect=RuntimeError('synthetic transport failure')):
             with self.assertLogs('api.change_events', level='ERROR'):
                 with self.captureOnCommitCallbacks(execute=True):
-                    response = self.client.post('/api/instructor/batches/', {'name': 'Still committed'})
+                    response = self.client.post('/api/instructor/batches/', {'program_id': self.program.id, 'name': 'Still committed'}, format='json')
         self.assertEqual(response.status_code, 201)
         self.assertTrue(Batch.objects.filter(name='Still committed').exists())
 

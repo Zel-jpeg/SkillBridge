@@ -1,6 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+test('program revocation revalidates private staff batches and derived access without rerunning snapshots', () => {
+  for (const path of ['/api/instructor/batches/', '/api/instructor/batches/2/students/?page=2',
+    '/api/instructor/batches/2/emails/', '/api/instructor/assessments/', '/api/instructor/students/recommendations/',
+    '/api/retake-requests/', '/api/placements/draft/', '/api/admin/batch-instructors/?program_id=5']) {
+    assert.equal(queryAffected(path, { topics: ['assignments'] }), true, path)
+  }
+  assert.equal(queryAffected('/api/instructor/batches/2/closeout/?version=1', { topics: ['assignments'] }), false)
+})
+
 test('program assignment changes refresh grants/options without exposing unrelated student results', () => {
   for (const path of ['/api/management/programs/', '/api/management/programs/5/', '/api/admin/institutes/2/programs/5/instructors/?page=2', '/api/admin/institutes/2/programs/5/instructor-options/?search=Name']) {
     assert.equal(queryAffected(path, { topics: ['assignments'] }), true)
