@@ -1,6 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+test('organization changes refresh catalog variants without invalidating private results', () => {
+  for (const url of ['/api/admin/institutes/?search=Example&page=2', '/api/admin/institutes/3/', '/api/admin/institutes/3/programs/?status=active', '/api/admin/institutes/3/programs/5/']) {
+    assert.equal(queryAffected(url, { topics: ['organization'] }), true)
+    assert.equal(queryAffected(url, { resync: true }), true)
+  }
+  assert.equal(queryAffected('/api/student/results/combined/', { topics: ['organization'] }), false)
+})
+
 test('shared analytics refreshes for capacity consumption in another batch and remains read-only', () => {
   assert.equal(queryAffected('/api/management/analytics/?batch_id=4', { topics: ['placements'], batch_ids: [5] }), true)
   assert.equal(queryAffected('/api/management/analytics/?course=BSIT', { topics: ['configuration'] }), true)

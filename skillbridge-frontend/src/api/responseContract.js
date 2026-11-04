@@ -22,7 +22,14 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (method === 'post' && /^\/api\/instructor\/batches\/\d+\/enroll\/(?:preview\/)?$/.test(path)) {
+  if (/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/)?)?)?$/.test(path)) {
+    const row = item => object(item) && id(item.id) && typeof item.name === 'string' && typeof item.code === 'string' && typeof item.description === 'string' && typeof item.is_active === 'boolean' &&
+      (path.includes('/programs/') ? id(item.institute_id) && Array.isArray(item.aliases) && item.aliases.every(alias => typeof alias === 'string') : Number.isSafeInteger(item.program_count) && item.program_count >= 0)
+    if (method === 'get' && (path === '/api/admin/institutes/' || /\/\d+\/programs\/$/.test(path))) {
+      valid = object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && id(data.page) && id(data.page_size) && data.page_size <= 50 &&
+        data.page <= Math.max(1, Math.ceil(data.count / data.page_size)) && Array.isArray(data.results) && data.results.length <= Math.min(data.count, data.page_size) && data.results.every(row)
+    } else valid = row(data)
+  } else if (method === 'post' && /^\/api\/instructor\/batches\/\d+\/enroll\/(?:preview\/)?$/.test(path)) {
     const preview = path.endsWith('/preview/')
     valid = object(data) && Array.isArray(data.rows) && data.rows.every(row => object(row) &&
       typeof row.name === 'string' && typeof row.email === 'string' && typeof row.status === 'string') &&

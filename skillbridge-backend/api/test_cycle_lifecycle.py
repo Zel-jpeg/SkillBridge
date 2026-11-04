@@ -452,7 +452,8 @@ class CycleMigrationTests(TransactionTestCase):
             placement = apps.get_model('api', 'OJTPlacement').objects.create(student_id=user.pk, batch_id=batch.pk,
                 company_id=company.pk, position_id=position.pk, status='approved', match_score_at_assignment=72.5)
             tables = set(connection.introspection.table_names())
-            MigrationExecutor(connection).migrate(latest)
+            # Verify this migration's no-new-table contract, not future features.
+            MigrationExecutor(connection).migrate([('api', '0028_ojt_cycle_lifecycle')])
             self.assertEqual(set(connection.introspection.table_names()), tables)
             self.assertEqual(Batch.objects.get(pk=batch.pk).closeout_snapshots, [])
             self.assertIsNone(Company.objects.get(pk=company.pk).archived_at)

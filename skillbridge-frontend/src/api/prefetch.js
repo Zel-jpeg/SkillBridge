@@ -18,6 +18,7 @@ export const DESTINATION_QUERIES = {
   '/admin/assessments': ['/api/instructor/assessments/'],
   '/admin/batches': ['/api/instructor/batches/'],
   '/admin/skills': ['/api/admin/skills/'],
+  '/admin/institutes': ['/api/admin/institutes/?search=&status=all&page=1&page_size=8'],
   '/admin/companies': ['/api/admin/companies/'],
 }
 const LIKELY = {

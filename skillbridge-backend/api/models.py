@@ -5,6 +5,44 @@ from django.utils import timezone
 import uuid
 
 
+class Institute(models.Model):
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name', 'id']
+        constraints = [
+            models.UniqueConstraint(models.functions.Lower('code'), name='unique_institute_code'),
+            models.UniqueConstraint(models.functions.Lower('name'), name='unique_institute_name'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Program(models.Model):
+    institute = models.ForeignKey(Institute, on_delete=models.PROTECT, related_name='programs')
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    aliases = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name', 'id']
+        constraints = [
+            models.UniqueConstraint(models.functions.Lower('code'), 'institute', name='unique_program_code_institute'),
+            models.UniqueConstraint(models.functions.Lower('name'), 'institute', name='unique_program_name_institute'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 # ── User Manager ────────────────────────────────────────────────────────────
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):

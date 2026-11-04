@@ -20,6 +20,7 @@ const pages = {
   '/admin/placements': () => import('../pages/admin/AdminPlacements'),
   '/admin/assessments': () => import('../pages/admin/AdminAssessments'),
   '/admin/batches': () => import('../pages/admin/AdminBatches'),
+  '/admin/institutes': () => import('../pages/admin/AdminInstitutes'),
   '/admin/skills': () => import('../pages/admin/AdminSkills'),
   '/admin/companies': () => import('../pages/admin/AdminCompanies'),
 }

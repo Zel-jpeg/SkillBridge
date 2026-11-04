@@ -32,6 +32,7 @@ export const ROLE_NAVIGATION = {
     { label: 'Retake requests', path: '/admin/retake-requests', icon: 'retakes' },
     { label: 'New Assessment', path: '/admin/assessment/create', icon: 'create' },
     { label: 'Batches', path: '/admin/batches', icon: 'batches' },
+    { label: 'Institutes & Programs', path: '/admin/institutes', icon: 'institutes' },
     { label: 'Reports & Analytics', path: '/admin/reports', icon: 'reports' },
   ],
 }

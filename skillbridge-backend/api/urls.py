@@ -15,9 +15,14 @@ from .assessment_interruptions import assessment_interruption
 from .retake_requests import student_request, request_queue, review_request, evidence
 from .sse import admin_events, instructor_events, student_events
 from .health import health
+from . import organization
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('admin/institutes/', organization.institutes, name='admin_institutes'),
+    path('admin/institutes/<int:object_id>/', organization.institute_detail, name='admin_institute_detail'),
+    path('admin/institutes/<int:institute_id>/programs/', organization.programs, name='admin_programs'),
+    path('admin/institutes/<int:institute_id>/programs/<int:object_id>/', organization.program_detail, name='admin_program_detail'),
     path('instructor/batches/<int:batch_id>/publish-assessments/', publish_assessments, name='publish_assessments'),
     path('admin/partners/<int:object_id>/archive/', catalog_archive, {'kind': 'partner'}, name='partner_archive'),
     path('admin/positions/<int:object_id>/archive/', catalog_archive, {'kind': 'position'}, name='position_archive'),

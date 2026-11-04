@@ -39,6 +39,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
 const AdminSkills = lazy(() => import('./pages/admin/AdminSkills'))
 const AdminAssessments = lazy(() => import('./pages/admin/AdminAssessments'))
 const AdminBatches = lazy(() => import('./pages/admin/AdminBatches'))
+const AdminInstitutes = lazy(() => import('./pages/admin/AdminInstitutes'))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
 const AdminPlacements = lazy(() => import('./pages/admin/AdminPlacements'))
 const StudentRetakeRequest = lazy(() => import('./pages/student/StudentRetakeRequest'))
@@ -125,6 +126,7 @@ function App() {
         <Route path="/admin/assessments/archives" element={<Page><AssessmentArchives role="admin" /></Page>} />
         <Route path="/admin/assessment/create" element={<Page><InstructorUpload role="admin" /></Page>} />
         <Route path="/admin/batches" element={<Page><AdminBatches /></Page>} />
+        <Route path="/admin/institutes" element={<Page><AdminInstitutes /></Page>} />
         <Route path="/admin/reports" element={<Page><AdminReports /></Page>} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

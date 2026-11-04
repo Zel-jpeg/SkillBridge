@@ -134,6 +134,7 @@ export function RouteSkeleton({ pathname = '/', search = '' }) {
   else if (section === 'placements') content = <><ContentSkeleton layout="placement-stats" count={3} /><ContentSkeleton layout="control" /><ContentSkeleton layout="placement-company-cards" columns={2} /></>
   else if (section === 'companies') content = <><ContentSkeleton layout="map" /><ContentSkeleton layout={role === 'admin' ? 'placement-company-cards' : 'company-cards'} columns={role === 'admin' ? 2 : 3} /></>
   else if (section === 'skills') content = <><ContentSkeleton layout="control" /><ContentSkeleton layout="table" columns={3} /></>
+  else if (section === 'institutes') content = <><ContentSkeleton layout="control" /><ContentSkeleton layout="cards" count={4} columns={2} /></>
   else if (section === 'students' || section === 'users' || section === 'batches') content = <>{section === 'students' && <ContentSkeleton layout="roster-stats" count={8} />}<ContentSkeleton layout="control" /><CollectionSkeleton kind={section === 'batches' ? 'batch' : section === 'users' ? 'user' : 'student'} /></>
   else content = <ContentSkeleton layout="panel" />
   return <div className={`sk-route-page ${creating || section === 'setup' ? 'sk-route-page-form' : profile ? 'sk-route-page-profile' : ''}`}>

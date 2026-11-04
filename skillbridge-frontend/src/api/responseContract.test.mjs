@@ -3,6 +3,20 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('organization catalog rejects malformed success envelopes before they reach the cache', () => {
+  const config = { method: 'get', url: '/api/admin/institutes/' }
+  const row = { id: 1, code: 'EX', name: 'Example', description: '', is_active: true, program_count: 0 }
+  const data = { count: 1, page: 1, page_size: 8, results: [row] }
+  assert.doesNotThrow(() => validateApiResponse({ data, config, status: 200 }))
+  for (const bad of [{ ...data, count: -1 }, { ...data, page: 2 }, { ...data, results: [{}] }, { ...data, results: [{ ...row, is_active: 'true' }] }]) {
+    assert.throws(() => validateApiResponse({ data: bad, config, status: 200 }))
+  }
+  const program = { ...row, institute_id: 1, aliases: ['Example degree'] }
+  const programConfig = { method: 'post', url: '/api/admin/institutes/1/programs/' }
+  assert.doesNotThrow(() => validateApiResponse({ data: program, config: programConfig, status: 201 }))
+  assert.throws(() => validateApiResponse({ data: { ...program, aliases: [1] }, config: programConfig, status: 201 }))
+})
+
 test('enrollment responses must confirm saved rows and accurate counts before showing success', () => {
   const config = { method: 'post', url: '/api/instructor/batches/2/enroll/' }
   for (const data of [{}, { rows: [], summary: { total: 0, ready: 0, enrolled: 1, notifications_queued: 1 } }]) {

@@ -73,24 +73,25 @@ Branch: `codex/multi-institute-plan`.
 
 - [x] Record agreed scope, research and user corrections.
 - [x] Create this checkbox tracker with sequential feature gates and no-push rule.
-- [ ] Validate links/whitespace and commit/merge the planning branch locally.
+- [x] Validate links/whitespace and commit/merge the planning branch locally (`1fa6e1d`).
 
 ### F01 — Institute/program administration
 
 Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
-- [ ] Institute/program models with stable IDs, typed fields, case-insensitive
+- [x] Institute/program models with stable IDs, typed fields, case-insensitive
   code uniqueness, protected relationships and ordinary active/archive status.
-- [ ] Admin-only list/create/edit/archive/restore APIs with bounded pagination,
+- [x] Admin-only list/create/edit/archive/restore APIs with bounded pagination,
   search/status filters, transaction/audit behavior and explicit validation.
-- [ ] Admin Institutes & Programs screen: lists, forms, program scope, search,
+- [x] Admin Institutes & Programs screen: lists, forms, program scope, search,
   status filters, pagination, cancel/retry and accessible responsive interactions.
-- [ ] No mandatory program seed, IC restriction or mutation of existing records.
-- [ ] PostgreSQL API tests for roles, malformed data, duplicates, archive/restore,
+- [x] No mandatory program seed, IC restriction or mutation of existing records.
+- [x] PostgreSQL API tests for roles, malformed data, duplicates, archive/restore,
   hierarchy conflicts and audit/rollback behavior.
-- [ ] Upgrade/fresh-migration preservation, drift and system checks.
-- [ ] Frontend tests/lint/build and real-API admin browser journey.
-- [ ] Configured migration readiness/application receipt or explicit pending gate.
+- [x] Upgrade/fresh-migration preservation, drift and system checks.
+- [x] Frontend tests/lint/build and real-API admin browser journey.
+- [x] Configured migration readiness/application receipt: 0032 applied after
+  verified isolated restore; 39 pre-existing public data tables unchanged.
 - [ ] Commit and merge locally; receipt complete before F02 begins.
 
 ### F02 — Instructor assignments
@@ -244,12 +245,18 @@ may live in ignored `work/`; credentials and personal records must not be logged
 
 Current checkpoint:
 
-- Branch: `codex/multi-institute-plan` (planning changes from current request).
-- Completed: source review, agreed scope, research, tracker and sequential gates.
-- Checks: planning link/diff validation pending for this branch.
-- Current feature: P00, then F01 only. F02 must not start until F01 is done/tested.
-- Configured database: untouched; no migration applied for this update yet.
+- Branch: `codex/institute-program-admin`, base `1fa6e1d` (planning merged locally).
+- Completed: F01 catalog models/API/UI and verification; see
+  [feature receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md).
+- Checks: 614 PostgreSQL backend tests, 265 frontend tests, lint/build, Django
+  check/drift and 11 real-API browser groups passed. Desktop/phone images reviewed.
+- Current feature: F01 only. F02 has not started.
+- Configured database: 0032 applied after verified isolated backup restore; 39
+  pre-existing public data tables unchanged, two empty tables added. Initial
+  Windows pipe issue was fixed before the successful attempt; both owned restore
+  helpers were stopped. No existing records reclassified or recalculated.
 - GitHub: no push performed or authorized.
-- Known failures: none reproduced in planning; application baseline not yet run.
-- Exact next step: validate/commit/merge P00 locally, branch F01, implement and
-  verify institute/program admin end to end before starting another feature.
+- Known failures: no remaining application or migration failure. Local
+  commit/merge is still pending.
+- Exact next step: validate documentation/diff and commit/merge F01 locally.
+  Do not start F02 before this gate finishes.

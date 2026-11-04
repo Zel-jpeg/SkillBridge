@@ -1,5 +1,6 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
+  organization: [/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/)?)?)?$/],
   email: [/^\/api\/instructor\/batches\/\d+\/(?:emails|email-progress)\/$/],
   users: [/^\/api\/admin\/(users|stats|batch-instructors)\/$/, /^\/api\/auth\/me\/$/],
   management: [/^\/api\/admin\/management-actions\/$/, /^\/api\/retake-requests\/$/, /^\/api\/assessments\/\d+\/retake-request\/$/],

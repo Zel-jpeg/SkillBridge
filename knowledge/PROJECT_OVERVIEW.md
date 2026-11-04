@@ -17,7 +17,9 @@ IBPA is the confirmed current name; Entrepreneurship/Tourism are testing example
 Existing IC records stay in the normal IC section with their current statuses;
 IC will be left unused in practice because it uses InternLink. No special
 history-only/read-only mode, automatic archive or IC workflow restrictions are
-requested. Organization changes are planned, not implemented or migrated. See the
+requested. F01 institute/program admin catalog and additive migration 0032 are
+implemented and verified; instructor assignments, enrollment integration and
+existing-record organization mapping remain subsequent features. See the
 [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
 
 ## Architecture
@@ -76,6 +78,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Institute/program administration](INSTITUTE_PROGRAM_ADMINISTRATION.md):
+  F01 admin catalog API/screen, additive migration 0032, real-API responsive checks
+  and preservation evidence; see its receipt and tracker for migration/merge status.
+
 - [Multi-institute implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md):
   Active checkbox guide, one-feature-at-a-time gates, feature branches and local
   merges, tested-migration authorization, no-push rule and resume checkpoint.
@@ -88,7 +94,8 @@ and fallback when explaining results.
 - [Multi-institute generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md):
   Proposed institute/program configuration, scoped access and competency frameworks,
   recommendation isolation, supplied DNSC LMS AIKEN comparison, sixteen workstreams
-  and a bounded 4–8 November pilot sequence; documentation only, not implemented.
+  and a bounded 4–8 November pilot sequence; see the active tracker for delivered
+  features and verification rather than treating the whole proposal as complete.
 
 - [Student assessment taking layout](STUDENT_ASSESSMENT_TAKING_LAYOUT.md): Original
   phone/tablet design with centered timer/choice letters, red shield badge,
