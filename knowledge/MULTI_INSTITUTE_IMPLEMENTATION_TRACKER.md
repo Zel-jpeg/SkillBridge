@@ -154,12 +154,15 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F06 — Category content and tag assistance
 
-- [ ] Branch `codex/scoped-category-assistance` after F05.
-- [ ] Saved program content takes precedence; manual entry and abstention remain.
+- [x] Branch `codex/scoped-category-assistance` after F05 (`ef3f603`).
+- [x] Saved program content takes precedence; manual entry and abstention remain.
   Optional researched starter content has source attribution and no live scrape
   dependency or auto-overwrite. No required Entrep/Tourism catalog.
-- [ ] Test unfamiliar/ambiguous text, obsolete responses, foreign scope, failure
-  recovery and manual override; receipt and local merge.
+- [x] Test unfamiliar/ambiguous text, obsolete responses, foreign scope, failure
+  recovery and manual override; [receipt](SCOPED_COMPETENCY_ASSISTANCE.md):
+  684 backend/274 frontend tests, check/drift/lint/build, seven assistance and six
+  retained catalog browser groups passed. No schema/configured data changes.
+- [ ] Commit and merge F06 locally before F07.
 
 ### F07 — Framework-aware assessment authoring
 

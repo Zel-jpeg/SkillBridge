@@ -18,9 +18,12 @@ from .health import health
 from . import organization
 from . import instructor_assignments
 from . import competencies
+from . import competency_assistance
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/assist/category/', competency_assistance.assist_category, name='framework_assist_category'),
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/assist/tags/', competency_assistance.assist_tags, name='framework_assist_tags'),
     path('management/competency-programs/', competencies.catalog_programs, name='competency_programs'),
     path('management/competency-programs/<int:program_id>/', competencies.catalog_programs, name='competency_program_detail'),
     path('management/programs/<int:program_id>/frameworks/', competencies.frameworks, name='program_frameworks'),

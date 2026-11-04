@@ -8,12 +8,39 @@ import DialogShell from '../components/DialogShell'
 import ProgramSelect from '../components/ProgramSelect'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
+import { useScopedAssistance } from '../hooks/useScopedAssistance'
+import { mergeSuggestedTags } from '../utils/competencyAssistance'
 import { organizationField as field, organizationButton as button, organizationPrimary as primary } from '../components/admin/organizationUi'
 
 const PROGRAMS = '/api/management/competency-programs/'
 const surface = 'rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900'
 
-function Editor({ kind, row, source, url, onClose, onSaved }) {
+const assistanceMessages = {
+  empty_catalog: 'No saved categories yet. Enter your own definition and tags.',
+  empty_text: 'Enter some text to check against the saved definitions.',
+  no_match: 'No clear match in these definitions. Choose or define a category manually.',
+  ambiguous: 'Several categories are similar. Review their definitions and choose manually.',
+  unavailable: 'Suggestions are unavailable. Continue with manual entry.',
+  no_suggestions: 'This saved category has no tags to reuse. Enter your own vocabulary.',
+}
+
+function QuestionCheck({ detail, digest }) {
+  const [question, setQuestion] = useState('')
+  const assistance = useScopedAssistance(`${detail}assist/category/`, { question_text: question }, digest)
+  return <div className="mt-4 space-y-3 text-xs">
+    <p>Compare question wording with this version’s saved names, definitions and tags. Similarity is a text clue; review the category yourself.</p>
+    <label className="block space-y-2 font-semibold">Question to check<textarea aria-label="Question to check" className={`${field} min-h-24`} maxLength={4000} value={question} onChange={event => setQuestion(event.target.value)} /></label>
+    <button type="button" className={button} disabled={assistance.loading || !question.trim()} onClick={assistance.run}>{assistance.loading ? 'Checking…' : 'Check saved categories'}</button>
+    {assistance.error && <p role="alert">{assistance.error} You can still choose a category manually.</p>}
+    {assistance.data && <div role="status" className="space-y-2">
+      <p>{assistance.data.status === 'matched' ? `Suggested category: ${assistance.data.suggested_category.name}. Review its definition before use.` : assistanceMessages[assistance.data.status]}</p>
+      {assistance.data.candidates.length > 0 && <ul className="list-inside list-disc space-y-1" aria-label="Similar saved categories">{assistance.data.candidates.map(candidate => <li key={candidate.id}>{candidate.name}</li>)}</ul>}
+      <p className="text-gray-500">This check does not save questions or change scores.</p>
+    </div>}
+  </div>
+}
+
+function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
   const category = kind === 'category'
   const [name, setName] = useState(row?.name || source?.name || '')
   const [description, setDescription] = useState(row?.description || source?.description || '')
@@ -23,6 +50,7 @@ function Editor({ kind, row, source, url, onClose, onSaved }) {
   const [discard, setDiscard] = useState(false)
   const [requestId] = useState(() => crypto.randomUUID())
   const pending = useRef(false)
+  const assistance = useScopedAssistance(`${url.replace(/categories\/$/, '')}assist/tags/`, { name, description }, framework?.digest)
   const title = category ? row ? 'Edit category' : 'Add category' : row ? 'Edit framework' : source ? 'Create new version' : 'Create framework'
   const changed = name !== (row?.name || source?.name || '') || description !== (row?.description || source?.description || '') || tags !== (row?.tags || []).join(', ')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
@@ -48,6 +76,14 @@ function Editor({ kind, row, source, url, onClose, onSaved }) {
         <label className="block space-y-2 font-semibold">Name<input className={field} aria-label="Name" maxLength={category ? 100 : 160} value={name} onChange={event => setName(event.target.value)} required /></label>
         <label className="block space-y-2 font-semibold">Description<textarea className={`${field} min-h-28`} aria-label="Description" maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} required={category} /></label>
         {category && <label className="block space-y-2 font-semibold">Tags, separated by commas<input className={field} aria-label="Tags" value={tags} onChange={event => setTags(event.target.value)} placeholder="Add your program’s vocabulary" /><span className="block font-normal text-gray-500">Up to 30 tags, 80 characters each. Manual tags stay under your control.</span></label>}
+        {category && <section className="space-y-3 break-words rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-label="Optional tag assistance">
+          <p>Reuse vocabulary from saved categories in this framework, or enter tags manually. Review definitions against your program’s curriculum or an applicable published standard.</p>
+          <button type="button" className={button} disabled={assistance.loading || !name.trim() && !description.trim()} onClick={assistance.run}>{assistance.loading ? 'Finding…' : 'Find saved tags'}</button>
+          {assistance.error && <p role="alert">{assistance.error} Manual entry is still available.</p>}
+          {assistance.data && <div role="status" className="space-y-2">
+            {assistance.data.suggested_tags.length ? <><p>Saved tags from {assistance.data.source_category.name}: {assistance.data.suggested_tags.join(', ')}</p><button type="button" className={button} onClick={() => setTags(current => mergeSuggestedTags(current, assistance.data.suggested_tags))}>Add suggested tags</button><p className="text-gray-500">Adds new tags within the 30-tag limit. Your existing tags stay first; nothing is saved until you submit this form.</p></> : <p>{assistanceMessages[assistance.data.status]}</p>}
+          </div>}
+        </section>}
       </fieldset>
     </form>
     {discard && <ConfirmModal title="Discard definition changes?" message="Your unsaved definition changes will be discarded." confirmLabel="Discard changes" onCancel={() => setDiscard(false)} onConfirm={onClose} />}
@@ -94,6 +130,7 @@ function Categories({ programId, frameworkId, onBack }) {
       </header>
       {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
+      <details className={`${surface} break-words text-xs`}><summary className="cursor-pointer font-semibold">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
       <label className="block space-y-2 text-xs font-semibold">Search categories<input className={field} type="search" aria-label="Search categories" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
       <DataSection url={url} layout="cards" count={4}>
         <p className="text-xs text-gray-500" role="status">{data?.count ?? 0} {data?.count === 1 ? 'category' : 'categories'}</p>
@@ -105,7 +142,7 @@ function Categories({ programId, frameworkId, onBack }) {
         {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500">{search ? 'No categories match this search.' : 'No categories yet. Add a defined skill area for this program.'}</p>}
         {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
       </DataSection>
-      {editor && <Editor {...editor} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
+      {editor && <Editor {...editor} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
       {action && <ConfirmModal tone="confirm" title={action === 'freeze' ? 'Freeze this version?' : action === 'retire' ? 'Retire this version?' : 'Restore this version?'} message={action === 'freeze' ? 'Names, descriptions and tags will become read-only. Review every category first. Later revisions need a new version; existing evidence keeps these definitions.' : action === 'retire' ? 'This version remains available for retained records. Its definitions will not accept new edits.' : 'Restore this version for its existing context. Frozen definitions stay frozen.'} confirmLabel={action === 'freeze' ? 'Freeze definitions' : action === 'retire' ? 'Retire version' : 'Restore version'} onCancel={() => { if (!busy) setAction(null) }} onConfirm={changeVersion} />}
     </>}
   </div></DataSection>

@@ -52,6 +52,8 @@ try:
             script = 'dynamic_profiles_playwright.py'
         if '--competencies' in sys.argv:
             script = 'competencies_playwright.py'
+        if '--competency-assistance' in sys.argv:
+            script = 'competency_assistance_playwright.py'
         for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
             ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py')]:
             if option in sys.argv:

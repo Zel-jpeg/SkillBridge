@@ -3,6 +3,26 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('scoped assistance rejects foreign framework, malformed vocabulary and invented match envelopes', () => {
+  const shared = { method: 'saved-framework-tfidf-v1', framework_id: 7, framework_digest: 'c'.repeat(64) }
+  const category = { id: 8, name: 'Saved knowledge', similarity: 0.6 }
+  const matched = { ...shared, status: 'matched', suggested_category: category, candidates: [category] }
+  const config = { method: 'post', url: '/api/management/programs/3/frameworks/7/assist/category/' }
+  assert.doesNotThrow(() => validateApiResponse({ config, status: 200, data: matched }))
+  for (const data of [{ ...matched, framework_id: 9 }, { ...matched, candidates: [] }, { ...matched, status: 'ambiguous' },
+    { ...matched, suggested_category: { ...category, similarity: 9 } }]) {
+    assert.throws(() => validateApiResponse({ config, status: 200, data }))
+  }
+  const tags = { ...shared, status: 'suggestions', suggested_tags: ['Saved vocabulary'], source_category: category, source: 'saved_exact_name' }
+  config.url = config.url.replace('/category/', '/tags/')
+  assert.doesNotThrow(() => validateApiResponse({ config, status: 200, data: tags }))
+  for (const data of [{ ...tags, suggested_tags: [false] }, { ...tags, suggested_tags: ['x'.repeat(81)] },
+    { ...tags, source_category: null }, { ...tags, status: 'no_suggestions' }]) {
+    assert.throws(() => validateApiResponse({ config, status: 200, data }))
+  }
+  assert.throws(() => validateApiResponse({ config, status: 200, data: {} }), error => error.userMessage === 'The server returned invalid data. Please retry.')
+})
+
 test('competency pages reject malformed definition flags, tags and program identities before caching', () => {
   const program = { id: 3, institute_id: 1, code: 'ANY', name: 'Any Degree', institute_name: 'Any Institute', institute_code: 'ANY', is_active: true }
   const framework = { id: 7, program_id: 3, version: 1, program, name: 'Knowledge', description: 'Defined scope', is_active: true, locked: false, can_edit: true, can_manage: true, category_count: 1, digest: 'a'.repeat(64) }

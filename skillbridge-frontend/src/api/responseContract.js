@@ -10,6 +10,10 @@ const frameworkRow = row => object(row) && id(row.id) && id(row.program_id) && i
 const competencyCategory = row => object(row) && id(row.id) && id(row.framework_id) && typeof row.name === 'string' &&
   typeof row.description === 'string' && Array.isArray(row.tags) && row.tags.every(tag => typeof tag === 'string') &&
   typeof row.can_edit === 'boolean' && digest(row.digest)
+const assistanceCandidate = row => object(row) && id(row.id) && typeof row.name === 'string' &&
+  Number.isFinite(row.similarity) && row.similarity >= 0 && row.similarity <= 1
+const assistanceEnvelope = (data, path) => object(data) && data.method === 'saved-framework-tfidf-v1' &&
+  id(data.framework_id) && data.framework_id === Number(path.match(/frameworks\/(\d+)/)?.[1]) && digest(data.framework_digest)
 const catalogPage = (data, row) => object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && id(data.page) && id(data.page_size) && data.page_size <= 50 &&
   data.page <= Math.max(1, Math.ceil(data.count / data.page_size)) && Array.isArray(data.results) && data.results.length <= Math.min(data.count, data.page_size) && data.results.every(row)
 const pagination = (data, rows) => data.pagination === undefined || (
@@ -34,7 +38,16 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (/^\/api\/management\/competency-programs\/(?:\d+\/)?$/.test(path)) {
+  if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/assist\/category\/$/.test(path)) {
+    valid = assistanceEnvelope(data, path) && ['matched', 'ambiguous', 'no_match', 'empty_catalog', 'empty_text', 'unavailable'].includes(data.status) &&
+      Array.isArray(data.candidates) && data.candidates.length <= 3 && data.candidates.every(assistanceCandidate) &&
+      (data.status === 'matched' ? assistanceCandidate(data.suggested_category) && data.suggested_category.id === data.candidates[0]?.id : data.suggested_category === null)
+  } else if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/assist\/tags\/$/.test(path)) {
+    valid = assistanceEnvelope(data, path) && ['suggestions', 'no_suggestions', 'ambiguous', 'no_match', 'empty_catalog', 'empty_text', 'unavailable'].includes(data.status) &&
+      ['saved_exact_name', 'saved_framework'].includes(data.source) && Array.isArray(data.suggested_tags) && data.suggested_tags.length <= 30 &&
+      data.suggested_tags.every(tag => typeof tag === 'string' && tag.trim() && tag.length <= 80) &&
+      (data.status === 'suggestions' ? data.suggested_tags.length > 0 && object(data.source_category) && id(data.source_category.id) && typeof data.source_category.name === 'string' : data.suggested_tags.length === 0 && data.source_category === null)
+  } else if (/^\/api\/management\/competency-programs\/(?:\d+\/)?$/.test(path)) {
     valid = path === '/api/management/competency-programs/' ? catalogPage(data, competencyProgram) : competencyProgram(data)
   } else if (/^\/api\/management\/programs\/\d+\/frameworks\/(?:\d+\/)?$/.test(path)) {
     valid = method === 'get' && /\/frameworks\/$/.test(path) ? catalogPage(data, frameworkRow) : frameworkRow(data)
@@ -171,7 +184,7 @@ export function validateApiResponse(response) {
   if (!valid) {
     const error = new Error('Invalid API response envelope')
     error.code = 'ERR_BAD_RESPONSE'
-    error.userMessage = ['get', 'head', 'options'].includes(method)
+    error.userMessage = ['get', 'head', 'options'].includes(method) || /^\/api\/management\/programs\/\d+\/frameworks\/\d+\/assist\/(?:category|tags)\/$/.test(path)
       ? 'The server returned invalid data. Please retry.'
       : 'The save could not be confirmed. Refresh the current records before trying again.'
     error.response = { ...response, data: { error: error.userMessage } }

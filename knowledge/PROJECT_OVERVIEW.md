@@ -79,6 +79,11 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Scoped competency assistance](SCOPED_COMPETENCY_ASSISTANCE.md):
+  F06 optional saved-definition category checks and tag reuse, explicit manual
+  acceptance, abstention, scoped vocabulary and obsolete-response protection;
+  see its receipt and the tracker for verification and merge status.
+
 - [Program competency frameworks](PROGRAM_COMPETENCY_FRAMEWORKS.md):
   F05 shared program libraries, creator/admin definition rules, protected frozen
   versions, scoped events, nullable migration 0036 and legacy compatibility;
