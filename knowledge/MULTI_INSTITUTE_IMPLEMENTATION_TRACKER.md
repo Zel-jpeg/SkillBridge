@@ -149,7 +149,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   [receipt](PROGRAM_COMPETENCY_FRAMEWORKS.md): 674 backend/271 frontend tests,
   check/drift/lint/build and six catalog plus 11 retained browser groups passed.
   Configured 0036 preserved all 42 old data tables/columns; one empty table added.
-- [ ] Commit and merge F05 locally before F06 (all verification gates passed).
+- [x] Commit and merge F05 locally before F06: implementation `3e70772`
+  fast-forward merged into local main; no push.
 
 ### F06 — Category content and tag assistance
 
@@ -260,10 +261,10 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F05 gates complete, preparing local merge (5 November 2026):
+Current checkpoint — F05 complete and locally merged (5 November 2026):
 
-- Active branch `codex/program-competency-frameworks`, base/local main `f30c03e`.
-  F05 edits are verified but not yet committed or merged.
+- F05 branch `codex/program-competency-frameworks`, base `f30c03e`,
+  implementation `3e70772` fast-forward merged into local main.
 - F01–F04 are complete and locally merged. F03 implementation `54303ec`, receipt
   `e1afb99`; F04 implementation `4241a66`, receipt `f30c03e`. No GitHub push.
 - F05: shared program framework/category catalog; creator/admin unused editing,
@@ -291,5 +292,5 @@ Current checkpoint — F05 gates complete, preparing local merge (5 November 202
   were corrected. One frontend contract test incorrectly tried POST on a read-only
   program-options endpoint; corrected and final 271-test run passed.
 - All owned helpers stopped. No deployment or GitHub push.
-- Exact next step: commit F05 task files, merge locally, record its merge receipt;
-  only then create `codex/scoped-category-assistance` and implement/test F06.
+- Exact next step: merge this receipt locally, then create
+  `codex/scoped-category-assistance` and implement/test F06.

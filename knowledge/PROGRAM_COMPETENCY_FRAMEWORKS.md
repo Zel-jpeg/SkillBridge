@@ -124,3 +124,6 @@ Browser SSE transport is disabled in the fixture; recipient/invalidation behavio
 is separately tested. No live Google identity, email delivery, hosted deployment,
 academic validity of arbitrary definitions or new matching accuracy is claimed.
 No GitHub push or deployment is authorized here.
+
+Implementation `3e70772` was fast-forward merged into local `main` after all
+verification and configured migration gates passed. No GitHub push or deployment.
