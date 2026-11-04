@@ -106,8 +106,9 @@ restore on 4 November 2026. All **41 pre-existing public data tables** retained
 their hashes/counts, and the new assignment table is empty. Receipt:
 `work/organization-configured-migration-w3op0r26/receipt.json`. No assignments,
 emails, scores or user changes were generated. The owned restore cluster stopped.
-Local commit/merge is pending. F03 must not begin until the final regression and
-local merge gates are recorded.
+Implementation `1b237b0` was committed and fast-forward merged into local `main`
+after its final regression and migration gates passed. F02 is complete. F03 may
+proceed on its own branch under the continuous sequential workflow.
 The final full regression passed after preserving explicit collection ordering
 when reusing the pagination helper for assignment rows.
 No GitHub push or deployment is authorized or performed.

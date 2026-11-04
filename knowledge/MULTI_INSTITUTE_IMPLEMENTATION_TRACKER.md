@@ -106,7 +106,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   rollback, admin flows and required migrations; 629 backend/267 frontend tests,
   nine new and 11 retained browser groups pass. 0033 applied after backup restore;
   [receipt](INSTRUCTOR_PROGRAM_ASSIGNMENTS.md) records preservation.
-- [ ] Commit and merge F02 locally before starting F03.
+- [x] Commit and merge F02 locally before starting F03: `1b237b0` merged into `main`.
 
 ### F03 — Batch and enrollment context
 
@@ -249,15 +249,14 @@ may live in ignored `work/`; credentials and personal records must not be logged
 
 Current checkpoint:
 
-- Branch: `codex/instructor-program-assignments`, base `02e20f0`.
+- Branch: local `main` after F02 merge; retained feature branch
+  `codex/instructor-program-assignments`, implementation `1b237b0`, base `02e20f0`.
 - Completed: F01 catalog models/API/UI, configured migration and local merge; see
   [feature receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md).
 - Checks: 614 PostgreSQL backend tests, 265 frontend tests, lint/build, Django
   check/drift and 11 real-API browser groups passed. Desktop/phone images reviewed.
-- Current milestone: F02 implementation in progress. Assignment models, protected
-  API, current program options and admin dialogs are implemented; final regression,
-  browser, migration and local merge gates remain open. Development is continuous:
-  proceed to F03 automatically only after all F02 gates pass.
+- Current milestone: F02 complete, tested, migrated and locally merged.
+  Development is continuous: proceed directly to F03 on its own branch.
 - Configured database: 0032 applied after verified isolated backup restore; 39
   pre-existing public data tables unchanged, two empty tables added. Initial
   Windows pipe issue was fixed before the successful attempt; both owned restore
@@ -270,5 +269,5 @@ Current checkpoint:
   267 frontend tests, lint/build, nine assignment browser groups and all 11 F01
   browser groups passed, including the replay after retaining explicit ordering
   in shared pagination (`work/organization-postgres-d56ir3zd/`).
-- Exact next step: commit/merge F02 locally; then
-  start F03 on a fresh feature branch without stopping for another permission.
+- Exact next step: start `codex/program-batches-enrollment` from local main and
+  implement/test F03 end to end. Keep future features separate and never push.
