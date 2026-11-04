@@ -102,3 +102,6 @@ Google identity, real email delivery, hosted deployment and live external-provid
 availability are not claimed tested. Real-API setup uses cached real Leaflet with
 synthetic addresses/tiles; older recovery tests use explicit provider fixtures.
 No GitHub push or deployment is part of this feature.
+
+Implementation `4241a66` was fast-forward merged into local `main` after all
+verification and configured migration gates passed. No GitHub push or deployment.

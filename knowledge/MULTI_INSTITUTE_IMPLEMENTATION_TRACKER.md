@@ -134,7 +134,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   profile/returning-student recovery; [receipt](DYNAMIC_PROGRAM_PROFILES.md):
   655 PostgreSQL/269 frontend tests, lint/build/check/drift and 22 browser groups
   passed. Configured 0035 preserved all 42 old data tables and fields.
-- [ ] Commit and merge F04 locally before F05 (all gates passed).
+- [x] Commit and merge F04 locally before F05: implementation `4241a66`
+  fast-forward merged into local main. No push.
 
 ### F05 — Program competency frameworks
 
@@ -255,7 +256,7 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F04 gates complete, preparing local merge (5 November 2026):
+Current checkpoint — F04 complete and locally merged (5 November 2026):
 
 - F03 branch `codex/program-batches-enrollment`, base `26edb37`, implementation
   `54303ec` fast-forward merged into local `main`. This receipt is recorded on
@@ -280,8 +281,8 @@ Current checkpoint — F04 gates complete, preparing local merge (5 November 202
   superseded; see [feature receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md).
   Broader profiles, frameworks, matching isolation, AIKEN and mapping remain
   future features, not claimed complete by these checks.
-- Current branch `codex/dynamic-program-profiles`, base `e1afb99`; F04 changes
-  are uncommitted and fully verified. Read-only student programs, neutral account
+- F04 branch `codex/dynamic-program-profiles`, base `e1afb99`, implementation
+  `4241a66` fast-forward merged into local main. Read-only student programs, neutral account
   defaults, optional atomic instructor/program grants, current assignment display,
   program-code filters and neutral copy are complete; see the F04 receipt.
 - F04 verification: 655 PostgreSQL tests (`work/organization-postgres-o5vlnucr/`),
@@ -303,5 +304,5 @@ Current checkpoint — F04 gates complete, preparing local merge (5 November 202
   dev-source-only import. Corrected fixtures and final passing runs supersede
   those attempts. No existing IC records were rewritten or moved.
 - All owned helpers stopped. No F05 implementation, deployment or GitHub push.
-- Exact next step: commit F04, merge into local main, record the merge receipt,
-  then create `codex/program-competency-frameworks` and complete F05 sequentially.
+- Exact next step: merge this receipt into local main, then create
+  `codex/program-competency-frameworks` and complete F05 sequentially.
