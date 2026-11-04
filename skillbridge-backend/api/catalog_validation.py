@@ -38,7 +38,7 @@ def tags_value(value):
 def requirements_value(value):
     if not isinstance(value, dict):
         invalid('requirements', 'requirements must be an object mapping known category names to percentages.')
-    categories = {category.name.casefold(): category for category in SkillCategory.objects.all()}
+    categories = {category.name.casefold(): category for category in SkillCategory.objects.filter(framework__isnull=True).all()}
     rows, seen = [], set()
     for name, percentage in value.items():
         if not isinstance(name, str) or name.casefold() not in categories:

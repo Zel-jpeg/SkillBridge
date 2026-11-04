@@ -3,6 +3,24 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('competency pages reject malformed definition flags, tags and program identities before caching', () => {
+  const program = { id: 3, institute_id: 1, code: 'ANY', name: 'Any Degree', institute_name: 'Any Institute', institute_code: 'ANY', is_active: true }
+  const framework = { id: 7, program_id: 3, version: 1, program, name: 'Knowledge', description: 'Defined scope', is_active: true, locked: false, can_edit: true, can_manage: true, category_count: 1, digest: 'a'.repeat(64) }
+  const category = { id: 8, framework_id: 7, name: 'Shared', description: 'Defined knowledge', tags: ['Manual'], can_edit: true, digest: 'b'.repeat(64) }
+  for (const [url, row, bad] of [
+    ['/api/management/competency-programs/', program, { ...program, is_active: 'true' }],
+    ['/api/management/programs/3/frameworks/', framework, { ...framework, program_id: 9 }],
+    ['/api/management/programs/3/frameworks/7/categories/', category, { ...category, tags: {} }],
+  ]) {
+    const config = { method: 'get', url }
+    const page = results => ({ count: 1, page: 1, page_size: 8, results })
+    assert.doesNotThrow(() => validateApiResponse({ config, status: 200, data: page([row]) }))
+    assert.throws(() => validateApiResponse({ config, status: 200, data: page([bad]) }))
+    assert.throws(() => validateApiResponse({ config, status: 200, data: [] }))
+    if (!url.includes('/competency-programs/')) assert.doesNotThrow(() => validateApiResponse({ config: { method: 'post', url }, status: 201, data: row }))
+  }
+})
+
 test('assignment lists and grants require explicit current access flags and valid parent IDs', () => {
   const row = { id: 1, instructor_id: 2, program_id: 3, institute_id: 4, name: 'Synthetic', email: 'synthetic@example.invalid', is_active: true, effective: true }
   const config = { method: 'post', url: '/api/admin/institutes/4/programs/3/instructors/' }

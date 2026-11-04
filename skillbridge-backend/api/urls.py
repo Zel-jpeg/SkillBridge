@@ -17,9 +17,16 @@ from .sse import admin_events, instructor_events, student_events
 from .health import health
 from . import organization
 from . import instructor_assignments
+from . import competencies
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('management/competency-programs/', competencies.catalog_programs, name='competency_programs'),
+    path('management/competency-programs/<int:program_id>/', competencies.catalog_programs, name='competency_program_detail'),
+    path('management/programs/<int:program_id>/frameworks/', competencies.frameworks, name='program_frameworks'),
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/', competencies.framework_detail, name='framework_detail'),
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/categories/', competencies.framework_categories, name='framework_categories'),
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/categories/<int:category_id>/', competencies.framework_categories, name='framework_category_detail'),
     path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructors/', instructor_assignments.program_instructors, name='program_instructors'),
     path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructors/<int:assignment_id>/', instructor_assignments.assignment_detail, name='instructor_assignment_detail'),
     path('admin/institutes/<int:institute_id>/programs/<int:program_id>/instructor-options/', instructor_assignments.instructor_options, name='program_instructor_options'),

@@ -1,6 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+test('competency invalidation stays within the affected program and never triggers legacy ranking reads', () => {
+  const urls = ['/api/management/programs/3/frameworks/?page=2', '/api/management/programs/3/frameworks/7/', '/api/management/programs/3/frameworks/7/categories/?search=Any', '/api/management/competency-programs/3/']
+  for (const url of urls) {
+    assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [3] }), true, url)
+    assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [4] }), false, url)
+    assert.equal(queryAffected(url, { topics: ['assignments'] }), true, url)
+    assert.equal(queryAffected(url, { topics: ['users'] }), true, url)
+    assert.equal(queryAffected(url, { resync: true }), true, url)
+  }
+  for (const url of ['/api/categories/', '/api/student/results/combined/', '/api/placements/draft/']) {
+    assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [3] }), false, url)
+  }
+})
+
 test('program revocation revalidates private staff batches and derived access without rerunning snapshots', () => {
   for (const path of ['/api/instructor/batches/', '/api/instructor/batches/2/students/?page=2',
     '/api/instructor/batches/2/emails/', '/api/instructor/assessments/', '/api/instructor/students/recommendations/',

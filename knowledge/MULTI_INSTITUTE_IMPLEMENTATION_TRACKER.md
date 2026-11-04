@@ -139,13 +139,17 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F05 — Program competency frameworks
 
-- [ ] Branch `codex/program-competency-frameworks` after F04.
-- [ ] Program-scoped categories and framework/version identities; same names in
+- [x] Branch `codex/program-competency-frameworks` after F04 (`f30c03e`).
+- [x] Program-scoped categories and framework/version identities; same names in
   different programs do not collide or establish equivalence.
-- [ ] Instructor category creation/reuse with definitions/tags, creator/admin
+- [x] Instructor category creation/reuse with definitions/tags, creator/admin
   unused-edit rules, used-definition versioning and protected references.
-- [ ] Test same-program reuse, foreign-program denial, used locks, legacy mapping
-  and upgrade preservation; complete UI/browser journey and local merge.
+- [x] Test same-program reuse, foreign-program denial, used locks, legacy
+  compatibility without inferred mapping (F14), and upgrade preservation;
+  [receipt](PROGRAM_COMPETENCY_FRAMEWORKS.md): 674 backend/271 frontend tests,
+  check/drift/lint/build and six catalog plus 11 retained browser groups passed.
+  Configured 0036 preserved all 42 old data tables/columns; one empty table added.
+- [ ] Commit and merge F05 locally before F06 (all verification gates passed).
 
 ### F06 — Category content and tag assistance
 
@@ -256,53 +260,36 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F04 complete and locally merged (5 November 2026):
+Current checkpoint — F05 gates complete, preparing local merge (5 November 2026):
 
-- F03 branch `codex/program-batches-enrollment`, base `26edb37`, implementation
-  `54303ec` fast-forward merged into local `main`. This receipt is recorded on
-  the retained feature branch and merged before F04 starts.
-- F01/F02 are complete and locally merged. F03 implements one-program new batches,
-  assigned owners, current-grant private access, program aliases and signed
-  enrollment context, required setup/profile support and transfer checks.
-  Existing IC/mixed batches remain ordinary records with their existing statuses.
-- Verification: 644 PostgreSQL tests (`work/organization-postgres-u9eihfls/`),
-  268 frontend tests, lint/build, Django check/drift and local documentation links
-  passed. Final browser suites: six F03 groups (`organization-browser-370oziqd`),
-  nine F02 groups (`organization-browser-0c3km7k8`), eleven F01 groups
-  (`organization-browser-p9lnfb49`), all under ignored `work/`, no page errors.
-- Configured 0034 applied after isolated public-schema restore and actual Django
-  migration rehearsal; all 42 existing public data tables retain their previous
-  values/counts, no new tables, three new nullable FK columns entirely null.
-  Receipt `work/organization-configured-migration-46agfz8m/receipt.json`.
-  No real records were mapped, archived, regraded or recalculated.
-- Operator also passed a fully synthetic source/restore run:
-  `work/program-migration-operator-ucwit4i2/results.json`.
-- Known failures: none remaining in F03. Earlier failed runs were fixed and
-  superseded; see [feature receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md).
-  Broader profiles, frameworks, matching isolation, AIKEN and mapping remain
-  future features, not claimed complete by these checks.
-- F04 branch `codex/dynamic-program-profiles`, base `e1afb99`, implementation
-  `4241a66` fast-forward merged into local main. Read-only student programs, neutral account
-  defaults, optional atomic instructor/program grants, current assignment display,
-  program-code filters and neutral copy are complete; see the F04 receipt.
-- F04 verification: 655 PostgreSQL tests (`work/organization-postgres-o5vlnucr/`),
-  269 frontend tests, lint/build, Django check/drift, documentation links and
-  whitespace passed. Browser: 11 real API groups (`organization-browser-frw28pon`),
-  five retained profile-layout groups (`organization-browser-334or_ac`), three
-  draft recovery groups (`organization-browser-0py4f8el`) and three external
-  recovery groups (`organization-browser-of8szln3`), all under ignored work/.
-  No page errors; desktop/phone images reviewed. Provider recovery's isolated
-  image fixture uses Vite dev for source imports; primary acceptance uses build.
-- Configured 0035 applied after isolated backup restore and actual Django
-  rehearsal; all 42 old public data tables retain all previous values/counts,
-  no new tables/columns. Receipt
-  `work/organization-configured-migration-j2licsf6/receipt.json`.
-  Synthetic operator rehearsal also passed at
-  `work/program-migration-operator-k4b5b32x/results.json`.
-- Known failures: none remaining. The first full F04 run found one test lacking
-  the page parameter; older browser fixtures had stale selectors/ports and a
-  dev-source-only import. Corrected fixtures and final passing runs supersede
-  those attempts. No existing IC records were rewritten or moved.
-- All owned helpers stopped. No F05 implementation, deployment or GitHub push.
-- Exact next step: merge this receipt into local main, then create
-  `codex/program-competency-frameworks` and complete F05 sequentially.
+- Active branch `codex/program-competency-frameworks`, base/local main `f30c03e`.
+  F05 edits are verified but not yet committed or merged.
+- F01–F04 are complete and locally merged. F03 implementation `54303ec`, receipt
+  `e1afb99`; F04 implementation `4241a66`, receipt `f30c03e`. No GitHub push.
+- F05: shared program framework/category catalog; creator/admin unused editing,
+  permanent freeze and used locks, clone-to-new-version identity, retire/restore,
+  stale-write digests, replay protection, protected score/question references,
+  current grant scope, program events and responsive catalog UI are complete.
+  New catalogs remain separate from legacy name-based authoring/ranking until
+  F07/F10. No existing category/evidence mapping was inferred; F14 remains open.
+- Verification: 674 PostgreSQL tests (`work/organization-postgres-svglv_11/`),
+  final focused 19 API/concurrency/migration tests
+  (`work/organization-postgres-btz73jm0/`), 271 frontend tests, lint/build,
+  Django check/drift, documentation links and whitespace passed. Catalog browser:
+  six groups (`work/organization-browser-onvtovak/`); retained program enrollment/
+  profile journey: eleven groups (`work/organization-browser-h5hx4o04/`).
+  No page errors; desktop catalog and phone/dark category dialog visually reviewed.
+- Synthetic 0036 operator rehearsal passed:
+  `work/program-migration-operator-myscsk6j/results.json`.
+- Configured 0036 applied after private public-schema backup, isolated restore and
+  actual Django rehearsal; all 42 old public data tables retain old values/counts,
+  one empty framework table and three null links added. Receipt:
+  `work/organization-configured-migration-qxf8x0rp/receipt.json`.
+  No reclassification, grading, recommendation rerun or real notification send.
+- Known failures: none remaining in F05. Earlier browser fixtures needed explicit
+  refresh for intentionally external writes with SSE disabled; stale-edit waits
+  were corrected. One frontend contract test incorrectly tried POST on a read-only
+  program-options endpoint; corrected and final 271-test run passed.
+- All owned helpers stopped. No deployment or GitHub push.
+- Exact next step: commit F05 task files, merge locally, record its merge receipt;
+  only then create `codex/scoped-category-assistance` and implement/test F06.

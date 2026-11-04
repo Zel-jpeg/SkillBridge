@@ -89,7 +89,7 @@ def prepared_data():
 def real_data():
     from .models import OJTPlacement, Position, SkillCategory, SkillScore, StudentResponse
 
-    categories = list(SkillCategory.objects.order_by('id'))
+    categories = list(SkillCategory.objects.filter(framework__isnull=True).order_by('id'))
     positions = [p for p in Position.objects.select_related('company').prefetch_related(
         'requirements__skill_category').order_by('id') if any(r.required_percentage > 0 for r in p.requirements.all())]
     position_ids = {p.id for p in positions}

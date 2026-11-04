@@ -4,8 +4,8 @@ import { ROLE_NAVIGATION, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPa
 
 const expected = {
   student: ['dashboard', 'assessments', 'results'],
-  instructor: ['dashboard', 'students', 'assessments', 'retake-requests', 'assessment/create', 'companies', 'placements', 'reports'],
-  admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
+  instructor: ['dashboard', 'students', 'competencies', 'assessments', 'retake-requests', 'assessment/create', 'companies', 'placements', 'reports'],
+  admin: ['dashboard', 'skills', 'competencies', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
 }
 
 test('identity labels follow structured student programs and live instructor assignments', () => {

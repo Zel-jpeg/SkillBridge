@@ -12,9 +12,10 @@ BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 OUT = Path(tempfile.mkdtemp(prefix='program-migration-operator-', dir=ROOT / 'work'))
 DATA = OUT / 'source-cluster'
 PYTHON = ROOT / 'skillbridge-backend/venv/Scripts/python.exe'
-MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0035_neutral_user_department'
-assert MIGRATION in ('0034_program_batch_context', '0035_neutral_user_department')
-PREVIOUS = '0034_program_batch_context' if MIGRATION.startswith('0035') else '0033_instructor_program_assignment'
+MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0036_program_competency_frameworks'
+PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
+            '0035_neutral_user_department': '0034_program_batch_context',
+            '0036_program_competency_frameworks': '0035_neutral_user_department'}[MIGRATION]
 with socket.socket() as sock:
     sock.bind(('127.0.0.1', 0))
     port = sock.getsockname()[1]
@@ -52,6 +53,7 @@ batch = Batch.objects.create(name='Preserved mixed IC cohort', instructor_id=own
 for index, course in enumerate(['BSIT','BSIS']):
     student = User.objects.create(email=f'operator-{index}@example.invalid', role='student', course=course)
     apps.get_model('api','BatchEnrollment').objects.create(batch_id=batch.id, student_id=student.id)
+apps.get_model('api','SkillCategory').objects.create(name='Retained IC category', description='Existing definition', tags=['Existing tag'])
 """
     run([PYTHON, 'manage.py', 'shell', '-c', seed.replace('PREVIOUS_MIGRATION', PREVIOUS)], 'seed.txt')
     command = [PYTHON, 'scripts/migrate_organization_catalog.py', '--migration', MIGRATION]
@@ -62,7 +64,12 @@ for index, course in enumerate(['BSIT','BSIS']):
     receipt = json.loads((Path(applied['receipt_directory']) / 'receipt.json').read_text(encoding='utf-8'))
     assert receipt['backup_restored_and_hash_verified']
     assert receipt['pending_after'] == [] and not receipt['regraded_or_recalculated']
-    assert receipt['new_nullable_columns'] == ({'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']} if MIGRATION.startswith('0034') else {})
+    assert receipt['new_nullable_columns'] == {
+        '0034_program_batch_context': {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']},
+        '0035_neutral_user_department': {},
+        '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
+    }[MIGRATION]
+    assert receipt['new_empty_tables'] == (['api_competencyframework'] if MIGRATION.startswith('0036') else [])
     summary = {'passed': True, 'migration': MIGRATION, 'synthetic_source_only': True, 'preserved_tables': receipt['preserved_tables'],
                'actual_backup_restore_and_django_rehearsal': True, 'receipt_directory': applied['receipt_directory']}
     (OUT / 'results.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')

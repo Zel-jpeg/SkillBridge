@@ -120,7 +120,7 @@ def recalculate_combined(student, batch):
         combined_changed(student, batch)
         return profile, progress, []
 
-    categories = list(SkillCategory.objects.all().order_by('id'))
+    categories = list(SkillCategory.objects.filter(framework__isnull=True).all().order_by('id'))
     recommendations = generate_combined_recommendations(
         student, batch, combined_scores, profile, categories,
     )

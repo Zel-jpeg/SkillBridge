@@ -16,7 +16,7 @@ from .skill_taxonomy import taxonomy_diagnostics
 def taxonomy_quality(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
-    return Response(taxonomy_diagnostics(SkillCategory.objects.order_by('id')))
+    return Response(taxonomy_diagnostics(SkillCategory.objects.filter(framework__isnull=True).order_by('id')))
 
 
 @api_view(['GET'])

@@ -133,6 +133,7 @@ class Batch(models.Model):
     name        = models.CharField(max_length=100)               # e.g. "AY 2025-2026"
     institute = models.ForeignKey(Institute, null=True, blank=True, on_delete=models.PROTECT, related_name='batches')
     program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.PROTECT, related_name='batches')
+    framework = models.ForeignKey('CompetencyFramework', null=True, blank=True, on_delete=models.PROTECT, related_name='batches')
     instructor  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='batches')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_batches')
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
@@ -159,12 +160,37 @@ class BatchEnrollment(models.Model):
 
 
 # ── Skill Category ───────────────────────────────────────────────────────────
+class CompetencyFramework(models.Model):
+    program = models.ForeignKey(Program, on_delete=models.PROTECT, related_name='competency_frameworks')
+    version = models.PositiveIntegerField()
+    name = models.CharField(max_length=160)
+    description = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    source_framework = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='revisions')
+    creation_key = models.UUIDField(default=uuid.uuid4)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='created_frameworks')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-version', 'id']
+        constraints = [models.UniqueConstraint(fields=['program', 'version'], name='unique_framework_program_version'),
+            models.UniqueConstraint(fields=['program', 'creation_key'], name='unique_framework_program_request'),
+            models.CheckConstraint(condition=models.Q(version__gte=1), name='framework_version_positive')]
+
+
 class SkillCategory(models.Model):
     name        = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     tags        = models.JSONField(default=list, blank=True)
     created_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at  = models.DateTimeField(auto_now_add=True)
+    framework = models.ForeignKey(CompetencyFramework, null=True, blank=True, on_delete=models.PROTECT, related_name='categories')
+    source_category = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='revisions')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(models.functions.Lower('name'), 'framework',
+            condition=models.Q(framework__isnull=False), name='unique_category_name_framework')]
 
     def __str__(self):
         return self.name
@@ -227,7 +253,7 @@ class Question(models.Model):
     ]
 
     assessment      = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='questions')
-    skill_category  = models.ForeignKey(SkillCategory, on_delete=models.SET_NULL, null=True)
+    skill_category  = models.ForeignKey(SkillCategory, on_delete=models.PROTECT, null=True)
     question_text   = models.TextField()
     question_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='mcq')
     question_order  = models.PositiveIntegerField(default=0)
@@ -310,7 +336,7 @@ class ResponseAnswer(models.Model):
 class SkillScore(models.Model):
     student        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='skill_scores')
     assessment     = models.ForeignKey(Assessment, on_delete=models.CASCADE)
-    skill_category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    skill_category = models.ForeignKey(SkillCategory, on_delete=models.PROTECT)
     raw_score      = models.PositiveIntegerField(default=0)
     max_score      = models.PositiveIntegerField(default=0)
     percentage     = models.FloatField(default=0.0)
@@ -371,7 +397,7 @@ class CombinedCategoryScore(models.Model):
 
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='combined_category_scores')
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='combined_category_scores')
-    skill_category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    skill_category = models.ForeignKey(SkillCategory, on_delete=models.PROTECT)
     raw_score = models.PositiveIntegerField(default=0)
     max_score = models.PositiveIntegerField(default=0)
     percentage = models.FloatField(default=0.0)
@@ -435,7 +461,7 @@ class Position(models.Model):
 # ── Position Requirement ──────────────────────────────────────────────────────
 class PositionRequirement(models.Model):
     position            = models.ForeignKey(Position, on_delete=models.CASCADE, related_name='requirements')
-    skill_category      = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    skill_category      = models.ForeignKey(SkillCategory, on_delete=models.PROTECT)
     required_percentage = models.FloatField(default=0.0)
 
     class Meta:

@@ -113,7 +113,7 @@ def _question_category_name(value):
     if not isinstance(value, str) or len(value.strip()) > 100:
         invalid('category', 'Category must be text with at most 100 characters.')
     name = value.strip()
-    if name and SkillCategory.objects.filter(name__iexact=name).count() > 1:
+    if name and SkillCategory.objects.filter(framework__isnull=True).filter(name__iexact=name).count() > 1:
         invalid('category', 'This category name is ambiguous. Ask an administrator to resolve duplicate categories.')
     return name
 
@@ -910,7 +910,7 @@ def student_me(request):
 @notify_changes('taxonomy')
 def categories(request):
     if request.method == 'GET':
-        cats = SkillCategory.objects.all().order_by('name')
+        cats = SkillCategory.objects.filter(framework__isnull=True).all().order_by('name')
         return Response([{
             'id': c.id, 'name': c.name, 'description': c.description, 'tags': c.tags or []
         } for c in cats])
@@ -921,7 +921,7 @@ def categories(request):
 
     name, description, tags = _skill_data(request.data)
 
-    cat, created = SkillCategory.objects.get_or_create(
+    cat, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
         name__iexact=name,
         defaults={
             'name': name,
@@ -957,7 +957,7 @@ def suggest_category_view(request):
     if not question_text:
         return Response({'suggested_category': None})
 
-    cats = list(SkillCategory.objects.all())
+    cats = list(SkillCategory.objects.filter(framework__isnull=True).all())
     suggestion = suggest_category(question_text, cats)
     return Response({'suggested_category': suggestion})
 
@@ -1780,7 +1780,7 @@ def instructor_assessments(request):
         # Auto-create category if needed
         cat = None
         if cat_name:
-            cat, cat_created = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
@@ -2098,7 +2098,7 @@ def instructor_assessment_add_questions(request, assessment_id):
         # Auto-create category if needed (same pattern as assessment creation)
         cat = None
         if cat_name:
-            cat, cat_created = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
@@ -2236,7 +2236,7 @@ def instructor_question_detail(request, question_id):
     if 'category' in data:
         cat_name = (data['category'] or '').strip()
         if cat_name:
-            cat, cat_created = SkillCategory.objects.get_or_create(
+            cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
                 name__iexact=cat_name,
                 defaults={'name': cat_name, 'created_by': request.user}
             )
@@ -2620,7 +2620,7 @@ def assessment_submit(request, assessment_id):
     answers_data = request.data.get('answers', [])
     if not isinstance(answers_data, list):
         return Response({'error': 'answers must be a list'}, status=400)
-    categories   = list(SkillCategory.objects.all())
+    categories   = list(SkillCategory.objects.filter(framework__isnull=True).all())
 
     # The row lock makes normal submit and integrity stop mutually exclusive.
     # Whichever request finalizes the attempt first wins.
@@ -2708,7 +2708,7 @@ def assessment_stop(request, assessment_id):
     detail = str(request.data.get('detail', '')).strip()[:120]
     base_display = INTEGRITY_REASON_DISPLAYS[reason]
     reason_display = f'{base_display} ({detail})' if detail else base_display
-    categories = list(SkillCategory.objects.all())
+    categories = list(SkillCategory.objects.filter(framework__isnull=True).all())
 
     with transaction.atomic():
         Batch.objects.select_for_update().get(pk=assessment.batch_id)
@@ -4005,7 +4005,7 @@ def admin_skills(request):
         return Response({'error': 'Forbidden'}, status=403)
 
     if request.method == 'GET':
-        cats = SkillCategory.objects.all().order_by('name')
+        cats = SkillCategory.objects.filter(framework__isnull=True).all().order_by('name')
         return Response([{
             'id': c.id, 'name': c.name, 'description': c.description, 'tags': c.tags or []
         } for c in cats])
@@ -4013,7 +4013,7 @@ def admin_skills(request):
     elif request.method == 'POST':
         name, description, tags = _skill_data(request.data)
 
-        cat, created = SkillCategory.objects.get_or_create(
+        cat, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
             name__iexact=name,
             defaults={'name': name, 'description': description, 'tags': tags, 'created_by': request.user}
         )
@@ -4033,14 +4033,14 @@ def admin_skill_detail(request, skill_id):
         return Response({'error': 'Forbidden'}, status=403)
 
     try:
-        cat = SkillCategory.objects.get(id=skill_id)
+        cat = SkillCategory.objects.filter(framework__isnull=True).get(id=skill_id)
     except SkillCategory.DoesNotExist:
         return Response({'error': 'Skill not found'}, status=404)
 
     if request.method == 'PUT':
         name, description, tags = _skill_data(request.data)
 
-        if SkillCategory.objects.filter(name__iexact=name).exclude(id=skill_id).exists():
+        if SkillCategory.objects.filter(framework__isnull=True).filter(name__iexact=name).exclude(id=skill_id).exists():
             return Response({'error': 'Another skill with this name already exists'}, status=400)
 
         cat.name = name

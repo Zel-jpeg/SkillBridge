@@ -29,6 +29,7 @@ SUPPORTED = {
     '0033_instructor_program_assignment': {'api_instructorassignment'},
     '0034_program_batch_context': set(),
     '0035_neutral_user_department': set(),
+    '0036_program_competency_frameworks': {'api_competencyframework'},
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -38,7 +39,10 @@ parser.add_argument('--migration', choices=SUPPORTED, default='0032_institute_pr
 args = parser.parse_args()
 TARGET = ('api', args.migration)
 ADDED_TABLES = SUPPORTED[args.migration]
-ADDED_COLUMNS = {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']} if args.migration == '0034_program_batch_context' else {}
+ADDED_COLUMNS = {
+    '0034_program_batch_context': {'api_batch': ['institute_id', 'program_id'], 'api_user': ['program_id']},
+    '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
+}.get(args.migration, {})
 
 
 def digest(value):
@@ -150,16 +154,14 @@ try:
             rehearsed = snapshot(rehearsal, exclude_added=True)
             assert all(rehearsed[name] == facts for name, facts in before.items()), 'Rehearsal changed preserved data'
             assert set(rehearsed) - set(before) == ADDED_TABLES
-            if ADDED_COLUMNS:
-                assert columns(rehearsal) == before_columns | added_columns
+            assert {column for column in columns(rehearsal) if column[0] not in ADDED_TABLES} == before_columns | added_columns
         finally:
             rehearsal.close()
         # Live mutation begins only after the public-schema backup restores exactly.
         assert plan() == pending, 'Pending migrations changed'
         MigrationExecutor(connection).migrate([TARGET])
         after = snapshot(connection, exclude_added=True)
-        if not ADDED_TABLES:
-            assert columns(connection) == before_columns | added_columns, 'Unexpected column changes; rollback'
+        assert {column for column in columns(connection) if column[0] not in ADDED_TABLES} == before_columns | added_columns, 'Unexpected column changes; rollback'
         if ADDED_COLUMNS:
             with connection.cursor() as cursor:
                 for table, names in ADDED_COLUMNS.items():

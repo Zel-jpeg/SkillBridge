@@ -26,6 +26,7 @@ def category_created(created):
         marker.add('taxonomy')
 
 TOPICS = {
+    'competency': ['competencies'],
     'assignment': ['assignments'],
     'organization': ['organization'],
     'student': ['students', 'results', 'placements', 'management'],
@@ -106,6 +107,11 @@ def audience(kind, request, kwargs, response=None):
             instructor_id = InstructorAssignment.objects.filter(pk=kwargs['assignment_id']).values_list('instructor_id', flat=True).first()
         if instructor_id:
             people.add(instructor_id)
+    if kind == 'competency':
+        program_id = _id(kwargs.get('program_id'))
+        if program_id:
+            people.update(InstructorAssignment.objects.filter(program_id=program_id, is_active=True,
+                instructor__is_active=True, instructor__is_approved=True).values_list('instructor_id', flat=True))
     if kind == 'organization':
         institute_id = kwargs.get('institute_id') or kwargs.get('object_id')
         if institute_id:
@@ -152,6 +158,7 @@ def audience(kind, request, kwargs, response=None):
                 topics = ['capacity']
         result[person.id] = {
             'topics': list(topics),
+            **({'program_ids': [_id(kwargs.get('program_id'))]} if kind == 'competency' else {}),
             # Draft IDs must not be disclosed to student subscribers.
             **({'assessment_ids': [assessment_id]} if assessment_id and (
                 person.role == 'admin' or person.role == 'instructor' and person.id in assessment_staff

@@ -74,7 +74,7 @@ def apply_changes(assessment, plan, user):
     for question, fields in planned:
         category = None
         if fields['category']:
-            category, created = SkillCategory.objects.get_or_create(name__iexact=fields['category'],
+            category, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(name__iexact=fields['category'],
                 defaults={'name': fields['category'], 'created_by': user})
             category_created(created)
         if question is None:

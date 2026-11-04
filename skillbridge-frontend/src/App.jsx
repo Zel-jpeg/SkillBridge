@@ -40,6 +40,7 @@ const AdminSkills = lazy(() => import('./pages/admin/AdminSkills'))
 const AdminAssessments = lazy(() => import('./pages/admin/AdminAssessments'))
 const AdminBatches = lazy(() => import('./pages/admin/AdminBatches'))
 const AdminInstitutes = lazy(() => import('./pages/admin/AdminInstitutes'))
+const CompetencyCatalog = lazy(() => import('./pages/CompetencyCatalog'))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
 const AdminPlacements = lazy(() => import('./pages/admin/AdminPlacements'))
 const StudentRetakeRequest = lazy(() => import('./pages/student/StudentRetakeRequest'))
@@ -107,6 +108,7 @@ function App() {
         <Route path="/instructor/dashboard" element={<Page><InstructorDashboard /></Page>} />
         <Route path="/instructor/reports" element={<Page><ReportsAnalytics role="instructor" /></Page>} />
         <Route path="/instructor/students" element={<Page><EnrolledStudents /></Page>} />
+        <Route path="/instructor/competencies" element={<Page><CompetencyCatalog /></Page>} />
         <Route path="/instructor/assessments" element={<Page><InstructorAssessments /></Page>} />
         <Route path="/instructor/retake-requests" element={<Page><RetakeRequests /></Page>} />
         <Route path="/instructor/assessments/archives" element={<Page><AssessmentArchives role="instructor" /></Page>} />
@@ -118,6 +120,7 @@ function App() {
       <Route element={<PrivateRoute role="admin"><AuthenticatedShell role="admin" /></PrivateRoute>}>
         <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
         <Route path="/admin/skills" element={<Page><AdminSkills /></Page>} />
+        <Route path="/admin/competencies" element={<Page><CompetencyCatalog /></Page>} />
         <Route path="/admin/companies" element={<Page><AdminCompanies /></Page>} />
         <Route path="/admin/placements" element={<Page><AdminPlacements /></Page>} />
         <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />

@@ -1,5 +1,15 @@
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const id = value => Number.isSafeInteger(value) && value > 0
+const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
+const competencyProgram = row => object(row) && id(row.id) && id(row.institute_id) &&
+  ['code', 'name', 'institute_name', 'institute_code'].every(key => typeof row[key] === 'string') && typeof row.is_active === 'boolean'
+const frameworkRow = row => object(row) && id(row.id) && id(row.program_id) && id(row.version) &&
+  competencyProgram(row.program) && row.program.id === row.program_id && typeof row.name === 'string' &&
+  typeof row.description === 'string' && ['is_active', 'locked', 'can_edit', 'can_manage'].every(key => typeof row[key] === 'boolean') &&
+  Number.isSafeInteger(row.category_count) && row.category_count >= 0 && digest(row.digest)
+const competencyCategory = row => object(row) && id(row.id) && id(row.framework_id) && typeof row.name === 'string' &&
+  typeof row.description === 'string' && Array.isArray(row.tags) && row.tags.every(tag => typeof tag === 'string') &&
+  typeof row.can_edit === 'boolean' && digest(row.digest)
 const catalogPage = (data, row) => object(data) && Number.isSafeInteger(data.count) && data.count >= 0 && id(data.page) && id(data.page_size) && data.page_size <= 50 &&
   data.page <= Math.max(1, Math.ceil(data.count / data.page_size)) && Array.isArray(data.results) && data.results.length <= Math.min(data.count, data.page_size) && data.results.every(row)
 const pagination = (data, rows) => data.pagination === undefined || (
@@ -24,7 +34,13 @@ export function validateApiResponse(response) {
   const method = (config.method ?? 'get').toLowerCase()
   const path = (config.url ?? '').split('?')[0]
   let valid = object(data) || Array.isArray(data)
-  if (/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/instructors\/(?:\d+\/)?$/.test(path)) {
+  if (/^\/api\/management\/competency-programs\/(?:\d+\/)?$/.test(path)) {
+    valid = path === '/api/management/competency-programs/' ? catalogPage(data, competencyProgram) : competencyProgram(data)
+  } else if (/^\/api\/management\/programs\/\d+\/frameworks\/(?:\d+\/)?$/.test(path)) {
+    valid = method === 'get' && /\/frameworks\/$/.test(path) ? catalogPage(data, frameworkRow) : frameworkRow(data)
+  } else if (/^\/api\/management\/programs\/\d+\/frameworks\/\d+\/categories\/(?:\d+\/)?$/.test(path)) {
+    valid = method === 'get' && /\/categories\/$/.test(path) ? catalogPage(data, competencyCategory) : competencyCategory(data)
+  } else if (/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/instructors\/(?:\d+\/)?$/.test(path)) {
     const row = item => object(item) && id(item.id) && id(item.instructor_id) && id(item.program_id) && id(item.institute_id) && typeof item.name === 'string' && typeof item.email === 'string' && typeof item.is_active === 'boolean' && typeof item.effective === 'boolean'
     valid = method === 'get' ? catalogPage(data, row) : row(data)
   } else if (/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/instructor-options\/$/.test(path)) {

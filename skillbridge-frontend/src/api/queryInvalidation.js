@@ -1,5 +1,6 @@
 // A topic describes changed saved data, never a command to recalculate it.
 const paths = {
+  competencies: [/^\/api\/management\/(?:competency-programs\/(?:\d+\/)?|programs\/\d+\/frameworks\/(?:\d+\/(?:categories\/(?:\d+\/)?)?)?)$/],
   organization: [/^\/api\/admin\/institutes\/(?:\d+\/(?:programs\/(?:\d+\/(?:instructors\/|instructor-options\/)?)?)?)?$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
   assignments: [/^\/api\/admin\/institutes\/\d+\/programs\/\d+\/(?:instructors\/|instructor-options\/)$/, /^\/api\/management\/programs\/(?:\d+\/)?$/],
   email: [/^\/api\/instructor\/batches\/\d+\/(?:emails|email-progress)\/$/],
@@ -21,11 +22,14 @@ for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.em
 paths.users.push(paths.assignments[0], paths.assignments[1])
 for (const topic of ['organization', 'assignments']) paths[topic].push(...paths.batches, ...paths.email, ...paths.management,
   ...paths.students, ...paths.assessments, ...paths.placements, /^\/api\/admin\/batch-instructors\/$/,
-  /^\/api\/instructor\/students\/recommendations\/$/, /^\/api\/auth\/me\/$/)
+  /^\/api\/instructor\/students\/recommendations\/$/, /^\/api\/auth\/me\/$/, ...paths.competencies)
+paths.users.push(...paths.competencies)
 
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
+  const program = path.match(/^\/api\/management\/(?:competency-programs|programs)\/(\d+)\//)?.[1]
+  if (program && change.program_ids?.length && !change.program_ids.map(String).includes(program)) return false
   if (path === '/api/students/me/history/' && (change.resync || change.topics?.some(t => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(t)))) return true
   if (/^\/api\/instructor\/batches\/\d+\/closeout\/$/.test(path) && !parsed.searchParams.has('version') && (change.resync || change.topics?.some(t => ['students', 'batches', 'assessments', 'results', 'placements', 'catalog', 'capacity', 'taxonomy'].includes(t)))) return true
   if (/^\/api\/admin\/users\/\d+\/history\/$/.test(path) && (change.resync || change.topics?.some(topic => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(topic)))) return true

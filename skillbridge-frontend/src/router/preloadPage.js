@@ -1,6 +1,8 @@
 // The browser's module loader owns code deduplication. Data still lives only in
 // queryStore; a chunk failure falls back to the route's normal retry boundary.
 const pages = {
+  '/admin/competencies': () => import('../pages/CompetencyCatalog'),
+  '/instructor/competencies': () => import('../pages/CompetencyCatalog'),
   '/student/dashboard': () => import('../pages/student/StudentDashboard'),
   '/student/assessments': () => import('../pages/student/StudentAssessments'),
   '/student/results': () => import('../pages/student/StudentResults'),

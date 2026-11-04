@@ -15,6 +15,7 @@ export const ROLE_NAVIGATION = {
   instructor: [
     { label: 'Dashboard', path: '/instructor/dashboard', icon: 'dashboard' },
     { label: 'Students', path: '/instructor/students', icon: 'users' },
+    { label: 'Program competencies', path: '/instructor/competencies', icon: 'skills' },
     { label: 'Assessments', path: '/instructor/assessments', icon: 'assessments' },
     { label: 'Retake requests', path: '/instructor/retake-requests', icon: 'retakes' },
     { label: 'New Assessment', path: '/instructor/assessment/create', icon: 'create' },
@@ -25,6 +26,7 @@ export const ROLE_NAVIGATION = {
   admin: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: 'dashboard' },
     { label: 'Skills', path: '/admin/skills', icon: 'skills' },
+    { label: 'Program competencies', path: '/admin/competencies', icon: 'skills' },
     { label: 'OJT Partners', path: '/admin/companies', icon: 'companies' },
     { label: 'Placements', path: '/admin/placements', icon: 'placements' },
     { label: 'Users', path: '/admin/users', icon: 'users' },
