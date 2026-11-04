@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import DialogShell from '../DialogShell'
+import ProgramSelect from '../ProgramSelect'
 import { nameFromEmail } from '../../utils/formatters'
 
 export default function AddInstructorModal({ existingInstructors = [], onClose, onAdd }) {
@@ -7,8 +8,7 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
   const [nameEdited, setNameEdited] = useState(false)
   const [email, setEmail] = useState('')
   const [instructorId, setInstructorId] = useState('')
-  const [department, setDepartment] = useState('Institute of Computing')
-  const [courses, setCourses] = useState('BSIT / BSIS')
+  const [programId, setProgramId] = useState('')
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -41,7 +41,7 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
     setSubmitError(''); setSubmitting(true)
     try {
       const result = await onAdd({ name: name.trim(), email: normalizedEmail,
-        instructorId: instructorId.trim(), department, courses })
+        instructorId: instructorId.trim(), ...(programId ? { programId: Number(programId) } : {}) })
       if (result?.ok === false) setSubmitError(result.message || 'Instructor was not saved.')
       else onClose()
     } catch {
@@ -83,15 +83,11 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
             onChange={event => { setInstructorId(event.target.value); setErrors(current => ({ ...current, instructorId: '' })) }}
             placeholder="e.g. 2018-00042" />{error('instructorId')}
         </div>
-        <div><label htmlFor={`${id}-department`} className={label}>Department</label>
-          <input {...field('department')} maxLength={255} value={department} onChange={event => setDepartment(event.target.value)} placeholder="e.g. Institute of Computing" />
-        </div>
-        <fieldset className="min-w-0"><legend className={label}>Courses Handled</legend>
-          <div className="flex gap-2">{[{ value: 'BSIT', label: 'BSIT only' }, { value: 'BSIS', label: 'BSIS only' }, { value: 'BSIT / BSIS', label: 'Both' }].map(option =>
-            <button key={option.value} type="button" aria-pressed={courses === option.value} onClick={() => setCourses(option.value)}
-              className={`min-h-11 flex-1 rounded-xl border px-2 py-2 text-xs font-medium ${courses === option.value ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 text-gray-700 hover:border-green-500 dark:border-gray-600 dark:text-gray-200'}`}>{option.label}</button>
-          )}</div>
-        </fieldset>
+        <details className="space-y-3 text-xs"><summary className="min-h-11 cursor-pointer py-3 font-semibold">Assign a program now (optional)</summary>
+          <ProgramSelect value={programId} onChange={setProgramId} disabled={submitting} />
+          {programId && <button type="button" className="min-h-11 font-semibold text-green-700" onClick={() => setProgramId('')}>Clear program selection</button>}
+        </details>
+        <p className="text-xs text-gray-500">Manage additional program assignments in Institutes &amp; Programs. An assignment is required before creating a program batch.</p>
       </fieldset>
     </form>
   </DialogShell>

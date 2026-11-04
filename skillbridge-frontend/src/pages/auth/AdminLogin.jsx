@@ -19,7 +19,7 @@ import { useSession } from '../../context/SessionContext'
 // ================================================================
 const SYSTEM_NAME     = "SkillBridge"
 const SCHOOL_NAME     = "Davao del Norte State College"
-const SCHOOL_FOOTER   = "DNSC · Institute of Computing · 2026"
+const SCHOOL_FOOTER   = "DNSC · OJT Assessment & Placement"
 // ================================================================
 
 export default function AdminLogin() {

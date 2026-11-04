@@ -17,10 +17,10 @@ IBPA is the confirmed current name; Entrepreneurship/Tourism are testing example
 Existing IC records stay in the normal IC section with their current statuses;
 IC will be left unused in practice because it uses InternLink. No special
 history-only/read-only mode, automatic archive or IC workflow restrictions are
-requested. F01 catalog, F02 instructor/program assignments and F03 program-bound
-batches/enrollment with additive migrations 0032–0034 are implemented and verified;
-broader dynamic profiles and existing-record organization mapping remain subsequent
-features. See the
+requested. F01 catalog, F02 instructor/program assignments, F03 program-bound
+batches/enrollment and F04 dynamic profiles/onboarding are implemented and verified.
+Existing-record organization mapping and program competency frameworks remain
+subsequent features. See the
 [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
 
 ## Architecture
@@ -78,6 +78,11 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Dynamic program profiles and onboarding](DYNAMIC_PROGRAM_PROFILES.md):
+  F04 read-only enrolled program, neutral account defaults, optional program
+  assignment at instructor creation, dynamic filters and migration 0035; see the
+  tracker for configured migration and merge status.
 
 - [Program batches and enrollment](PROGRAM_BATCHES_AND_ENROLLMENT.md):
   F03 one-program batches, scoped grants, dynamic enrollment/setup, nullable

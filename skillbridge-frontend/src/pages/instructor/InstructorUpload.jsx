@@ -238,7 +238,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Title</label>
             <input type="text" value={title}
               onChange={e => { setTitle(e.target.value); setErrors(er => ({ ...er, title: '' })) }}
-              placeholder="e.g. BSIT OJT Skills Assessment 2025–2026"
+              placeholder="e.g. OJT Skills Assessment 2026–2027"
               className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${errors.title ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`} />
             {errors.title && <p className="text-xs text-red-500 mt-1.5">{errors.title}</p>}
           </div>

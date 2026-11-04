@@ -70,6 +70,7 @@ function normalizeUsers(usersData) {
       email:        i.email          || '',
       department:   i.department     || '',
       courses:      i.courses        || '',
+      assignedPrograms: i.assigned_programs || [],
       archived:     i.is_active === false,
       status:       'active',
       role:         'instructor',
@@ -80,8 +81,9 @@ function normalizeUsers(usersData) {
       name:         i.name,
       instructorId: i.instructor_id  || '',
       email:        i.email          || '',
-      department:   i.department     || 'Institute of Computing',
-      courses:      i.courses        || 'BSIT / BSIS',
+      department:   i.department     || '',
+      courses:      i.courses        || '',
+      assignedPrograms: i.assigned_programs || [],
       photoUrl:     i.photo_url      || null,
     })),
   }
@@ -184,11 +186,11 @@ export function useAdminUsers() {
       name:          instr.name,
       email:         instr.email,
       instructor_id: instr.instructorId,
-      department:    instr.department,
-      courses:       instr.courses,
+      ...(instr.programId ? { program_id: instr.programId } : {}),
     })
     if (!res.ok) return res
-    const newInstructor = { ...instr, id: res.data.id, archived: false, status: 'active', role: 'instructor' }
+    const newInstructor = { ...instr, id: res.data.id, department: res.data.department, courses: res.data.courses,
+      assignedPrograms: res.data.assigned_programs || [], archived: false, status: 'active', role: 'instructor' }
     if (res.data?.is_approved) {
       setInstructors(prev => [...prev, newInstructor])
       showToast(res.data?.email_queued
@@ -344,6 +346,7 @@ export function useAdminUsers() {
   }
 
   const instructorsList = usersData?.options?.instructors ?? [...new Set(studentsList.map(s => s.instructor).filter(Boolean))]
+  const courseOptions = usersData?.options?.courses ?? [...new Set(studentsList.map(s => s.course).filter(Boolean))]
   const previewUrl = values => adminUsersUrl({ tab: activeTab, sortCol, sortDir, ...values, countsOnly: true })
 
   return {
@@ -362,7 +365,7 @@ export function useAdminUsers() {
     sortCol, sortDir, toggleSort,
     page: visiblePage, setPage,
     view, setView,
-    filtered, displayed, counts, instructorsList, userFilters, previewFilters, applyFilters,
+    filtered, displayed, counts, instructorsList, courseOptions, userFilters, previewFilters, applyFilters,
     PAGE_SIZE,
     handleAddInstructor,
     handleDeleteInstructor,

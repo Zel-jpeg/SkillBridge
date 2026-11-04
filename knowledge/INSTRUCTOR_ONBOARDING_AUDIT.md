@@ -1,5 +1,10 @@
 # Admin-created instructor audit — 28 October 2026
 
+Subsequent generalization: [F04 dynamic profiles/onboarding](DYNAMIC_PROGRAM_PROFILES.md)
+replaces IC/course defaults with neutral metadata and an optional configured
+program assignment that saves atomically with account creation. Its receipt
+records current verification; older findings below retain their original scope.
+
 The normal creation-to-sign-in journey works. The original review found three
 issues: concurrent duplicate requests returned HTTP 500, the form rejected
 addresses the API correctly normalizes, and the overlay lacked accessible

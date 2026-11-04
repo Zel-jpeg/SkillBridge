@@ -1,5 +1,10 @@
 # Student profile layout
 
+Subsequent behavior change: [F04 dynamic program profiles](DYNAMIC_PROGRAM_PROFILES.md)
+makes the enrolled program read-only and adds configured institute/program text.
+Its API and browser receipt supersedes the original course-editing behavior below;
+the address, pin and recovery contracts remain.
+
 27 October 2026. Implements the approved profile concept without section tabs or
 radio-style selection glyphs.
 

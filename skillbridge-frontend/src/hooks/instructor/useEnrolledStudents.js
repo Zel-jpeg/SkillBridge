@@ -50,10 +50,12 @@ export function useEnrolledStudents() {
 
   // ── Instructor info from localStorage ────────────────────────────
   const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('sb-user')) } catch { return null } })()
+  const { data: currentIdentity } = useApi('/api/auth/me/')
+  const identity = currentIdentity || cachedUser
   const instructor = {
-    name:     cachedUser?.name   || 'Instructor',
-    initials: (cachedUser?.name  || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
-    subject:  cachedUser?.course || 'OJT Coordinator',
+    name:     identity?.name || 'Instructor',
+    initials: (identity?.name || 'IN').split(' ').map(n => n[0]).slice(0, 2).join(''),
+    subject:  identity?.assigned_programs?.filter(program => program.is_active).map(program => program.code).join(' / ') || 'OJT Coordinator',
   }
 
   // ── Batch list via useApi ─────────────────────────────────────────

@@ -17,11 +17,14 @@ def port():
         return sock.getsockname()[1]
 api_port, frontend_port = port(), port()
 env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'PYTHONIOENCODING': 'utf-8', 'SB_ORGANIZATION_RUN': str(OUT),
-       'SB_ORGANIZATION_API_PORT': str(api_port), 'SB_ORGANIZATION_FRONTEND_PORT': str(frontend_port)}
-if '--program-batches' in sys.argv:
+       'SB_ORGANIZATION_API_PORT': str(api_port), 'SB_ORGANIZATION_FRONTEND_PORT': str(frontend_port),
+       'SKILLBRIDGE_TEST_BASE': f'http://127.0.0.1:{frontend_port}',
+       'TOAST_TEST_BASE': f'http://127.0.0.1:{frontend_port}'}
+if '--program-batches' in sys.argv or '--dynamic-profiles' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'program-batches'
+frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
-    ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), 'preview', str(ROOT / 'skillbridge-frontend'),
+    ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
       '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port)]
 processes, logs = [], []
 print('Evidence:', OUT, flush=True)
@@ -45,6 +48,12 @@ try:
         script = 'instructor_assignments_playwright.py' if '--assignments' in sys.argv else 'organization_playwright.py'
         if '--program-batches' in sys.argv:
             script = 'program_batches_playwright.py'
+        if '--dynamic-profiles' in sys.argv:
+            script = 'dynamic_profiles_playwright.py'
+        for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
+            ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py')]:
+            if option in sys.argv:
+                script = candidate
         result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script)],
                                 cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
     print((OUT / 'browser.txt').read_text(encoding='utf-8')[-7000:])

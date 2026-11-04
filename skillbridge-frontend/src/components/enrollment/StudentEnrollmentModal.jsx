@@ -10,7 +10,7 @@ import { confirmationText, downloadStudentTemplate, editReviewRow, parseStudentF
 
 const columns = [['school_id', 'Student ID'], ['first_name', 'First name'], ['last_name', 'Last name'],
   ['name', 'Display name'], ['course', 'Program'], ['year_level', 'Year level'], ['email', 'Email']]
-const emptyStudent = { school_id: '', name: '', first_name: '', last_name: '', email: '', course: 'BSIT', year_level: '' }
+const emptyStudent = { school_id: '', name: '', first_name: '', last_name: '', email: '', course: '', year_level: '' }
 const counts = { total: 'Total parsed', ready: 'Ready to enroll', existing_students: 'Existing students',
   already_enrolled: 'Already enrolled', unsupported: 'Unsupported', duplicate: 'Duplicate', invalid: 'Invalid', conflict: 'Conflict' }
 const PAGE_SIZE = 25

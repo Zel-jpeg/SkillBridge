@@ -103,10 +103,10 @@ with sync_playwright() as p:
             restore = page.get_by_role('button', name='Restore draft', exact=True)
             if owner == 1:
                 restore.click()
-                expect(page.get_by_placeholder(re.compile('e.g. BSIT OJT Skills Assessment'))).to_have_value('Own assessment draft')
+                expect(page.get_by_placeholder(re.compile('e.g. OJT Skills Assessment'))).to_have_value('Own assessment draft')
             else:
                 expect(restore).to_have_count(0)
-                expect(page.get_by_placeholder(re.compile('e.g. BSIT OJT Skills Assessment'))).to_have_value('')
+                expect(page.get_by_placeholder(re.compile('e.g. OJT Skills Assessment'))).to_have_value('')
             context.close()
         checks.append('Only owning staff account can restore a scoped draft; legacy unowned content stays hidden')
         assert not errors, errors

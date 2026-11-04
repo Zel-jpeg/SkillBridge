@@ -4,6 +4,13 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     profile_review_required = serializers.SerializerMethodField()
     program = serializers.SerializerMethodField()
+    assigned_programs = serializers.SerializerMethodField()
+
+    def get_assigned_programs(self, user):
+        if user.role != 'instructor':
+            return []
+        from .instructor_assignments import program_payload
+        return [program_payload(row.program) for row in user.program_assignments.filter(is_active=True).select_related('program__institute')]
 
     def get_program(self, user):
         from .instructor_assignments import program_payload
@@ -28,5 +35,5 @@ class UserSerializer(serializers.ModelSerializer):
                   'phone', 
                   'address', 
                   'photo_url', 
-                  'is_approved', 'profile_review_required', 'program'
+                  'is_approved', 'profile_review_required', 'program', 'assigned_programs'
                   ]

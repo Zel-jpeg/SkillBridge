@@ -63,11 +63,11 @@ export default function PendingDetailModal({ user, onClose, onApprove, onReject 
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Department</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{user.department}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{user.department || 'Not provided'}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Courses Requested</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{user.courses}</p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Recorded program notes</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{user.courses || 'Not provided'}</p>
             </div>
           </div>
 

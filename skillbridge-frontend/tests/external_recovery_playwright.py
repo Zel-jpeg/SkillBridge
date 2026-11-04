@@ -1,8 +1,11 @@
 """Offline/invalid external providers, bounded maps, stale rows and image fallback."""
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
+
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5178')
 
 OUT = Path(__file__).parent / 'artifacts/external-recovery'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -57,7 +60,7 @@ with sync_playwright() as p:
     page = context.new_page()
     page.on('pageerror', lambda error: errors.append(str(error)))
     try:
-        page.goto('http://127.0.0.1:5178/student/profile')
+        page.goto(BASE + '/student/profile')
         page.wait_for_load_state('networkidle')
         phone = page.get_by_placeholder('e.g. 09123456789')
         phone.fill('09987654321')

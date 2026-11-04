@@ -63,12 +63,15 @@ export function readCachedUser(storage) {
 export function profileIdentity(role, user = {}) {
   const metadata = ROLE_METADATA[role]
   const name = typeof user.name === 'string' && user.name.trim() ? user.name.trim() : metadata.label
-  const course = typeof user.course === 'string' ? user.course : ''
+  const course = user.program?.code || (typeof user.course === 'string' ? user.course : '')
+  const teaching = Array.isArray(user.assigned_programs)
+    ? user.assigned_programs.filter(program => program.is_active).map(program => program.code).join(' / ')
+    : course
   const schoolId = typeof user.school_id === 'string' ? user.school_id : ''
   return {
     name,
     initials: name.split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase(),
-    detail: role === 'student' ? [course, schoolId].filter(Boolean).join(' / ') : role === 'instructor' ? course || metadata.detail : metadata.detail,
+    detail: role === 'student' ? [course, schoolId].filter(Boolean).join(' / ') : role === 'instructor' ? teaching || metadata.detail : metadata.detail,
     photoUrl: typeof user.photo_url === 'string' ? user.photo_url : null,
   }
 }

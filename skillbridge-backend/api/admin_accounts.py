@@ -11,8 +11,11 @@ from .management_access import record_action
 
 
 def instructor_payload(user):
+    from .instructor_assignments import program_payload
+    assigned = [row.program for row in user.program_assignments.all() if row.is_active]
     return {'id': user.id, 'name': user.name, 'email': user.email, 'instructor_id': user.school_id or '',
-            'department': user.department, 'courses': user.course or 'BSIT / BSIS',
+            'department': user.department, 'courses': user.course or '',
+            'assigned_programs': [program_payload(program) for program in assigned],
             'is_approved': user.is_approved, 'is_active': user.is_active, 'photo_url': user.photo_url}
 
 
@@ -42,7 +45,7 @@ def admin_account_detail(request, user_id):
                     if field not in data:
                         continue
                     value = data[field]
-                    if not isinstance(value, str) or not value.strip() or len(value.strip()) > limit:
+                    if not isinstance(value, str) or (not value.strip() and field not in ('department', 'courses')) or len(value.strip()) > limit:
                         return Response({'error': f'{field} must be text with 1 to {limit} characters.', 'field': field}, status=400)
                     value = value.strip()
                     if field == 'email':

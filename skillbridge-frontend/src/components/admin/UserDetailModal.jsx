@@ -1,4 +1,5 @@
 import { useState, useRef, useId } from 'react'
+import { Link } from 'react-router-dom'
 import Avatar from '../Avatar'
 import DialogShell from '../DialogShell'
 import StudentDetailModal from '../StudentDetailModal'
@@ -46,7 +47,11 @@ export default function UserDetailModal({ user, type, onClose, onUpdate, onRemov
     avatar={<Avatar name={user.name} photoUrl={user.photoUrl} tone="neutral" className="instructor-detail-avatar h-12 w-12 rounded-full text-lg sm:h-16 sm:w-16 sm:text-xl" />}
     headerDetails={<><p className="instructor-detail-id">{user.instructorId || 'No instructor ID'}</p><p className="instructor-detail-email">{user.email || 'Email not provided'}</p><div className="instructor-detail-badges"><span className="sb-detail-status"><UserIcon size={14} />Instructor</span><span className={`sb-detail-status ${user.archived ? '' : 'sb-detail-status--success'}`}>{user.archived ? <ArchiveIcon size={14} /> : <span aria-hidden="true" className="instructor-detail-status-dot" />}{user.archived ? 'Archived' : 'Active account'}</span></div></>}>
     <div className="instructor-detail-body">
-      <div className="instructor-detail-heading"><h3>{editing ? 'Edit instructor information' : 'Teaching information'}</h3><p>{editing ? 'Update the account details, then save your changes.' : 'Department and courses recorded for this instructor.'}</p></div>
+      <section className="mb-5 space-y-2 text-xs" aria-label="Program assignments"><h3 className="font-semibold">Program assignments</h3>
+        {user.assignedPrograms?.length ? <ul className="space-y-2">{user.assignedPrograms.map(program => <li key={program.id}>{program.institute_code} · {program.code} — {program.name}{!program.is_active && ' (archived)'}</li>)}</ul> : <p>No program assignments.</p>}
+        {!editing && <Link className="inline-flex min-h-11 items-center font-semibold text-green-700" to="/admin/institutes">Manage institutes and program assignments</Link>}
+      </section>
+      <div className="instructor-detail-heading"><h3>{editing ? 'Edit instructor information' : 'Recorded account information'}</h3><p>{editing ? 'Update account details. Program access is managed separately through assignments.' : 'These descriptive account fields do not grant program access.'}</p></div>
       {editing ? <form id={formId} noValidate aria-label="Edit instructor information" aria-busy={saving} onSubmit={event => { event.preventDefault(); save(() => onUpdate(draft, type, draft.roleType)) }}>
         <fieldset disabled={saving} className="instructor-detail-form">
           {instructorFields.map(field => <label key={field} className={field === 'email' ? 'instructor-detail-field instructor-detail-field--wide' : 'instructor-detail-field'}>{field === 'instructorId' ? 'Instructor ID' : field}<input autoFocus={field === 'name'} autoComplete={field === 'name' ? 'name' : field === 'email' ? 'email' : 'off'} value={draft[field] || ''} onChange={event => setDraft(previous => ({ ...previous, [field]: event.target.value }))} /></label>)}

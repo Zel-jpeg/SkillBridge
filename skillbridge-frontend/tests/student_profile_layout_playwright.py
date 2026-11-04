@@ -99,13 +99,14 @@ with sync_playwright() as playwright:
             'boardingBarangay': 'New Visayas', 'pinLat': 7.30701, 'pinLng': 125.66684}
         page.get_by_label('Full name', exact=True).fill('Alex Updated')
         page.get_by_label('Student ID', exact=True).fill('2026-00002')
-        page.get_by_label('Course', exact=True).fill('BSIS')
+        expect(page.get_by_label('Program', exact=True)).to_have_value('BSIT')
+        expect(page.get_by_label('Program', exact=True)).to_have_attribute('readonly', '')
         page.get_by_label('Phone number', exact=True).fill('09987654321')
         page.get_by_role('button', name='Anywhere in Davao Region (incl. Davao City)', exact=True).click()
         payload = save(fixture)
-        assert [payload[key] for key in ('name', 'studentId', 'course', 'phone', 'travelWilling')] == ['Alex Updated', '2026-00002', 'BSIS', '09987654321', 'davao-region']
+        assert [payload[key] for key in ('name', 'studentId', 'course', 'phone', 'travelWilling')] == ['Alex Updated', '2026-00002', 'BSIT', '09987654321', 'davao-region']
         assert page.evaluate("JSON.parse(localStorage.getItem('sb-user')).name") == 'Alex Updated'
-        checks.append('Unchanged profile PATCH fields/values, identity/contact editing, preferences, both saved addresses and single pin; successful save updates the local user cache')
+        checks.append('Retained profile PATCH shape/values with enrolled program read-only, identity/contact editing, preferences, both saved addresses and single pin; successful save updates the local user cache')
 
         # Editing the saved home address must survive closing/reopening its disclosure.
         home_toggle.click()

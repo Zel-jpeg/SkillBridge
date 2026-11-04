@@ -11,7 +11,7 @@ import { useSession } from '../../context/SessionContext'
 
 const SYSTEM_NAME        = "SkillBridge"
 const SCHOOL_NAME        = "Davao del Norte State College"
-const SCHOOL_FOOTER      = "DNSC · Institute of Computing · 2026"
+const SCHOOL_FOOTER      = "DNSC · OJT Assessment & Placement"
 const GOOGLE_BUTTON_TEXT = "Continue with DNSC Google Account"
 const SUBTITLE           = "Sign in with your DNSC Google account."
 const ACCESS_NOTE        = "For enrolled OJT students and DNSC faculty."

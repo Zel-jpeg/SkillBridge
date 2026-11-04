@@ -494,7 +494,7 @@ def get_instructor_email_html(name, frontend_url, instructor_id=None, department
             </div>
         </div>
         <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0;">Institute of Computing • Panabo City, Davao del Norte</p>
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">Davao del Norte State College • Panabo City, Davao del Norte</p>
             <p style="color: #9ca3af; font-size: 12px; margin: 5px 0 0;">Please do not reply to this automated email.</p>
         </div>
     </div>
@@ -3504,7 +3504,7 @@ def admin_users(request):
 
 
 def _admin_users_payload(user_ids=None, *, include_history=True):
-    users = User.objects.all()
+    users = User.objects.prefetch_related('program_assignments__program__institute')
     if user_ids is not None:
         users = users.filter(id__in=user_ids)
     students            = list(users.filter(role='student', is_active=True).order_by('name', 'id'))
@@ -3606,13 +3606,14 @@ def _admin_users_payload(user_ids=None, *, include_history=True):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('users')
+@transaction.atomic
 def admin_instructors(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
 
     if not isinstance(request.data, dict):
         return Response({'error': 'Instructor details must be an object.'}, status=400)
-    defaults = {'department': 'Institute of Computing', 'courses': 'BSIT / BSIS'}
+    defaults = {'department': '', 'courses': ''}
     fields = {}
     for field, limit in [('email', 254), ('name', 255), ('instructor_id', 20), ('department', 255), ('courses', 100)]:
         value = request.data.get(field, defaults.get(field, ''))
@@ -3634,6 +3635,12 @@ def admin_instructors(request):
     if User.objects.filter(school_id=instructor_id).exists():
         return Response({'error': 'Instructor ID already exists'}, status=409)
 
+    program = None
+    if 'program_id' in request.data:
+        from .program_scope import active_program
+        program = active_program(request.user, request.data['program_id'], lock=True)
+        department, courses = program.institute.name, program.code
+
     try:
         with transaction.atomic():
             user = User.objects.create(
@@ -3648,6 +3655,12 @@ def admin_instructors(request):
             )
             user.set_unusable_password()
             user.save(update_fields=['password'])
+            if program:
+                from .models import InstructorAssignment
+                assignment = InstructorAssignment.objects.create(instructor=user, program=program,
+                    created_by=request.user, updated_by=request.user)
+                record_action(request.user, 'instructor.assignment.create', 'instructor_assignment', assignment.id,
+                    instructor_id=user.id, program_id=program.id, institute_id=program.institute_id)
     except IntegrityError:
         # Query only after the failed savepoint has rolled back. Another admin
         # may have claimed either unique identity since the checks above.
@@ -3674,6 +3687,7 @@ def admin_instructors(request):
     )
 
     return Response({
+        **instructor_payload(user),
         'id': user.id,
         'name': user.name,
         'email': user.email,

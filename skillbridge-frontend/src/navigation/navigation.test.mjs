@@ -8,6 +8,12 @@ const expected = {
   admin: ['dashboard', 'skills', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
 }
 
+test('identity labels follow structured student programs and live instructor assignments', () => {
+  assert.equal(profileIdentity('student', { course: 'Old label', program: { code: 'ANY' }, school_id: '2099-00001' }).detail, 'ANY / 2099-00001')
+  assert.equal(profileIdentity('instructor', { course: 'Old notes', assigned_programs: [{ code: 'ANY', is_active: true }, { code: 'OTHER', is_active: true }, { code: 'RETIRED', is_active: false }] }).detail, 'ANY / OTHER')
+  assert.equal(profileIdentity('instructor', { course: 'Old notes', assigned_programs: [] }).detail, ROLE_METADATA.instructor.detail)
+})
+
 for (const [role, destinations] of Object.entries(expected)) {
   test(`${role} has exactly its required links and icons, with no cross-role links`, () => {
     const links = ROLE_NAVIGATION[role]

@@ -4,7 +4,7 @@ import { fetchWithDedup, useApi } from '../../hooks/useApi'
 import { DEFAULT_ROSTER_FILTERS, filterPreviouslyUnenrolled, filterRosterStudents, rosterFilterCount } from '../../utils/studentRosterFilters'
 
 const groups = [
-  { key: 'course', label: 'Course', options: [['all', 'All courses'], ['BSIT', 'BSIT'], ['BSIS', 'BSIS']] },
+  { key: 'course', label: 'Program', options: [['all', 'All programs']] },
   { key: 'enrollment', label: 'Enrollment', options: [['enrolled', 'Enrolled students'], ['unenrolled', 'Previously unenrolled']] },
   { key: 'accountStatus', label: 'Account status', options: [['all', 'All accounts'], ['active', 'Active'], ['archived', 'Archived']] },
   { key: 'assessmentStatus', label: 'Assessment status', enrolledOnly: true, options: [['all', 'All'], ['complete', 'Complete'], ['incomplete', 'Incomplete'], ['stopped', 'Stopped / flagged'], ['retake', 'Retake approved']] },

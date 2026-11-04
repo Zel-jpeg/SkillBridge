@@ -28,6 +28,7 @@ SUPPORTED = {
     '0032_institute_program_catalog': {'api_institute', 'api_program'},
     '0033_instructor_program_assignment': {'api_instructorassignment'},
     '0034_program_batch_context': set(),
+    '0035_neutral_user_department': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -157,8 +158,9 @@ try:
         assert plan() == pending, 'Pending migrations changed'
         MigrationExecutor(connection).migrate([TARGET])
         after = snapshot(connection, exclude_added=True)
-        if ADDED_COLUMNS:
+        if not ADDED_TABLES:
             assert columns(connection) == before_columns | added_columns, 'Unexpected column changes; rollback'
+        if ADDED_COLUMNS:
             with connection.cursor() as cursor:
                 for table, names in ADDED_COLUMNS.items():
                     for name in names:

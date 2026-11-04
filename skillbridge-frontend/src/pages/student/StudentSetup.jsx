@@ -22,7 +22,6 @@ import { useApi } from '../../hooks/useApi'
 import { requestErrorMessage } from '../../api/requestErrors'
 
 // ================================================================
-const COURSES = ['BSIT', 'BSIS']
 
 const TRAVEL_OPTIONS = [
   { value: 'panabo',       label: 'Within Panabo City only' },
@@ -170,7 +169,8 @@ export default function StudentSetup() {
 
   const { data: currentUser } = useApi('/api/students/me/')
   const assignedProgram = currentUser?.program || cachedUser?.program
-  const courses = assignedProgram ? [assignedProgram.code] : COURSES
+  const enrolledCourse = assignedProgram?.code || currentUser?.course || cachedUser?.course || ''
+  const courses = enrolledCourse ? [enrolledCourse] : []
 
   const [formData, setFormData] = useState({
     studentId: cachedUser?.school_id || '', course: cachedUser?.course || '', phone: '', stayingAt: '',
@@ -244,7 +244,7 @@ export default function StudentSetup() {
     const idPat = /^\d{4}-\d{5}$/
     if (!formData.studentId)                   e.studentId = 'Student ID is required'
     else if (!idPat.test(formData.studentId))  e.studentId = 'Format must be YYYY-NNNNN'
-    if (!assignedProgram && !formData.course)                      e.course    = 'Please select your course'
+    if (!enrolledCourse)                      e.course    = 'Ask your instructor to confirm your enrolled program.'
     const phPat = /^09\d{9}$/
     if (!formData.phone)                       e.phone     = 'Phone number is required'
     else if (!phPat.test(formData.phone))      e.phone     = 'Must be 11 digits starting with 09'
@@ -287,7 +287,7 @@ export default function StudentSetup() {
   
   
     try {
-      const res = await api.patch('/api/students/me/profile/', { ...formData, course: assignedProgram?.code || formData.course })
+      const res = await api.patch('/api/students/me/profile/', { ...formData, course: enrolledCourse })
       localStorage.setItem('sb-user', JSON.stringify(res.data))
       showToast('Profile setup completed successfully.')
       navigate('/student/dashboard')
@@ -374,13 +374,14 @@ export default function StudentSetup() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Course</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Enrolled program</label>
               <div className="flex gap-3">
                 {courses.map(c => (
-                  <button key={c} onClick={() => updateForm('course', c)}
-                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${(assignedProgram?.code || formData.course) === c ? 'bg-green-600 border-green-600 text-white' : 'border-gray-200 text-gray-700 hover:border-green-300'}`}>{c}</button>
+                  <button key={c} type="button" aria-pressed="true"
+                    className="flex-1 rounded-xl border border-green-600 bg-green-600 py-3 text-sm font-medium text-white">{c}</button>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-gray-500">{assignedProgram ? `${assignedProgram.institute_name} · ${assignedProgram.name}. ` : ''}Program changes require staff review.</p>
               {errors.course && <p className="text-xs text-red-500 mt-1.5">{errors.course}</p>}
             </div>
 
@@ -540,7 +541,7 @@ export default function StudentSetup() {
             <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 sm:p-5 mb-5 divide-y divide-gray-100">
               {[
                 { label: 'Student ID',  value: formData.studentId },
-                { label: 'Course',      value: assignedProgram?.code || formData.course },
+                { label: 'Program',     value: enrolledCourse },
                 { label: 'Phone',       value: formData.phone },
                 { label: 'Staying at',  value: formData.stayingAt === 'boarding' ? 'Boarding house' : formData.stayingAt === 'home' ? 'Family home' : 'Open' },
                 ...(formData.boardingProvince ? [{ label: 'Boarding address', value: [formData.boardingBarangay, formData.boardingCity, formData.boardingProvince].filter(Boolean).join(', ') }] : []),

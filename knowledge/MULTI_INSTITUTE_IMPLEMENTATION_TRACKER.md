@@ -125,13 +125,16 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F04 — Profiles, onboarding and dynamic program controls
 
-- [ ] Branch `codex/dynamic-program-profiles` after F03.
-- [ ] Dynamic program options in setup/profile/enrollment/admin instructor forms,
+- [x] Branch `codex/dynamic-program-profiles` after F03 (`e1afb99`).
+- [x] Dynamic program options in setup/profile/enrollment/admin instructor forms,
   rosters and filters; remove IC defaults from product copy/templates as appropriate.
-- [ ] Prevent student self-transfer; retain reviewed administrative transfer and
+- [x] Prevent student self-transfer; retain reviewed administrative transfer and
   earlier context. Update serializers/cache/navigation callers consistently.
-- [ ] Test all roles, phone/desktop, validation, stale selections and current
-  profile/returning-student recovery; receipt and local merge.
+- [x] Test all roles, phone/desktop, validation, stale selections and current
+  profile/returning-student recovery; [receipt](DYNAMIC_PROGRAM_PROFILES.md):
+  655 PostgreSQL/269 frontend tests, lint/build/check/drift and 22 browser groups
+  passed. Configured 0035 preserved all 42 old data tables and fields.
+- [ ] Commit and merge F04 locally before F05 (all gates passed).
 
 ### F05 — Program competency frameworks
 
@@ -252,7 +255,7 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F03 complete and locally merged (5 November 2026):
+Current checkpoint — F04 gates complete, preparing local merge (5 November 2026):
 
 - F03 branch `codex/program-batches-enrollment`, base `26edb37`, implementation
   `54303ec` fast-forward merged into local `main`. This receipt is recorded on
@@ -277,7 +280,28 @@ Current checkpoint — F03 complete and locally merged (5 November 2026):
   superseded; see [feature receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md).
   Broader profiles, frameworks, matching isolation, AIKEN and mapping remain
   future features, not claimed complete by these checks.
-- All owned test runners and migration restore helpers finished and stopped.
-  No deployment or GitHub push. No F04 implementation has begun.
-- Exact next step: create `codex/dynamic-program-profiles` from local main after
-  merging this receipt, then complete and test F04 before its own local merge.
+- Current branch `codex/dynamic-program-profiles`, base `e1afb99`; F04 changes
+  are uncommitted and fully verified. Read-only student programs, neutral account
+  defaults, optional atomic instructor/program grants, current assignment display,
+  program-code filters and neutral copy are complete; see the F04 receipt.
+- F04 verification: 655 PostgreSQL tests (`work/organization-postgres-o5vlnucr/`),
+  269 frontend tests, lint/build, Django check/drift, documentation links and
+  whitespace passed. Browser: 11 real API groups (`organization-browser-frw28pon`),
+  five retained profile-layout groups (`organization-browser-334or_ac`), three
+  draft recovery groups (`organization-browser-0py4f8el`) and three external
+  recovery groups (`organization-browser-of8szln3`), all under ignored work/.
+  No page errors; desktop/phone images reviewed. Provider recovery's isolated
+  image fixture uses Vite dev for source imports; primary acceptance uses build.
+- Configured 0035 applied after isolated backup restore and actual Django
+  rehearsal; all 42 old public data tables retain all previous values/counts,
+  no new tables/columns. Receipt
+  `work/organization-configured-migration-j2licsf6/receipt.json`.
+  Synthetic operator rehearsal also passed at
+  `work/program-migration-operator-k4b5b32x/results.json`.
+- Known failures: none remaining. The first full F04 run found one test lacking
+  the page parameter; older browser fixtures had stale selectors/ports and a
+  dev-source-only import. Corrected fixtures and final passing runs supersede
+  those attempts. No existing IC records were rewritten or moved.
+- All owned helpers stopped. No F05 implementation, deployment or GitHub push.
+- Exact next step: commit F04, merge into local main, record the merge receipt,
+  then create `codex/program-competency-frameworks` and complete F05 sequentially.

@@ -21,7 +21,7 @@ for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.em
 paths.users.push(paths.assignments[0], paths.assignments[1])
 for (const topic of ['organization', 'assignments']) paths[topic].push(...paths.batches, ...paths.email, ...paths.management,
   ...paths.students, ...paths.assessments, ...paths.placements, /^\/api\/admin\/batch-instructors\/$/,
-  /^\/api\/instructor\/students\/recommendations\/$/)
+  /^\/api\/instructor\/students\/recommendations\/$/, /^\/api\/auth\/me\/$/)
 
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')

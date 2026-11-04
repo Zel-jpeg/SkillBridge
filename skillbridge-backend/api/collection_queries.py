@@ -115,7 +115,8 @@ def admin_collection(params):
     for row in payload['students']:
         row['detail_url'] = f"/api/admin/users/?student_id={row['id']}"
     return {**payload, 'pagination': pagination, 'counts': counts,
-            'options': {'instructors': sorted(instructor_options)}}
+            'options': {'instructors': sorted(instructor_options),
+                        'courses': sorted({user.course for user in users if user.role == 'student' and user.course})}}
 
 
 def batch_collection(params, batch):

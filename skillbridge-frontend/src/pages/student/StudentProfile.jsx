@@ -3,7 +3,8 @@ import { loadLeaflet, geocodeAddress } from '../../utils/externalServices'
 import MapStatus from '../../components/MapStatus'
 // src/pages/student/StudentProfile.jsx
 //
-// Students can update: name, student ID, course, phone number, staying-at preference,
+// Students can update contact details; their enrolled program is read-only.
+// Editable: name, student ID, phone number, staying-at preference,
 // home address, boarding address, travel preference, location pin (map),
 // Notification emails are unavailable; no preference is collected.
 //
@@ -171,13 +172,12 @@ export default function StudentProfile() {
   // Derive read-only display values from real API data
   const displayName   = apiStudent?.name      ?? ''
   const displayId     = apiStudent?.school_id ?? ''
-  const displayCourse = apiStudent?.course    ?? ''
+  const displayCourse = apiStudent?.program?.code ?? apiStudent?.course ?? ''
   const photoUrl      = apiStudent?.photo_url ?? ''
 
   // Editable state — seeded from API once loaded
   const [editName,           setEditName]           = useState('')
   const [editStudentId,      setEditStudentId]      = useState('')
-  const [editCourse,         setEditCourse]         = useState('')
   const [phone,              setPhone]              = useState('')
   const [travelWilling,      setTravelWilling]      = useState('panabo')
 
@@ -192,7 +192,6 @@ export default function StudentProfile() {
     formSeeded.current = true
     setEditName(apiStudent.name ?? '')
     setEditStudentId(apiStudent.school_id ?? '')
-    setEditCourse(apiStudent.course ?? '')
     setPhone(apiStudent.phone ?? '')
     setPinnedLoc(validPin(apiStudent.address?.pinLat, apiStudent.address?.pinLng))
     setTravelWilling(apiStudent.address?.travelWilling ?? 'panabo')
@@ -263,7 +262,7 @@ export default function StudentProfile() {
     const e = {}
     if (!editName.trim())       e.editName      = 'Full name is required'
     if (!editStudentId.trim())  e.editStudentId = 'Student ID is required'
-    if (!editCourse.trim())     e.editCourse    = 'Course is required'
+    if (!displayCourse.trim())  e.editCourse    = 'Ask your instructor to confirm your enrolled program.'
     const phonePattern = /^09\d{9}$/
     if (!phone)                         e.phone = 'Phone number is required'
     else if (!phonePattern.test(phone)) e.phone = 'Must be 11 digits starting with 09'
@@ -285,7 +284,7 @@ export default function StudentProfile() {
       const res = await api.patch('/api/students/me/profile/', {
         name:             editName.trim(),
         studentId:        editStudentId.trim(),
-        course:           editCourse.trim(),
+        course:           displayCourse.trim(),
         phone,
         stayingAt,
         travelWilling,
@@ -335,9 +334,11 @@ export default function StudentProfile() {
   const fields = [
     { key: 'editName', label: 'Full name', value: editName, placeholder: 'e.g. Juan Dela Cruz', set: setEditName },
     { key: 'editStudentId', label: 'Student ID', value: editStudentId, placeholder: 'e.g. 2023-00123', set: setEditStudentId },
-    { key: 'editCourse', label: 'Course', value: editCourse, placeholder: 'e.g. BSIT', set: setEditCourse },
+    { key: 'editCourse', label: 'Program', value: displayCourse, readOnly: true,
+      hint: apiStudent?.program ? `${apiStudent.program.institute_name} · ${apiStudent.program.name}. Program changes require staff review.` : 'Assigned through enrollment. Ask authorized staff to review a program change.' },
     { key: 'phone', label: 'Phone number', value: phone, placeholder: 'e.g. 09123456789', type: 'tel', inputMode: 'numeric', maxLength: 11, set: setPhone },
   ].map(field => ({ ...field, onChange: value => {
+    if (field.readOnly) return
     field.set(value); setErrors(previous => ({ ...previous, [field.key]: '' })); setSaved(false)
   } }))
 

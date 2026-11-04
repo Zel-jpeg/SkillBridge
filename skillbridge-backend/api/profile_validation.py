@@ -38,8 +38,11 @@ def profile_data(data, user):
                 if not matches_program(value, user.program):
                     invalid(field, 'Use your enrolled program. Ask authorized staff to review a transfer.')
                 value = user.program.code
-            elif value not in ('BSIT', 'BSIS'):
-                invalid(field, 'Choose your enrolled program.')
+            else:
+                from .enrollment_import import normalize_program
+                if not user.course or normalize_program(value) != normalize_program(user.course):
+                    invalid(field, 'Use your enrolled program. Ask authorized staff to review a transfer.')
+                value = user.course
         if field == 'phone' and not re.fullmatch(r'09\d{9}', value):
             invalid(field, 'Phone must have 11 digits starting with 09.')
         result[model_field] = value

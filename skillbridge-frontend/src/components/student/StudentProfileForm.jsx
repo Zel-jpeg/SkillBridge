@@ -35,8 +35,10 @@ export default function StudentProfileForm({ student, fields, errors, travelOpti
           <div className="profile-fields">{fields.map(field => <div key={field.key}>
             <label htmlFor={`profile-${field.key}`}>{field.label}</label>
             <input id={`profile-${field.key}`} type={field.type || 'text'} inputMode={field.inputMode} maxLength={field.maxLength}
+              readOnly={field.readOnly}
               value={field.value} placeholder={field.placeholder} onChange={event => field.onChange(event.target.value)}
               aria-invalid={Boolean(errors[field.key])} aria-describedby={errors[field.key] ? `profile-${field.key}-error` : undefined} />
+            {field.hint && <p className="profile-muted mt-1">{field.hint}</p>}
             {errors[field.key] && <p id={`profile-${field.key}-error`} className="profile-error">{errors[field.key]}</p>}
           </div>)}</div>
         </section>

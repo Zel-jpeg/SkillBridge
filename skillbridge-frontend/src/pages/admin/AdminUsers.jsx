@@ -47,7 +47,7 @@ export default function AdminUsers() {
     setFilterStatus, setFilterCourse, setFilterInstructor,
     sortCol, sortDir, toggleSort,
     page, setPage, view, setView,
-    displayed, counts, instructorsList, userFilters, previewFilters, applyFilters,
+    displayed, counts, instructorsList, courseOptions, userFilters, previewFilters, applyFilters,
     PAGE_SIZE,
     handleAddInstructor, confirmDeleteInstructor,
     approvePendingInstructor, rejectPendingInstructor, confirmRejectInstructor,
@@ -215,7 +215,7 @@ export default function AdminUsers() {
           <div className="space-y-3">
             <CollectionFilterToolbar key={activeTab} filters={userFilters} defaults={{ search: '', filterStatus: 'all', filterCourse: 'all', filterInstructor: 'all' }}
               groups={activeTab === 'students' ? [
-                { key: 'filterCourse', label: 'Course', options: [['all', 'All courses'], ['BSIT', 'BSIT'], ['BSIS', 'BSIS']] },
+                { key: 'filterCourse', label: 'Program', options: [['all', 'All programs'], ...courseOptions.map(code => [code, code])] },
                 { key: 'filterStatus', label: 'Assessment status', options: [['all', 'All'], ['completed', 'Completed'], ['stopped', 'Stopped / flagged'], ['pending', 'Pending']] },
                 ...(instructorsList.length ? [{ key: 'filterInstructor', label: 'Instructor', options: [['all', 'All instructors'], ...instructorsList.map(name => [name, name])] }] : []),
               ] : []} onApply={applyFilters} onSearch={setSearch} getPreviewCount={draft => previewFilters(draft).length}
