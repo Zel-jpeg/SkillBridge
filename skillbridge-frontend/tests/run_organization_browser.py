@@ -22,6 +22,8 @@ env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'PYTHONIOENCODING': 'utf-8',
        'TOAST_TEST_BASE': f'http://127.0.0.1:{frontend_port}'}
 if '--program-batches' in sys.argv or '--dynamic-profiles' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'program-batches'
+if '--general-text' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'general-text'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
@@ -56,8 +58,11 @@ try:
             script = 'competency_assistance_playwright.py'
         if '--framework-authoring' in sys.argv:
             script = 'framework_authoring_playwright.py'
+        if '--general-text' in sys.argv:
+            script = 'general_competency_playwright.py'
         for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
-            ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py')]:
+            ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py'),
+            ('--assessment-result-navigation', 'student_assessment_result_navigation_playwright.py')]:
             if option in sys.argv:
                 script = candidate
         result = subprocess.run([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests' / script)],

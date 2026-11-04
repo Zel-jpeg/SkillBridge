@@ -399,10 +399,10 @@ class HybridRecommendationTests(APITestCase):
         profile = StudentCompetencyProfile.objects.get(
             student=self.student, assessment=self.assessment,
         )
-        self.assertEqual(profile.orientation_label, 'Backend and data-oriented')
-        self.assertIn('Programming (90.0%)', profile.orientation_summary)
+        self.assertEqual(profile.orientation_label, 'Highest-scoring assessed area')
+        self.assertIn('Programming (90%)', profile.orientation_summary)
         self.assertNotIn(self.position.title, profile.orientation_summary)
-        self.assertIn('backend and data-oriented', profile.competency_profile_text.lower())
+        self.assertIn('Programming competency (90 percent)', profile.competency_profile_text)
         self.assertNotIn(self.position.title, profile.competency_profile_text)
         self.assertTrue(profile.development_suggestions)
         self.client.force_authenticate(self.student)
@@ -410,7 +410,7 @@ class HybridRecommendationTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.data['competency_profile']['orientation_label'],
-            'Backend and data-oriented',
+            'Highest-scoring assessed area',
         )
 
     @patch('api.recommendation_nlp.preprocess_texts')

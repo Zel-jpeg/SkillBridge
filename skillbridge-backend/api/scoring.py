@@ -325,6 +325,14 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
 
     categories = list(categories)
     skill_scores = list(skill_scores)
+    catalog_ids = {category.id for category in categories}
+    if any(score.skill_category_id not in catalog_ids and
+           getattr(getattr(score, 'skill_category', None), 'framework_id', None) is not None for score in skill_scores):
+        # During staged catalog rollout, scoped evidence must never enter the
+        # legacy global corpus or make otherwise valid assessment results fail.
+        # F10 supplies the compatible scoped catalog before matching these rows.
+        Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
+        return []
     scores, totals, names, mapping = pooled_evidence(skill_scores, categories)
     score_lookup = {score.skill_category_id: score.percentage for score in skill_scores}
     student_vec = np.array([score_lookup.get(category.id, 0.0) / 100.0 for category in categories], dtype=float)

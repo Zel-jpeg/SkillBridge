@@ -38,16 +38,9 @@ from .skill_taxonomy import (
 )
 from collections import Counter
 
-TEXT_GENERATION_VERSION = 'neutral-evidence-v3'
-
-ORIENTATION_GROUPS = [
-    ('Backend and data-oriented', {'programming', 'backend', 'database', 'sql', 'python', 'java', 'django', 'api'}),
-    ('Web and interface-oriented', {'web', 'frontend', 'design', 'html', 'css', 'javascript', 'react', 'ui', 'ux'}),
-    ('Network and infrastructure-oriented', {'network', 'routing', 'switching', 'tcp', 'lan', 'wan', 'infrastructure', 'cisco'}),
-    ('Cybersecurity-oriented', {'security', 'cybersecurity', 'encryption', 'owasp', 'firewall', 'authentication'}),
-    ('IT support and operations-oriented', {'support', 'helpdesk', 'hardware', 'troubleshooting', 'maintenance', 'operations'}),
-    ('Data and analytics-oriented', {'analytics', 'analysis', 'statistics', 'visualization', 'reporting', 'data'}),
-]
+TEXT_GENERATION_VERSION = 'general-category-context-v4'
+DEFINITION_CHAR_LIMIT = 160
+DEFINITION_WORD_LIMIT = 12
 
 STOP_WORDS = {
     'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'is',
@@ -148,7 +141,31 @@ def _selected_tags(tags, score, category_name=''):
     # Zero scores are not positive evidence. Retain more distinct terms in
     # strong categories without inventing knowledge of unassessed subskills.
     count = 8 if score >= 80 else 5 if score >= 60 else 2 if score > 0 else 0
-    return [tag for tag in normalize_tags(tags) if not is_generic_tag(tag, category_name)][:count]
+    return [tag for tag in normalize_tags(tags) if tag.casefold() != category_name.casefold()][:count]
+
+
+def category_definition(category):
+    """One bounded contextual definition, shared by both text inputs/freshness."""
+    value = getattr(category, 'description', '')
+    if not isinstance(value, str):
+        return ''
+    return ' '.join(value[:DEFINITION_CHAR_LIMIT].split()[:DEFINITION_WORD_LIMIT])
+
+
+def assessed_scores(skill_scores):
+    result = []
+    for row in skill_scores:
+        try:
+            score = float(row.percentage)
+            maximum = getattr(row, 'max_score', None)
+            if isinstance(row.percentage, bool) or not math.isfinite(score) or not 0 <= score <= 100:
+                continue
+            if maximum is not None and (not math.isfinite(float(maximum)) or float(maximum) <= 0):
+                continue
+            result.append(row)
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return result
 
 
 def _evidence_parts(entries):
@@ -158,17 +175,22 @@ def _evidence_parts(entries):
     still supplies corpus-wide inverse-document frequency. Category tags are
     illustrative category vocabulary, not claims of separately tested skills.
     """
-    entries = sorted(entries, key=lambda pair: (-pair[1], canonical_category(pair[0].name)))
+    entries = sorted(entries, key=lambda pair: (-pair[1], pair[0].name.casefold()))
     selected = [(category, score, _selected_tags(category.tags, score, category.name)) for category, score in entries]
     frequency = Counter(taxonomy_key(tag) for _, _, tags in selected for tag in set(tags))
     fragments, evidence = [], []
     for category, score, tags in selected:
-        name = canonical_category(category.name)
+        name = category.name
         band = competency_label(score)
         fragments.append(f'{band} {name} competency ({score:g} percent); category vocabulary: {", ".join(tags) or "no specific tags"}'
                          if score > 0 else f'{name}: no positive category evidence ({score:g} percent)')
         if score <= 0:
             continue
+        definition = category_definition(category)
+        if definition:
+            # Once on each side, outside repeated score-weighted vocabulary.
+            # The definition describes the category, never individual mastery.
+            fragments.append(f'Contextual category definition for {name}: {definition}')
         weight = score_weight(score)
         # Same skill + band phrase on both sides makes strengths comparable;
         # expected positions and archetype names are never inputs here.
@@ -179,7 +201,7 @@ def _evidence_parts(entries):
 
 
 def build_student_profile(skill_scores):
-    skill_scores = list(skill_scores)
+    skill_scores = assessed_scores(skill_scores)
     fragments, evidence = _evidence_parts([(s.skill_category, float(s.percentage)) for s in skill_scores])
     if not fragments:
         return 'No assessed competency evidence is available.'
@@ -188,97 +210,49 @@ def build_student_profile(skill_scores):
             'Category vocabulary is contextual; these terms were not separately assessed.')
 
 
-def _category_terms(skill_score):
-    category = skill_score.skill_category
-    text = ' '.join([category.name] + normalize_tags(category.tags)).casefold()
-    return set(re.findall(r'[a-z][a-z0-9+#.-]*', text))
-
-
 def generate_competency_insights(skill_scores):
-    """Create a neutral orientation and actionable advice from assessment evidence.
-
-    The orientation never includes a company or exact position title, preventing
-    the narrative from leaking the recommendation target into NLP similarity.
-    """
-    ranked = sorted(skill_scores, key=lambda score: (-score.percentage, score.skill_category.name.casefold()))
+    """Describe saved category results without inferring a discipline or career."""
+    ranked = sorted(assessed_scores(skill_scores), key=lambda row: (-float(row.percentage), row.skill_category.name.casefold()))
     if not ranked:
         return {
-            'orientation_label': '',
-            'orientation_summary': '',
+            'orientation_label': '', 'orientation_summary': '',
             'competency_profile_text': 'No assessed competency evidence is available.',
-            'development_suggestions': [],
-            'supporting_categories': [],
+            'development_suggestions': [], 'supporting_categories': [],
         }
-
-    group_scores = []
-    for label, keywords in ORIENTATION_GROUPS:
-        weighted_score = 0.0
-        evidence_count = 0
-        for skill_score in ranked:
-            overlap = _category_terms(skill_score) & keywords
-            if overlap:
-                weighted_score += float(skill_score.percentage) * min(len(overlap), 3)
-                evidence_count += 1
-        group_scores.append((weighted_score, evidence_count, label))
-    best_score, _evidence_count, orientation_label = max(group_scores)
-    if best_score <= 0:
-        names = [score.skill_category.name for score in ranked[:2]]
-        orientation_label = f"{' and '.join(names)}-oriented competency profile"
-
-    # Retain the two leading levels including every exact tie at the boundary.
-    leaders = [score for score in ranked if score.percentage >= ranked[min(1, len(ranked) - 1)].percentage]
-    leader_text = ' and '.join(
-        f'{score.skill_category.name} ({round(score.percentage, 1)}%)'
-        for score in leaders
-    )
-    orientation_summary = (
-        f'Assessment evidence indicates a {orientation_label.lower()} competency pattern, '
-        f'led by {leader_text}.'
-    )
-    if ranked[0].percentage <= 0:
-        orientation_label = ''
+    maximum = float(ranked[0].percentage)
+    leaders = [row for row in ranked if float(row.percentage) == maximum]
+    orientation_label = ('Highest-scoring assessed area' if len(leaders) == 1 else 'Highest-scoring assessed areas (tied)') if maximum > 0 else ''
+    if maximum > 0:
+        orientation_summary = 'Assessment category results are highest in ' + '; '.join(
+            f'{row.skill_category.name} ({float(row.percentage):g}%)' for row in leaders) + '. These results do not establish a career orientation or practical mastery.'
+    else:
         orientation_summary = 'No assessed category scored above zero. Further guided practice and assessment are needed.'
-
-    development_suggestions = []
-    for skill_score in sorted(ranked, key=lambda score: score.percentage)[:2]:
-        category = skill_score.skill_category
-        score = float(skill_score.percentage)
-        if score >= 80:
-            continue
+    focus = [row for row in ranked if float(row.percentage) < 80]
+    suggestions = []
+    # Keep every assessed category, including exact ties; no arbitrary two-row cut.
+    for row in sorted(focus or ranked, key=lambda row: (float(row.percentage), row.skill_category.name.casefold())):
+        category = row.skill_category
+        score = float(row.percentage)
         tags = normalize_tags(category.tags)[:4]
-        focus = ', '.join(tags) if tags else category.name.lower()
-        development_suggestions.append({
-            'category': category.name,
-            'percentage': round(score, 1),
-            'competency_label': competency_label(score),
-            'message': (
-                f'{competency_label(score).capitalize()} competency. Strengthen {category.name.lower()} '
-                f'through guided practice, review activities, and hands-on projects focused on {focus}.'
-            ),
-        })
-
-    if not development_suggestions:
-        development_suggestions.append({
-            'category': leaders[0].skill_category.name,
-            'percentage': round(float(leaders[0].percentage), 1),
-            'competency_label': competency_label(float(leaders[0].percentage)),
-            'message': 'Maintain this strong performance through increasingly complex practical projects and peer collaboration.',
-        })
-
+        message = (f'Review incorrect or unanswered items in {category.name} with your instructor and practise the concepts assessed.' if score < 80 else
+                   f'Build on your assessed results in {category.name} through further guided practice and applied activities.')
+        if tags:
+            message += f' Contextual topics for review: {", ".join(tags)}. These topics were not individually assessed.'
+        suggestions.append({'category': category.name, 'percentage': round(score, 1),
+                            'competency_label': competency_label(score), 'message': message})
     return {
-        'orientation_label': orientation_label,
-        'orientation_summary': orientation_summary,
-        'competency_profile_text': f'{orientation_summary} {build_student_profile(ranked)}',
-        'development_suggestions': development_suggestions,
-        'supporting_categories': [
-            {
-                'category': score.skill_category.name,
-                'percentage': round(float(score.percentage), 1),
-                'competency_label': competency_label(float(score.percentage)),
-                'tags': normalize_tags(score.skill_category.tags)[:6],
-            }
-            for score in ranked
-        ],
+        'orientation_label': orientation_label, 'orientation_summary': orientation_summary,
+        # Presentation labels/orientations are not matching evidence.
+        'competency_profile_text': build_student_profile(ranked),
+        'development_suggestions': suggestions,
+        'supporting_categories': [{'category': row.skill_category.name,
+            'category_id': getattr(row.skill_category, 'id', None),
+            'framework_id': getattr(row.skill_category, 'framework_id', None),
+            'text_generation_version': TEXT_GENERATION_VERSION,
+            'matching_context': {'definition': category_definition(row.skill_category) if float(row.percentage) > 0 else '',
+                                 'tags': _selected_tags(row.skill_category.tags, float(row.percentage), row.skill_category.name)},
+            'percentage': round(float(row.percentage), 1), 'competency_label': competency_label(float(row.percentage)),
+            'tags': normalize_tags(row.skill_category.tags)[:6]} for row in ranked],
     }
 
 

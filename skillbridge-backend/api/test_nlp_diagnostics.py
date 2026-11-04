@@ -95,7 +95,8 @@ class TextPreviewAPITests(APITestCase):
         for a, pct, date in [(self.assessment, 80, timezone.now() - timedelta(days=1)),
                              (self.other_assessment, 95, timezone.now())]:
             StudentResponse.objects.create(student=self.student, assessment=a, status='submitted', submitted_at=date)
-            SkillScore.objects.create(student=self.student, assessment=a, skill_category=self.category, percentage=pct)
+            SkillScore.objects.create(student=self.student, assessment=a, skill_category=self.category, percentage=pct,
+                                      raw_score=pct, max_score=100)
         self.profile = StudentCompetencyProfile.objects.create(student=self.student, assessment=self.assessment,
             competency_profile_text='Previously generated profile retained unchanged')
         company = Company.objects.create(name='Test Co', added_by=self.admin)

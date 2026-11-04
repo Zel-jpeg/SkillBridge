@@ -1,9 +1,4 @@
 import { scorePercentage } from './assessmentSummary.js'
-import catalog from './developmentActivities.json' with { type: 'json' }
-
-// Display-only activities. The coverage check keeps categories/aliases aligned
-// with api/skill_taxonomy.py without importing its matching logic into the app.
-const { activities: ACTIVITIES, aliases: ALIASES } = catalog
 const categoryKey = value => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').toLowerCase() : ''
 
 function practiceApproach(percentage) {
@@ -35,10 +30,9 @@ export function developmentAdvice(suggestions, { profile, audience = 'student', 
   return (Array.isArray(suggestions) ? suggestions : []).filter(item => scorePercentage(item?.percentage) != null).map(item => {
     const percentage = scorePercentage(item.percentage)
     const key = categoryKey(item.category)
-    const normalizedActivityKey = key.replace(/[^a-z0-9+#]+/g, ' ').trim()
-    const activityKey = Object.hasOwn(ALIASES, normalizedActivityKey) ? ALIASES[normalizedActivityKey] : normalizedActivityKey
-    const activity = (Object.hasOwn(ACTIVITIES, activityKey) ? ACTIVITIES[activityKey] : null)
-      || 'Choose one related activity from your course materials, complete it, and explain your approach.'
+    // A display name cannot establish a discipline or a suitable practical task.
+    // The instructor's curriculum supplies the activity; saved topics stay hints.
+    const activity = 'Choose one related activity from your course materials, complete it, explain your approach, and check the expected result.'
     const review = percentage < 80
       ? scope === 'individual'
         ? audience === 'student' ? 'Review your incorrect and unanswered questions in this category.' : 'Review incorrect and unanswered questions in this category with the student.'

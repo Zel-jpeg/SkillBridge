@@ -80,6 +80,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [General category result and NLP text](GENERAL_COMPETENCY_TEXT.md):
+  F08 factual highest categories, neutral advice, bounded symmetric definitions,
+  saved context provenance and guarded staged ranking; see the tracker for status.
+
 - [Framework-aware assessment authoring](FRAMEWORK_ASSESSMENT_AUTHORING.md):
   F07 program/version-bound drafts, category IDs, compatible assignment/copies,
   publication and import validation, frozen definitions and nullable migration

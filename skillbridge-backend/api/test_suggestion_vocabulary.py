@@ -68,7 +68,7 @@ class SuggestionVocabularyTests(SimpleTestCase):
         category = Obj(name='Photo Editing', tags=['Saved custom vocabulary'])
         scores = [Obj(skill_category=category, percentage=80)]
         text = build_student_profile(scores)
-        self.assertIn('photo editing', text)
+        self.assertIn('Photo Editing', text)
         self.assertIn('Saved custom vocabulary', text)
         self.assertNotIn('retouching', text)
         self.assertNotIn('mastered', text)

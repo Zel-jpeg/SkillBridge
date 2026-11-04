@@ -43,6 +43,10 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'program-batches':
     user = User.objects.create_user('program-learner@dnsc.edu.ph', role='student', name='Synthetic Program Learner')
     identities['program_student'] = {'token': str(AccessToken.for_user(user)),
         'user': {'id': user.id, 'role': user.role, 'name': user.name, 'is_approved': False}}
+if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'general-text':
+    settings.DEBUG = True
+    from general_competency_fixture import seed
+    seed(OUT, identities, owner)
 (OUT / 'auth.json').write_text(json.dumps(identities), encoding='utf-8')
 print('Synthetic organization API ready', flush=True)
 call_command('runserver', f"127.0.0.1:{os.environ['SB_ORGANIZATION_API_PORT']}", use_reloader=False, verbosity=0)

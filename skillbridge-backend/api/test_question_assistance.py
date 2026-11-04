@@ -38,7 +38,7 @@ class AssistanceTextTests(SimpleTestCase):
                 for name in ['Programming', 'Networking', 'Database']]
         insight = generate_competency_insights(rows)
         for name in ['Programming', 'Networking', 'Database']:
-            self.assertIn(name + ' (80.0%)', insight['orientation_summary'])
+            self.assertIn(name + ' (80%)', insight['orientation_summary'])
         self.assertIn('not separately assessed', insight['competency_profile_text'])
         self.assertNotIn('mastered', insight['competency_profile_text'])
 

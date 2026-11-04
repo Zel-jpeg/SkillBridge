@@ -17,7 +17,7 @@ _TEMPLATE_WORDS = frozenset('''
     percent positive excellent strong proficient developing basic available specific
     no none not from the and or of to at as is are for with this these that those
     indicates indicate led oriented pattern profile further guided practice needed
-    current expected introduction description information
+    current expected introduction description information definition definitions
 '''.split())
 
 

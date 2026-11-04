@@ -128,9 +128,9 @@ class EvaluationAPITests(APITestCase):
         for i in range(5):
             student = User.objects.create_user(email=f'placed{i}@example.com', name=f'Student {i}', role='student')
             StudentResponse.objects.create(student=student, assessment=assessment, status='submitted', submitted_at=now - timedelta(days=1))
-            SkillScore.objects.create(student=student, assessment=assessment, skill_category=category, percentage=80)
+            SkillScore.objects.create(student=student, assessment=assessment, skill_category=category, percentage=80, raw_score=8, max_score=10)
             StudentResponse.objects.create(student=student, assessment=later, status='submitted', submitted_at=now + timedelta(days=1))
-            SkillScore.objects.create(student=student, assessment=later, skill_category=category, percentage=0)
+            SkillScore.objects.create(student=student, assessment=later, skill_category=category, percentage=0, raw_score=0, max_score=10)
             OJTPlacement.objects.create(student=student, company=company, position=positions[i % 3], status='approved', approved_at=now)
         return positions
 

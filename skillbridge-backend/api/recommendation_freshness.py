@@ -3,7 +3,8 @@ import hashlib
 import json
 
 from .models import Position, PositionRequirement, RecommendationConfiguration, SkillCategory
-from .recommendation_nlp import TEXT_GENERATION_VERSION, extract_coordinates
+from .recommendation_nlp import TEXT_GENERATION_VERSION, extract_coordinates, category_definition
+from types import SimpleNamespace
 from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
 
 
@@ -14,8 +15,8 @@ def _digest(value):
 def catalog_fingerprint():
     """Include the entire TF-IDF candidate corpus, not just the selected position.
 
-    Capacity and branding images do not affect scores. Description-only taxonomy
-    changes are authoring hints and are likewise outside the matching inputs.
+    Capacity and branding images do not affect scores. The bounded category
+    definition now participates on both sides of the generated matching text.
     Bulk callers share this value only within their current read operation.
     """
     positions = list(Position.objects.filter(requirements__isnull=False, archived_at__isnull=True,
@@ -25,7 +26,9 @@ def catalog_fingerprint():
     ).distinct())
     requirements = list(PositionRequirement.objects.filter(position_id__in=[p['id'] for p in positions])
                         .order_by('position_id', 'id').values('position_id', 'skill_category_id', 'required_percentage'))
-    categories = list(SkillCategory.objects.filter(framework__isnull=True).order_by('id').values('id', 'name', 'tags'))
+    categories = list(SkillCategory.objects.filter(framework__isnull=True).order_by('id').values('id', 'name', 'tags', 'description'))
+    for category in categories:
+        category['description'] = category_definition(SimpleNamespace(description=category['description']))
     model = RecommendationConfiguration.objects.filter(pk=1).values_list('active_model', flat=True).first() or 'spacy_md'
     return _digest({'version': 'ranking-inputs-v1', 'text_version': TEXT_GENERATION_VERSION,
                     'positions': positions, 'requirements': requirements, 'categories': categories, 'model': model})

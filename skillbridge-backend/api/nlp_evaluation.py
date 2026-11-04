@@ -108,6 +108,8 @@ def real_data():
             status='submitted', submitted_at__lte=placement.approved_at).order_by('-submitted_at', '-id').first()
         scores = list(SkillScore.objects.filter(student_id=placement.student_id,
             assessment_id=response.assessment_id).select_related('skill_category')) if response else []
+        from .recommendation_nlp import assessed_scores
+        scores = assessed_scores(scores)
         if not scores or not any(s.percentage > 0 for s in scores):
             skipped += 1
             continue

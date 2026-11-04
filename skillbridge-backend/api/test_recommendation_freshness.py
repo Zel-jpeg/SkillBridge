@@ -86,15 +86,34 @@ class RecommendationFreshnessTests(APITestCase):
                 profile.refresh_from_db()
                 self.assertTrue(recommendations_stale(profile, self.student), 'GET must not silently regenerate stale scores')
 
-    def test_capacity_branding_and_authoring_descriptions_do_not_change_matching_provenance(self):
+    def test_capacity_and_branding_do_not_change_matching_provenance(self):
         Position.objects.filter(pk=self.position.pk).update(slots_available=0)
         Company.objects.filter(pk=self.company.pk).update(image_key='synthetic-branding.webp')
-        SkillCategory.objects.filter(pk=self.first.pk).update(description='Authoring hint only')
         self.assertFalse(recommendations_stale(self.profile, self.student))
         self.client.force_authenticate(self.admin)
         denied = self.client.post(reverse('placement_approve'), {'recommendation_id': self.rec.id}, format='json')
         self.assertEqual(denied.status_code, 409)
         self.assertIn('slots', denied.data['error'])
+
+    def test_bounded_definition_change_invalidates_rankings_without_rewriting_scores_or_saved_text(self):
+        before = list(SkillScore.objects.values())
+        text = self.profile.competency_profile_text
+        SkillCategory.objects.filter(pk=self.first.pk).update(description='Reviewed category definition now used symmetrically.')
+        self.assertTrue(recommendations_stale(self.profile, self.student))
+        self.client.force_authenticate(self.student)
+        response = self.client.get(reverse('student_combined_results'))
+        self.assertTrue(response.data['recommendations_stale'])
+        self.assertEqual(before, list(SkillScore.objects.values()))
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.competency_profile_text, text)
+
+    def test_description_tail_outside_actual_text_limit_does_not_invalidate_saved_rankings(self):
+        prefix = ' '.join(['bounded'] * 12)
+        SkillCategory.objects.filter(pk=self.first.pk).update(description=prefix + ' First excluded tail')
+        self.profile.ranking_input_fingerprint = input_fingerprint(self.student)
+        self.profile.save(update_fields=['ranking_input_fingerprint'])
+        SkillCategory.objects.filter(pk=self.first.pk).update(description=prefix + ' Other excluded tail')
+        self.assertFalse(recommendations_stale(self.profile, self.student))
 
     def test_legacy_profile_requires_explicit_refresh_without_modifying_score_history(self):
         self.profile.ranking_input_fingerprint = ''

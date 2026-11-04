@@ -181,13 +181,16 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F08 — General result and NLP text
 
-- [ ] Branch `codex/general-competency-text` after F07.
-- [ ] Neutral category-evidence summaries replace computing orientation assumptions.
+- [x] Branch `codex/general-competency-text` after F07 (`6087602`).
+- [x] Neutral category-evidence summaries replace computing orientation assumptions.
   Evaluate bounded symmetric definitions in matching text; version actual inputs.
-- [ ] Contextual tags/definitions never become individual mastery claims; zero and
+- [x] Contextual tags/definitions never become individual mastery claims; zero and
   missing evidence remain distinct, ties and historical snapshots stay correct.
-- [ ] Test raw/max regressions, descriptions on both sides, unrelated/long text,
-  fallback models and result/export UI; receipt and local merge.
+- [x] Test raw/max regressions, descriptions on both sides, unrelated/long text,
+  fallback models and result/export UI; [receipt](GENERAL_COMPETENCY_TEXT.md):
+  710 backend/274 frontend tests, lint/build/check/drift and five cross-program
+  plus four retained result-navigation browser groups passed. No F08 migration.
+- [ ] Commit and merge F08 locally before F09.
 
 ### F09 — Program-eligible opportunities and shared capacity
 
@@ -270,7 +273,31 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F07 complete and locally merged (5 November 2026):
+Current checkpoint — ACTIVE F08, F07 complete and locally merged (5 November 2026):
+
+- Active branch `codex/general-competency-text`, base `6087602`, with uncommitted
+  F08 application/test/documentation edits. F07 receipt `6087602` is already merged.
+- F08 replaces computing orientation/automatic UI activity mapping with factual
+  category leaders and course-material guidance. Text policy
+  `general-category-context-v4` adds one bounded 160-character/12-word definition
+  symmetrically, stores context/version in existing supporting-category JSON and
+  fingerprints effective definitions. Missing/zero evidence stays distinct.
+- F08 browser found scoped results still reached the legacy ranking corpus and
+  failed. A guarded boundary now returns no recommendations for framework evidence
+  absent from that catalog, while preserving valid result reads/final category
+  profiles. F09/F10 will supply compatible scoped opportunities/catalogs.
+- F08 current evidence: final focused 92 tests passed
+  (`work/organization-postgres-q4ze8dva/`); 274 frontend tests/lint/build passed;
+  Django check/drift passed after restoring a compatibility import. Four real
+  cross-program result/preview/CSV browser groups passed
+  (`work/organization-browser-si6brsva/`), no page errors; phone/dark and zero
+  screenshots visually read. Offline definition ablation saved at
+  `work/f08-definition-ablation.json` (synthetic mechanism, no accuracy claim).
+- F08 final full regression is running at `work/organization-postgres-jntfk427/`.
+  Earlier full 709-test run had two outdated fixture/case expectations, corrected.
+  No F08 migration/configured write is needed or performed. Final diff review,
+  receipt/checks/local commit/merge remain before F09. All completed browser
+  helpers stopped; only the current owned full-regression cluster may be active.
 
 - F07 branch `codex/framework-assessment-authoring`, base `782d562`, implementation
   `c17ac60` fast-forward merged into local main. No GitHub push or deployment.
@@ -305,8 +332,7 @@ Current checkpoint — F07 complete and locally merged (5 November 2026):
 - All owned test/browser/database/restore helpers stopped. No hosted validation,
   academic matching accuracy or framework-scoped recommendation completion is
   claimed. F08–F16 remain open.
-- Exact next step: merge this receipt locally, create
-  `codex/general-competency-text` from local main, then trace generated result and
-  symmetric NLP text before implementing/testing F08. Preserve score history,
-  missing/zero evidence, ties and current assessment-led ranking policy. Do not
-  repeat completed F07 checks without new cause. No push or deployment.
+- Exact next step: inspect the F08 final full-test result, finish verification and
+  documentation review, then commit/merge F08 locally. No migration or real rerun.
+  Only after F08 passes create `codex/program-opportunity-eligibility` for F09.
+  Preserve current assessment-led ranking; do not repeat F07 without new cause.

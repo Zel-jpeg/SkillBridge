@@ -1,5 +1,10 @@
 # Assessment result interpretation
 
+5 November follow-up: [F08](GENERAL_COMPETENCY_TEXT.md) supersedes the older
+computing orientations and automatic category-name activity mapping described
+below. Current guidance uses program course materials, factual highest categories
+and bounded saved definitions. Earlier October checks remain historical evidence.
+
 Updated 17 October 2026. Presentation uses current category percentages, including
 for previously saved profiles. No regeneration or data migration is required.
 

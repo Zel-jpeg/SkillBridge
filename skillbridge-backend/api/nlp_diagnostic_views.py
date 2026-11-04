@@ -46,11 +46,21 @@ def student_nlp_text(request, student_id):
         'text_generation_version': TEXT_GENERATION_VERSION,
         'texts': [
             {'label': 'Saved generated competency profile', 'text': profile.competency_profile_text if profile else '',
+             'text_generation_version': saved_text_version(profile),
              'note': f'Saved on {profile.generated_at.isoformat()}. It may predate current tags or text generation.' if profile else 'No saved profile exists.'},
             {'label': 'Current competency profile preview',
+             'text_generation_version': TEXT_GENERATION_VERSION,
              'text': generate_competency_insights(scores)['competency_profile_text'] if scores else '',
-             'note': 'Generated from current saved category scores and tags. Not saved; recommendations are unchanged.'}],
+             'note': 'Generated from current saved category scores, bounded definitions and tags. Not saved; recommendations are unchanged.'}],
         'note': 'Diagnostic inputs for NLP fit, not model accuracy. Category vocabulary does not verify each subskill. No question or answer content is included.'})
+
+
+def saved_text_version(profile):
+    rows = profile.supporting_categories if profile else []
+    if not isinstance(rows, list) or not rows:
+        return None
+    versions = {row.get('text_generation_version') if isinstance(row, dict) else None for row in rows}
+    return next(iter(versions)) if len(versions) == 1 and None not in versions else None
 
 
 @api_view(['GET'])
@@ -61,5 +71,5 @@ def position_nlp_text(request, position_id):
     position = get_object_or_404(Position.objects.select_related('company').prefetch_related('requirements__skill_category'), pk=position_id)
     return Response({'status': 'available', 'text_generation_version': TEXT_GENERATION_VERSION,
         'texts': [{'label': 'Current position NLP description', 'text': build_position_description(position),
-                   'note': 'Generated on demand from saved requirements and tags; not stored. Earlier recommendation inputs may differ.'}],
+                   'note': 'Generated on demand from saved requirements, bounded category definitions and tags; not stored. Earlier recommendation inputs may differ.'}],
         'note': 'Read-only diagnostic text used as input for NLP fit/text similarity. No assessment questions or answers are queried.'})
