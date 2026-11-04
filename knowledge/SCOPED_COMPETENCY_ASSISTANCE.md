@@ -101,5 +101,6 @@ grading, existing IC data or database schema changes in F06.
   fixture; current scope checks and F05 invalidation have separate API/unit tests.
   No hosted behavior, arbitrary curriculum validity or matching accuracy claim.
 
-Local implementation/merge commit is recorded in the tracker after commit.
+Implementation `4776e3d` was fast-forward merged into local `main` after all
+verification passed. Local document links (128) also passed.
 No GitHub push or deployment.

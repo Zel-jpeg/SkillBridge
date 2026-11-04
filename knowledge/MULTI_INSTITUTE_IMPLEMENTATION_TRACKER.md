@@ -162,7 +162,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   recovery and manual override; [receipt](SCOPED_COMPETENCY_ASSISTANCE.md):
   684 backend/274 frontend tests, check/drift/lint/build, seven assistance and six
   retained catalog browser groups passed. No schema/configured data changes.
-- [ ] Commit and merge F06 locally before F07.
+- [x] Commit and merge F06 locally before F07: `4776e3d`, fast-forward merged
+  into local main; no push.
 
 ### F07 — Framework-aware assessment authoring
 
@@ -264,10 +265,20 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F05 complete and locally merged (5 November 2026):
+Current checkpoint — F06 complete and locally merged (5 November 2026):
 
+- F06 branch `codex/scoped-category-assistance`, base `ef3f603`,
+  implementation `4776e3d` fast-forward merged into local main. Optional saved
+  definition matching/tag reuse, manual acceptance/fallback, scope and obsolete
+  response protections complete. No migration or configured-data changes.
+- F06 verification: 684 PostgreSQL tests (`work/organization-postgres-t71hpuxj/`),
+  274 frontend tests, lint/build, Django check/drift and 128 local document links.
+  Seven final assistance browser groups (`work/organization-browser-_wtk56to/`)
+  and six retained catalog groups (`work/organization-browser-yuia3zww/`) passed,
+  no page errors. Desktop and phone/dark images visually reviewed. All helpers
+  stopped. See [F06 receipt](SCOPED_COMPETENCY_ASSISTANCE.md).
 - F05 branch `codex/program-competency-frameworks`, base `f30c03e`,
-  implementation `3e70772` fast-forward merged into local main.
+  implementation `3e70772`, receipt `ef3f603` fast-forward merged into local main.
 - F01–F04 are complete and locally merged. F03 implementation `54303ec`, receipt
   `e1afb99`; F04 implementation `4241a66`, receipt `f30c03e`. No GitHub push.
 - F05: shared program framework/category catalog; creator/admin unused editing,
@@ -290,10 +301,12 @@ Current checkpoint — F05 complete and locally merged (5 November 2026):
   one empty framework table and three null links added. Receipt:
   `work/organization-configured-migration-qxf8x0rp/receipt.json`.
   No reclassification, grading, recommendation rerun or real notification send.
-- Known failures: none remaining in F05. Earlier browser fixtures needed explicit
+- Known failures: none remaining in F05/F06. Earlier browser fixtures needed explicit
   refresh for intentionally external writes with SSE disabled; stale-edit waits
   were corrected. One frontend contract test incorrectly tried POST on a read-only
   program-options endpoint; corrected and final 271-test run passed.
 - All owned helpers stopped. No deployment or GitHub push.
 - Exact next step: merge this receipt locally, then create
-  `codex/scoped-category-assistance` and implement/test F06.
+  `codex/framework-assessment-authoring` and implement/test F07. Resolve existing
+  authoring callers and category validation before edits; no next-feature work
+  starts before the F06 receipt merge.
