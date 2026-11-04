@@ -120,7 +120,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   [receipt](PROGRAM_BATCHES_AND_ENROLLMENT.md): 644 PostgreSQL/268 frontend tests,
   lint/build/check/drift and 26 browser groups passed; configured 0034 preserved
   all 42 old data tables/columns with three null context additions.
-- [ ] Commit and merge F03 locally before F04 (all verification gates passed).
+- [x] Commit and merge F03 locally before F04: implementation `54303ec`
+  fast-forward merged into local `main` after all gates passed. No push.
 
 ### F04 — Profiles, onboarding and dynamic program controls
 
@@ -251,10 +252,11 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F03 gates complete, preparing local merge (5 November 2026):
+Current checkpoint — F03 complete and locally merged (5 November 2026):
 
-- Branch `codex/program-batches-enrollment`, base `26edb37`; all F03 edits remain
-  on this feature branch until the local commit/merge below is recorded.
+- F03 branch `codex/program-batches-enrollment`, base `26edb37`, implementation
+  `54303ec` fast-forward merged into local `main`. This receipt is recorded on
+  the retained feature branch and merged before F04 starts.
 - F01/F02 are complete and locally merged. F03 implements one-program new batches,
   assigned owners, current-grant private access, program aliases and signed
   enrollment context, required setup/profile support and transfer checks.
@@ -277,5 +279,5 @@ Current checkpoint — F03 gates complete, preparing local merge (5 November 202
   future features, not claimed complete by these checks.
 - All owned test runners and migration restore helpers finished and stopped.
   No deployment or GitHub push. No F04 implementation has begun.
-- Exact next step: commit F03 task files, merge into local main, record commit and
-  merge evidence here; only then create `codex/dynamic-program-profiles` for F04.
+- Exact next step: create `codex/dynamic-program-profiles` from local main after
+  merging this receipt, then complete and test F04 before its own local merge.
