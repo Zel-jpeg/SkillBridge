@@ -176,7 +176,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   [receipt](FRAMEWORK_ASSESSMENT_AUTHORING.md): 699 full backend tests and 54 final
   focused tests, 275 frontend tests, lint/build/check/drift and six new/six retained
   browser groups passed. Configured 0037 preserved all 43 old data tables/values.
-- [ ] Commit and merge F07 locally before F08.
+- [x] Commit and merge F07 locally before F08: `c17ac60`, fast-forward merged
+  into local main; no push.
 
 ### F08 — General result and NLP text
 
@@ -269,75 +270,43 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE after CONTINUE, F07 implementation (5 November 2026):
+Current checkpoint — F07 complete and locally merged (5 November 2026):
 
-- Active branch `codex/framework-assessment-authoring`, HEAD `782d562`, same as
-  local main. User resumed explicitly. F07 changes are uncommitted on this branch.
-- F06 implementation `4776e3d` and receipt `782d562` are both already merged
-  locally. F07 now has nullable assessment/framework migration 0037, identity-
-  scoped creation/edit/assignment/copy/publication helpers and authoring UI.
-  No F07 configured migration or local merge yet. No GitHub push/deployment.
-- F07 inspection traced assessment create/update, append, individual question
-  edits, atomic authoring helpers, management scope and the existing React editor.
-  Current paths still resolve legacy category names globally; the editor loads
-  `/api/categories/` and its cards call legacy suggestion endpoints. These must
-  be addressed together with publication/copy validation, without changing the
-  preserved legacy IC path or scoring/retake rules.
-- F07 design: nullable Assessment.framework keeps batchless draft identity;
-  first scoped assessment binds its compatible program batch. Framework identity
-  is immutable, definitions freeze permanently and first saves require a current
-  digest. IDs are resolved only within that version. Legacy IC rows stay unmapped.
-- F07 preliminary checks: 62 focused tests, then 32 API/concurrency/migration
-  tests passed (`work/organization-postgres-5uqxempe/`). Synthetic operator 0037
-  backup/restore rehearsal passed (`work/program-migration-operator-sa1w0uau/`),
-  preserving 39 old synthetic data tables. Frontend 274 tests/lint/build passed.
-  Three initial browser groups passed (`work/organization-browser-6bbpurx8/`).
-  More assignment/recovery browser coverage and final checks are in progress.
-- Earlier full backend run: 691/693 passed; two presentation fixtures omitted
-  the new nullable framework field. Fixtures updated; final full run pending at
-  `work/organization-postgres-4d603fyn/`. No unresolved application failure yet;
-  do not mark F07 complete until final gates pass. F08–F16 remain open.
-- F06 branch `codex/scoped-category-assistance`, base `ef3f603`,
-  implementation `4776e3d` fast-forward merged into local main. Optional saved
-  definition matching/tag reuse, manual acceptance/fallback, scope and obsolete
-  response protections complete. No migration or configured-data changes.
-- F06 verification: 684 PostgreSQL tests (`work/organization-postgres-t71hpuxj/`),
-  274 frontend tests, lint/build, Django check/drift and 128 local document links.
-  Seven final assistance browser groups (`work/organization-browser-_wtk56to/`)
-  and six retained catalog groups (`work/organization-browser-yuia3zww/`) passed,
-  no page errors. Desktop and phone/dark images visually reviewed. All helpers
-  stopped. See [F06 receipt](SCOPED_COMPETENCY_ASSISTANCE.md).
-- F05 branch `codex/program-competency-frameworks`, base `f30c03e`,
-  implementation `3e70772`, receipt `ef3f603` fast-forward merged into local main.
-- F01–F04 are complete and locally merged. F03 implementation `54303ec`, receipt
-  `e1afb99`; F04 implementation `4241a66`, receipt `f30c03e`. No GitHub push.
-- F05: shared program framework/category catalog; creator/admin unused editing,
-  permanent freeze and used locks, clone-to-new-version identity, retire/restore,
-  stale-write digests, replay protection, protected score/question references,
-  current grant scope, program events and responsive catalog UI are complete.
-  New catalogs remain separate from legacy name-based authoring/ranking until
-  F07/F10. No existing category/evidence mapping was inferred; F14 remains open.
-- Verification: 674 PostgreSQL tests (`work/organization-postgres-svglv_11/`),
-  final focused 19 API/concurrency/migration tests
-  (`work/organization-postgres-btz73jm0/`), 271 frontend tests, lint/build,
-  Django check/drift, documentation links and whitespace passed. Catalog browser:
-  six groups (`work/organization-browser-onvtovak/`); retained program enrollment/
-  profile journey: eleven groups (`work/organization-browser-h5hx4o04/`).
-  No page errors; desktop catalog and phone/dark category dialog visually reviewed.
-- Synthetic 0036 operator rehearsal passed:
-  `work/program-migration-operator-myscsk6j/results.json`.
-- Configured 0036 applied after private public-schema backup, isolated restore and
-  actual Django rehearsal; all 42 old public data tables retain old values/counts,
-  one empty framework table and three null links added. Receipt:
-  `work/organization-configured-migration-qxf8x0rp/receipt.json`.
-  No reclassification, grading, recommendation rerun or real notification send.
-- Known failures: none remaining in F05/F06. Earlier browser fixtures needed explicit
-  refresh for intentionally external writes with SSE disabled; stale-edit waits
-  were corrected. One frontend contract test incorrectly tried POST on a read-only
-  program-options endpoint; corrected and final 271-test run passed.
-- All owned helpers stopped. No deployment or GitHub push.
-- Exact next step: finish enhanced F07 browser checks and inspect final regression
-  results, review the diff and fix any issues. Recheck mutation events and draft
-  identity; complete documentation/verification, then only after all gates pass
-  verify configured target, backup/restore/apply 0037 and reconcile preserved data.
-  Commit/merge F07 locally before F08; no push or deployment.
+- F07 branch `codex/framework-assessment-authoring`, base `782d562`, implementation
+  `c17ac60` fast-forward merged into local main. No GitHub push or deployment.
+- F07: nullable Assessment.framework retains scoped batchless draft identity;
+  the first scoped assessment binds its compatible program batch. Framework IDs
+  are immutable and definitions freeze permanently. First save requires current
+  digest; category IDs are resolved only in that version. Creation/edit/append/
+  delete, publication, copies and later assignment enforce scope. Both staff
+  authoring paths, native imports and device draft recovery are connected.
+  Existing IC rows retain their normal statuses and unmapped legacy context.
+- Verification: 699 full PostgreSQL tests (`work/organization-postgres-4d603fyn/`),
+  final 54 API/concurrency/upgrade/timing/publication tests
+  (`work/organization-postgres-4jad1xg_/`), 275 frontend tests, lint/build,
+  Django check/drift, 139 document links and whitespace passed.
+- Six final F07 browser groups (`work/organization-browser-qjcd3pct/`) and six
+  retained catalog groups (`work/organization-browser-e86h3hpl/`) passed, no page
+  errors. Phone/dark editor image visually reviewed. More details and earlier
+  corrected issues: [F07 receipt](FRAMEWORK_ASSESSMENT_AUTHORING.md).
+- Synthetic 0037 operator rehearsal passed
+  (`work/program-migration-operator-sa1w0uau/`). Configured 0037 applied only after
+  private public-schema backup, exact isolated restore and actual Django rehearsal.
+  All 43 old data tables retain old values/counts; one nullable Assessment link,
+  all null. Receipt: `work/organization-configured-migration-mig6aj51/receipt.json`.
+  No mapping, deletion, regrading, recommendation rerun or real notification send.
+- F01–F06 are complete and locally merged. F06 implementation `4776e3d`, receipt
+  `782d562`; F05 implementation `3e70772`, receipt `ef3f603`; F04 implementation
+  `4241a66`, receipt `f30c03e`; F03 implementation `54303ec`, receipt `e1afb99`.
+  Configured migrations are now through 0037. F14 mapping remains open.
+- Known failures: none remaining in F07. Earlier nullable-join publication locking,
+  synthetic fixture omissions, premature global-category loading and accessible
+  answer-button test locator were corrected and final checks passed.
+- All owned test/browser/database/restore helpers stopped. No hosted validation,
+  academic matching accuracy or framework-scoped recommendation completion is
+  claimed. F08–F16 remain open.
+- Exact next step: merge this receipt locally, create
+  `codex/general-competency-text` from local main, then trace generated result and
+  symmetric NLP text before implementing/testing F08. Preserve score history,
+  missing/zero evidence, ties and current assessment-led ranking policy. Do not
+  repeat completed F07 checks without new cause. No push or deployment.

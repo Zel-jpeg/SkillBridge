@@ -91,7 +91,7 @@ categories before a program batch loads.
 ## Verification receipt
 
 - Branch `codex/framework-assessment-authoring`, base `782d562`; implementation
-  and receipt are ready for local merge after the checks below.
+  `c17ac60` was fast-forward merged into local main after the checks below.
 - Full isolated PostgreSQL regression: **699 passed**,
   `work/organization-postgres-4d603fyn/tests.txt`. Additional final focused scope,
   concurrency, upgrade, authoring/timing and grouped-publication checks:
@@ -125,7 +125,7 @@ categories before a program batch loads.
   tables, one nullable link per existing assessment, all null. Receipt:
   `work/organization-configured-migration-mig6aj51/receipt.json`.
   No mapping, regrading, recalculation or real notification send. Owned restore
-  cluster stopped. Local documentation links (131) and whitespace checks passed.
+  cluster stopped. Local documentation links (139) and whitespace checks passed.
 
 Local commit/merge is recorded in the [tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md).
 No GitHub push or deployment. Live hosting, external identity/email and matching
