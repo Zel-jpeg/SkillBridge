@@ -92,7 +92,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Frontend tests/lint/build and real-API admin browser journey.
 - [x] Configured migration readiness/application receipt: 0032 applied after
   verified isolated restore; 39 pre-existing public data tables unchanged.
-- [ ] Commit and merge locally; receipt complete before F02 begins.
+- [x] Commit and merge locally: implementation `920afe8` fast-forward merged to
+  `main`; [receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md) complete. F02 has not started.
 
 ### F02 — Instructor assignments
 
@@ -245,18 +246,20 @@ may live in ignored `work/`; credentials and personal records must not be logged
 
 Current checkpoint:
 
-- Branch: `codex/institute-program-admin`, base `1fa6e1d` (planning merged locally).
+- Branch: local `main` after F01 merge; retained feature branch
+  `codex/institute-program-admin`, implementation `920afe8`, base `1fa6e1d`.
 - Completed: F01 catalog models/API/UI and verification; see
   [feature receipt](INSTITUTE_PROGRAM_ADMINISTRATION.md).
 - Checks: 614 PostgreSQL backend tests, 265 frontend tests, lint/build, Django
   check/drift and 11 real-API browser groups passed. Desktop/phone images reviewed.
-- Current feature: F01 only. F02 has not started.
+- Current milestone: F01 complete and merged locally. F02 has not started.
 - Configured database: 0032 applied after verified isolated backup restore; 39
   pre-existing public data tables unchanged, two empty tables added. Initial
   Windows pipe issue was fixed before the successful attempt; both owned restore
   helpers were stopped. No existing records reclassified or recalculated.
 - GitHub: no push performed or authorized.
-- Known failures: no remaining application or migration failure. Local
-  commit/merge is still pending.
-- Exact next step: validate documentation/diff and commit/merge F01 locally.
-  Do not start F02 before this gate finishes.
+- Known failures: none remaining for F01. No claim that later features or hosted
+  deployment are complete.
+- Exact next step: begin F02 on `codex/instructor-program-assignments` from current
+  local main; implement and test admin instructor/program assignment end to end.
+  Keep the same sequential gates and no-push rule.

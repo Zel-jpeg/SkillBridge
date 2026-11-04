@@ -1,7 +1,8 @@
 # Institute and program administration — F01
 
 Implemented on `codex/institute-program-admin` from local `main` at `1fa6e1d`.
-This is the first feature in the
+Implementation `920afe8` was fast-forward merged into local `main` after checks
+and configured migration completed. This is the first feature in the
 [sequential tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md). Completion and
 configured-migration status are recorded below; later features remain separate.
 
@@ -125,6 +126,7 @@ it is not completion of the whole generalization project.
 ## Local Git handoff
 
 Planning branch `codex/multi-institute-plan` was committed and fast-forward merged
-to local main at `1fa6e1d`. F01 commit/merge is pending at receipt preparation.
+to local main at `1fa6e1d`. F01 implementation `920afe8` was then committed and
+fast-forward merged locally after its feature and migration gates passed.
 No GitHub push or deployment was performed. Only task-owned test helpers are
 started/stopped by the supplied verification runners.
