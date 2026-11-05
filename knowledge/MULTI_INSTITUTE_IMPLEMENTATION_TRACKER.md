@@ -258,7 +258,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Rehearse upgrade on isolated synthetic legacy data, compare preserved facts,
   verify backup/restore, then apply authorized tested configured migrations and
   save a private-data-free receipt.
-- [ ] Commit and merge locally.
+- [x] Commit and merge locally (`61105fb`).
 
 ### F15 — Help and project documentation
 
@@ -284,7 +284,7 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F14 applied and verified (5 November 2026):
+Current checkpoint — F14 verified and merged locally (5 November 2026):
 
 - `codex/existing-institute-data-mapping` starts at `38d95dc`. F13 is tested and
   merged. The configured migration receipt currently ends at 0038.
@@ -314,7 +314,8 @@ Current checkpoint — F14 applied and verified (5 November 2026):
   `work/organization-configured-migration-ul_ipbj3/receipt.json`.
   An independent read-only review found zero remaining links and no pending
   migrations. See the [reconciliation procedure](EXISTING_IC_RECONCILIATION.md).
-- Next commit F14, fast-forward local `main`, then start F15.
+- Local `main` fast-forwarded to F14 commit `61105fb`. Next create
+  `codex/multi-institute-guidance` for F15.
 
 Current checkpoint — F13 merged locally (5 November 2026):
 
