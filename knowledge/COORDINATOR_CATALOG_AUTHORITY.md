@@ -96,3 +96,6 @@ links on existing records, and no pending migrations. It records an intervening
 update to `api_emaildispatchcontrol` as preserved background activity. The final
 23-test focused run also passed after capability flags were aligned with
 archived-program write restrictions (`work/organization-postgres-svgt0tj_/`).
+
+Implementation `f0f30f5` was fast-forwarded into local `main` after the F17
+gates passed. Coordinator UI integration follows on its own F18 branch.

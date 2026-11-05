@@ -293,7 +293,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Verify backend authorization, data preservation, shared capacity and
   concurrency. Rehearse required migrations and backup restore before configured
   application.
-- [ ] Commit and merge locally.
+- [x] Commit and merge locally (`f0f30f5`).
 
 ### F18 — Coordinator partner and position screens
 
@@ -323,7 +323,7 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F17 verified, preparing local merge:
+Current checkpoint — F17 verified and merged locally:
 
 - `codex/coordinator-partner-authority` starts at `737fffa`. The catalog
   authority audit confirmed that creator tracking is missing on positions and
@@ -348,7 +348,8 @@ Current checkpoint — F17 verified, preparing local merge:
   for existing entries. A fresh read-only check found no pending migration.
 - Final capability-flag and scope tests passed 23 cases
   (`work/organization-postgres-svgt0tj_/`). F17 is backend-only, so frontend
-  build/browser checks follow in F18. Next commit and merge F17 locally.
+  build/browser checks follow in F18. Local `main` fast-forwarded to
+  `f0f30f5`. Next create `codex/coordinator-partner-editor` for F18.
 
 Previous planning checkpoint — F17–F19 extension planned:
 

@@ -4,7 +4,8 @@ This extends the completed F01–F16 multi-institute implementation at
 `7b63ed0`. The user requested adding partner and position creation to the
 instructor side, where instructors can act as OJT coordinators for their assigned
 programs. This document records the additional work and evaluation context.
-The extension is planned and has not yet been implemented.
+F17's backend authority is implemented and verified. F18's coordinator screens
+and F19's combined audit remain in progress through the execution tracker.
 
 ## Confirmed scope and access
 
@@ -84,7 +85,7 @@ Branch `codex/coordinator-partner-authority`, from the completed plan receipt.
 - [x] If a migration is required, rehearse fresh and upgraded schemas on an
   isolated PostgreSQL database. Verify private backup restore and preservation
   before applying the already-authorized configured migration.
-- [ ] Record the results, then commit and merge locally before F18.
+- [x] Record the results, then commit and merge locally before F18 (`f0f30f5`).
 
 ## F18 — Coordinator partner and position screens
 
