@@ -300,7 +300,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Branch `codex/coordinator-partner-editor` after completed F17.
 - [x] Add create/edit/reuse actions, program context, requirement selection and
   recovery behavior to the instructor partner area.
-- [ ] Verify scoped API flows, search/pagination, keyboard and phone/desktop
+- [x] Verify scoped API flows, search/pagination, keyboard and phone/desktop
   behavior, lint/build and relevant regression, then commit and merge locally.
 
 ### F19 — Full system flow audit, coordinator acceptance and handoff
@@ -323,16 +323,19 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F18 implementation in progress (6 November 2026):
+Current checkpoint — F18 verified and merged locally (6 November 2026):
 
-- Branch `codex/coordinator-partner-editor`, based on local `main` `1e9ac5a`.
+- Branch `codex/coordinator-partner-editor`, based on `1e9ac5a`; implementation
+  `337de9d` fast-forwarded into local `main` after verification.
 - F17 is completed and merged. Migration 0039 is already applied with verified
   restore and preservation; no additional schema changes are planned for F18.
-- Coordinator management UI is being added under the existing partner area,
-  reusing image, location and position forms. Program selection, explicit reuse,
-  creator permissions and reviewed save recovery are implemented for verification.
-- Next: frontend checks, real-API coordinator browser journeys, fix/retest, then
-  document and merge F18 locally before starting F19. No push or deployment.
+- Program context, partner/opening creation/editing, explicit reuse, creator
+  permissions, image/location, archive/restore and reviewed save recovery passed.
+- 285 frontend tests, lint/build, 22 focused PostgreSQL tests and 20 browser check
+  groups passed. [Receipt](COORDINATOR_CATALOG_SCREENS.md) records evidence and
+  fixes for stale archive revisions and map teardown. Owned helpers stopped.
+- Next: create `codex/coordinator-catalog-acceptance` from current local `main`
+  for F19's full workflow/bug audit and staff/evaluator handoff. No push/deployment.
 
 Previous checkpoint — F17 verified and merged locally:
 

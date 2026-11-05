@@ -4,8 +4,8 @@ This extends the completed F01–F16 multi-institute implementation at
 `7b63ed0`. The user requested adding partner and position creation to the
 instructor side, where instructors can act as OJT coordinators for their assigned
 programs. This document records the additional work and evaluation context.
-F17's backend authority is implemented and verified. F18's coordinator screens
-and F19's combined audit remain in progress through the execution tracker.
+F17's backend authority and F18's coordinator screens are verified and merged
+locally. F19's combined audit is next through the execution tracker.
 
 ## Confirmed scope and access
 
@@ -110,7 +110,7 @@ Branch `codex/coordinator-partner-editor`, after F17 passes its gates.
 - [x] Verify real local create/edit flows, save/cancel/retry, empty and loading
   states, image/location behavior, shared reuse, keyboard focus, pagination and
   phone/light/dark layouts.
-- [ ] Pass frontend tests, lint/build and relevant backend regression. Commit
+- [x] Pass frontend tests, lint/build and relevant backend regression. Commit
   and merge locally before F19.
 
 ## F19 — Full workflow audit, integrated acceptance and handoff
@@ -279,10 +279,9 @@ question formats after the instructor checks their keys and category mappings.
 
 ## Current execution checkpoint
 
-F01–F17 are merged locally. F18's coordinator screens have passed their checks
-on `codex/coordinator-partner-editor`; its [receipt](COORDINATOR_CATALOG_SCREENS.md)
-records the actual tests and fixes. Local commit/merge is the next gate, followed
-by F19. The existing branch, verification and no-push rules apply.
+F01–F18 are merged locally. F18's `337de9d` and its
+[receipt](COORDINATOR_CATALOG_SCREENS.md) record the actual tests and fixes.
+F19 is next. The existing branch, verification and no-push rules apply.
 
 The user's follow-up expands F19 to complete system flows, exploratory bug
 discovery and evaluation. The matrix above is the execution checklist. Its

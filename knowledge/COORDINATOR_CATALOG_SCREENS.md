@@ -86,8 +86,9 @@ object transport confined to the owned test directory. Address/map provider
 responses are synthetic/cached. Live storage, hosted behavior and coordinator
 content validation remain external checks. Owned helpers stopped after each run.
 
-F19 follows after this feature is committed and merged locally. No push or
-deployment is authorized.
+Implementation `337de9d` was committed on its feature branch and fast-forwarded
+into local `main`. F19's full workflow audit is next. No push or deployment
+is authorized.
 
 [Backend authority](COORDINATOR_CATALOG_AUTHORITY.md) ·
 [Extension and audit plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) ·
