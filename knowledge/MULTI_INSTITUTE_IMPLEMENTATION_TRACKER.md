@@ -246,7 +246,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   SSE recipients, cache/query keys and rerun scopes for institute/program access.
 - [x] Test direct downloads/guessed IDs, revocation, independent scope, generated
   snapshots and live invalidation. Existing scores/history reconcile.
-- [ ] Record the local merge receipt.
+- [x] Record the local merge receipt.
 
 ### F14 — Existing IC mapping and final migration reconciliation
 
@@ -283,10 +283,10 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F13 verified, ready for local merge (5 November 2026):
+Current checkpoint — F13 merged locally (5 November 2026):
 
-- `codex/institute-report-scope` starts at `6139356`, the F12 verification
-  receipt on local `main`. F13 scopes analytics and report filters, counts
+- `codex/institute-report-scope` started at `6139356`, the F12 verification
+  receipt. Local `main` fast-forwarded to F13 commit `52ccce1`. F13 scopes analytics and report filters, counts
   shared seats, allows selected active-batch reruns, rechecks queued event IDs,
   evicts revoked cache entries, and revalidates exports before download.
 - Full PostgreSQL suite passed 731 tests (`work/organization-postgres-inn4om7i/`).
@@ -301,7 +301,8 @@ Current checkpoint — F13 verified, ready for local merge (5 November 2026):
 - Django system check, migration drift, documentation links and diff whitespace
   checks passed. F13 requires no migration. The recommendation rerun check used
   synthetic test data and mocked scoring.
-- Next commit F13 and fast-forward local `main`. Start F14 only after the merge.
+- Next create `codex/existing-institute-data-mapping` and audit current IC
+  catalog links, preserve ambiguous/mixed cohorts, and rehearse reconciliation.
 
 - Local `main` recorded the F11 pause as `173f42e`. Branch
   `codex/questionnaire-export` was created from that revision on CONTINUE.
