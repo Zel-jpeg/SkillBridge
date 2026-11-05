@@ -340,6 +340,9 @@ Current checkpoint — F17–F19 extension planned:
   bugs or requirements. F19 now includes full role journeys, an exploratory
   review matrix, defect reproduction/fix/retest gates and coordinator task
   evaluation. These checks are planned and remain unchecked until executed.
+  Amendment `3f57e08` was merged into local `main` from
+  `codex/coordinator-workflow-audit-plan`. Its documentation check resolved
+  164 local targets across three Markdown files, and the whitespace check passed.
 - Next implementation step is F17. Read the
   [extension plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) and current code before
   adding creator/program authority and scoped mutation paths. Each feature
