@@ -33,6 +33,9 @@ def reactivation_conflict(batch):
     for row in candidates:
         if row.position.archived_at or row.position.company.archived_at:
             return 'Restore the partners and positions used by this batch’s approved decisions before reactivating it.'
+        from .opportunity_scope import accepts_batch
+        if not accepts_batch(row.position, batch):
+            return 'A saved approval is outside this batch’s current program eligibility.'
         if occupied[row.position_id] + restored[row.position_id] > row.position.slots_available:
             return 'Reactivating this batch would exceed current shared slots. Review its approved decisions and openings first.'
     return None
@@ -47,6 +50,9 @@ def enrollment_allocation_conflict(student, batch):
         return 'An existing current or detached approval conflicts with restoring this batch enrollment.'
     if saved.position.archived_at or saved.position.company.archived_at:
         return 'Restore the partner and position used by the saved approved decision before re-enrollment.'
+    from .opportunity_scope import accepts_batch
+    if not accepts_batch(saved.position, batch):
+        return 'The saved approval is outside this batch’s current program eligibility.'
     if current_approvals(position=saved.position).exclude(pk=saved.pk).count() >= saved.position.slots_available:
         return 'The saved approved decision has no current slot. Review the decision or openings before re-enrollment.'
     return None

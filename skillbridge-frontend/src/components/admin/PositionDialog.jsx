@@ -3,6 +3,9 @@ import api from '../../api/axios'
 import DataSection from '../DataSection'
 import DialogShell from '../DialogShell'
 import { RefreshIcon, SearchIcon } from '../Icons'
+import { useApi } from '../../hooks/useApi'
+import FrameworkSelect from '../assessment/FrameworkSelect'
+import PositionPrograms from './PositionPrograms'
 import './positionDialog.css'
 
 const LEVELS = [
@@ -56,9 +59,9 @@ export default function PositionDialog(props) {
     eyebrow={`${companyName} · OJT Partner`}
     headerDetails={<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Define the role, set skill levels, and add relevant tags.</p>}
     size="position" closeLabel="Close position editor" closeDisabled={saving} onClose={close}>
-    <DataSection url="/api/categories/" layout="settings" label="Loading position requirements" className="position-editor-content">
+    <div className="position-editor-content">
       <PositionForm {...props} saving={saving} setSaving={setSaving} />
-    </DataSection>
+    </div>
   </DialogShell>
 }
 
@@ -72,18 +75,43 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
   const [title, setTitle] = useState(initialData?.title || '')
   const [slots, setSlots] = useState(initialData?.slots ?? 1)
   const [tags, setTags] = useState((initialData?.tags || []).join(', '))
-  const [reqs, setReqs] = useState(() => ({ ...initialData?.requirements }))
+  const [scoped, setScoped] = useState(mode === 'add' || Boolean(initialData?.eligibility_configured))
+  const [programs, setPrograms] = useState(initialData?.eligible_programs || [])
+  const firstRequirement = initialData?.category_requirements?.[0]
+  const [programId, setProgramId] = useState(firstRequirement?.program_id || null)
+  const [frameworkId, setFrameworkId] = useState(firstRequirement?.framework_id || null)
+  const [reqs, setReqs] = useState(() => scoped
+    ? Object.fromEntries((initialData?.category_requirements || []).map(row => [row.category_id, row.percentage]))
+    : { ...initialData?.requirements })
   const [suggesting, setSuggesting] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedOnly, setSelectedOnly] = useState(false)
 
-  // Derive the catalog from current props. New skills need no state synchronization;
-  // existing saved/edited requirements survive a catalog refresh or removal.
-  const skills = [...new Set([...categories, ...Object.keys(reqs)])]
-  const selectedCount = skills.filter(category => reqs[category] > 0).length
+  const catalogUrl = scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
+  const { data: catalog } = useApi(catalogUrl)
+  const scopeCategories = catalog?.framework?.id === frameworkId ? catalog?.categories || [] : []
+  const skills = scoped ? scopeCategories : [...new Set([...categories, ...Object.keys(reqs)])].map(name => ({ id: name, name }))
+  const selectedCount = Object.values(reqs).filter(value => value > 0).length
   const term = search.trim().toLocaleLowerCase()
-  const visibleSkills = skills.filter(category => (!selectedOnly || reqs[category] > 0) && category.toLocaleLowerCase().includes(term))
+  const visibleSkills = skills.filter(category => (!selectedOnly || reqs[category.id] > 0) && category.name.toLocaleLowerCase().includes(term))
+
+  function selectFramework(nextProgram, nextFramework) {
+    setProgramId(nextProgram)
+    setFrameworkId(nextFramework)
+    setReqs({})
+    setSearch('')
+    setSelectedOnly(false)
+  }
+
+  function toggleProgram(program) {
+    if (programs.some(row => row.id === program.id)) {
+      setPrograms(programs.filter(row => row.id !== program.id))
+      if (program.id === programId) selectFramework(null, null)
+    } else {
+      setPrograms([...programs, program])
+    }
+  }
 
   function resetScroll() { listRef.current?.scrollTo({ top: 0 }) }
   function reportError(message) {
@@ -107,7 +135,11 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
         ...(initialData || {}),
         title: title.trim(),
         slots: Number(slots),
-        requirements: Object.fromEntries(Object.entries(reqs).filter(([, value]) => value > 0)),
+        ...(scoped ? {
+          eligible_program_ids: programs.map(program => program.id),
+          category_requirements: Object.entries(reqs).filter(([, value]) => value > 0)
+            .map(([category_id, percentage]) => ({ category_id: Number(category_id), percentage })),
+        } : { requirements: Object.fromEntries(Object.entries(reqs).filter(([, value]) => value > 0)) }),
         tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
       })
       if (result?.ok) onClose()
@@ -122,6 +154,12 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
 
   async function handleSuggestTags() {
     if (suggestPending.current || savePending.current) return
+    if (scoped) {
+      const savedTags = [...new Set(scopeCategories.filter(row => reqs[row.id] > 0).flatMap(row => row.tags || []))]
+      if (!savedTags.length) { reportError('The selected requirements have no saved tags. You can enter tags manually.'); return }
+      setTags(savedTags.join(', '))
+      return
+    }
     if (!title.trim()) { reportError('Enter a position title before suggesting tags.'); return }
     suggestPending.current = true
     setSuggesting(true)
@@ -147,20 +185,40 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
           <div className="position-editor-details">
             <div>
               <label htmlFor={`${id}-title`} className="position-editor-label">Position title <span>*</span></label>
-              <input id={`${id}-title`} value={title} required maxLength={255} placeholder="e.g. Frontend Developer Intern"
+              <input id={`${id}-title`} value={title} required maxLength={255} placeholder="e.g. Guest Services Intern"
                 onChange={event => { setTitle(event.target.value); setError('') }} className="position-editor-input" />
             </div>
             <div>
               <label htmlFor={`${id}-slots`} className="position-editor-label">Available slots <span>*</span></label>
               <input id={`${id}-slots`} type="number" min={0} max={2147483647} step={1} value={slots} required
                 aria-describedby={`${id}-slots-help`} onChange={event => { setSlots(event.target.value); setError('') }} className="position-editor-input" />
-              <p id={`${id}-slots-help`} className="position-editor-help">Use 0 to close capacity.</p>
+              <p id={`${id}-slots-help`} className="position-editor-help">All eligible programs share these slots. Use 0 to close capacity.</p>
             </div>
           </div>
         </section>
 
+        <section className="position-editor-section" aria-labelledby={`${id}-programs`}>
+          <SectionHeading number="2" id={`${id}-programs`}>Program eligibility</SectionHeading>
+          {scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
+            <p className="position-editor-help">This legacy opening serves batches without a configured program.</p>
+            <button type="button" className="position-editor-cancel" onClick={() => { setScoped(true); selectFramework(null, null) }}>Configure program eligibility</button>
+            <p className="position-editor-help">Configuring eligibility replaces the legacy requirement list when you save.</p>
+          </>}
+        </section>
+
         <section className="position-editor-section" aria-labelledby={`${id}-skills`}>
-          <SectionHeading number="2" id={`${id}-skills`}>Skill requirements</SectionHeading>
+          <SectionHeading number="3" id={`${id}-skills`}>Skill requirements</SectionHeading>
+          {scoped && programs.length > 0 && <div className="space-y-2">
+            <label className="block position-editor-label">Requirement program
+              <select className="position-editor-input" value={programId || ''} onChange={event => selectFramework(Number(event.target.value) || null, null)}>
+                <option value="">Manual placement only</option>
+                {programs.map(program => <option key={program.id} value={program.id}>{program.institute_code} · {program.name}</option>)}
+              </select>
+            </label>
+            <FrameworkSelect key={programId} programId={programId} value={frameworkId}
+              onChange={value => selectFramework(programId, value)} help="Changing the framework clears requirement levels in this draft. Other eligible programs can use manual placement." />
+          </div>}
+          <DataSection url={scoped ? catalogUrl : '/api/categories/'} layout="control" label="Loading skill requirements">
           <p className="position-editor-help position-editor-intro">Choose a minimum level. Leave unused skills as Not required.</p>
           <div className="position-editor-toolbar">
             <div className="position-editor-filters" role="group" aria-label="Filter skill requirements">
@@ -177,12 +235,12 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
           <div className="position-editor-list" ref={listRef} role="region" aria-label="Skill requirements list" tabIndex={0}>
             <div className="position-editor-columns" aria-hidden="true"><span>Skill category</span><span>Minimum level</span></div>
             {visibleSkills.length ? <ul>
-              {visibleSkills.map(category => <SkillRequirement key={category} category={category} value={reqs[category] ?? 0}
+              {visibleSkills.map(category => <SkillRequirement key={category.id} category={category.name} value={reqs[category.id] ?? 0}
                 onChange={value => {
                   // Clearing a selected row removes it from this view. Keep focus in
                   // the editor instead of letting it fall back to the inert page.
                   if (selectedOnly && value === 0) searchRef.current?.focus({ preventScroll: true })
-                  setReqs(previous => ({ ...previous, [category]: value }))
+                  setReqs(previous => ({ ...previous, [category.id]: value }))
                 }} />)}
             </ul> : <div className="position-editor-empty">
               <p>{!skills.length ? 'No skill categories available.' : term ? 'No skills match your search.' : 'No skills selected yet.'}</p>
@@ -191,11 +249,12 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
             </div>}
           </div>
           <p className="position-editor-help" role="status">{visibleSkills.length} of {skills.length} skills shown · {selectedCount} selected</p>
+          </DataSection>
         </section>
 
         <section className="position-editor-section" aria-labelledby={`${id}-tags-heading`}>
           <div className="position-editor-tags-heading">
-            <SectionHeading number="3" id={`${id}-tags-heading`}>Position tags <span className="position-editor-optional">Optional</span></SectionHeading>
+            <SectionHeading number="4" id={`${id}-tags-heading`}>Position tags <span className="position-editor-optional">Optional</span></SectionHeading>
             <button type="button" className="position-editor-suggest" disabled={suggesting} onClick={handleSuggestTags}>
               <RefreshIcon size={14} />{suggesting ? 'Suggesting…' : 'Suggest / refresh tags'}
             </button>

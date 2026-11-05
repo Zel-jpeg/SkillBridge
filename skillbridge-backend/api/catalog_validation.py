@@ -3,7 +3,9 @@ import math
 import re
 from rest_framework.exceptions import ValidationError
 
-from .models import SkillCategory
+from django.utils import timezone
+
+from .models import CompetencyFramework, Institute, Program, SkillCategory
 from .recommendation_nlp import normalize_tags
 
 MAX_SLOTS = 2_147_483_647  # Portable PositiveIntegerField range; zero closes capacity.
@@ -70,9 +72,74 @@ def position_data(data, *, partial=False):
         result['slots_available'] = slots_value(data.get('slots', 1))
     if not partial or 'tags' in data:
         result['tags'] = tags_value(data.get('tags'))
-    if not partial or 'requirements' in data:
-        result['requirements'] = requirements_value(data.get('requirements', {}))
     return result
+
+
+def position_scope(data, position=None):
+    """Validate the final program set and single versioned rubric under the catalog lock."""
+    existing_program_ids = set(position.eligible_programs.values_list('pk', flat=True)) if position else set()
+    if 'eligible_program_ids' in data:
+        supplied = data['eligible_program_ids']
+        if not isinstance(supplied, list) or any(type(pk) is not int or pk <= 0 for pk in supplied):
+            invalid('eligible_program_ids', 'Select eligible programs by their IDs.')
+        program_ids = set(supplied)
+        if len(program_ids) != len(supplied):
+            invalid('eligible_program_ids', 'Each eligible program may only be selected once.')
+    else:
+        program_ids = existing_program_ids
+
+    if 'eligible_program_ids' in data or 'category_requirements' in data:
+        # Competency edits and program archival serialize through the parent institute.
+        institutes = Program.objects.filter(pk__in=program_ids).values('institute_id')
+        list(Institute.objects.filter(pk__in=institutes).order_by('pk').select_for_update())
+        programs = Program.objects.filter(pk__in=program_ids)
+        active_additions = programs.exclude(pk__in=existing_program_ids)
+        if programs.count() != len(program_ids) or active_additions.exclude(is_active=True, institute__is_active=True).exists():
+            invalid('eligible_program_ids', 'Choose existing active institutes and programs.')
+
+    if 'category_requirements' in data and 'requirements' in data:
+        invalid('category_requirements', 'Choose either framework requirements or legacy requirements.')
+    scoped = 'category_requirements' in data
+    if scoped:
+        raw = data['category_requirements']
+        if not isinstance(raw, list):
+            invalid('category_requirements', 'Provide a list of category IDs and minimum percentages.')
+        targets = {}
+        for item in raw:
+            if not isinstance(item, dict) or set(item) != {'category_id', 'percentage'}:
+                invalid('category_requirements', 'Each requirement needs a category ID and percentage.')
+            category_id = item['category_id']
+            percentage = item['percentage']
+            if type(category_id) is not int or category_id <= 0 or category_id in targets:
+                invalid('category_requirements', 'Use a unique positive category ID for each requirement.')
+            if type(percentage) not in (int, float) or not 0 < percentage <= 100:
+                invalid('category_requirements', 'Minimum percentages must be greater than 0 and at most 100.')
+            targets[category_id] = percentage
+        categories = SkillCategory.objects.select_related('framework').in_bulk(targets)
+        if len(categories) != len(targets):
+            invalid('category_requirements', 'A selected category no longer exists.')
+        rubric = [(categories[pk], value) for pk, value in targets.items()]
+    elif 'requirements' in data or not position:
+        rubric = requirements_value(data.get('requirements', {}))
+    else:
+        rubric = [(row.skill_category, row.required_percentage)
+                  for row in position.requirements.select_related('skill_category__framework')]
+
+    if rubric and (program_ids or scoped):
+        framework_ids = {category.framework_id for category, _ in rubric}
+        if len(framework_ids) != 1 or None in framework_ids:
+            invalid('category_requirements', 'Requirements must come from one program framework version.')
+        framework = CompetencyFramework.objects.get(pk=next(iter(framework_ids)))
+        if framework.program_id not in program_ids:
+            invalid('category_requirements', 'The framework must belong to an eligible program.')
+        if scoped:
+            existing_frameworks = set(position.requirements.values_list('skill_category__framework_id', flat=True)) if position else set()
+            if not framework.is_active and framework.pk not in existing_frameworks:
+                invalid('category_requirements', 'Choose an active framework for new requirements.')
+            if framework.locked_at is None:
+                framework.locked_at = timezone.now()
+                framework.save(update_fields=['locked_at'])
+    return program_ids, rubric
 
 
 def company_fields(data, *, partial=False):

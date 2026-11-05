@@ -454,6 +454,9 @@ class Position(models.Model):
     title           = models.CharField(max_length=255)
     slots_available = models.PositiveIntegerField(default=1)
     tags            = models.JSONField(default=list, blank=True)
+    # NULL identifies openings saved before program eligibility was introduced.
+    eligibility_configured_at = models.DateTimeField(null=True, blank=True)
+    eligible_programs = models.ManyToManyField(Program, related_name='eligible_positions', blank=True)
 
     def __str__(self):
         return f'{self.title} @ {self.company.name}'

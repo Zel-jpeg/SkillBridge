@@ -61,6 +61,8 @@ try:
         if '--general-text' in sys.argv:
             script = 'general_competency_playwright.py'
         for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
+            ('--opportunity-scope', 'opportunity_scope_playwright.py'),
+            ('--companies', 'company_collection_playwright.py'),
             ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py'),
             ('--assessment-result-navigation', 'student_assessment_result_navigation_playwright.py')]:
             if option in sys.argv:

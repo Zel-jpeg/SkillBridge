@@ -195,8 +195,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F09 — Program-eligible opportunities and shared capacity
 
-- [ ] Branch `codex/program-opportunity-eligibility` after F08.
-- [ ] Explicit eligible programs; admin-controlled shared partner/position edits;
+- [x] Branch `codex/program-opportunity-eligibility` after F08.
+- [x] Explicit eligible programs; admin-controlled shared partner/position edits;
   compatible requirements; one genuine shared capacity across institutes.
 - [ ] Test empty eligibility, foreign requirements, shared last-slot races,
   current approvals and retained snapshots; complete UI and local merge.
@@ -274,18 +274,30 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — PAUSED after verified F08 merge (5 November 2026):
+Current checkpoint — ACTIVE on F09 (5 November 2026):
 
-- User requested pausing after this feature's checks and local merge. F08 is
-  complete at `faa4c6b` on local `main`; F09 has not started and its branch does
-  not exist. Do not resume until explicit CONTINUE.
-- Current branch `main`, HEAD `faa4c6b`. Only
-  `knowledge/GENERAL_COMPETENCY_TEXT.md` and this tracker have uncommitted receipt/
-  checkpoint edits. Application code/tests are committed and merged. Preserve
-  these edits; do not reset, discard, migrate, merge or deploy while paused.
-- Automatic approval review rejected the pending receipt/next-branch command
-  because it also created F09's branch after the pause request. That command did
-  not run. No attempt was made to bypass the rejection; no approval is pending.
+- On CONTINUE, verified the previous pause checkpoint, committed the F08 receipt
+  as `974d53f`, fast-forwarded local `main`, and created
+  `codex/program-opportunity-eligibility` from that commit.
+- F09 implementation is in the working tree. The catalog shares one position
+  and capacity across eligible programs. A position can use one eligible
+  program's exact framework rubric. Scoped browsing, manual assignment,
+  approval and retained placement records have been checked in the backend.
+- Final focused PostgreSQL run passed 43 tests (`work/organization-postgres-qb84t4mu/`).
+  Frontend unit tests passed 275, lint/build passed, and four real API browser
+  groups passed (`work/organization-browser-nys7y253/`). The retained company
+  browser regression passed seven groups (`work/organization-browser-e8rbrii8/`).
+- All 716 tests in the final full PostgreSQL run passed
+  (`work/organization-postgres-eq9mtmwz/`). Django check and migration drift,
+  local documentation links, and Git whitespace passed.
+- Guarded 0038 rehearsal passed on the synthetic source database
+  (`work/program-migration-operator-q28v9631/`). The configured read-only check
+  reported only 0038 pending. Applied only 0038 after private backup, exact
+  isolated restore and migration rehearsal. All 43 prior tables retained
+  their values and counts. The new column was null and the relation was empty.
+  Receipt: `work/organization-configured-migration-cz9bse_n/receipt.json`.
+- Next step: commit F09 and fast-forward local `main` before F10. No configured
+  IC mapping, recalculation, GitHub push or deployment has occurred.
 
 - F08 branch `codex/general-competency-text`, base `6087602`, implementation
   `faa4c6b` fast-forward merged into local main. No migration/configured write.
@@ -345,8 +357,3 @@ Current checkpoint — PAUSED after verified F08 merge (5 November 2026):
 - All owned test/browser/database/restore helpers stopped. No hosted validation,
   academic matching accuracy or framework-scoped recommendation completion is
   claimed. F09–F16 remain open.
-- Exact next step on CONTINUE: read this checkpoint and Git status, reconcile
-  intervening edits, commit/merge the saved F08 receipt locally, then create
-  `codex/program-opportunity-eligibility` and implement/test F09. Trace partner and
-  position mutation roles, requirement identity, eligibility filters and shared
-  capacity locks before changing them. F09 must pass before F10.

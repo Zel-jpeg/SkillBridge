@@ -15,7 +15,7 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.conf import settings
 from django.db import DatabaseError, IntegrityError, transaction
-from django.db.models import Count, Sum, Max, Q, F
+from django.db.models import Count, Sum, Max, Q, F, Prefetch
 from django.db.models.deletion import ProtectedError
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.html import escape
@@ -40,7 +40,9 @@ from .serializers import UserSerializer
 from .recommendation_policy import (api_fields, top_api_fields, order_fields, candidate_order_fields,
                                     coverage_or_legacy, assessment_band, placement_evidence, attach_placement_evidence, report_label)
 from .admin_accounts import instructor_payload
-from .catalog_validation import company_fields, position_data, invalid, tags_value
+from .catalog_validation import company_fields, position_data, position_scope, invalid, tags_value
+from .opportunity_scope import (accepts_batch, active_positions, catalog_position_payload,
+                                eligible_recommendations, for_programs, position_scope_payload)
 from .company_images import CompanyImageChange, company_data, image_fields, cleanup_image
 from .assessment_layout import build_question_layout, ordered_choices, ordered_questions
 from .student_assessment_order import assessment_numbers, assessment_title
@@ -2935,7 +2937,7 @@ def instructor_student_recommendations(request):
 @permission_classes([IsAuthenticated])
 def instructor_companies(request):
     """
-    Returns all companies with positions.
+    Returns companies with openings available to the instructor's active batches.
     For each position, includes matched students from this instructor's batches,
     sorted by match score descending.
     """
@@ -2962,8 +2964,7 @@ def instructor_companies(request):
     # Bulk-load all recommendations for those students
     from collections import defaultdict
     all_recs = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student_id__in=student_ids, is_current=True))
         .select_related('student', 'position')
         .order_by(*candidate_order_fields())
     )
@@ -2972,16 +2973,20 @@ def instructor_companies(request):
         if (r.student_id, r.batch_id) in unlocked_batches:
             recs_by_position[r.position_id].append(r)
 
+    openings = active_positions().order_by('title', 'id')
+    if request.user.role == 'instructor':
+        program_ids = batches.filter(status='active').values_list('program_id', flat=True)
+        openings = for_programs(openings, program_ids)
     companies = (
         Company.objects.filter(archived_at__isnull=True)
-        .prefetch_related('positions', 'positions__requirements', 'positions__requirements__skill_category')
+        .prefetch_related(Prefetch('positions', queryset=openings.prefetch_related('requirements__skill_category')))
         .order_by('name')
     )
 
     result = []
     for company in companies:
         positions_data = []
-        for pos in company.positions.filter(archived_at__isnull=True).order_by('title'):
+        for pos in company.positions.all():
             matched = [
                 {**api_fields(r),
                     'id':          r.student.id,
@@ -3012,6 +3017,8 @@ def instructor_companies(request):
                 'matched_students': matched,
                 'matched_count':   len(matched),
             })
+        if not positions_data:
+            continue
         result.append({
             'id':            company.id,
             'name':          company.name,
@@ -3030,15 +3037,16 @@ def instructor_companies(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
+@placement_catalog_lock
 def instructor_company_edit(request, co_id):
     """
-    Allows instructors to edit company info and position details.
+    Compatibility endpoint for admins editing a partner and its position details.
     Accepts:
       { name, address, lat, lng,
         positions: [{ id, title, slots, tags }] }
     """
-    if request.user.role not in ('instructor', 'admin'):
-        return Response({'error': 'Forbidden'}, status=403)
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admins can edit shared partners and positions.'}, status=403)
 
     data = company_fields(company_data(request), partial=True)
     with CompanyImageChange(request, data) as image_change:
@@ -3057,8 +3065,8 @@ def instructor_company_edit(request, co_id):
                 if type(position_id) is not int or position_id <= 0 or position_id in seen:
                     invalid('positions', 'Every position needs a unique positive integer id.')
                 seen.add(position_id)
-                if 'requirements' in pos_data:
-                    invalid('requirements', 'Use the admin position endpoint to change skill requirements.')
+                if set(pos_data) & {'requirements', 'eligible_program_ids', 'category_requirements'}:
+                    invalid('requirements', 'Use the admin position endpoint to change eligibility or requirements.')
                 values = position_data(pos_data, partial=True)
                 try:
                     pos = company.positions.select_for_update().get(id=position_id)
@@ -3302,7 +3310,7 @@ def student_results_review(request):
 @permission_classes([IsAuthenticated])
 def student_companies(request):
     """
-    Returns ALL partner companies with positions and match scores.
+    Returns eligible partner companies with positions and match scores.
     Used for the 'Browse all companies' tab on the Results page.
     """
     user = request.user
@@ -3315,17 +3323,14 @@ def student_companies(request):
     _, progress, unlocked = ensure_combined(user, enrollment.batch)
     user_recs = {
         r.position_id: r
-        for r in Recommendation.objects.filter(student=user, batch=enrollment.batch, is_current=True)
+        for r in eligible_recommendations(Recommendation.objects.filter(student=user, batch=enrollment.batch, is_current=True))
         if unlocked
     }
 
+    openings = for_programs(active_positions(), [enrollment.batch.program_id])
     companies = (
         Company.objects.filter(archived_at__isnull=True)
-        .prefetch_related(
-            'positions',
-            'positions__requirements',
-            'positions__requirements__skill_category',
-        )
+        .prefetch_related(Prefetch('positions', queryset=openings.prefetch_related('requirements__skill_category')))
         .all()
     )
 
@@ -3343,8 +3348,10 @@ def student_companies(request):
                     for req in p.requirements.all()
                 ] + list(p.tags or []),
             }
-            for p in company.positions.all() if p.archived_at is None
+            for p in company.positions.all()
         ]
+        if not positions:
+            continue
         result.append({
             'id':       company.id,
             'name':     company.name,
@@ -3782,25 +3789,12 @@ def admin_companies(request):
 
     if request.method == 'GET':
         companies = Company.objects.prefetch_related(
-            'positions', 'positions__requirements', 'positions__requirements__skill_category'
-        ).all()
+            'positions__eligible_programs__institute', 'positions__requirements__skill_category__framework'
+        )
 
         data = []
         for co in companies:
-            positions = []
-            for pos in co.positions.all():
-                reqs = {
-                    r.skill_category.name: r.required_percentage
-                    for r in pos.requirements.all()
-                }
-                positions.append({
-                    'id':     pos.id,
-                    'archived_at': pos.archived_at,
-                    'title':  pos.title,
-                    'slots':  pos.slots_available,
-                    'tags':   pos.tags or [],
-                    'requirements': reqs,
-                })
+            positions = [catalog_position_payload(position) for position in co.positions.all()]
             data.append({
                 'id':       co.id,
                 'archived_at': co.archived_at,
@@ -3895,11 +3889,11 @@ def admin_company_detail(request, company_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
+@placement_catalog_lock
 def admin_company_positions(request, company_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
     values = position_data(request.data)
-    requirements = values.pop('requirements')
     with transaction.atomic():
         try:
             company = Company.objects.select_for_update().get(id=company_id)
@@ -3907,30 +3901,13 @@ def admin_company_positions(request, company_id):
             return Response({'error': 'Partner not found'}, status=404)
         if company.archived_at:
             return Response({'error': 'Restore this partner before adding a position.'}, status=409)
-        position = Position.objects.create(company=company, **values)
+        program_ids, requirements = position_scope(request.data)
+        position = Position.objects.create(company=company, eligibility_configured_at=timezone.now(), **values)
+        position.eligible_programs.set(program_ids)
         for category, percentage in requirements:
             PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
 
-    _rerun_recommendations_for_all_students()
-    return Response({'id': position.id, 'title': position.title, 'slots': position.slots_available,
-                     'tags': position.tags or []}, status=201)
-
-
-def _rerun_recommendations_for_all_students():
-    """
-    Called after a new position is added.
-    Re-runs generate_recommendations() for every student who has already
-    submitted so the new position gets scored against their existing skill
-    profile. Uses update_or_create internally — no duplicates created.
-    """
-    for enrollment in BatchEnrollment.objects.filter(batch__status='active').select_related('student', 'batch'):
-        if not required_progress(enrollment.student, enrollment.batch)['all_required_completed']:
-            continue
-        try:
-            recalculate_combined(enrollment.student, enrollment.batch)
-        except Exception:
-            pass  # Position creation succeeds even if one student's NLP fails.
-
+    return Response(catalog_position_payload(position), status=201)
 
 
 # ── POST /api/admin/rerun-recommendations/ ────────────────────────
@@ -3978,7 +3955,6 @@ def admin_position_detail(request, position_id):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
     values = position_data(request.data, partial=True) if request.method == 'PATCH' else {}
-    requirements = values.pop('requirements', None)
     try:
         with transaction.atomic():
             position = Position.objects.select_for_update().get(id=position_id)
@@ -3995,22 +3971,28 @@ def admin_position_detail(request, position_id):
                 if values['slots_available'] < approved_count:
                     return Response({'error': 'slots cannot be lower than the approved placement count.',
                                      'approved_count': approved_count}, status=409)
+            program_ids, requirements = position_scope(request.data, position)
+            changes_eligibility = 'eligible_program_ids' in request.data
+            if changes_eligibility and position.eligibility_configured_at is None:
+                position.eligibility_configured_at = timezone.now()
             for field, value in values.items():
                 setattr(position, field, value)
             position.save()
-            if requirements is not None:
+            if changes_eligibility:
+                position.eligible_programs.set(program_ids)
+            changes_requirements = 'requirements' in request.data or 'category_requirements' in request.data
+            if changes_requirements:
                 position.requirements.all().delete()
                 for category, percentage in requirements:
                     PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
+            if changes_eligibility or changes_requirements:
+                current = Recommendation.objects.filter(position=position, is_current=True)
+                current.exclude(pk__in=eligible_recommendations(current).values('pk')).update(is_current=False)
     except Position.DoesNotExist:
         return Response({'error': 'Position not found'}, status=404)
     except ProtectedError:
         return Response({'error': 'Position cannot be deleted while placement history references it.'}, status=409)
-    return Response({'id': position.id, 'title': position.title, 'slots': position.slots_available,
-                     'tags': position.tags or [], 'requirements': {
-                         r.skill_category.name: r.required_percentage
-                         for r in position.requirements.select_related('skill_category').all()
-                     }})
+    return Response(catalog_position_payload(position))
 
 
 # ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
@@ -4446,20 +4428,25 @@ def placement_suggestions(request):
         if combined_is_unlocked(User.objects.get(id=student_id), batch, catalog=catalog)
     }
 
-    companies = Company.objects.filter(archived_at__isnull=True).prefetch_related('positions').order_by('name', 'id')
+    companies = Company.objects.filter(archived_at__isnull=True).order_by('name', 'id')
     if company_id:
         companies = companies.filter(id=company_id)
     if position_id:
         companies = companies.filter(positions__id=position_id).distinct()
 
-    positions_query = Position.objects.filter(company__in=companies, archived_at__isnull=True)
+    positions_query = active_positions().filter(company__in=companies)
+    if request.user.role == 'instructor':
+        active_batches = managed_batches(request.user).filter(status='active')
+        if batch_id:
+            active_batches = active_batches.filter(pk=batch_id)
+        positions_query = for_programs(positions_query, active_batches.values_list('program_id', flat=True))
     if position_id:
         positions_query = positions_query.filter(id=position_id)
     position_ids = list(positions_query.values_list('id', flat=True))
 
     recommendations = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, position_id__in=position_ids, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(
+            student_id__in=student_ids, position_id__in=position_ids, is_current=True))
         .select_related('student', 'position')
         .order_by(*candidate_order_fields())
     )
@@ -4487,9 +4474,7 @@ def placement_suggestions(request):
     output = []
     for company in companies:
         positions_output = []
-        positions = company.positions.filter(archived_at__isnull=True).order_by('title', 'id')
-        if position_id:
-            positions = positions.filter(id=position_id)
+        positions = company.positions.filter(pk__in=position_ids).prefetch_related('eligible_programs__institute').order_by('title', 'id')
         for position in positions:
             students = []
             for recommendation in recommendations_by_position.get(position.id, []):
@@ -4555,8 +4540,11 @@ def placement_suggestions(request):
                 'slots_available': position.slots_available,
                 'approved_count': approved_count,
                 'remaining_slots': max(position.slots_available - approved_count, 0),
+                **position_scope_payload(position),
                 'suggested_students': students,
             })
+        if not positions_output:
+            continue
         output.append({
             'id': company.id,
             'name': company.name,
@@ -4576,7 +4564,8 @@ def placement_suggestions(request):
             'student_id': student.school_id,
             'course': student.course,
             'photo_url': student.photo_url,
-            'batch': {'id': batch.id, 'name': batch.name} if batch else None,
+            'batch': {'id': batch.id, 'name': batch.name, 'program_id': batch.program_id,
+                      'status': batch.status} if batch else None,
         })
 
     current_approvals = _placement_select_related(allocated_approvals())
@@ -4640,6 +4629,8 @@ def placement_approve(request):
                 recommendation.student, recommendation.batch,
             ):
                 return Response({'error': 'Final recommendations are locked for this student.'}, status=409)
+            if not eligible_recommendations(Recommendation.objects.filter(pk=recommendation.pk)).exists():
+                return Response({'error': 'This opening is unavailable for the student’s program and framework.'}, status=409)
 
             approved_count = allocated_approvals(position=position).count()
             if approved_count >= position.slots_available:
@@ -4886,6 +4877,8 @@ def placement_manual_assign(request):
 
             if not batch or batch.status != 'active':
                 return Response({'error': 'Choose an active enrolled batch for a new placement.'}, status=409)
+            if not accepts_batch(position, batch):
+                return Response({'error': 'This opening is unavailable for the student’s program.'}, status=409)
             if BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists():
                 return Response({'error': 'The student must confirm their profile for this batch first.'}, status=409)
             recommendation = (Recommendation.objects.filter(

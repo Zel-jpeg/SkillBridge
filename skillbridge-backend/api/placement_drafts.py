@@ -99,8 +99,9 @@ def context():
         if row['batch_id'] == eligible[row['student_id']].batch_id:
             latest.setdefault((row['student_id'], row['position_id']), row['status'])
     recommendations = []
-    for row in Recommendation.objects.filter(student_id__in=eligible, is_current=True,
-            position__archived_at__isnull=True, position__company__archived_at__isnull=True).order_by(*order_fields('student_id')).values(
+    from .opportunity_scope import eligible_recommendations
+    for row in eligible_recommendations(Recommendation.objects.filter(student_id__in=eligible, is_current=True,
+            position__archived_at__isnull=True, position__company__archived_at__isnull=True)).order_by(*order_fields('student_id')).values(
         'id', 'student_id', 'batch_id', 'position_id', 'match_score', 'generated_at',
         'assessment_rank', 'assessment_details', 'nlp_score_component', 'location_score_component',
     ):

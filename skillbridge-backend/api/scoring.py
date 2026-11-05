@@ -341,8 +341,9 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
         return []
 
+    from .opportunity_scope import legacy_positions
     positions = list(
-        Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).order_by('id').select_related('company').prefetch_related(
+        legacy_positions().order_by('id').select_related('company').prefetch_related(
             'requirements', 'requirements__skill_category'
         )
     )

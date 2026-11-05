@@ -129,6 +129,16 @@ test('all query variants and dynamic URLs match their dependencies', () => {
   assert.equal(queryAffected('/api/placements/?offset=5&limit=10', { urls: ['/api/placements/'] }), true)
 })
 
+test('eligibility edits refresh partner browse, recommendations and placement choices', () => {
+  for (const url of ['/api/admin/companies/', '/api/instructor/companies/', '/api/student/companies/',
+    '/api/student/results/combined/', '/api/placements/suggestions/?batch_id=5', '/api/nlp/positions/7/text/']) {
+    assert.equal(queryAffected(url, { topics: ['catalog'] }), true, url)
+  }
+  assert.equal(queryAffected('/api/admin/companies/', { topics: ['organization'] }), true)
+  assert.equal(queryAffected('/api/nlp/positions/7/text/', { topics: ['organization'] }), true)
+  assert.equal(queryAffected('/api/instructor/companies/', { topics: ['batches'] }), true)
+})
+
 test('mounted variants refetch once; persisted unmounted variants remain stale', async () => {
   const values = {}
   const storage = Object.defineProperties(values, {

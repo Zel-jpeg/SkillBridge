@@ -16,7 +16,8 @@ MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0037_assessment_framework'
 PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0035_neutral_user_department': '0034_program_batch_context',
             '0036_program_competency_frameworks': '0035_neutral_user_department',
-            '0037_assessment_framework': '0036_program_competency_frameworks'}[MIGRATION]
+            '0037_assessment_framework': '0036_program_competency_frameworks',
+            '0038_position_program_eligibility': '0037_assessment_framework'}[MIGRATION]
 with socket.socket() as sock:
     sock.bind(('127.0.0.1', 0))
     port = sock.getsockname()[1]
@@ -55,6 +56,8 @@ for index, course in enumerate(['BSIT','BSIS']):
     student = User.objects.create(email=f'operator-{index}@example.invalid', role='student', course=course)
     apps.get_model('api','BatchEnrollment').objects.create(batch_id=batch.id, student_id=student.id)
 apps.get_model('api','SkillCategory').objects.create(name='Retained IC category', description='Existing definition', tags=['Existing tag'])
+company = apps.get_model('api','Company').objects.create(name='Retained synthetic partner')
+apps.get_model('api','Position').objects.create(company_id=company.id, title='Retained opening', slots_available=2)
 """
     run([PYTHON, 'manage.py', 'shell', '-c', seed.replace('PREVIOUS_MIGRATION', PREVIOUS)], 'seed.txt')
     command = [PYTHON, 'scripts/migrate_organization_catalog.py', '--migration', MIGRATION]
@@ -70,8 +73,10 @@ apps.get_model('api','SkillCategory').objects.create(name='Retained IC category'
         '0035_neutral_user_department': {},
         '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
         '0037_assessment_framework': {'api_assessment': ['framework_id']},
+        '0038_position_program_eligibility': {'api_position': ['eligibility_configured_at']},
     }[MIGRATION]
-    assert receipt['new_empty_tables'] == (['api_competencyframework'] if MIGRATION.startswith('0036') else [])
+    expected_tables = {'0036': ['api_competencyframework'], '0038': ['api_position_eligible_programs']}
+    assert receipt['new_empty_tables'] == expected_tables.get(MIGRATION[:4], [])
     summary = {'passed': True, 'migration': MIGRATION, 'synthetic_source_only': True, 'preserved_tables': receipt['preserved_tables'],
                'actual_backup_restore_and_django_rehearsal': True, 'receipt_directory': applied['receipt_directory']}
     (OUT / 'results.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')

@@ -61,12 +61,19 @@ export function ManualAssignmentModal({ students, positions, approvedByStudent, 
   const [positionSearch, setPositionSearch] = useState('')
   const [remarks, setRemarks] = useState('')
   const filteredStudents = students.filter(student => { const term = studentSearch.trim().toLowerCase(); return !term || [student.name, student.student_id, student.course, student.batch?.name].filter(Boolean).some(value => String(value).toLowerCase().includes(term)) })
-  const filteredPositions = positions.filter(position => { const term = positionSearch.trim().toLowerCase(); return !term || [position.company_name, position.title].some(value => value.toLowerCase().includes(term)) })
   const selectedStudent = students.find(student => String(student.id) === studentId)
   const selectedPosition = positions.find(position => String(position.id) === positionId)
+  const programId = selectedStudent?.batch?.program_id
+  const acceptsProgram = position => !selectedStudent || (programId == null
+    ? !position.eligibility_configured
+    : (position.eligible_programs || []).some(program => program.id === programId && program.is_active))
+  const term = positionSearch.trim().toLowerCase()
+  const filteredPositions = positions.filter(position => acceptsProgram(position) &&
+    (!term || [position.company_name, position.title].some(value => value.toLowerCase().includes(term))))
   const existingPlacement = selectedStudent ? approvedByStudent.get(selectedStudent.id) : null
   const full = selectedPosition?.remaining_slots <= 0
-  const blocked = !selectedStudent || !selectedPosition || Boolean(existingPlacement) || full
+  const unavailable = selectedStudent && selectedPosition && (!selectedStudent.batch || selectedStudent.batch.status === 'archived' || !acceptsProgram(selectedPosition))
+  const blocked = !selectedStudent || !selectedPosition || Boolean(existingPlacement) || full || unavailable
   async function submit(event) {
     event.preventDefault()
     if (blocked || pending.current) return
@@ -103,6 +110,7 @@ export function ManualAssignmentModal({ students, positions, approvedByStudent, 
           </div>}
         </div>
         {existingPlacement && <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-950/40 px-4 py-3 text-sm text-violet-700 dark:text-violet-300">{selectedStudent.name} already has an approved placement as {existingPlacement.position.title} at {existingPlacement.company.name}. Remove that placement before assigning another.</div>}
+        {unavailable && <p role="status" className="mt-4 text-xs text-rose-700 dark:text-rose-300">Choose an eligible opening and a student in an active batch.</p>}
         {full && <div className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{selectedPosition.title} is full. Increase capacity in Partners or remove an approved placement first.</div>}
         <label className="block mt-4"><span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">Remarks (optional)</span><textarea value={remarks} onChange={event => setRemarks(event.target.value)} rows={3} placeholder="Why is this student being assigned manually?" className={inputClass} /></label>
         {error && <p role="alert" className="mt-3 text-xs text-rose-700 dark:text-rose-300">{error}</p>}

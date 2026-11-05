@@ -12,14 +12,22 @@ function PositionSummary({ company, position, expanded, onToggle, onEdit, onDele
   const id = useId()
   const requirements = Object.entries(position.requirements || {})
   const keywords = position.tags || []
+  const programs = position.eligible_programs || []
+  let availability = 'Available opening'
+  if (position.archived_at) availability = 'Archived opening · retained in history'
+  else if (company.archived_at) availability = 'Unavailable while partner is archived'
+  else if (position.eligibility_configured && !programs.some(program => program.is_active)) availability = 'Closed to new placements'
   return <section aria-labelledby={`${id}-title`} className="min-w-0 rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-950/30">
     <div className="p-3 sm:p-4">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-gray-500">{position.archived_at ? 'Archived opening · retained in history' : company.archived_at ? 'Unavailable while partner is archived' : 'Available opening'}</span><button type="button" className="min-h-10 rounded-lg px-2 font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300 dark:hover:bg-green-950" onClick={() => onArchive({ kind: 'position', item: position })}>{position.archived_at ? 'Restore position' : 'Archive position'}</button></div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-gray-500">{availability}</span><button type="button" className="min-h-10 rounded-lg px-2 font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300 dark:hover:bg-green-950" onClick={() => onArchive({ kind: 'position', item: position })}>{position.archived_at ? 'Restore position' : 'Archive position'}</button></div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1"><h3 id={`${id}-title`} className="break-words text-sm font-semibold leading-6 text-gray-900 dark:text-white">{position.title}</h3><span className="mt-1.5 inline-flex rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950 dark:text-green-300" aria-label={`${position.slots} configured slots`}>{position.slots} slot{position.slots !== 1 ? 's' : ''}</span></div>
         <div className="flex shrink-0"><button type="button" aria-label={`Edit position ${position.title}`} title="Edit position" className={editAction} disabled={Boolean(company.archived_at || position.archived_at)} onClick={() => onEdit({ company, position })}><PencilIcon size={15} /></button><button type="button" aria-label={`Delete position ${position.title}`} title="Delete position" className={deleteAction} onClick={() => onDelete({ company, position })}><TrashIcon size={15} /></button></div>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{requirements.length} requirement{requirements.length !== 1 ? 's' : ''} · {keywords.length} keyword{keywords.length !== 1 ? 's' : ''}</p><button id={`${id}-toggle`} type="button" aria-expanded={expanded} aria-controls={`${id}-details`} aria-label={`${expanded ? 'Hide' : 'Show'} details for ${position.title}`} onClick={onToggle} className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300 dark:hover:bg-green-950"><span>{expanded ? 'Hide details' : 'Details'}</span><span aria-hidden="true"><ChevronDown size={14} open={expanded} /></span></button></div>
+      <p className="break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{!position.eligibility_configured
+        ? 'Legacy batch eligibility'
+        : programs.length ? programs.map(program => `${program.institute_code} · ${program.name}`).join(', ') : 'No eligible programs'}</p>
     </div>
     <div id={`${id}-details`} hidden={!expanded} role="region" aria-labelledby={`${id}-toggle`} className="space-y-5 border-t border-gray-100 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
       {expanded && <>

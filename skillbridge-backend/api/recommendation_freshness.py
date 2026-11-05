@@ -6,6 +6,7 @@ from .models import Position, PositionRequirement, RecommendationConfiguration, 
 from .recommendation_nlp import TEXT_GENERATION_VERSION, extract_coordinates, category_definition
 from types import SimpleNamespace
 from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
+from .opportunity_scope import legacy_positions
 
 
 def _digest(value):
@@ -19,8 +20,7 @@ def catalog_fingerprint():
     definition now participates on both sides of the generated matching text.
     Bulk callers share this value only within their current read operation.
     """
-    positions = list(Position.objects.filter(requirements__isnull=False, archived_at__isnull=True,
-                                            company__archived_at__isnull=True).order_by('id').values(
+    positions = list(legacy_positions().filter(requirements__isnull=False).order_by('id').values(
         'id', 'title', 'tags', 'company_id', 'company__name',
         'company__location_lat', 'company__location_lng',
     ).distinct())

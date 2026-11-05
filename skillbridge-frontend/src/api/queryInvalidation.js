@@ -19,6 +19,9 @@ const paths = {
 
 // Account/enrollment/ownership changes can revoke or alter email management too.
 for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.email[0])
+paths.catalog.push(...paths.results, ...paths.capacity)
+paths.batches.push(/^\/api\/instructor\/companies\/$/, /^\/api\/nlp\/positions\/\d+\/text\/$/)
+paths.organization.push(paths.catalog[0], paths.catalog[1])
 paths.users.push(paths.assignments[0], paths.assignments[1])
 for (const topic of ['organization', 'assignments']) paths[topic].push(...paths.batches, ...paths.email, ...paths.management,
   ...paths.students, ...paths.assessments, ...paths.placements, /^\/api\/admin\/batch-instructors\/$/,

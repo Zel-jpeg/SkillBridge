@@ -80,6 +80,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Program-eligible opportunities and shared capacity](PROGRAM_OPPORTUNITY_ELIGIBILITY.md)
+  covers F09 catalog administration, versioned requirements, browsing and
+  placement eligibility, retained decisions and the additive 0038 migration.
+
 - [General category result and NLP text](GENERAL_COMPETENCY_TEXT.md):
   F08 factual highest categories, neutral advice, bounded symmetric definitions,
   saved context provenance and guarded staged ranking; see the tracker for status.

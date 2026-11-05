@@ -45,6 +45,25 @@ function addrToString(address) {
 }
 
 /** Normalize one raw API company → local shape. */
+function normalizePosition(position) {
+  return {
+    ...position,
+    archived_at: position.archived_at ?? null,
+    slots: position.slots ?? 1,
+    tags: position.tags ?? [],
+    requirements: position.requirements ?? {},
+    eligible_programs: position.eligible_programs ?? [],
+    eligibility_configured: position.eligibility_configured ?? false,
+    category_requirements: position.category_requirements ?? [],
+  }
+}
+
+function positionPayload({ title, slots, tags, eligible_program_ids, category_requirements, requirements }) {
+  return { title, slots, tags, ...(eligible_program_ids !== undefined
+    ? { eligible_program_ids, category_requirements }
+    : { requirements }) }
+}
+
 function normalizeCompany(c) {
   return {
     id:          c.id,
@@ -58,14 +77,7 @@ function normalizeCompany(c) {
     lat:  c.lat  ?? null,   // API returns 'lat' (mapped from location_lat)
     lng:  c.lng  ?? null,   // API returns 'lng' (mapped from location_lng)
     positions: Array.isArray(c.positions)
-      ? c.positions.map(p => ({
-          id:           p.id,
-          archived_at:  p.archived_at ?? null,
-          title:        p.title,
-          slots:        p.slots        ?? 1,
-          tags:         p.tags         ?? [],
-          requirements: p.requirements ?? {},   // API field is 'requirements'
-        }))
+      ? c.positions.map(normalizePosition)
       : [],
   }
 }
@@ -96,7 +108,7 @@ export function useAdminCompanies() {
   const [addPositionFor,    setAddPositionFor]    = useState(null)   // company | null
   const [editCompanyFor,    setEditCompanyFor]    = useState(null)   // company | null
   const [editPositionFor,   setEditPositionFor]   = useState(null)   // { company, position } | null
-  const { data: categoriesData } = useApi('/api/categories/', { skip: !addPositionFor && !editPositionFor })
+  const { data: categoriesData } = useApi('/api/categories/', { skip: !editPositionFor || editPositionFor.position.eligibility_configured })
   const [confirmDeleteComp, setConfirmDeleteComp] = useState(null)   // company | null
   const [confirmDeletePos,  setConfirmDeletePos]  = useState(null)   // { company, position } | null
 
@@ -182,21 +194,10 @@ export function useAdminCompanies() {
 
   /** POST /api/admin/companies/:id/positions/ — append position to company. */
   async function handleAddPosition(company, position) {
-    const res = await request('post', `/api/admin/companies/${company.id}/positions/`, {
-      title:        position.title,
-      slots:        position.slots,
-      requirements: position.requirements,   // FIX: was 'skill_requirements'
-      tags:         position.tags,
-    })
+    const res = await request('post', `/api/admin/companies/${company.id}/positions/`, positionPayload(position))
     if (!res.ok) return res
 
-    const newPos = {
-      id:           res.data.id,
-      title:        position.title,
-      slots:        position.slots,
-      requirements: position.requirements,
-      tags:         position.tags,
-    }
+    const newPos = normalizePosition({ ...position, ...res.data })
     setCompanies(prev => prev.map(c =>
       c.id === company.id
         ? { ...c, positions: [...c.positions, newPos] }
@@ -209,25 +210,14 @@ export function useAdminCompanies() {
 
   /** PATCH /api/admin/positions/:id/ — update position in place. */
   async function handleSavePosition(companyId, position) {
-    const res = await request('patch', `/api/admin/positions/${position.id}/`, {
-      title:        position.title,
-      slots:        position.slots,
-      requirements: position.requirements,
-      tags:         position.tags,
-    })
+    const res = await request('patch', `/api/admin/positions/${position.id}/`, positionPayload(position))
     if (!res.ok) return res
 
     setCompanies(prev => prev.map(c =>
       c.id !== companyId ? c : {
         ...c,
         positions: c.positions.map(p =>
-          p.id !== position.id ? p : {
-            ...p,
-            title:        position.title,
-            slots:        position.slots,
-            requirements: position.requirements,
-            tags:         position.tags,
-          }
+          p.id !== position.id ? p : normalizePosition({ ...p, ...position, ...res.data })
         ),
       }
     ))

@@ -229,7 +229,7 @@ class CompanyImageAPITests(TestCase):
 
     def test_later_position_failure_rolls_back_company_and_cleans_upload(self):
         position = Position.objects.create(company=self.company, title='Intern')
-        self.client.force_authenticate(self.teacher)
+        self.client.force_authenticate(self.admin)
         self.client.raise_request_exception = False
         with patch.object(Position, 'save', side_effect=IntegrityError('synthetic position failure')):
             result = self.replace(f'/api/instructor/companies/{self.company.id}/', name='Must roll back',

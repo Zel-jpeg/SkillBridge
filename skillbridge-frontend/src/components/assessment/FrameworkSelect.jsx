@@ -4,7 +4,8 @@ import DataSection from '../DataSection'
 import Pagination from '../Pagination'
 import { organizationField as field } from '../admin/organizationUi'
 
-export default function FrameworkSelect({ programId, value, onChange, disabled = false }) {
+export default function FrameworkSelect({ programId, value, onChange, disabled = false,
+  help = 'Saving binds this version to the assessment and, when assigned, its batch. Later definition revisions require a new version and batch.' }) {
   const [page, setPage] = useState(1)
   const url = programId ? `/api/management/programs/${programId}/frameworks/?status=active&page=${page}&page_size=8` : null
   const { data } = useApi(url)
@@ -17,6 +18,6 @@ export default function FrameworkSelect({ programId, value, onChange, disabled =
     </select></label>
     {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
     {data?.count === 0 && <p>No active frameworks yet. Create and review categories in Program competencies first.</p>}
-    <p className="text-gray-500">Saving binds this version to the assessment and, when assigned, its batch. Later definition revisions require a new version and batch.</p>
+    {help && <p className="text-gray-500">{help}</p>}
   </div></DataSection>
 }

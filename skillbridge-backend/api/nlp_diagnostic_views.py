@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from .models import (BatchEnrollment, Position, SkillCategory, SkillScore,
                      StudentCompetencyProfile, StudentResponse, User)
+from .opportunity_scope import active_positions, for_programs
 from .recommendation_nlp import build_position_description, generate_competency_insights, TEXT_GENERATION_VERSION
 from .skill_taxonomy import taxonomy_diagnostics
 
@@ -69,6 +70,10 @@ def position_nlp_text(request, position_id):
     if request.user.role not in ('admin', 'instructor'):
         return Response({'error': 'Staff only'}, status=403)
     position = get_object_or_404(Position.objects.select_related('company').prefetch_related('requirements__skill_category'), pk=position_id)
+    if request.user.role == 'instructor' and position.eligibility_configured_at is not None:
+        programs = managed_batches(request.user).filter(status='active').values_list('program_id', flat=True)
+        if not for_programs(active_positions().filter(pk=position_id), programs).exists():
+            return Response({'error': 'Opening not found.'}, status=404)
     return Response({'status': 'available', 'text_generation_version': TEXT_GENERATION_VERSION,
         'texts': [{'label': 'Current position NLP description', 'text': build_position_description(position),
                    'note': 'Generated on demand from saved requirements, bounded category definitions and tags; not stored. Earlier recommendation inputs may differ.'}],

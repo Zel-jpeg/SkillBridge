@@ -16,9 +16,6 @@ class CatalogValidationTests(APITestCase):
         self.position = Position.objects.create(company=self.company, title='Original', slots_available=2)
         PositionRequirement.objects.create(position=self.position, skill_category=self.category, required_percentage=70)
         self.client.force_authenticate(self.admin)
-        rerank = patch('api.views._rerun_recommendations_for_all_students')
-        self.rerank = rerank.start()
-        self.addCleanup(rerank.stop)
 
     def create(self, payload):
         return self.client.post(reverse('admin_company_positions', args=[self.company.id]), payload, format='json')
@@ -71,14 +68,14 @@ class CatalogValidationTests(APITestCase):
         self.assertEqual(self.position.requirements.get().required_percentage, 70)
 
     def test_company_edit_and_instructor_positions_are_validated_together(self):
-        for role, route in [(self.admin, 'admin_company_detail'), (self.owner, 'instructor_company_edit')]:
+        for role, route in [(self.admin, 'admin_company_detail'), (self.admin, 'instructor_company_edit')]:
             self.client.force_authenticate(role)
             for payload in [{'name': ''}, {'name': '   '}, {'name': 'Changed', 'lat': True}, {'lng': 'Infinity'}]:
                 result = self.client.patch(reverse(route, args=[self.company.id]), payload, format='json')
                 self.assertEqual(result.status_code, 400)
                 self.company.refresh_from_db()
                 self.assertEqual(self.company.name, 'Synthetic company')
-        self.client.force_authenticate(self.owner)
+        self.client.force_authenticate(self.admin)
         for positions in [[{'id': self.position.id, 'title': ''}], [{'id': self.position.id, 'slots': 2.5}],
                           [{'id': self.position.id}, {'id': self.position.id}], [{'id': True}]]:
             result = self.client.patch(reverse('instructor_company_edit', args=[self.company.id]),
@@ -95,7 +92,7 @@ class CatalogValidationTests(APITestCase):
         self.assertEqual(self.edit({'slots': 0}).status_code, 409)
         self.client.force_authenticate(self.owner)
         self.assertEqual(self.client.patch(reverse('instructor_company_edit', args=[self.company.id]),
-                         {'positions': [{'id': self.position.id, 'slots': 0}]}, format='json').status_code, 409)
+                         {'positions': [{'id': self.position.id, 'slots': 0}]}, format='json').status_code, 403)
         self.client.force_authenticate(self.admin)
         for route, pk in [('admin_position_detail', self.position.id), ('admin_company_detail', self.company.id)]:
             self.assertEqual(self.client.delete(reverse(route, args=[pk])).status_code, 409)

@@ -1,6 +1,6 @@
 import { recommendationDisplay, recommendationValue, coverageDisplay, isAssessmentLed, comparePositionCandidates } from '../../utils/recommendationResults'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
-import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
+import { loadLeaflet } from '../../utils/externalServices'
 import { validPin } from '../../utils/recommendationResults'
 import MapStatus from '../../components/MapStatus'
 import { escapeHtml } from '../../utils/escapeHtml'
@@ -9,26 +9,16 @@ import DataSection from '../../components/DataSection'
 //
 // Fully responsive company view for instructors.
 // Cards → click → detail modal (bottom-sheet on mobile, centered on desktop).
-// Edit modal: AddressDropdowns + drop-pin map (no manual lat/lng typing).
 
 import { useState, useEffect, useRef } from 'react'
-import AddressDropdowns           from '../../components/AddressDropdowns'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import Avatar                     from '../../components/Avatar'
 import NlpTextPreview from '../../components/NlpTextPreview'
 import CompanyImage from '../../components/CompanyImage'
-import CompanyImageInput from '../../components/CompanyImageInput'
-import CompanyEditDialog from '../../components/CompanyEditDialog'
 import { BriefcaseIcon, ChevronRightIcon, PinIcon as LocationIcon } from '../../components/Icons'
-import api                        from '../../api/axios'
 
 // ── Leaflet CDN singleton ─────────────────────────────────────────────────────
 
-
-// ── Nominatim geocoder (free, no key) ────────────────────────────────────────
-function geocodeAddress(address, options) {
-  return lookupAddress(address, { ...options, fallbackView: { lat: 7.1907, lng: 125.4553 }, cityFallback: true })
-}
 
 // ── Map icons ─────────────────────────────────────────────────────────────────
 function makeViewIcon(L, name) {
@@ -53,20 +43,6 @@ function makeViewIcon(L, name) {
         <circle fill="white" cx="14" cy="13" r="5"/>
       </svg>
     </div>`,
-  })
-}
-
-function makePinIcon(L) {
-  return L.divIcon({
-    className: '',
-    iconSize:    [28, 36],
-    iconAnchor:  [14, 36],
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"
-      style="filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));display:block">
-      <path fill="#3b82f6" stroke="white" stroke-width="2"
-        d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-      <circle fill="white" cx="14" cy="13" r="5"/>
-    </svg>`,
   })
 }
 
@@ -122,88 +98,6 @@ function ViewMap({ company }) {
   )
 }
 
-// ── Drop-pin map (edit modal) ─────────────────────────────────────────────────
-function PinMap({ center, pinned, onPin, height = 220 }) {
-  const elRef  = useRef(null)
-  const mapRef = useRef(null)
-  const mkRef  = useRef(null)
-
-  const latest = useRef({ center, pinned, onPin })
-  useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
-  const [mapStatus, setMapStatus] = useState('loading')
-  const [mapAttempt, setMapAttempt] = useState(0)
-  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
-
-  useEffect(() => {
-    let alive = true
-    let resizeTimer
-    loadLeaflet().then(L => {
-      if (!alive || !elRef.current || mapRef.current) return
-      const { center, pinned } = latest.current
-      const map = L.map(elRef.current, { zoomControl: false })
-        .setView(center ? [center.lat, center.lng] : [7.1907, 125.4553], center?.zoom ?? 13)
-      mapRef.current = map
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
-      resizeTimer = setTimeout(() => map.invalidateSize(), 150)
-
-      function placeMk(lat, lng) {
-        if (mkRef.current) {
-          mkRef.current.setLatLng([lat, lng])
-        } else {
-          mkRef.current = L.marker([lat, lng], { icon: makePinIcon(L), draggable: true }).addTo(map)
-          mkRef.current.on('dragend', ev => {
-            const p = ev.target.getLatLng()
-            latest.current.onPin({ lat: p.lat, lng: p.lng })
-          })
-        }
-        latest.current.onPin({ lat, lng })
-      }
-
-      if (pinned) placeMk(pinned.lat, pinned.lng)
-      map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
-      mapRef.current = map
-      setMapStatus('ready')
-    }).catch(() => {
-      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
-    })
-    return () => { alive = false; clearTimeout(resizeTimer); mapRef.current?.remove(); mapRef.current = null; mkRef.current = null }
-  }, [mapAttempt])
-
-  // Re-center when address changes
-  useEffect(() => {
-    if (mapRef.current && center) {
-      mapRef.current.setView([center.lat, center.lng], center.zoom ?? 15, { animate: true })
-    }
-  }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
-
-  useEffect(() => {
-    if (!pinned && mkRef.current) {
-      mkRef.current.remove()
-      mkRef.current = null
-    }
-  }, [pinned])
-
-  return (
-    <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height, isolation: 'isolate' }}>
-      <div ref={elRef} className="absolute inset-0" />
-      <MapStatus status={mapStatus} onRetry={retryMap} />
-      {!pinned && mapStatus === 'ready' && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-1000 pointer-events-none bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap">
-          Tap anywhere to drop a pin
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// CompaniesMap — overview map showing all partner locations
-// ════════════════════════════════════════════════════════════════════════════
 function CompaniesMap({ companies }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
@@ -284,7 +178,6 @@ const matchBg    = p => p >= 80 ? 'bg-green-500' : p >= 60 ? 'bg-amber-500' : 'b
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const XIcon      = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-const EditIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 const SearchIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
 const PinIcon    = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
 const BriefIcon  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -292,193 +185,7 @@ const HomeIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="n
 const UserIcon   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Edit Modal — self-contained state. Calls onSave(payload) on submit.
-// ─────────────────────────────────────────────────────────────────────────────
-function EditModal({ company, saving, saveError, onSave, onClose }) {
-  const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
-  // Basic fields
-  const [name,      setName]      = useState(company.name)
-  const [nameErr,   setNameErr]   = useState('')
-
-  // Address — show current; "Change" button reveals AddressDropdowns
-  const currentAddr = company.address
-    ? [company.address.barangay, company.address.city, company.address.province].filter(Boolean).join(', ')
-    : ''
-  const [changingAddr, setChangingAddr] = useState(false)
-  const [newAddr,      setNewAddr]      = useState({ province: '', city: '', barangay: '' })
-  const [addrErr,      setAddrErr]      = useState('')
-
-  // Map / pin
-  const [pinned,    setPinned]    = useState(
-    validPin(company.lat, company.lng)
-  )
-  const [mapCenter, setMapCenter] = useState(
-    validPin(company.lat, company.lng) ? { ...validPin(company.lat, company.lng), zoom: 15 } : null
-  )
-  const [geocoding, setGeocoding] = useState(false)
-
-  // Positions edits
-  const [positions, setPositions] = useState(
-    (company.positions ?? []).map(p => ({
-      id: p.id,
-      title: p.title,
-      slots: p.slots,
-      requirements: p.requirements || {},
-      tags: (p.tags || []).join(', '),
-    }))
-  )
-  const [suggestingFor, setSuggestingFor] = useState(null)
-  function setPosField(idx, key, val) {
-    setPositions(ps => ps.map((p, i) => i === idx ? { ...p, [key]: val } : p))
-  }
-
-  async function suggestTags(idx) {
-    const position = positions[idx]
-    if (!position.title.trim()) return
-    setSuggestingFor(idx)
-    try {
-      const res = await api.post('/api/tags/suggest/', {
-        type: 'position', title: position.title, requirements: position.requirements,
-      })
-      setPosField(idx, 'tags', (res.data?.suggested_tags || []).join(', '))
-    } finally {
-      setSuggestingFor(null)
-    }
-  }
-
-  // Auto-geocode when address selection changes
-  const geocodePending = useRef(null)
-  useEffect(() => () => geocodePending.current?.abort(), [])
-
-  async function handleAddressChange(addr) {
-    geocodePending.current?.abort()
-    const controller = new AbortController()
-    geocodePending.current = controller
-    setGeocoding(false)
-    setNewAddr(addr)
-    setAddrErr('')
-    if (addr.city) {
-      setGeocoding(true)
-      const coords = await geocodeAddress(addr, { signal: controller.signal })
-      if (controller.signal.aborted) return
-      setMapCenter(coords)
-      setGeocoding(false)
-    }
-  }
-
-  async function handleSubmit() {
-    if (image.error || saving) return
-    if (!name.trim()) { setNameErr('Organization name is required.'); return }
-    if (changingAddr && (!newAddr.province || !newAddr.city)) {
-      setAddrErr('Please select at least a province and city.')
-      return
-    }
-
-    const address = changingAddr
-      ? { province: newAddr.province, city: newAddr.city, barangay: newAddr.barangay }
-      : (company.address ?? {})
-
-    onSave({
-      image,
-      name:     name.trim(),
-      address,
-      lat:      pinned?.lat ?? null,
-      lng:      pinned?.lng ?? null,
-      positions: positions.map(p => ({
-        id: p.id,
-        title: p.title,
-        slots: parseInt(p.slots) || 0,
-        tags: p.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      })),
-    })
-  }
-
-  const inputCls = (err) =>
-    `w-full px-3 py-2.5 text-sm rounded-xl border ${err ? 'border-rose-400 dark:border-rose-600' : 'border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors`
-
-  return <CompanyEditDialog saving={saving} saveError={saveError} invalid={Boolean(image.error)}
-    onSave={handleSubmit} onClose={onClose}
-    details={<>
-      <div>
-        <label htmlFor="company-edit-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Organization name <span className="text-rose-500">*</span></label>
-        <input id="company-edit-name" value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
-          className={inputCls(nameErr)} placeholder="e.g. Azeus Systems Philippines" aria-invalid={Boolean(nameErr)} />
-        {nameErr && <p className="mt-1 text-xs text-rose-600">{nameErr}</p>}
-      </div>
-      <CompanyImageInput name={name} imageUrl={company.image_url} value={image} onChange={setImage} disabled={saving} />
-      {positions.length > 0 && <details className="company-edit-positions">
-        <summary>
-          <span aria-hidden="true" className="text-slate-500 dark:text-gray-400"><BriefcaseIcon size={23} /></span>
-          <span className="min-w-0"><span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Positions <span className="ml-1 font-normal text-gray-400">({positions.length})</span></span>
-            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Manage roles associated with this partner</span></span>
-          <ChevronRightIcon size={18} />
-        </summary>
-        <div className="company-edit-positions-content flex flex-col gap-3">
-          {positions.map((pos, idx) => (
-            <div key={pos.id} className="company-position-card space-y-4">
-              <div>
-                <label htmlFor={`position-${pos.id}-title`} className="mb-2 block text-xs font-semibold text-gray-600 dark:text-gray-300">Position title</label>
-                <input id={`position-${pos.id}-title`} value={pos.title} onChange={e => setPosField(idx, 'title', e.target.value)}
-                  placeholder="e.g. Database Support Intern" className={inputCls('')} />
-              </div>
-              <div>
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <label htmlFor={`position-${pos.id}-tags`} className="text-xs font-semibold text-gray-600 dark:text-gray-300">Position tags</label>
-                  <button type="button" onClick={() => suggestTags(idx)} disabled={suggestingFor === idx}
-                    className="min-h-8 cursor-pointer rounded-lg border border-blue-100 bg-blue-50/70 px-2.5 text-[11px] font-semibold text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-wait disabled:opacity-50 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/60">
-                    {suggestingFor === idx ? 'Suggesting…' : 'Suggest Tags'}
-                  </button>
-                </div>
-                <textarea id={`position-${pos.id}-tags`} value={pos.tags} onChange={e => setPosField(idx, 'tags', e.target.value)} rows={4}
-                  placeholder="Django, REST API, PostgreSQL" aria-describedby={`position-${pos.id}-tags-help`}
-                  className={`${inputCls('')} min-h-28 resize-y leading-6`} />
-                <p id={`position-${pos.id}-tags-help`} className="mt-1.5 text-[11px] leading-5 text-gray-400 dark:text-gray-500">Separate tags with commas.</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
-                <div>
-                  <label htmlFor={`position-${pos.id}-slots`} className="block text-xs font-semibold text-gray-600 dark:text-gray-300">Slots available</label>
-                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Open slots for this role</p>
-                </div>
-                <input id={`position-${pos.id}-slots`} type="number" min="0" value={pos.slots} onChange={e => setPosField(idx, 'slots', e.target.value)}
-                  className="w-24 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </details>}
-    </>}
-    location={<>
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Address</p>
-          <button type="button" onClick={() => { setChangingAddr(!changingAddr); setAddrErr('') }}
-            className="min-h-9 rounded-lg border border-blue-100 bg-blue-50 px-3 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
-            {changingAddr ? 'Keep current address' : 'Change address'}
-          </button>
-        </div>
-        {changingAddr ? <AddressDropdowns onChange={handleAddressChange} error={addrErr} />
-          : <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">{currentAddr || 'No address set'}</div>}
-        {geocoding && <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">Finding location on map…</p>}
-        {!geocoding && mapCenter?.approximate && <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">Address lookup unavailable. Showing the default Davao view; your pin is unchanged.</p>}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Map location</p>
-        <p className="mb-3 mt-1 text-xs text-gray-500 dark:text-gray-400">Click the map to place a pin. Drag it to adjust the location.</p>
-        <PinMap center={mapCenter} pinned={pinned} onPin={setPinned} height={300} />
-        <div className="mt-3 flex min-h-9 items-center justify-between gap-3 text-xs">
-          <span className="flex min-w-0 items-center gap-2 text-gray-500 dark:text-gray-400"><LocationIcon size={15} />
-            {pinned ? `${pinned.lat.toFixed(5)}, ${pinned.lng.toFixed(5)}` : 'No pin set. You can save without one.'}
-          </span>
-          {pinned && <button type="button" onClick={() => setPinned(null)} className="shrink-0 rounded-lg px-2 py-2 text-gray-500 hover:bg-gray-100 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-gray-800">Clear pin</button>}
-        </div>
-      </div>
-    </>} />
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Company detail modal (view)
-// ─────────────────────────────────────────────────────────────────────────────
-function CompanyDetailModal({ company, onClose, onEdit }) {
+function CompanyDetailModal({ company, onClose }) {
   const addr = company.address
     ? [company.address.barangay, company.address.city, company.address.province].filter(Boolean).join(', ')
     : ''
@@ -513,10 +220,6 @@ function CompanyDetailModal({ company, onClose, onEdit }) {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={onEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition-colors">
-              <EditIcon /> Edit
-            </button>
             <button onClick={onClose} aria-label="Close partner details"
               className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <XIcon />
@@ -681,8 +384,6 @@ export default function InstructorCompanies() {
   const {
     companies, allCompanies, allCount, loading,
     search, setSearch,
-    editing, openEdit, closeEdit,
-    saving, saveError, handleSave,
 
   } = useInstructorCompanies()
 
@@ -703,22 +404,10 @@ export default function InstructorCompanies() {
 
 
       {/* Detail modal */}
-      {selected && !editing && (
+      {selected && (
         <CompanyDetailModal
           company={selected}
           onClose={() => setSelected(null)}
-          onEdit={() => openEdit(selected)}
-        />
-      )}
-
-      {/* Edit modal */}
-      {editing && (
-        <EditModal
-          company={editing}
-          saving={saving}
-          saveError={saveError}
-          onSave={handleSave}
-          onClose={closeEdit}
         />
       )}
 
