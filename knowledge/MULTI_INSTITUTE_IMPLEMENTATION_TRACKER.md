@@ -210,8 +210,10 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   identity; program/framework/corpus/text/policy provenance and scoped invalidation.
 - [x] Preserve assessment-led ordering, coordinator review and allocation rules;
   never compare unrelated program questionnaire percentages as universal mastery.
-- [ ] Test independent-catalog edits, shared eligibility changes, stale locks,
+- [x] Test independent-catalog edits, shared eligibility changes, stale locks,
   conflicts, all-zero/no-opportunity cases and approval snapshots; receipt/merge.
+  Implementation `70f5b5c`, fast-forward merged into local `main`.
+  [F10 receipt](SCOPED_RECOMMENDATION_INPUTS.md).
 
 ### F11 — Default AIKEN import with native-format choice
 
@@ -276,12 +278,11 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE on F10 (5 November 2026):
+Current checkpoint — F10 verified and locally merged (5 November 2026):
 
 - `codex/scoped-recommendation-inputs` was created from `0922790`, the F09
-  verification receipt on local `main`. F10 will use the batch's exact framework
-  IDs for evidence and filter the opportunity corpus before generating NLP text.
-- F10 code and synthetic tests are in the working tree. The scoped corpus,
+  verification receipt on local `main`. F10 implementation `70f5b5c` was
+  fast-forwarded into local `main`. The scoped corpus,
   fingerprints, exact category IDs and saved provenance are connected to
   ranking, result/roster/report reads and placement approval and allocation.
 - Full PostgreSQL passed 721 tests (`work/organization-postgres-2336svqi/`).
@@ -293,7 +294,8 @@ Current checkpoint — ACTIVE on F10 (5 November 2026):
   The isolated SQLite harness uses immediate transactions to handle overlapping
   initial results requests. Frontend unit tests passed 275. Django check and
   migration drift passed. F10 requires no migration.
-- Next step: commit F10 and fast-forward local `main`, then create F11's branch.
+- Next step: create `codex/aiken-question-import`, inspect the supplied DNSC
+  export, and connect AIKEN and native formats through the existing import flow.
 - F09 was verified and locally merged before starting F10.
 
 - On CONTINUE, verified the previous pause checkpoint, committed the F08 receipt

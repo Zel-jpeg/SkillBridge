@@ -34,5 +34,6 @@ neutral result summaries and an actual competency CSV download. These used
 synthetic questionnaires and verify software behavior. Academic suitability of
 the ranking across disciplines remains a separate evaluation.
 
-See the [implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
-for evidence and merge status.
+Implementation `70f5b5c` was fast-forwarded into local `main`. F10 requires no
+database migration. See the [implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
+for evidence and the next feature.
