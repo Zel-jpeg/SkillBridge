@@ -4,6 +4,8 @@ F16 completes the local implementation sequence after the F15 receipt
 `174c3c1`. The changes on `codex/multi-institute-acceptance` add the combined
 synthetic acceptance journey and extend its existing test fixtures. Production
 behavior is the implementation already verified in F01–F15.
+Commit `71b4c93` was fast-forwarded into local `main` after the acceptance
+checks passed.
 
 ## Acceptance evidence
 
@@ -67,3 +69,7 @@ outside this local verification.
 
 All feature changes and merges are local. GitHub publication and deployment
 remain subject to the user's separate instruction.
+
+All 12 owned browser test ports were checked closed, and the disposable
+PostgreSQL cluster was confirmed stopped. Documentation verification resolved
+154 local targets, and the final diff passed the whitespace check.

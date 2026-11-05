@@ -277,7 +277,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   institute/program work with the same code; inspect actual generated artifacts.
 - [x] Fix the CSV acceptance assertion and document evidence and limits.
 - [x] Verify owned helper cleanup.
-- [ ] Commit and merge locally.
+- [x] Commit and merge locally (`71b4c93`).
 
 ## Receipts and checkpoint
 
@@ -286,12 +286,11 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F16 verified, preparing local merge (Asia/Manila):
+Current checkpoint — COMPLETE through F16, merged locally (Asia/Manila):
 
 - `codex/multi-institute-acceptance` starts at the F15 verification receipt
-  `174c3c1` on local `main`. F01–F15 are verified and merged locally. F16's
-  synthetic fixture, browser harness and acceptance script are saved as
-  working-tree edits. F16 has no commit or merge.
+  `174c3c1`. F16 implementation and verification commit `71b4c93` was
+  fast-forwarded into local `main`. F01–F16 are verified and merged locally.
 - The full F16 PostgreSQL suite finished with **734 passing tests**
   (`work/organization-postgres-ptt8pe0b/tests.txt`). Its disposable database
   was torn down. On CONTINUE, frontend lint/build and 284 tests passed again.
@@ -305,8 +304,12 @@ Current checkpoint — F16 verified, preparing local merge (Asia/Manila):
 - F16 made no configured database write. DNSC LMS-side import of SkillBridge
   exports remains unverified. All 12 owned browser test ports are closed and
   the disposable PostgreSQL cluster is stopped. Documentation verification
-  resolved 154 local link targets. Next commit F16, fast-forward local main
-  and record the merge receipt.
+  resolved 154 local link targets. The feature checklist is complete.
+- The [staff workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) and
+  [acceptance handoff](MULTI_INSTITUTE_ACCEPTANCE.md) are ready. Changes are
+  local. GitHub publication, deployment, LMS-side import verification and
+  program-specific faculty validation await the appropriate user instruction
+  or external access. Further implementation requires a new task.
 
 Current checkpoint — F15 verified and merged locally (5 November 2026):
 
