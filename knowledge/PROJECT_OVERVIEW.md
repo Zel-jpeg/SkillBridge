@@ -22,6 +22,8 @@ synthetic examples for verification. [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.
 The user has requested a subsequent extension for instructor/OJT coordinator
 partner and position creation and editing. It is planned as F17–F19. Current
 catalog mutations remain admin-controlled until the extension is implemented.
+F19 also includes complete role workflows, exploratory bug review and
+reproduction/fix/retest gates across the existing system and the extension.
 [Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
 
 ## Architecture

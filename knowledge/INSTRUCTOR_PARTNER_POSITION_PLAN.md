@@ -112,7 +112,7 @@ Branch `codex/coordinator-partner-editor`, after F17 passes its gates.
 - [ ] Pass frontend tests, lint/build and relevant backend regression. Commit
   and merge locally before F19.
 
-## F19 — Integrated acceptance and updated handoff
+## F19 — Full workflow audit, integrated acceptance and handoff
 
 Branch `codex/coordinator-catalog-acceptance`, after F18 passes.
 
@@ -123,12 +123,131 @@ Branch `codex/coordinator-catalog-acceptance`, after F18 passes.
   obtain a recommendation from valid test evidence and review a placement.
 - [ ] Verify same-program reuse, other-program denial, revoked authority, retained
   IC access, independent ranking freshness and shared slot consumption.
+- [ ] Complete the full workflow and regression matrix below, covering both
+  the coordinator extension and its interactions with F01–F16.
+- [ ] Perform exploratory bug review beyond the scripted successful flows.
+  Record every finding, fix confirmed in-scope defects, and repeat the affected
+  flow and neighboring regression checks.
 - [ ] Update the staff role table, workflow guide, ERD/data-flow references,
   deployment/migration receipts and evaluator demonstration checklist.
 - [ ] Run relevant PostgreSQL and frontend regression, lint/build, drift and
   responsive Chrome checks. Inspect generated reports and stop owned helpers.
 - [ ] Commit and merge locally after the checks pass. Publication and deployment
   follow the user's existing separate-instruction requirement.
+
+## System flow and bug review checklist
+
+The user requested checking the system for missed steps, overlooked bugs and
+other problems. Apply relevant checks during F17 and F18 before their merges.
+F19 then verifies the combined current system, including existing features.
+The checkboxes below represent future execution and require recorded evidence.
+
+### Complete user journeys
+
+- [ ] **New program setup.** An admin creates an institute and program, assigns
+  an approved coordinator, and the coordinator defines categories, descriptions
+  and tags in a reviewed framework.
+- [ ] **Catalog preparation before enrollment.** An assigned coordinator creates
+  a partner and opening before any batch exists. Review name/location/image,
+  eligibility, category requirements and slots, then find and edit the saved entry.
+- [ ] **Existing partner reuse.** Another authorized coordinator finds the partner
+  and creates or reuses an appropriate opening. Verify common-detail ownership,
+  program visibility, independent requirements and the shared capacity rules.
+- [ ] **Assessment creation.** Create a program batch, import and manually add
+  MCQ, true/false and identification items, review categories and keys, save
+  a draft, then publish after the required checks pass.
+- [ ] **Student access and assessment.** Enroll a synthetic student, sign in,
+  complete the profile, start, save answers, reload/resume and submit. Compare
+  recorded answers and raw/max category totals with hand-calculated expectations.
+- [ ] **Required completion and retake.** Complete multiple required assessments,
+  verify final competency and recommendation gates, request/review a retake,
+  retain the earlier attempt and complete the new attempt.
+- [ ] **Placement review.** Inspect eligible recommendations and numerical
+  requirements, approve or manually assign within existing policy, verify
+  occupied capacity and the student-visible decision, then check retained history.
+- [ ] **Reports and exports.** Verify institute/program/batch filters, counts,
+  actual CSV/PDF/XLSX downloads where supported, questionnaire exports and
+  re-import. Compare exported values, order and scope with saved evidence.
+- [ ] **Lifecycle and access changes.** Revoke/restore a grant, change batch
+  ownership, archive/restore applicable records and switch accounts. Verify
+  access, cached data, open dialogs, protected evidence and new writes.
+- [ ] **Existing data.** Repeat applicable flows with synthetic existing IC
+  records and mixed cohorts alongside new programs. Verify original IDs,
+  memberships, statuses, scores and placement snapshots.
+
+### Review matrix for missed problems
+
+| Area | Cases to exercise | Evidence to record |
+| --- | --- | --- |
+| Roles and program boundaries | Anonymous/student/admin/coordinator requests, creator versus peer, same-institute foreign program, multiple grants, revoked approval or assignment and direct guessed IDs | HTTP status, authorized response fields and unchanged unauthorized records |
+| Input and files | Required/blank fields, malformed IDs, zero/negative/oversized slots, invalid percentages, duplicate partner review, same-name categories in different frameworks, malformed question files, numeric zero/False keys and literal special characters | Validation location, preserved draft, atomic save outcome and correct stored values |
+| Assessment integrity | Omitted answers, foreign choices, duplicate question IDs, repeated start/submit, attempt identity, timeout, interruption, concurrent finalization and approved retake | Known answer totals, one finalized attempt, retained history and correct completion gates |
+| Ranking and eligibility | Assessed zero, missing evidence, no eligible opening, changed tags/requirements, independent-program edits, stale rankings and retained completed competency | Exact framework/category IDs, candidate set, saved model/policy context and current/stale visibility |
+| Capacity and concurrent writes | Two approvals competing for the last slot, duplicate clicks, two editors, shared openings, slot reduction after approval and archive versus placement | Final occupied count, conflict handling, consistent audit trail and no duplicated decision |
+| Recovery | Slow/offline response, failed upload, rejected save, refresh, back navigation, tab switching, expired session and uncertain write completion | Retained or recoverable input, clear outcome, bounded retry and no unintended repeat mutation |
+| Live updates and privacy | SSE reconnect, late responses after revocation/logout, inactive accounts, account switching, cached reports, private keys/evidence and foreign roster data | Correct invalidation, discarded stale response and denial on a fresh API request |
+| UI and collections | Phone/desktop, light/dark, keyboard and focus, search/filter reset, pagination clamp, empty/loading/error states, long names and confirmation/cancel | Screenshots, accessible control behavior, stable filtered counts and browser errors |
+| History and database upgrade | Fresh schema and upgrade from the actual predecessor, partial failure/rollback, backup restore and reconciliation of existing rows | Allowed-change inventory, private-data-free hashes/counts, preserved evidence and migration receipt |
+| External integrations | Map/geographic service failure, image storage, email queue/delivery, Google sign-in and LMS exchange as applicable | Identify mocked/local behavior, actual authorized provider results and any outstanding external check |
+| Performance and resource use | Bounded concurrent assessment starts/submits and catalog reads on isolated PostgreSQL, repeated list navigation, larger permitted files and representative pagination | Workload size, response timings, errors, query/resource observations and owned-helper cleanup |
+
+- [ ] Trace affected API callers, validators, serializers, database writes and
+  invalidation paths against this matrix. Look for hardcoded program assumptions,
+  inconsistent role checks, missing ownership on older rows and incomplete routes.
+- [ ] Review routes beyond the visible buttons, including compatibility endpoints,
+  nested position IDs, images, archive/recovery and protected downloads.
+- [ ] Compare UI, API, stored data and exported reports for the same scenario.
+  Investigate contradictions even when an individual test passes.
+- [ ] Use the assessment-review, recommendation-audit, collection-UI and browser
+  testing skills where relevant. Current implementation and its accepted policy
+  resolve differences with older notes.
+- [ ] Review existing regression coverage first. Add targeted tests for uncovered
+  behavior and each confirmed regression, then run the applicable suites.
+- [ ] Use isolated synthetic records for destructive, concurrency and fault
+  injection checks. Record external-service checks that require later authorized
+  access alongside the local evidence.
+
+### Findings, fixes and completion gates
+
+- [ ] Keep a findings register with the affected role/program/flow, reproduction
+  steps, expected versus actual behavior, severity, evidence path, cause,
+  repair commit and retest outcome. Keep credentials and student records private.
+- [ ] Mark findings as confirmed, under investigation, fixed and retested, or
+  externally unverified. Distinguish a product defect from a test-harness error.
+- [ ] Address confirmed in-scope bugs on the current feature branch, starting
+  with access leakage, lost/corrupted records, incorrect grading, incorrect
+  placement capacity and blocked core workflows.
+- [ ] After each fix, rerun the reproduction and affected neighboring flows.
+  A later change to the checked behavior invalidates its earlier verification.
+- [ ] Keep acceptance open while required behavior fails. Record any deferred
+  issue or external dependency explicitly in the handoff with its impact and
+  next verification step.
+- [ ] Finish with PostgreSQL regression, frontend tests, lint/build, system and
+  drift checks as applicable, plus Chrome checks for affected roles and screens.
+  Reuse unchanged passing evidence when its source and scope still apply.
+- [ ] Record coverage and remaining limits, inspect artifacts and confirm owned
+  helper cleanup before the local merge. Test results describe the checked
+  version, workload and cases.
+
+### Coordinator evaluation session
+
+- [ ] Once participation is confirmed, let the Tourism coordinator complete a
+  realistic task sequence using authorized sample content. Observe unclear
+  steps, incorrect assumptions, workarounds and unfinished tasks.
+- [ ] Apply the same evaluation structure to Social Work after its coordinator
+  confirms the workflow, using its own definitions, partners and positions.
+- [ ] Record usability feedback, content corrections and recommendation judgments
+  with the relevant scenario. Add reproducible software problems to the findings
+  register and retest the repaired workflow.
+- [ ] Report actual participants, completed tasks, observed failures and remaining
+  validation needs. Trace exam relevance to their placement process before
+  drawing conclusions about the system's suitability.
+
+Related references include the [previous integrated acceptance](MULTI_INSTITUTE_ACCEPTANCE.md),
+[local workflow checks](LOCAL_WORKFLOW_ACCEPTANCE.md),
+[local access review](LOCAL_SECURITY_REVIEW.md),
+[assessment integrity](ASSESSMENT_SUBMISSION_INTEGRITY.md) and
+[report reconciliation](REPORT_RECONCILIATION.md).
 
 ## Evaluation contacts and workflow discovery
 
@@ -163,6 +282,11 @@ The extension is recorded as F17–F19. F01–F16 remain completed. The immediat
 next implementation step is F17's backend authority and sharing audit, followed
 by the smallest compatible data model and API changes. The existing feature
 branch, verification, migration and local-merge rules apply.
+
+The user's follow-up expands F19 to complete system flows, exploratory bug
+discovery and evaluation. The matrix above is the execution checklist. Its
+items are pending, and discovered issues must be tracked through repair and
+verification during the relevant feature work.
 
 Plan commit `4a4d050` was fast-forwarded into local `main`. Documentation
 verification resolved 184 local link targets across five Markdown files.

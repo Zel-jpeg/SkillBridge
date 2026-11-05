@@ -302,11 +302,16 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [ ] Verify scoped API flows, search/pagination, keyboard and phone/desktop
   behavior, lint/build and relevant regression, then commit and merge locally.
 
-### F19 — Coordinator catalog acceptance and updated handoff
+### F19 — Full system flow audit, coordinator acceptance and handoff
 
 - [ ] Branch `codex/coordinator-catalog-acceptance` after completed F18.
 - [ ] Verify synthetic Tourism/Social Work/arbitrary-program workflows,
   independent catalogs, IC preservation, recommendations and shared capacity.
+- [ ] Complete the [flow and bug-review matrix](INSTRUCTOR_PARTNER_POSITION_PLAN.md#system-flow-and-bug-review-checklist)
+  across current roles, inputs, assessment/retake flows, recommendations,
+  capacity, recovery, access changes, reports, migrations and external checks.
+- [ ] Explore beyond scripted successful flows, record reproducible findings,
+  fix confirmed in-scope bugs and retest affected flows before acceptance.
 - [ ] Update staff guidance and evaluation demo, complete regression and inspect
   artifacts, then commit and merge locally.
 
@@ -331,6 +336,10 @@ Current checkpoint — F17–F19 extension planned:
 - Tourism is a possible evaluator after the user's coordinator discussion.
   Social Work workflow information comes from a student and awaits direct
   coordinator confirmation.
+- The user subsequently requested broader flow testing and discovery of missed
+  bugs or requirements. F19 now includes full role journeys, an exploratory
+  review matrix, defect reproduction/fix/retest gates and coordinator task
+  evaluation. These checks are planned and remain unchecked until executed.
 - Next implementation step is F17. Read the
   [extension plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) and current code before
   adding creator/program authority and scoped mutation paths. Each feature
