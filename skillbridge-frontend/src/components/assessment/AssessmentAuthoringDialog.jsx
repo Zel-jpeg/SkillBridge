@@ -7,7 +7,7 @@ import EditableQuestionCard from './EditableQuestionCard'
 import { useInstructorAssessments } from '../../hooks/instructor/useInstructorAssessments'
 import AssessmentPolicyNotice from './AssessmentPolicyNotice'
 import { assessmentChangeImpact, assessmentLocks } from '../../utils/assessmentPolicy'
-import { useAssessmentUpload } from '../../hooks/instructor/useAssessmentUpload'
+import QuestionImportPanel from './QuestionImportPanel'
 import AssessmentDurationSuggestions from './AssessmentDurationSuggestions'
 
 const field = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800'
@@ -21,16 +21,13 @@ export default function AssessmentAuthoringDialog({ assessment, onClose, role = 
   const [confirm, setConfirm] = useState(null)
   const [page, setPage] = useState(1)
   const [importing, setImporting] = useState(false)
-  const upload = useAssessmentUpload({ assessmentId: assessment.id, scoped: Boolean(assessment.framework_id), onImport: rows => {
-    editor.importQuestions(rows); setImporting(false)
-  } })
   const current = editor.liveAssessment || assessment
   const locks = assessmentLocks(current)
   const locked = current.questions_locked || current.is_archived
   const remoteChanged = ['title', 'batch_id', 'publication_status', 'duration_minutes', 'is_required', 'include_in_competency', 'question_count', 'questions_locked'].some(key => assessment[key] !== initial[key])
   const visiblePage = Math.min(page, Math.ceil(editor.visibleQuestions.length / 10) || 1)
   function close() {
-    if (editor.saving || upload.submitting) return
+    if (editor.saving) return
     if (editor.dirty) setConfirm('discard')
     else onClose()
   }
@@ -59,18 +56,10 @@ export default function AssessmentAuthoringDialog({ assessment, onClose, role = 
           {editor.visibleQuestions.slice((visiblePage - 1) * 10, visiblePage * 10).map((question, index) => locked ? <article className="rounded-xl border border-gray-200 p-3 dark:border-gray-700" key={question._tempId}><p className="text-sm">{question.question_text}</p><p className="mt-2 text-xs text-green-800 dark:text-green-300">Key: {question.question_type === 'identification' ? question.identAnswer : question.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></article> : <fieldset className="min-w-0" disabled={editor.saving} key={question._tempId}><EditableQuestionCard q={question} index={(visiblePage - 1) * 10 + index} categories={editor.categories} framework={editor.framework} onUpdate={editor.updateQuestion} onChangeType={editor.changeQuestionType} onUpdateChoice={editor.updateChoice} onSetCorrect={editor.setCorrectChoice} onRemove={editor.removeQuestion} /></fieldset>)}
           {!editor.visibleQuestions.length && <p className="text-xs text-gray-500">No questions yet. Add or import questions before publishing.</p>}
           <Pagination total={editor.visibleQuestions.length} page={visiblePage} onPage={setPage} />
-          {!locked && <div className="flex flex-wrap gap-2">{[['mcq', 'Multiple Choice'], ['truefalse', 'True / False'], ['identification', 'Identification']].map(([type, label]) => <button key={type} className={button} disabled={editor.saving} onClick={() => { editor.addQuestion(type); setPage(Math.ceil((editor.visibleQuestions.length + 1) / 10)) }}>Add {label}</button>)}<button className={button} disabled={editor.saving} onClick={() => { upload.reset(); setImporting(value => !value) }}>Import questions</button></div>}
+          {!locked && <div className="flex flex-wrap gap-2">{[['mcq', 'Multiple Choice'], ['truefalse', 'True / False'], ['identification', 'Identification']].map(([type, label]) => <button key={type} className={button} disabled={editor.saving} onClick={() => { editor.addQuestion(type); setPage(Math.ceil((editor.visibleQuestions.length + 1) / 10)) }}>Add {label}</button>)}<button className={button} disabled={editor.saving} onClick={() => setImporting(value => !value)}>Import questions</button></div>}
         </>}
-        {importing && !locked && <section aria-label="Import questions" className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-xs text-gray-500">Review parsed questions, then add them to this draft. They are saved with the authoring changes.</p>
-          <select aria-label="Question import format" className={field} value={upload.tab} onChange={event => upload.setTab(event.target.value)}><option value="excel">Excel / CSV</option><option value="text">Text file</option></select>
-          <input aria-label="Question import file" type="file" accept={upload.tab === 'excel' ? '.xlsx,.csv' : '.txt'} disabled={upload.activeLoading || upload.submitting} onChange={event => { const file = event.target.files?.[0]; if (file) (upload.tab === 'excel' ? upload.parseExcelQuestions : upload.parseTxtFile)(file) }} />
-          {upload.activeLoading && <p role="status">Reading file…</p>}
-          {upload.activeErrors.map((error, index) => <p role="alert" className="text-xs text-rose-700" key={index}>Row {error.rowNum}: {error.errors.join(' ')}</p>)}
-          {upload.submitError && <p role="alert">{upload.submitError}</p>}
-          <ol className="max-h-64 space-y-2 overflow-y-auto text-xs">{upload.activeRows.map((row, index) => <li key={index}><strong>{index + 1}. {row.question}</strong><p>{row.type} · {row.category || 'Uncategorized'} · Key: {row.type === 'identification' ? row.identAnswer : row.choices[row.correctIdx]}</p></li>)}</ol>
-          <button className={button} disabled={!upload.activeRows.length || upload.activeLoading || upload.submitting} onClick={upload.handleSubmit}>Add {upload.activeRows.length} imported questions to draft</button>
-        </section>}
+        {importing && !locked && <QuestionImportPanel categories={editor.categories} scoped={Boolean(current.framework_id)}
+          onStage={rows => { editor.importQuestions(rows); setImporting(false) }} onCancel={() => setImporting(false)} />}
       </section>
     </div>
     {confirm && <ConfirmModal tone={confirm === 'discard' ? 'danger' : 'confirm'} title={confirm === 'discard' ? 'Discard authoring changes?' : 'Save assessment authoring?'} message={confirm === 'discard' ? 'Unsaved settings and question edits will be discarded.' : 'The server validates and saves settings and questions together. ' + assessmentChangeImpact(current, editor.editSettings).join(' ')} confirmLabel={confirm === 'discard' ? 'Discard' : 'Save changes'} onCancel={() => setConfirm(null)} onConfirm={confirm === 'discard' ? onClose : save} />}

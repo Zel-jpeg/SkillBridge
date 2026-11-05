@@ -65,6 +65,9 @@ try:
         for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
             ('--opportunity-scope', 'opportunity_scope_playwright.py'),
             ('--scoped-ranking', 'scoped_ranking_playwright.py'),
+            ('--aiken-import', 'aiken_import_playwright.py'),
+            ('--numeric-import', 'assessment_numeric_import_playwright.py'),
+            ('--authoring-draft', 'authoring_draft_playwright.py'),
             ('--companies', 'company_collection_playwright.py'),
             ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py'),
             ('--assessment-result-navigation', 'student_assessment_result_navigation_playwright.py')]:

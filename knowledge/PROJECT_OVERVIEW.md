@@ -80,6 +80,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Questionnaire import](QUESTIONNAIRE_IMPORT.md) covers F11 AIKEN as the
+  default, the retained SkillBridge text and spreadsheet formats, and draft
+  review and category mapping across staff roles.
+
 - [Scoped recommendation inputs and freshness](SCOPED_RECOMMENDATION_INPUTS.md)
   covers F10 framework-specific ranking inputs, scoped invalidation, and the
   separation between current rankings and retained placement evidence.

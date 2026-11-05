@@ -29,6 +29,7 @@ import { useSSE } from '../useSSE'
 import { toManilaInput } from '../../utils/assessmentDates'
 import { filterAssessments } from '../../utils/assessmentManagement'
 import { assessmentDatePayload } from '../../utils/assessmentPolicy'
+import { questionImportPayload } from '../../utils/questionImport'
 
 
 // ── Default choices for each question type ────────────────────────────────────
@@ -407,8 +408,10 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   return {
     dirty,
     liveAssessment: selected ? assessmentsRaw?.find(a => a.id === selected.id) || selected : null,
-    importQuestions: rows => setEditedQuestions(previous => [...previous, ...rows.map(row => normalizeQuestion({
-      ...row, category: categories.find(category => category.name.toLowerCase() === row.category.toLowerCase()) || (selected?.framework_id ? null : { id: `import:${row.category}`, name: row.category }),
+    importQuestions: rows => setEditedQuestions(previous => [...previous, ...questionImportPayload(rows).map(row => normalizeQuestion({
+      ...row, category: (row.category_id == null ? categories.find(category => category.name.toLowerCase() === row.category.toLowerCase())
+        : categories.find(category => category.id === row.category_id))
+        || (!selected?.framework_id && row.category ? { id: `import:${row.category}`, name: row.category } : null),
       choices: row.question_type === 'identification' ? [{ text: row.correct_answer, is_correct: true }] : row.choices,
     }, true))]),
     // ── List ─────────────────────────────────────────────────────────────────

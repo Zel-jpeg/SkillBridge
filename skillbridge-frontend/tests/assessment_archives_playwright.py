@@ -38,8 +38,7 @@ def session(browser, identity):
             return route.fulfill(status=204)
         if url.path.startswith('/api/'):
             # Every actual request is redirected to the disposable API.
-            response = route.fetch(url=API + url.path + ('?' + url.query if url.query else ''))
-            return route.fulfill(response=response)
+            return route.continue_(url=API + url.path + ('?' + url.query if url.query else ''))
         return route.continue_() if url.hostname in ('localhost', '127.0.0.1') else route.abort()
     context.route('**/*', route)
     page = context.new_page()
@@ -80,18 +79,13 @@ def open_editor(page, role, title):
 
 def import_file(page, dialog, role, filename, content, mime, text=False):
     dialog.get_by_role('button', name='Import questions', exact=True).click()
-    if role == 'instructor':
-        if text: page.get_by_role('button', name='Text file (.txt)', exact=True).click()
-        selector = 'input[type=file][accept=".txt"]' if text else 'input[type=file][accept=".xlsx,.xls,.csv"]'
-        page.locator(selector).set_input_files({'name': filename, 'mimeType': mime, 'buffer': content})
-        expect(page.get_by_text('1 question ready to add:', exact=True)).to_be_visible()
-        page.get_by_role('button', name='Add 1 question to draft', exact=True).click()
-    else:
-        if text: dialog.get_by_label('Question import format', exact=True).select_option('text')
-        dialog.get_by_label('Question import file', exact=True).set_input_files({'name': filename, 'mimeType': mime, 'buffer': content})
-        button = dialog.get_by_role('button', name='Add 1 imported questions to draft', exact=True)
-        expect(button).to_be_enabled()
-        button.click()
+    panel = page.get_by_role('region', name='Import questions', exact=True)
+    panel.get_by_label('Question import format', exact=True).select_option('native' if text else 'excel')
+    panel.get_by_label('Question import file', exact=True).set_input_files({'name': filename, 'mimeType': mime, 'buffer': content})
+    panel.get_by_role('button', name='Select all valid', exact=True).click()
+    button = panel.get_by_role('button', name='Add 1 question to draft', exact=True)
+    expect(button).to_be_enabled()
+    button.click()
 
 
 def save(page, dialog, role):
@@ -116,29 +110,24 @@ def exercise_imports(browser, role, identity):
         dialog.get_by_label('Assessment title', exact=True).fill(title + ' renamed')
     dialog.get_by_role('button', name='Question 1: Original question', exact=True).click()
     dialog.get_by_placeholder('Type the question here...', exact=True).fill('Unsaved question retained')
-    # A delayed parse from a canceled panel must not reappear on the next open.
+    # A delayed category response from a canceled panel must not reappear on the next open.
     delayed = []
     def hold_suggestion(route): delayed.append(route)
     context.route('**/api/categories/suggest/', hold_suggestion)
     dialog.get_by_role('button', name='Import questions', exact=True).click()
     stale_csv = b'question,type,correct,category\nCanceled delayed import,identification,A,Synthetic Programming'
-    if role == 'instructor':
-        page.locator('input[type=file][accept=".xlsx,.xls,.csv"]').set_input_files({'name': 'canceled.csv', 'mimeType': 'text/csv', 'buffer': stale_csv})
-        expect(page.get_by_text('Parsing file…', exact=True)).to_be_visible()
-        page.wait_for_timeout(100)
-        page.get_by_role('button', name='Cancel', exact=True).last.click()
-    else:
-        dialog.get_by_label('Question import file', exact=True).set_input_files({'name': 'canceled.csv', 'mimeType': 'text/csv', 'buffer': stale_csv})
-        expect(dialog.get_by_text('Reading file…', exact=True)).to_be_visible()
-        page.wait_for_timeout(100)
-        dialog.get_by_role('button', name='Import questions', exact=True).click()
-    assert delayed, 'Synthetic delayed parser request did not start'
+    panel = page.get_by_role('region', name='Import questions', exact=True)
+    panel.get_by_label('Question import format', exact=True).select_option('excel')
+    panel.get_by_label('Question import file', exact=True).set_input_files({'name': 'canceled.csv', 'mimeType': 'text/csv', 'buffer': stale_csv})
+    with page.expect_request('**/api/categories/suggest/'):
+        panel.get_by_role('button', name='Suggest category', exact=True).click()
+    panel.get_by_role('button', name='Cancel import', exact=True).click()
+    assert delayed, 'Synthetic delayed category request did not start'
     dialog.get_by_role('button', name='Import questions', exact=True).click()
     for route in delayed: route.fulfill(json={})
     context.unroute('**/api/categories/suggest/', hold_suggestion)
     expect(page.get_by_text('Canceled delayed import', exact=True)).to_have_count(0)
-    if role == 'instructor': page.get_by_role('button', name='Cancel', exact=True).last.click()
-    else: dialog.get_by_role('button', name='Import questions', exact=True).click()
+    panel.get_by_role('button', name='Cancel import', exact=True).click()
     checks.append(f'{role}: canceled asynchronous import cannot populate a newly opened panel')
     csv = b'question,type,choice_a,choice_b,choice_c,choice_d,correct,category\nCSV import,mcq,Yes,No,,,A,Synthetic Programming\nInvalid row,mcq,Yes,No,,,C,Synthetic Programming\n'
     import_file(page, dialog, role, 'synthetic.csv', csv, 'text/csv')

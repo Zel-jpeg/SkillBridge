@@ -4,6 +4,7 @@ Run against the production preview on 5199. No live database or provider calls.
 """
 import csv
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,7 +15,7 @@ from playwright.sync_api import expect, sync_playwright
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).parent / 'artifacts/assessment-numeric-import'
 OUT.mkdir(parents=True, exist_ok=True)
-BASE = 'http://127.0.0.1:5199'
+BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5199')
 HEADERS = ['question', 'type', 'choice_a', 'choice_b', 'choice_c', 'choice_d', 'correct', 'category']
 records = []
 for index, letter in enumerate('ABCD'):
@@ -112,21 +113,23 @@ with sync_playwright() as p:
                     if flow == 'create':
                         page.goto(BASE + f'/{role}/assessment/create', wait_until='networkidle')
                         page.get_by_role('button', name='Upload file', exact=True).click()
-                        upload = page.locator('input[type=file][accept=".xlsx,.xls,.csv"]')
+                        panel = page.get_by_role('region', name='Import questions', exact=True)
+                        panel.get_by_label('Question import format', exact=True).select_option('excel')
+                        upload = panel.get_by_label('Question import file', exact=True)
                         if file == csv_path:
                             with page.expect_download() as download:
-                                page.get_by_role('button', name='Download ↓', exact=True).click()
+                                panel.get_by_role('button', name='Download template', exact=True).click()
                             template = OUT / f'{role}-downloaded-template.csv'
                             download.value.save_as(str(template))
                             upload.set_input_files(str(template))
-                            expect(page.get_by_role('button', name='Import 3 questions', exact=True)).to_be_visible()
+                            expect(panel.get_by_role('button', name='Add 3 questions to draft', exact=True)).to_be_enabled()
                         upload.set_input_files(str(file))
-                        expect(page.get_by_role('button', name='Import 8 questions', exact=True)).to_be_visible()
-                        expect(page.get_by_text('2 rows with issues (skipped):', exact=True)).to_be_visible()
-                        expect(page.get_by_text('Row 8: At least choice_a and choice_b are required for MCQ', exact=True)).to_be_visible()
-                        expect(page.get_by_text('Row 9: Correct answer must point to a non-empty choice', exact=True)).to_be_visible()
-                        page.get_by_role('button', name='Import 8 questions', exact=True).click()
-                        page.get_by_placeholder('e.g. BSIT OJT Skills Assessment 2025–2026').fill('Synthetic numeric answers')
+                        expect(panel.get_by_text('10 reviewed · 8 valid · 2 with errors', exact=False)).to_be_visible()
+                        expect(panel.get_by_text('Choices A and B are required for multiple choice.', exact=True)).to_be_visible()
+                        expect(panel.get_by_text('The answer key must point to a choice with text.', exact=True)).to_be_visible()
+                        panel.get_by_role('button', name='Select all valid', exact=True).click()
+                        panel.get_by_role('button', name='Add 8 questions to draft', exact=True).click()
+                        page.get_by_placeholder('e.g. OJT Skills Assessment 2026–2027').fill('Synthetic numeric answers')
                         page.get_by_placeholder('e.g. 60', exact=True).fill('30')
                         page.get_by_role('button', name='Save draft', exact=True).click()
                         expect(page.get_by_role('heading', name='Assessment saved as a draft!', exact=True)).to_be_visible()
@@ -139,19 +142,16 @@ with sync_playwright() as p:
                             page.get_by_role('tab', name='Questions', exact=True).click()
                             page.get_by_role('button', name='Edit assessment and questions', exact=True).click()
                         page.get_by_role('button', name='Import questions', exact=True).click()
+                        panel = page.get_by_role('region', name='Import questions', exact=True)
+                        panel.get_by_label('Question import format', exact=True).select_option('excel')
+                        panel.get_by_label('Question import file', exact=True).set_input_files(str(file))
+                        expect(panel.get_by_text('10 reviewed · 8 valid · 2 with errors', exact=False)).to_be_visible()
+                        panel.get_by_role('button', name='Select all valid', exact=True).click()
+                        panel.get_by_role('button', name='Add 8 questions to draft', exact=True).click()
                         if role == 'admin':
-                            page.get_by_label('Question import file', exact=True).set_input_files(str(file))
-                            expect(page.get_by_role('button', name='Add 8 imported questions to draft', exact=True)).to_be_enabled()
-                            expect(page.get_by_role('alert').filter(has_text='Row 8:')).to_have_count(1)
-                            expect(page.get_by_role('alert').filter(has_text='Row 9:')).to_have_count(1)
-                            page.get_by_role('button', name='Add 8 imported questions to draft', exact=True).click()
                             page.get_by_role('button', name='Review & save authoring', exact=True).click()
                             page.get_by_role('button', name='Save changes', exact=True).click()
                         else:
-                            page.locator('input[type=file][accept=".xlsx,.xls,.csv"]').set_input_files(str(file))
-                            expect(page.get_by_role('button', name='Add 8 questions to draft', exact=True)).to_be_enabled()
-                            expect(page.get_by_text('2 rows with issues (skipped):', exact=True)).to_be_visible()
-                            page.get_by_role('button', name='Add 8 questions to draft', exact=True).click()
                             page.get_by_role('button', name='Save All Changes', exact=True).click()
                             page.get_by_role('button', name='Confirm Save', exact=True).click()
                         expect(page.get_by_role('status').filter(has_text='Assessment saved successfully.')).to_be_visible()

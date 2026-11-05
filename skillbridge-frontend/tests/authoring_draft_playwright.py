@@ -5,7 +5,7 @@ import re
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 
-BASE = os.environ.get('DRAFT_TEST_BASE', 'http://127.0.0.1:5178')
+BASE = os.environ.get('DRAFT_TEST_BASE', os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5178'))
 CATEGORIES = [{'id': 1, 'name': 'Programming'}]
 QUESTION = {'id': 1, 'text': '', 'type': 'mcq', 'choices': ['', '', '', ''],
             'correct': None, 'identAnswer': '', 'categoryId': None, 'expanded': True}
@@ -62,7 +62,7 @@ with sync_playwright() as p:
                 page.evaluate('([key,value]) => localStorage.setItem(key, JSON.stringify(value))', [key, value])
                 page.reload(wait_until='networkidle')
 
-            title = page.get_by_placeholder(re.compile('e.g. BSIT OJT Skills Assessment'))
+            title = page.get_by_placeholder('e.g. OJT Skills Assessment 2026–2027', exact=True)
             restore = page.get_by_role('button', name='Restore draft', exact=True)
             discard = page.get_by_role('button', name='Discard', exact=True)
             open_creator('?batch_id=3')
@@ -142,12 +142,12 @@ with sync_playwright() as p:
             expect(page.get_by_placeholder('e.g. 60')).to_have_value('12')
             page.get_by_placeholder('e.g. 60').fill('')
             page.get_by_role('button', name='Upload file', exact=True).click()
-            page.get_by_role('button', name='Text file (.txt)', exact=True).click()
+            page.get_by_label('Question import format', exact=True).select_option('native')
             page.locator('input[type=file][accept=".txt"]').set_input_files({
                 'name': 'synthetic.txt', 'mimeType': 'text/plain',
                 'buffer': b'QUESTION: Synthetic import?\nTYPE: mcq\nA: Yes\nB: No\nCORRECT: A\nCATEGORY: Programming\n'
             })
-            page.get_by_role('button', name='Import 1 question', exact=True).click()
+            page.get_by_role('button', name='Add 1 question to draft', exact=True).click()
             page.reload(wait_until='networkidle')
             expect(restore).to_be_visible()
             restore.click()

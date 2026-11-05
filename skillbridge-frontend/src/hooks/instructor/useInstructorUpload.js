@@ -3,7 +3,7 @@ import { useToast } from '../../context/ToastContext'
 //
 // Data hook for InstructorUpload (Assessment Creator).
 // Manages assessment metadata, skill categories, questions,
-// Excel/text upload/parsing, auto-save draft, and validation.
+// staged imports, auto-save draft, and validation.
 //
 // WIRED (Week 6):
 //   GET  /api/instructor/batches/          → batch selector
@@ -78,129 +78,6 @@ async function fetchCategorySuggestion(questionText) {
   }
 }
 
-// ── Text file parser (.txt) ───────────────────────────────────────
-// Expected format (blocks separated by ---):
-//
-//   QUESTION: What is HTML?
-//   TYPE: mcq
-//   A: HyperText Markup Language
-//   B: High Text Language
-//   C: Hyper Transfer Markup Language
-//   D: None of the above
-//   CORRECT: A
-//   CATEGORY: Web Development
-//   ---
-//   QUESTION: SQL stands for Structured Query Language.
-//   TYPE: truefalse
-//   CORRECT: True
-//   CATEGORY: Database
-//   ---
-//   QUESTION: What does CPU stand for?
-//   TYPE: identification
-//   CORRECT: Central Processing Unit
-//   CATEGORY: Hardware
-//
-export function parseTextFileContent(content) {
-  const rows = []
-  const errs = []
-
-  const blocks = content
-    .split(/\n\s*---+\s*\n/)
-    .map(b => b.trim())
-    .filter(b => b && !b.startsWith('#'))
-
-  blocks.forEach((block, i) => {
-    const rowNum = i + 1
-    const rowErrors = []
-
-    // Parse key: value pairs (case-insensitive keys)
-    const map = {}
-    block.split('\n').forEach(line => {
-      const colonIdx = line.indexOf(':')
-      if (colonIdx === -1) return
-      const key = line.slice(0, colonIdx).trim().toUpperCase()
-      const val = line.slice(colonIdx + 1).trim()
-      if (key) map[key] = val
-    })
-
-    const question = map['QUESTION'] || ''
-    const type     = (map['TYPE'] || 'mcq').toLowerCase()
-    const correct  = (map['CORRECT'] || '').trim()
-    const category = map['CATEGORY'] || ''
-
-    if (!question)  rowErrors.push('QUESTION is required')
-    if (!category)  rowErrors.push('CATEGORY is required')
-    if (!correct)   rowErrors.push('CORRECT is required')
-    if (!['mcq', 'truefalse', 'identification'].includes(type)) {
-      rowErrors.push(`TYPE must be mcq, truefalse, or identification (got "${type}")`)
-    }
-
-    if (type === 'mcq') {
-      const choiceA = map['A'] || ''
-      const choiceB = map['B'] || ''
-      if (!choiceA || !choiceB) rowErrors.push('At least choices A and B are required for MCQ')
-      if (!['A', 'B', 'C', 'D'].includes(correct.toUpperCase())) {
-        rowErrors.push(`CORRECT must be A, B, C, or D for MCQ (got "${correct}")`)
-      } else if (!map[correct.toUpperCase()]?.trim()) {
-        rowErrors.push('Correct answer must point to a non-empty choice')
-      }
-    } else if (type === 'truefalse') {
-      if (!['TRUE', 'FALSE'].includes(correct.toUpperCase())) {
-        rowErrors.push(`CORRECT must be True or False (got "${correct}")`)
-      }
-    }
-
-    if (rowErrors.length) { errs.push({ rowNum, errors: rowErrors }); return }
-
-    if (type === 'identification') {
-      rows.push({ question, type: 'identification', choices: ['', '', '', ''], correctIdx: null, identAnswer: correct, category })
-    } else if (type === 'truefalse') {
-      rows.push({ question, type: 'truefalse', choices: ['True', 'False', '', ''], correctIdx: correct.toUpperCase() === 'TRUE' ? 0 : 1, identAnswer: '', category })
-    } else {
-      const choiceA = map['A'] || ''; const choiceB = map['B'] || ''
-      const choiceC = map['C'] || ''; const choiceD = map['D'] || ''
-      const correctIdx = ['A', 'B', 'C', 'D'].indexOf(correct.toUpperCase())
-      rows.push({ question, type: 'mcq', choices: [choiceA, choiceB, choiceC, choiceD], correctIdx, identAnswer: '', category })
-    }
-  })
-
-  return { rows, errs }
-}
-
-// ── Text template content ─────────────────────────────────────────
-export function getTextTemplate() {
-  return `# SkillBridge Assessment Text File
-# Lines starting with # are comments. Blocks are separated by ---
-# Supported types: mcq | truefalse | identification
-
-QUESTION: What does HTML stand for?
-TYPE: mcq
-A: HyperText Markup Language
-B: High Text Machine Language
-C: Hyper Transfer Markup Language
-D: None of the above
-CORRECT: A
-CATEGORY: Web Development
-
----
-
-QUESTION: SQL stands for Structured Query Language.
-TYPE: truefalse
-CORRECT: True
-CATEGORY: Database
-
----
-
-QUESTION: What does CPU stand for?
-TYPE: identification
-CORRECT: Central Processing Unit
-CATEGORY: Computer Hardware
-`
-}
-
-// ════════════════════════════════════════════════════════════════
-// MAIN HOOK
-// ════════════════════════════════════════════════════════════════
 export function useInstructorUpload() {
   const { showToast } = useToast()
   const [draftKey] = useState(() => authoringDraftKey())
@@ -289,22 +166,6 @@ export function useInstructorUpload() {
       Object.keys(revisions).forEach(id => { revisions[id] += 1 })
     }
   }, [])
-
-  // Excel upload
-  const xlsxRef = useRef(null)
-  const [xlsxRows,     setXlsxRows]     = useState([])
-  const [xlsxErrors,   setXlsxErrors]   = useState([])
-  const [xlsxFileName, setXlsxFileName] = useState(null)
-  const [xlsxLoading,  setXlsxLoading]  = useState(false)
-  const [xlsxImported, setXlsxImported] = useState(false)
-
-  // Text file upload
-  const txtRef = useRef(null)
-  const [txtRows,     setTxtRows]     = useState([])
-  const [txtErrors,   setTxtErrors]   = useState([])
-  const [txtFileName, setTxtFileName] = useState(null)
-  const [txtLoading,  setTxtLoading]  = useState(false)
-  const [txtImported, setTxtImported] = useState(false)
 
   // Validation errors
   const [errors, setErrors] = useState({})
@@ -528,108 +389,31 @@ export function useInstructorUpload() {
     setErrors(e => ({ ...e, [`q_${qid}_correct`]: '' }))
   }
 
-  // ── Excel parsing (supports mcq, truefalse, identification) ───
-  async function parseExcelQuestions(file) {
-    setXlsxLoading(true)
-    setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(file.name); setXlsxImported(false)
-    try {
-      const XLSX = await import('xlsx')
-      const wb  = XLSX.read(await file.arrayBuffer(), { type: 'array' })
-      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
-      const rows = [], errs = []
-
-      raw.forEach((row, i) => {
-        const rowNum   = i + 2
-        const question = String(row['question'] ?? '').trim()
-        const type     = String(row['type']     || 'mcq').trim().toLowerCase()
-        // Spreadsheet readers return numeric 0 and Boolean false as typed cells.
-        const choiceA  = String(row['choice_a'] ?? '').trim()
-        const choiceB  = String(row['choice_b'] ?? '').trim()
-        const choiceC  = String(row['choice_c'] ?? '').trim()
-        const choiceD  = String(row['choice_d'] ?? '').trim()
-        const correct  = String(row['correct']  ?? '').trim()
-        const category = String(row['category'] ?? '').trim()
-        const rowErrors = []
-
-        if (!question)  rowErrors.push('Question text is required')
-        if (!category)  rowErrors.push('Category is required')
-
-        if (!['mcq', 'truefalse', 'identification'].includes(type)) {
-          rowErrors.push(`Type must be mcq, truefalse, or identification (got "${type}")`)
-        } else if (type === 'mcq') {
-          if (!choiceA || !choiceB) rowErrors.push('At least choice_a and choice_b are required for MCQ')
-          if (!['A','B','C','D'].includes(correct.toUpperCase())) {
-            rowErrors.push(`Correct must be A, B, C, or D for MCQ (got "${correct}")`)
-          } else if (![choiceA, choiceB, choiceC, choiceD][['A','B','C','D'].indexOf(correct.toUpperCase())]) {
-            rowErrors.push('Correct answer must point to a non-empty choice')
-          }
-        } else if (type === 'truefalse') {
-          if (!['TRUE','FALSE'].includes(correct.toUpperCase())) {
-            rowErrors.push(`Correct must be True or False (got "${correct}")`)
-          }
-        } else if (type === 'identification') {
-          if (!correct.trim()) rowErrors.push('Correct answer text is required for Identification')
-        }
-
-        if (rowErrors.length) { errs.push({ rowNum, errors: rowErrors }); return }
-
-        if (type === 'identification') {
-          rows.push({ question, type: 'identification', choices: ['', '', '', ''], correctIdx: null, identAnswer: correct, category })
-        } else if (type === 'truefalse') {
-          rows.push({ question, type: 'truefalse', choices: ['True', 'False', '', ''], correctIdx: correct.toUpperCase() === 'TRUE' ? 0 : 1, identAnswer: '', category })
-        } else {
-          rows.push({ question, type: 'mcq', choices: [choiceA, choiceB, choiceC, choiceD], correctIdx: ['A','B','C','D'].indexOf(correct.toUpperCase()), identAnswer: '', category })
-        }
-      })
-
-      setXlsxRows(rows); setXlsxErrors(errs)
-    } catch {
-      setXlsxErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .xlsx or .csv file.'] }])
-    } finally {
-      setXlsxLoading(false)
-    }
-  }
-
-  // ── Text file parsing ─────────────────────────────────────────
-  async function parseTxtFile(file) {
-    setTxtLoading(true)
-    setTxtRows([]); setTxtErrors([]); setTxtFileName(file.name); setTxtImported(false)
-    try {
-      const content = await file.text()
-      const { rows, errs } = parseTextFileContent(content)
-      setTxtRows(rows); setTxtErrors(errs)
-    } catch {
-      setTxtErrors([{ rowNum: '–', errors: ['Could not read file. Make sure it is a valid .txt file.'] }])
-    } finally {
-      setTxtLoading(false)
-    }
-  }
-
   // ── Shared import function (used by both Excel and text) ───────
-  function importUploadedQuestions(sourceRows, setImported) {
+  function importUploadedQuestions(sourceRows) {
     if (!sourceRows.length) return
 
-    const uniqueCatNames = [...new Set(sourceRows.map(r => r.category))]
+    const uniqueCatNames = [...new Set(sourceRows.map(r => r.category).filter(Boolean))]
     const updatedCategories = [...categories]
-    const catMap = {}
-    updatedCategories.forEach(c => { catMap[c.name.toLowerCase()] = c.id })
+    const catMap = new Map(updatedCategories.map(category => [category.name.toLowerCase(), category.id]))
     uniqueCatNames.forEach(name => {
       const key = name.toLowerCase()
-      if (!catMap[key] && !scoped) {
+      if (!catMap.has(key) && !scoped) {
         const newCat = makeCategory(nextCid(), name)
-        updatedCategories.push(newCat); catMap[key] = newCat.id
+        updatedCategories.push(newCat)
+        catMap.set(key, newCat.id)
       }
     })
-    setCategories(updatedCategories)
+    if (!scoped) setCategories(updatedCategories)
 
     const newQuestions = sourceRows.map(r => ({
       id:          nextQid(),
       text:        r.question,
       type:        r.type,
-      choices:     r.choices,
+      choices:     CHOICE_LABELS.map((_, index) => r.choices[index] || ''),
       correct:     r.correctIdx,
       identAnswer: r.identAnswer || '',
-      categoryId:  catMap[r.category.toLowerCase()] || null,
+      categoryId:  r.categoryId ?? catMap.get(r.category.toLowerCase()) ?? null,
       expanded:    false,
       source:      'upload',
     }))
@@ -640,34 +424,8 @@ export function useInstructorUpload() {
       return [...base, ...newQuestions]
     })
 
-    setImported(true)
+    setQuestionMode('manual')
     setErrors(e => ({ ...e, questions: '' }))
-  }
-
-  function importExcelQuestions() { importUploadedQuestions(xlsxRows, setXlsxImported) }
-  function importTxtQuestions()   { importUploadedQuestions(txtRows,  setTxtImported)  }
-
-  function downloadExcelTemplate() {
-    const header = 'question,type,choice_a,choice_b,choice_c,choice_d,correct,category\n'
-    const rows = [
-      'What does SQL stand for?,mcq,Structured Query Language,Simple Query Logic,Sequential Query List,Standard Question Language,A,Database',
-      'HTML stands for HyperText Markup Language.,truefalse,,,,, True,Web Development',
-      'What does CPU stand for?,identification,,,,,Central Processing Unit,Computer Hardware',
-    ].join('\n')
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([header + rows], { type: 'text/csv' })),
-      download: 'questions_template.csv',
-    })
-    a.click()
-  }
-
-  function downloadTextTemplate() {
-    const content = getTextTemplate()
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([content], { type: 'text/plain' })),
-      download: 'questions_template.txt',
-    })
-    a.click()
   }
 
   // ── Validation ────────────────────────────────────────────────
@@ -767,6 +525,7 @@ export function useInstructorUpload() {
     try {
       const res = await api.post('/api/instructor/assessments/', payload)
       invalidateCache('/api/instructor/batches/')
+      invalidateCache('/api/instructor/assessments/')
       if (catalogUrl) invalidateCache(catalogUrl)
       if (programId) invalidateCache(`/api/management/programs/${programId}/frameworks/`)
       clearTimeout(saveTimer.current)
@@ -800,8 +559,6 @@ export function useInstructorUpload() {
     setDisplayOrder('0'); setAvailableAt(''); setDueAt('')
     setCategories(pristineDraft.current.categories); setCatInput('')
     setQuestions([makeQuestion(nextQid(), 'mcq')]); setQuestionMode('manual')
-    setXlsxRows([]); setXlsxErrors([]); setXlsxFileName(null); setXlsxImported(false)
-    setTxtRows([]); setTxtErrors([]); setTxtFileName(null); setTxtImported(false)
     setErrors({}); setPublished(false); setPublishedId(null); setPublishError('')
   }
 
@@ -848,12 +605,7 @@ export function useInstructorUpload() {
     addQuestion, removeQuestion, toggleExpand,
     updateQuestion, updateIdentAnswer, updateChoice, setCorrect,
     changeQuestionType,
-    // Excel
-    xlsxRef, xlsxRows, xlsxErrors, xlsxFileName, xlsxLoading, xlsxImported,
-    parseExcelQuestions, importExcelQuestions, downloadExcelTemplate,
-    // Text file
-    txtRef, txtRows, txtErrors, txtFileName, txtLoading, txtImported,
-    parseTxtFile, importTxtQuestions, downloadTextTemplate,
+    importUploadedQuestions,
     // Draft
     draftBanner, lastSaved, handleRestoreDraft, handleDiscardDraft,
     formatDraftAge,

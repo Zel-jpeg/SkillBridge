@@ -118,10 +118,10 @@ def run(browser):
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
     page.screenshot(path=str(OUT / 'authoring-phone-editor.png'), animations='disabled')
     dialog.get_by_role('button', name='Import questions', exact=True).click()
-    dialog.get_by_role('combobox', name='Question import format').select_option('text')
+    dialog.get_by_role('combobox', name='Question import format').select_option('native')
     payload = 'QUESTION: A synthetic imported fact is true.\nTYPE: truefalse\nCORRECT: True\nCATEGORY: Unknown imported category\n'
     dialog.get_by_label('Question import file', exact=True).set_input_files({'name': 'synthetic-native.txt', 'mimeType': 'text/plain', 'buffer': payload.encode()})
-    dialog.get_by_role('button', name='Add 1 imported questions to draft', exact=True).click()
+    dialog.get_by_role('button', name='Add 1 question to draft', exact=True).click()
     assert len(call(context, f'/api/instructor/assessments/{assessment["id"]}/questions/')['questions']) == 1
     imported = dialog.get_by_role('button', name=re.compile('Question 2:'))
     expect(imported).to_be_visible()

@@ -23,7 +23,8 @@ import { useState }           from 'react'
 import EditableQuestionCard from '../../components/assessment/EditableQuestionCard'
 import ConfirmModal                      from '../../components/admin/ConfirmModal'
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
-import { useAssessmentUpload }           from '../../hooks/instructor/useAssessmentUpload'
+import DialogShell from '../../components/DialogShell'
+import QuestionImportPanel from '../../components/assessment/QuestionImportPanel'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import AssessmentLibrary from '../../components/instructor/AssessmentLibrary'
 import AssessmentTitleEditor from '../../components/instructor/AssessmentTitleEditor'
@@ -34,7 +35,6 @@ import { AssessmentStatus } from '../../components/admin/AssessmentPresentation'
 import { assessmentChangeImpact } from '../../utils/assessmentPolicy'
 import { ChevronDown, LockIcon } from '../../components/Icons'
 
-/* eslint-disable react-hooks/refs -- The upload hook returns refs alongside ordinary state and callbacks. */
 // ── Type meta ─────────────────────────────────────────────────────────────────
 const TYPE_META = {
   mcq:            { label: 'MCQ',   color: 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'       },
@@ -45,83 +45,9 @@ const TYPE_META = {
 const CloseIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
 const PlusIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const UploadIcon  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-const WarnIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
 const SaveIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
 
 // ── Upload sub-modal preview helpers ─────────────────────────────────────────
-const UPLOAD_TYPE_COLORS = {
-  mcq:            'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
-  truefalse:      'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300',
-  identification: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
-}
-const UPLOAD_TYPE_LABELS = { mcq: 'MCQ', truefalse: 'T/F', identification: 'IDENT' }
-
-function PreviewTable({ rows, onApplySuggestion }) {
-  return (
-    <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
-      <div className="overflow-x-auto max-h-48">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0">
-            <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800">
-              {['#', 'Question', 'Type', 'Answer', 'Category'].map(h => (
-                <th key={h} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-semibold whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 ${i % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}>
-                <td className="px-3 py-2 text-gray-400">{i + 1}</td>
-                <td className="px-3 py-2 text-gray-900 dark:text-white max-w-160px truncate">{r.question}</td>
-                <td className="px-3 py-2">
-                  <span className={`font-semibold px-2 py-0.5 rounded-full text-[10px] ${UPLOAD_TYPE_COLORS[r.type]}`}>
-                    {UPLOAD_TYPE_LABELS[r.type]}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-green-700 dark:text-green-300 font-semibold max-w-90px truncate">
-                  {r.type === 'identification' ? r.identAnswer
-                    : r.type === 'truefalse' ? (r.correctIdx === 0 ? 'True' : 'False')
-                    : ['A','B','C','D'][r.correctIdx]}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-col gap-1 items-start">
-                    <span className="text-gray-500 dark:text-gray-400 max-w-90px truncate">{r.category}</span>
-                    {r.suggestedCategory && r.suggestedCategory.toLowerCase() !== r.category.toLowerCase() && (
-                      <button
-                        onClick={() => onApplySuggestion(i, r.suggestedCategory)}
-                        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                      >
-                        Suggested: {r.suggestedCategory}
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function UploadErrors({ errors }) {
-  if (!errors.length) return null
-  return (
-    <div className="bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900 rounded-xl px-4 py-3 flex flex-col gap-1">
-      <p className="text-xs font-semibold text-red-700 dark:text-red-300">
-        {errors.length} row{errors.length > 1 ? 's' : ''} with issues (skipped):
-      </p>
-      {errors.map((e, i) => (
-        <p key={i} className="text-xs text-red-600 dark:text-red-400">Row {e.rowNum}: {e.errors.join(' · ')}</p>
-      ))}
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ════════════════════════════════════════════════════════════════════════════
 export default function InstructorAssessments() {
   const {
     assessments, stats, batchOptions, loadingList, listError,
@@ -149,15 +75,7 @@ export default function InstructorAssessments() {
     if (dirty) setDiscard(true)
     else closeAssessment()
   }
-  function closeUpload() { setShowUpload(false); upload.reset() }
-  const upload = useAssessmentUpload({
-    assessmentId: selected?.id,
-    scoped: Boolean(selected?.framework_id),
-    onImport: (rows) => {
-      importQuestions(rows)
-      setShowUpload(false)
-    },
-  })
+  function closeUpload() { setShowUpload(false) }
 
   return (
     <div className="min-w-0">
@@ -231,7 +149,7 @@ export default function InstructorAssessments() {
                     />
                   ))}
 
-                  {!liveAssessment?.questions_locked && <button type="button" aria-label="Import questions" disabled={saving || loadingQuestions} onClick={() => { setShowUpload(true); upload.reset() }} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><UploadIcon />Import questions</button>}
+                  {!liveAssessment?.questions_locked && <button type="button" aria-label="Import questions" disabled={saving || loadingQuestions} onClick={() => setShowUpload(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><UploadIcon />Import questions</button>}
                   {/* Add question buttons */}
                   {!liveAssessment?.questions_locked && <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
                     {[
@@ -296,120 +214,13 @@ export default function InstructorAssessments() {
         />
       )}
 
-      {/* ── Upload Questions sub-modal (z-70, topmost) ─────────────────────── */}
-      {showUpload && selected && (
-        <>
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-70" onClick={closeUpload} />
-          <div className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-560px max-h-[90dvh] bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl z-80 flex flex-col overflow-hidden border-0 sm:border border-gray-100 dark:border-gray-800">
-
-            {/* Upload modal header */}
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 shrink-0">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Import questions</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-360px">
-                  Adding to draft: {selected.title}
-                </p>
-              </div>
-              <button onClick={closeUpload} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <CloseIcon />
-              </button>
-            </div>
-
-            {/* Warning */}
-            <div className="mx-6 mt-4 flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 shrink-0">
-              <span className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><WarnIcon /></span>
-              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                Imported questions append to this draft. Existing questions and unsaved edits are kept. Nothing is saved until you confirm Save All Changes. Imports are locked after a student attempt.
-              </p>
-            </div>
-
-            {/* Tab switcher */}
-            <div className="flex mx-6 mt-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shrink-0">
-              {[{ key: 'excel', label: 'Excel / CSV' }, { key: 'text', label: 'Text file (.txt)' }].map(t => (
-                <button key={t.key} onClick={() => upload.setTab(t.key)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                    upload.tab === t.key
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Upload body */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-              {/* Drop zone */}
-              <div
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => {
-                  e.preventDefault()
-                  const f = e.dataTransfer?.files?.[0]
-                  if (!f) return
-                  upload.tab === 'excel' ? upload.parseExcelQuestions(f) : upload.parseTxtFile(f)
-                }}
-                onClick={() => (upload.tab === 'excel' ? upload.xlsxRef : upload.txtRef).current?.click()}
-                className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
-              >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-gray-300 dark:text-gray-700">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <polyline points="9 15 12 12 15 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {upload.tab === 'excel'
-                      ? (upload.xlsxFileName || 'Drop your .xlsx or .csv here')
-                      : (upload.txtFileName  || 'Drop your .txt file here')}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">or click to browse</p>
-                </div>
-                <input ref={upload.xlsxRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
-                  onChange={e => { if (e.target.files?.[0]) upload.parseExcelQuestions(e.target.files[0]) }} />
-                <input ref={upload.txtRef}  type="file" accept=".txt" className="hidden"
-                  onChange={e => { if (e.target.files?.[0]) upload.parseTxtFile(e.target.files[0]) }} />
-              </div>
-
-              {upload.activeLoading && (
-                <p className="text-xs text-gray-400 text-center animate-pulse">Parsing file…</p>
-              )}
-              <UploadErrors errors={upload.activeErrors} />
-              {upload.activeRows.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {upload.activeRows.length} question{upload.activeRows.length > 1 ? 's' : ''} ready to add:
-                  </p>
-                  <PreviewTable rows={upload.activeRows} onApplySuggestion={upload.applySuggestion} />
-                </div>
-              )}
-              {upload.submitError && (
-                <p className="text-xs text-red-600 dark:text-red-400 text-center">{upload.submitError}</p>
-              )}
-            </div>
-
-            {/* Upload footer */}
-            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 shrink-0">
-              <button onClick={closeUpload}
-                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={upload.handleSubmit}
-                disabled={upload.activeRows.length === 0 || upload.submitting || upload.activeLoading}
-                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
-              >
-                {upload.submitting
-                  ? 'Adding…'
-                  : upload.activeRows.length > 0
-                  ? `Add ${upload.activeRows.length} question${upload.activeRows.length > 1 ? 's' : ''} to draft`
-                  : 'Add Questions'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {showUpload && selected && !liveAssessment?.questions_locked && <DialogShell title="Import questions"
+        description={`Add questions to the draft for ${selected.title}.`} onClose={closeUpload}>
+        <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+          <QuestionImportPanel key={selected.id} categories={categories} scoped={Boolean(selected.framework_id)}
+            onStage={rows => { importQuestions(rows); closeUpload() }} onCancel={closeUpload} />
+        </div>
+      </DialogShell>}
     </div>
   )
 }
