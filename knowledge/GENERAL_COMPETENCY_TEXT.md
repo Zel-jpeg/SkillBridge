@@ -86,3 +86,6 @@ Current assessment-led numerical priorities and exact answer grading stay intact
   navigation suite was explicitly rerun above.
 - No owned test/database/browser helpers remain. No migration, configured-data
   write, real rerun, GitHub push or deployment. Local commit is in the tracker.
+
+Implementation `faa4c6b` was fast-forward merged into local main after all gates
+passed. No GitHub push or deployment.

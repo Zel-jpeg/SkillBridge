@@ -190,7 +190,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   fallback models and result/export UI; [receipt](GENERAL_COMPETENCY_TEXT.md):
   710 backend/274 frontend tests, lint/build/check/drift and five cross-program
   plus four retained result-navigation browser groups passed. No F08 migration.
-- [ ] Commit and merge F08 locally before F09.
+- [x] Commit and merge F08 locally before F09: `faa4c6b`, fast-forward merged
+  into local main; no push.
 
 ### F09 — Program-eligible opportunities and shared capacity
 
@@ -273,32 +274,44 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE F08, F07 complete and locally merged (5 November 2026):
+Current checkpoint — PAUSED after verified F08 merge (5 November 2026):
 
-- Active branch `codex/general-competency-text`, base `6087602`, with uncommitted
-  F08 application/test/documentation edits. F07 receipt `6087602` is already merged.
-- F08 replaces computing orientation/automatic UI activity mapping with factual
-  category leaders and course-material guidance. Text policy
+- User requested pausing after this feature's checks and local merge. F08 is
+  complete at `faa4c6b` on local `main`; F09 has not started and its branch does
+  not exist. Do not resume until explicit CONTINUE.
+- Current branch `main`, HEAD `faa4c6b`. Only
+  `knowledge/GENERAL_COMPETENCY_TEXT.md` and this tracker have uncommitted receipt/
+  checkpoint edits. Application code/tests are committed and merged. Preserve
+  these edits; do not reset, discard, migrate, merge or deploy while paused.
+- Automatic approval review rejected the pending receipt/next-branch command
+  because it also created F09's branch after the pause request. That command did
+  not run. No attempt was made to bypass the rejection; no approval is pending.
+
+- F08 branch `codex/general-competency-text`, base `6087602`, implementation
+  `faa4c6b` fast-forward merged into local main. No migration/configured write.
+- F08: actual highest category summaries replace computing orientation rules;
+  UI advice uses course materials instead of category-name activity inference.
   `general-category-context-v4` adds one bounded 160-character/12-word definition
-  symmetrically, stores context/version in existing supporting-category JSON and
-  fingerprints effective definitions. Missing/zero evidence stays distinct.
-- F08 browser found scoped results still reached the legacy ranking corpus and
-  failed. A guarded boundary now returns no recommendations for framework evidence
-  absent from that catalog, while preserving valid result reads/final category
-  profiles. F09/F10 will supply compatible scoped opportunities/catalogs.
-- F08 current evidence: final focused 92 tests passed
-  (`work/organization-postgres-q4ze8dva/`); 274 frontend tests/lint/build passed;
-  Django check/drift passed after restoring a compatibility import. Four real
-  cross-program result/preview/CSV browser groups passed
-  (`work/organization-browser-si6brsva/`), no page errors; phone/dark and zero
-  screenshots visually read. Offline definition ablation saved at
-  `work/f08-definition-ablation.json` (synthetic mechanism, no accuracy claim).
-- F08 final full regression is running at `work/organization-postgres-jntfk427/`.
-  Earlier full 709-test run had two outdated fixture/case expectations, corrected.
-  No F08 migration/configured write is needed or performed. Final diff review,
-  receipt/checks/local commit/merge remain before F09. All completed browser
-  helpers stopped; only the current owned full-regression cluster may be active.
-
+  symmetrically, snapshots matching context/version in existing JSON, fingerprints
+  actual bounded definitions and keeps missing/zero evidence distinct.
+- Framework scores outside the current legacy catalog cannot enter that corpus
+  or break result reads: they retain valid final category results and no new
+  recommendation rows until F09/F10 supply compatible inputs.
+- Final verification: 710 full PostgreSQL tests
+  (`work/organization-postgres-__wu8wku/`), 274 frontend tests, lint/build/check/drift,
+  149 document links and whitespace passed. Focused 92 passed before the final
+  compatibility fix, which the full run covers.
+- Five real cross-program result/preview/actual CSV-download groups passed
+  (`work/organization-browser-1siirutz/`), no page errors. Four retained result
+  navigation/accessibility widths passed (`work/organization-browser-k9v423i8/`).
+  Additional 11-group catalog regression passed (`work/organization-browser-cj19pqor/`).
+  Phone/dark and zero-result screenshots visually read. Offline definition
+  ablation: `work/f08-definition-ablation.json` (synthetic mechanism only).
+- Known failures: none remaining in F08. Earlier fixture/contract expectations,
+  scoped result failure, a compatibility import and ID-only score mock support
+  were fixed and final checks passed. [F08 receipt](GENERAL_COMPETENCY_TEXT.md).
+- All owned helpers stopped. No real recommendation rerun or data rewrite.
+  Configured migrations remain through 0037. No GitHub push or deployment.
 - F07 branch `codex/framework-assessment-authoring`, base `782d562`, implementation
   `c17ac60` fast-forward merged into local main. No GitHub push or deployment.
 - F07: nullable Assessment.framework retains scoped batchless draft identity;
@@ -331,8 +344,9 @@ Current checkpoint — ACTIVE F08, F07 complete and locally merged (5 November 2
   answer-button test locator were corrected and final checks passed.
 - All owned test/browser/database/restore helpers stopped. No hosted validation,
   academic matching accuracy or framework-scoped recommendation completion is
-  claimed. F08–F16 remain open.
-- Exact next step: inspect the F08 final full-test result, finish verification and
-  documentation review, then commit/merge F08 locally. No migration or real rerun.
-  Only after F08 passes create `codex/program-opportunity-eligibility` for F09.
-  Preserve current assessment-led ranking; do not repeat F07 without new cause.
+  claimed. F09–F16 remain open.
+- Exact next step on CONTINUE: read this checkpoint and Git status, reconcile
+  intervening edits, commit/merge the saved F08 receipt locally, then create
+  `codex/program-opportunity-eligibility` and implement/test F09. Trace partner and
+  position mutation roles, requirement identity, eligibility filters and shared
+  capacity locks before changing them. F09 must pass before F10.
