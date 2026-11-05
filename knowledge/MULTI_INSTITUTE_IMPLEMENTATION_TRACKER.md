@@ -198,8 +198,10 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Branch `codex/program-opportunity-eligibility` after F08.
 - [x] Explicit eligible programs; admin-controlled shared partner/position edits;
   compatible requirements; one genuine shared capacity across institutes.
-- [ ] Test empty eligibility, foreign requirements, shared last-slot races,
+- [x] Test empty eligibility, foreign requirements, shared last-slot races,
   current approvals and retained snapshots; complete UI and local merge.
+  Implementation `dda3a47`, fast-forward merged into local `main`.
+  [F09 receipt](PROGRAM_OPPORTUNITY_ELIGIBILITY.md).
 
 ### F10 — Scoped recommendation inputs and freshness
 
@@ -274,12 +276,12 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE on F09 (5 November 2026):
+Current checkpoint — F09 verified and locally merged (5 November 2026):
 
 - On CONTINUE, verified the previous pause checkpoint, committed the F08 receipt
   as `974d53f`, fast-forwarded local `main`, and created
   `codex/program-opportunity-eligibility` from that commit.
-- F09 implementation is in the working tree. The catalog shares one position
+- F09 implementation `dda3a47` was fast-forwarded into local `main`. The catalog shares one position
   and capacity across eligible programs. A position can use one eligible
   program's exact framework rubric. Scoped browsing, manual assignment,
   approval and retained placement records have been checked in the backend.
@@ -296,8 +298,12 @@ Current checkpoint — ACTIVE on F09 (5 November 2026):
   isolated restore and migration rehearsal. All 43 prior tables retained
   their values and counts. The new column was null and the relation was empty.
   Receipt: `work/organization-configured-migration-cz9bse_n/receipt.json`.
-- Next step: commit F09 and fast-forward local `main` before F10. No configured
-  IC mapping, recalculation, GitHub push or deployment has occurred.
+- The first full run's instructor rollback fixture now uses the authorized
+  admin role. The isolated browser harness uses a fresh instructor session for
+  the post-save check because the harness suppresses live event delivery.
+- Next step: create `codex/scoped-recommendation-inputs` from local `main` and
+  trace matching inputs and freshness through scoring, reports and approvals.
+  No configured IC mapping, recalculation, GitHub push or deployment has occurred.
 
 - F08 branch `codex/general-competency-text`, base `6087602`, implementation
   `faa4c6b` fast-forward merged into local main. No migration/configured write.

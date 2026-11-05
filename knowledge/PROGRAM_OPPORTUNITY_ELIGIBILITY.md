@@ -26,5 +26,18 @@ timestamp and an initially empty position/program relation. Existing openings
 retain their eligibility for unmapped batches. Current IC records stay in their
 existing workflows while F14 prepares the approved mapping.
 
-See the [implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
-for verification, migration status and the local merge checkpoint.
+## Verification
+
+- The full PostgreSQL suite passed 716 tests. The final focused run passed 43
+  tests, including a PostgreSQL race for the last shared slot and preservation
+  of existing approved decisions and saved recommendation evidence.
+- Frontend lint, build and 275 unit tests passed. Four browser groups exercised
+  the real API and production bundle, including the phone dark editor, filtered
+  instructor browsing, manual assignment and clearing eligibility. Seven
+  additional partner catalog browser groups passed.
+- The configured migration passed the backup and restore checks and retained
+  all data in 43 existing tables. The nullable timestamp remained unset for
+  existing openings and the new relation started empty.
+- `dda3a47` was fast-forwarded into local `main`. See the
+  [implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) for evidence
+  locations and the next feature.
