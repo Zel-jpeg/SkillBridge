@@ -224,7 +224,9 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   category bulk/individual mapping, staged save/cancel and publication validation.
 - [x] Test supplied 20-question shape plus synthetic BOM/Unicode/line endings,
   malformed/duplicate keys, >4 choices, two-choice MCQ and legacy zero/false keys.
-- [ ] Test browser mapping/cancel/failure/role paths; receipt and local merge.
+- [x] Test browser mapping/cancel/failure/role paths; receipt and local merge.
+  Implementation `c7f8b6f`, fast-forward merged into local `main`.
+  [F11 receipt](QUESTIONNAIRE_IMPORT.md).
 
 ### F12 — Protected questionnaire export
 
@@ -278,13 +280,13 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE on F11 (5 November 2026):
+Current checkpoint — F11 verified and locally merged (5 November 2026):
 
 - `codex/aiken-question-import` was created from `bcd9ec8`, the F10 receipt
   on local `main`. The supplied DNSC text export was verified locally against
   the parser for all 20 stems, 80 ordered choices and 20 keys. The question
   content stays outside tracked files.
-- F11 working tree has the shared AIKEN, native text and spreadsheet importer
+- F11 implementation `c7f8b6f` has the shared AIKEN, native text and spreadsheet importer
   in both create and edit roles. Passed 282 frontend tests, 49 PostgreSQL
   authoring/policy tests (`work/organization-postgres-m_jj4zfc/`), and browser
   checks for numeric CSV/XLSX (8, `work/organization-browser-pi4pzxhx/`),
@@ -294,7 +296,8 @@ Current checkpoint — ACTIVE on F11 (5 November 2026):
   including phone dark review (`work/organization-browser-ww1znsjq/`). Disposable
   test databases that contained the supplied questions were removed after review.
 - Frontend lint/build, local documentation links and Git whitespace passed.
-  Next step: commit F11 and fast-forward local `main`. F11 requires no migration.
+  F11 requires no migration. Next step: create `codex/questionnaire-export` and
+  verify server-side staff authorization, supported keys, and format round trips.
 
 - `codex/scoped-recommendation-inputs` was created from `0922790`, the F09
   verification receipt on local `main`. F10 implementation `70f5b5c` was

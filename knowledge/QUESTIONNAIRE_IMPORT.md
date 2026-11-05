@@ -41,5 +41,6 @@ covered native and spreadsheet imports, numeric zero and boolean false keys,
 framework authoring, archive behavior and device draft recovery. F11 requires
 no database migration.
 
-See the [implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) for
-verification and the local merge status.
+Implementation `c7f8b6f` was fast-forwarded into local `main`. See the
+[implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) for evidence
+and the next feature.
