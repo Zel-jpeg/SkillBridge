@@ -266,7 +266,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Update overview, ERD/data flow, roles, authoring/import/export help, competency
   definitions, matching contract, evaluation scope and operator migration guide.
 - [x] Verify links, examples, attribution and browser help behavior.
-- [ ] Record local merge.
+- [x] Record local merge (`fa363ca`).
 
 ### F16 — Integrated acceptance and handoff
 
@@ -285,7 +285,7 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F15 verified, ready for local merge (5 November 2026):
+Current checkpoint — F15 verified and merged locally (5 November 2026):
 
 - `codex/multi-institute-guidance` starts at the F14 verification receipt
   `a4f647f`. Added the [staff workflow guide](MULTI_INSTITUTE_WORKFLOWS.md),
@@ -299,7 +299,8 @@ Current checkpoint — F15 verified, ready for local merge (5 November 2026):
   (`work/organization-browser-z_r4phir/`). The phone captures were reviewed.
 - F15 changed staff help and references. No backend migration or configured
   database write was required. The remaining LMS-side import check needs an
-  authorized test question bank. Next merge F15 locally, then start F16.
+  authorized test question bank. Local `main` fast-forwarded to F15 commit
+  `fa363ca`. Next create the F16 acceptance branch.
 
 Current checkpoint — F14 verified and merged locally (5 November 2026):
 
