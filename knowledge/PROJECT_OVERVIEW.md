@@ -81,6 +81,8 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Multi-institute acceptance and handoff](MULTI_INSTITUTE_ACCEPTANCE.md) records
+  integrated verification, synthetic program journeys and remaining external checks.
 - [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) provides the operator and staff
   checklist, evaluation boundaries and links to the current technical contracts.
 - [Existing IC reconciliation](EXISTING_IC_RECONCILIATION.md) covers the

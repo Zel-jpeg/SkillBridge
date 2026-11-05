@@ -10,8 +10,8 @@ The optional rubric uses category IDs from one version of an eligible program's
 framework. The administrator chooses the program, the framework version and the
 minimum percentages. Saving requirements freezes that framework version. Other
 eligible programs can use manual placement. Program-specific rubrics for the same
-opening would need a separate design. Framework-aware ranking and freshness are
-scheduled in F10.
+opening would need a separate design. Framework-aware ranking and freshness
+follow the [scoped matching contract](SCOPED_RECOMMENDATION_INPUTS.md).
 
 Students browse openings for their active batch's program. Instructors browse
 openings for the active batches they manage. The shared catalog is edited through
@@ -24,7 +24,7 @@ usual active-enrollment rules.
 Migration `0038_position_program_eligibility` adds a nullable configuration
 timestamp and an initially empty position/program relation. Existing openings
 retain their eligibility for unmapped batches. Current IC records stay in their
-existing workflows while F14 prepares the approved mapping.
+existing workflows after the [reviewed IC mapping](EXISTING_IC_RECONCILIATION.md).
 
 ## Verification
 

@@ -270,13 +270,14 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F16 — Integrated acceptance and handoff
 
-- [ ] Branch `codex/multi-institute-acceptance` after F15.
-- [ ] Full relevant PostgreSQL/frontend regression, lint/build, migration drift,
+- [x] Branch `codex/multi-institute-acceptance` after F15 (`174c3c1`).
+- [x] Full relevant PostgreSQL/frontend regression, lint/build, migration drift,
   phone/desktop three-role journeys, access/rollback/concurrency/export checks.
-- [ ] Synthetic IC compatibility, IBPA example programs and an arbitrary third
+- [x] Synthetic IC compatibility, IBPA example programs and an arbitrary third
   institute/program work with the same code; inspect actual generated artifacts.
-- [ ] Fix failures on this branch, document evidence/limits, stop only owned helpers,
-  then commit/merge locally. No GitHub push or deployment without instruction.
+- [x] Fix the CSV acceptance assertion and document evidence and limits.
+- [x] Verify owned helper cleanup.
+- [ ] Commit and merge locally.
 
 ## Receipts and checkpoint
 
@@ -284,6 +285,28 @@ Record per completed feature: branch, base/commit/merge, changed behavior, exact
 checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
+
+Current checkpoint — F16 verified, preparing local merge (Asia/Manila):
+
+- `codex/multi-institute-acceptance` starts at the F15 verification receipt
+  `174c3c1` on local `main`. F01–F15 are verified and merged locally. F16's
+  synthetic fixture, browser harness and acceptance script are saved as
+  working-tree edits. F16 has no commit or merge.
+- The full F16 PostgreSQL suite finished with **734 passing tests**
+  (`work/organization-postgres-ptt8pe0b/tests.txt`). Its disposable database
+  was torn down. On CONTINUE, frontend lint/build and 284 tests passed again.
+  Django check and migration drift also passed using the isolated settings.
+- Chrome acceptance passed seven combined groups, six program/enrollment
+  groups, two revocation groups, three ranking groups and five category/report
+  groups. The combined run's CSV assertion initially read the wrong column.
+  After correction, the complete rerun passed. The downloaded CSV and
+  desktop/phone screenshots were inspected. See the
+  [acceptance receipt](MULTI_INSTITUTE_ACCEPTANCE.md) for exact evidence paths.
+- F16 made no configured database write. DNSC LMS-side import of SkillBridge
+  exports remains unverified. All 12 owned browser test ports are closed and
+  the disposable PostgreSQL cluster is stopped. Documentation verification
+  resolved 154 local link targets. Next commit F16, fast-forward local main
+  and record the merge receipt.
 
 Current checkpoint — F15 verified and merged locally (5 November 2026):
 
