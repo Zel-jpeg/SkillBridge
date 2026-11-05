@@ -3,6 +3,7 @@ import Avatar from '../Avatar'
 import CompanyImage from '../CompanyImage'
 import StatusBadge from '../StatusBadge'
 import { scoreColor } from '../../utils/formatters'
+import { analyticsSkillName } from '../../utils/analytics'
 import '../studentPerformanceCard.css'
 import './analyticsStudentCards.css'
 
@@ -27,7 +28,7 @@ export default function AnalyticsStudentCards({ records, skills = [], onStudent 
       <div className="analytics-student-placement"><span>OJT</span><StatusBadge status={row.placement_status} label={row.placement_status === 'approved_other_batch' ? 'Approved in another batch' : undefined} />{row.company && <p>{row.company} · {row.position}</p>}</div>
       {row.reasons.length ? <div className="analytics-student-followup"><strong>Needs follow-up</strong><ul>{row.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
         : <p className="analytics-student-note">{row.batch_status === 'archived' ? 'Archived record · read-only' : 'No follow-up flagged'}</p>}
-      {skills.length > 0 && <dl className="analytics-student-skills">{skills.map(skill => <div key={skill.id}><dt>{skill.name}</dt><dd className={scoreColor(row.scores[skill.id])}>{row.scores[skill.id] == null ? 'Missing / locked' : `${row.scores[skill.id]}%`}</dd></div>)}</dl>}
+      {skills.length > 0 && <dl className="analytics-student-skills">{skills.map(skill => <div key={skill.id}><dt>{analyticsSkillName(skill)}</dt><dd className={scoreColor(row.scores[skill.id])}>{row.scores[skill.id] == null ? 'Missing / locked' : `${row.scores[skill.id]}%`}</dd></div>)}</dl>}
       {!row.recommendations_locked && row.top_match != null ? <div className="analytics-student-match"><CompanyImage name={row.top_company} className="h-7 w-7 shrink-0 rounded-md" /><div><span>Top recommendation</span><strong>{row.top_position || 'Position not provided'}</strong><p>{row.top_company || 'Partner not provided'}</p></div><strong>{recommendationDisplay(summaryRecommendation(row))}</strong></div>
         : <p className="analytics-student-note">Top recommendation: {row.recommendations_locked ? 'Locked / unavailable' : 'Unavailable'}</p>}
     </article>

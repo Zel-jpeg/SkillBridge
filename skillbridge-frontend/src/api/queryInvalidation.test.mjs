@@ -164,3 +164,20 @@ test('mounted variants refetch once; persisted unmounted variants remain stale',
   assert.equal(calls, 1)
   assert.equal(cache.read(mounted).fetchedAt, 0)
 })
+
+test('scope loss immediately evicts saved reports and discards late responses', async () => {
+  const url = '/api/management/analytics/?program_id=2'
+  const other = '/api/auth/me/'
+  let complete
+  const cache = createCacheStore(() => new Promise(resolve => { complete = resolve }))
+  cache.publish(url, { private: true })
+  cache.publish(other, { self: true })
+  const pending = cache.fetch(url)
+  invalidateQueries(cache, { topics: ['scope'], program_ids: [3] }, false)
+  assert.equal(cache.read(url), null)
+  assert.deepEqual(cache.read(other).data, { self: true })
+  complete({ data: { private: true } })
+  await pending
+  assert.equal(cache.read(url), null)
+  assert.equal(queryAffected(url, { topics: ['competencies'], program_ids: [3] }), false)
+})

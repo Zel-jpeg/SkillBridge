@@ -28,10 +28,15 @@ for (const topic of ['organization', 'assignments']) paths[topic].push(...paths.
   /^\/api\/instructor\/students\/recommendations\/$/, /^\/api\/auth\/me\/$/, ...paths.competencies)
 paths.users.push(...paths.competencies)
 
+function containsScopedData(path) {
+  return /^\/api\/(?:instructor\/|management\/|placements(?:\/|$)|nlp\/students\/|retake-requests\/)/.test(path)
+}
+
 export function queryAffected(url, change) {
   const parsed = new URL(url, 'http://skillbridge.local')
   const path = parsed.pathname
-  const program = path.match(/^\/api\/management\/(?:competency-programs|programs)\/(\d+)\//)?.[1]
+  if (change.topics?.includes('scope') && containsScopedData(path)) return true
+  const program = path.match(/^\/api\/management\/(?:competency-programs|programs)\/(\d+)\//)?.[1] || parsed.searchParams.get('program_id')
   if (program && change.program_ids?.length && !change.program_ids.map(String).includes(program)) return false
   if (path === '/api/students/me/history/' && (change.resync || change.topics?.some(t => ['users', 'students', 'batches', 'assessments', 'results', 'placements'].includes(t)))) return true
   if (/^\/api\/instructor\/batches\/\d+\/closeout\/$/.test(path) && !parsed.searchParams.has('version') && (change.resync || change.topics?.some(t => ['students', 'batches', 'assessments', 'results', 'placements', 'catalog', 'capacity', 'taxonomy'].includes(t)))) return true
@@ -55,7 +60,10 @@ export function queryAffected(url, change) {
 
 export function invalidateQueries(cache, change, visible, onError = () => {}) {
   const affected = cache.urls().filter(url => queryAffected(url, change))
-  affected.forEach(url => cache.invalidate(url))
+  affected.forEach(url => {
+    if (change.topics?.includes('scope') && containsScopedData(new URL(url, 'http://skillbridge.local').pathname)) cache.evict(url)
+    else cache.invalidate(url)
+  })
   if (visible) affected.filter(url => cache.hasSubscribers(url))
     .forEach(url => cache.fetch(url).catch(onError))
   return affected

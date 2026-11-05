@@ -147,7 +147,8 @@ class InstructorAssignmentTests(APITestCase):
         with self.captureOnCommitCallbacks(execute=True):
             row = self.grant().data
         self.assertEqual(set(ChangeEvent.objects.values_list('recipient_id', flat=True)), {self.admin.id, self.owner.id})
-        self.assertTrue(all(event.payload == {'topics': ['assignments']} for event in ChangeEvent.objects.all()))
+        self.assertEqual(ChangeEvent.objects.get(recipient=self.admin).payload, {'topics': ['assignments']})
+        self.assertEqual(ChangeEvent.objects.get(recipient=self.owner).payload, {'topics': ['assignments', 'scope']})
         ChangeEvent.objects.all().delete()
         with self.captureOnCommitCallbacks(execute=True):
             self.grant()

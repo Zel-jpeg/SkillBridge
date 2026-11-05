@@ -278,7 +278,7 @@ def check_skills_insights(page, context, role, records):
             expect(banner).to_have_count(0)
     checks.append(f'{role}: all category-band arrows match real filtered identities/counts, force list view, focus records and preserve zero/locked distinctions')
     counts = {r['name']: r['count'] for r in snapshot['match_bands']}
-    for key, label, banner_label in [('Strong', 'Strong fit', 'Strong fit'), ('Fair', 'Fair fit', 'Fair fit'), ('Low', 'Low fit', 'Low fit'), ('No current match', 'No current recommendation', 'No current recommendation'), ('Locked', 'Final results locked', 'Final results locked')]:
+    for key, label, banner_label in [('Strong', 'Legacy strong fit', 'Strong fit'), ('Fair', 'Legacy fair fit', 'Fair fit'), ('Low', 'Legacy low fit', 'Low fit'), ('No current match', 'No current recommendation', 'No current recommendation'), ('Locked', 'Final results locked', 'Final results locked')]:
         count = counts[key]
         button = matches.get_by_role('button', name=f"{label}: {count} {'student' if count == 1 else 'students'}", exact=True)
         button.click()

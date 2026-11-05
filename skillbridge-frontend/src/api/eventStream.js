@@ -28,7 +28,7 @@ export function createEventStream({ identity, preflight, source, changed, unauth
       const changes = pending
       pending = []
       const merged = { resync: changes.some(item => item.resync) }
-      for (const field of ['topics', 'urls', 'batch_ids', 'student_ids', 'assessment_ids']) {
+      for (const field of ['topics', 'urls', 'batch_ids', 'student_ids', 'assessment_ids', 'program_ids']) {
         if (['topics', 'urls'].includes(field) || changes.every(item => field in item)) {
           const values = [...new Set(changes.flatMap(item => item[field] || []))]
           if (['topics', 'urls'].includes(field) || values.length <= 100) merged[field] = values
@@ -73,7 +73,7 @@ export function createEventStream({ identity, preflight, source, changed, unauth
         if (data.type === 'reconnect') { reconnect(); return }
         if (data.type === 'connected') {
           delay = 1000
-          enqueue({ resync: true })
+          enqueue(next.role === 'instructor' ? { resync: true, topics: ['scope'] } : { resync: true })
         } else if (data.type === 'data_changed') enqueue(data)
       }
       connection.onerror = () => { if (activeGeneration === generation) reconnect() }

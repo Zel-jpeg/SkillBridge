@@ -241,11 +241,12 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F13 — Reports and derived-data scope
 
-- [ ] Branch `codex/institute-report-scope` after F12.
-- [ ] Audit analytics, counts, reports/exports, private evidence, notifications,
+- [x] Branch `codex/institute-report-scope` after F12.
+- [x] Audit analytics, counts, reports/exports, private evidence, notifications,
   SSE recipients, cache/query keys and rerun scopes for institute/program access.
-- [ ] Test direct downloads/guessed IDs, revocation, independent scope, generated
-  snapshots and live invalidation. Existing scores/history reconcile; receipt/merge.
+- [x] Test direct downloads/guessed IDs, revocation, independent scope, generated
+  snapshots and live invalidation. Existing scores/history reconcile.
+- [ ] Record the local merge receipt.
 
 ### F14 — Existing IC mapping and final migration reconciliation
 
@@ -282,7 +283,25 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F12 verified and locally merged (5 November 2026):
+Current checkpoint — F13 verified, ready for local merge (5 November 2026):
+
+- `codex/institute-report-scope` starts at `6139356`, the F12 verification
+  receipt on local `main`. F13 scopes analytics and report filters, counts
+  shared seats, allows selected active-batch reruns, rechecks queued event IDs,
+  evicts revoked cache entries, and revalidates exports before download.
+- Full PostgreSQL suite passed 731 tests (`work/organization-postgres-inn4om7i/`).
+  The first run caught three placement-report response regressions. The existing
+  batch-only filter again returns an empty result for an inaccessible batch.
+  Explicit inaccessible organization filters are denied.
+- Frontend lint, build and 284 tests passed. Chrome passed 156 existing analytics
+  checks across both staff roles with zero page errors. The production bundle
+  passed program-filter and revocation checks
+  (`work/organization-browser-a3fqy51l/`). Both F12 export regression groups
+  passed again (`work/organization-browser-b8ybmdu4/`).
+- Django system check, migration drift, documentation links and diff whitespace
+  checks passed. F13 requires no migration. The recommendation rerun check used
+  synthetic test data and mocked scoring.
+- Next commit F13 and fast-forward local `main`. Start F14 only after the merge.
 
 - Local `main` recorded the F11 pause as `173f42e`. Branch
   `codex/questionnaire-export` was created from that revision on CONTINUE.

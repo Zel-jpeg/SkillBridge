@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from functools import wraps
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 
 from .models import (
     Assessment, Batch, BatchEnrollment, ChangeEvent, OJTPlacement, Question,
@@ -66,6 +66,9 @@ def audience(kind, request, kwargs, response=None):
         batches.add(batch_id)
     if kind == 'batch' and _id(getattr(request, '_transfer_source_batch_id', None)):
         batches.add(request._transfer_source_batch_id)
+    rerun_batches = getattr(request, '_rerun_batch_ids', []) if kind == 'recommendations' and data else None
+    if rerun_batches is not None:
+        batches.update(rerun_batches)
     if kind == 'batch' and response and not kwargs.get('batch_id'):
         batch_id = _id(body.get('id'))
         if batch_id:
@@ -120,13 +123,16 @@ def audience(kind, request, kwargs, response=None):
     # A student's change can affect each instructor who is authorized to see it.
     batches.update(BatchEnrollment.objects.filter(student_id__in=students).values_list('batch_id', flat=True))
     # Only batch-wide changes invalidate other students' private result views.
-    if kind in ('batch', 'assessment', 'question'):
+    if kind in ('batch', 'assessment', 'question') or rerun_batches is not None:
         students.update(BatchEnrollment.objects.filter(batch_id__in=batches).values_list('student_id', flat=True))
-    batch_owners = dict(Batch.objects.filter(pk__in=batches).values_list('id', 'instructor_id'))
+    authorized_grant = InstructorAssignment.objects.filter(instructor_id=OuterRef('instructor_id'),
+        program_id=OuterRef('program_id'), is_active=True, instructor__is_active=True, instructor__is_approved=True)
+    batch_owners = dict(Batch.objects.filter(pk__in=batches)
+                        .filter(Q(program__isnull=True) | Exists(authorized_grant)).values_list('id', 'instructor_id'))
     owners = set(batch_owners.values())
     admins = set(User.objects.filter(role='admin', is_active=True).values_list('id', flat=True))
     recipients = admins | owners | students | people
-    if kind in ('catalog', 'taxonomy', 'recommendations', 'configuration'):
+    if kind in ('catalog', 'taxonomy', 'recommendations', 'configuration') and rerun_batches is None:
         recipients.update(User.objects.filter(is_active=True, role__in=['admin', 'instructor']).values_list('id', flat=True))
         recipients.update(BatchEnrollment.objects.filter(student__is_active=True, student__is_approved=True).values_list('student_id', flat=True))
     if kind == 'placement':
@@ -140,7 +146,8 @@ def audience(kind, request, kwargs, response=None):
         Q(student_id__in=students) | Q(batch_id__in=batches),
     ).values_list('student_id', 'batch_id', 'batch__instructor_id'):
         student_batches.setdefault(student_id, set()).add(batch_id)
-        owner_students.setdefault(owner_id, set()).add(student_id)
+        if batch_owners.get(batch_id) == owner_id:
+            owner_students.setdefault(owner_id, set()).add(student_id)
     result = {}
     assessment_staff = ({assessment['created_by_id']} if assessment and not assessment['batch_id']
                         else {batch_owners.get(assessment['batch_id'])} if assessment else set())
@@ -156,6 +163,8 @@ def audience(kind, request, kwargs, response=None):
             own_students &= owner_students.get(person.id, set())
             if kind == 'placement' and person.id not in owners:
                 topics = ['capacity']
+            if kind == 'assignment' and person.id in people:
+                topics = [*topics, 'scope']
         result[person.id] = {
             'topics': list(topics),
             **({'program_ids': [_id(kwargs.get('program_id'))]} if kind == 'competency' else {}),
@@ -214,6 +223,9 @@ def notify_changes(kind):
             if 200 <= response.status_code < 300 and not getattr(response, 'skip_change_event', False):
                 after = _safe_audience(kind, request, kwargs, response)
                 for user_id, old in before.items():
+                    if kind in ('batch', 'student', 'identity', 'users') and user_id not in after:
+                        after[user_id] = {'topics': [*old['topics'], 'scope']}
+                        continue
                     current = after.setdefault(user_id, old)
                     for field in ('topics', 'batch_ids', 'student_ids', 'assessment_ids'):
                         if field in old or field in current:

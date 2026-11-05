@@ -20,6 +20,7 @@ from django.db.models.deletion import ProtectedError
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.html import escape
 from django.http import HttpResponse
+from django.views.decorators.cache import never_cache
 from zoneinfo import ZoneInfo
 from .assessment_presentation import assessment_summary, category_percentage, development_text
 from .csv_safety import SafeCSVWriter
@@ -1457,6 +1458,7 @@ def _batch_students_payload(batch, student_ids=None, *, include_history=True):
     }
 
 
+@never_cache
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def management_assessment_reports(request):
@@ -1469,15 +1471,25 @@ def management_assessment_reports(request):
     batch_id = request.query_params.get('batch_id')
     student_id = request.query_params.get('student_id')
     assessment_id = request.query_params.get('assessment_id')
-    for value in (batch_id, student_id, assessment_id):
-        if value and (not str(value).isdigit() or int(value) < 1):
+    institute_id = request.query_params.get('institute_id')
+    program_id = request.query_params.get('program_id')
+    for value in (batch_id, student_id, assessment_id, institute_id, program_id):
+        if value and (len(value) > 18 or not value.isascii() or not value.isdigit() or int(value) < 1):
             return Response({'error': 'Invalid report filter'}, status=400)
     batches = managed_batches(request.user).select_related('instructor')
     if batch_id:
         batches = batches.filter(id=batch_id)
+    if institute_id:
+        batches = batches.filter(institute_id=institute_id)
+    if program_id:
+        batches = batches.filter(program_id=program_id)
+    if assessment_id:
+        batches = batches.filter(assessment__id=assessment_id)
     batch_ids = list(batches.values_list('id', flat=True))
     if batch_id and not batch_ids:
         return Response({'error': 'Batch not found'}, status=404)
+    if (institute_id or program_id) and not batch_ids and request.user.role == 'instructor':
+        return Response({'error': 'No accessible batches in this scope.'}, status=404)
     all_assessments = list(Assessment.objects.filter(batch_id__in=batch_ids)
                        .select_related('batch', 'batch__instructor')
                        .prefetch_related('questions__skill_category')
@@ -1584,7 +1596,8 @@ def management_assessment_reports(request):
     else:
         rows = student_rows
     payload = {'report_type': report_type, 'generated_at': timezone.now(),
-               'filters': {'batch_id': batch_id, 'student_id': student_id, 'assessment_id': assessment_id},
+               'filters': {'batch_id': batch_id, 'student_id': student_id, 'assessment_id': assessment_id,
+                           'institute_id': institute_id, 'program_id': program_id},
                'rows': rows}
     if request.query_params.get('export') != 'csv':
         return Response(payload)
@@ -3931,11 +3944,23 @@ def admin_rerun_recommendations(request):
     """
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
+    scope = request.data
+    if not isinstance(scope, dict) or set(scope) - {'institute_id', 'program_id', 'batch_id'} or any(
+            type(value) is not int or not 0 < value < 10**18 for value in scope.values()):
+        return Response({'error': 'Choose valid institute, program or batch IDs.'}, status=400)
+    batches = managed_batches(request.user).filter(status='active')
+    for field, value in scope.items():
+        batches = batches.filter(**{('id' if field == 'batch_id' else field): value})
+    if scope:
+        request._rerun_batch_ids = list(batches.values_list('id', flat=True))
+        if not request._rerun_batch_ids:
+            return Response({'error': 'No active batches in this scope.'}, status=404)
+        batches = batches.filter(pk__in=request._rerun_batch_ids)
 
     try:
         count = 0
         errors = 0
-        for enrollment in BatchEnrollment.objects.filter(batch__status='active').select_related('student', 'batch'):
+        for enrollment in BatchEnrollment.objects.filter(batch__in=batches).select_related('student', 'batch'):
             try:
                 _, progress, _ = recalculate_combined(enrollment.student, enrollment.batch)
                 if progress['all_required_completed']:
@@ -4120,18 +4145,22 @@ def admin_reports(request):
         if combined_is_unlocked(profile.student, profile.batch, profile=profile, catalog=cached_catalog_fingerprint(profile.batch, catalogs))
     }
     category_groups = {}
-    for score in CombinedCategoryScore.objects.select_related('skill_category'):
+    for score in CombinedCategoryScore.objects.select_related('skill_category__framework__program'):
         if (score.student_id, score.batch_id) not in unlocked_pairs:
             continue
-        group = category_groups.setdefault(score.skill_category.name, {'sum': 0.0, 'count': 0, 'students': set()})
+        category = score.skill_category
+        framework = category.framework
+        key = category.pk if framework else category.name
+        label = f'{category.name} · {framework.program.name} (v{framework.version})' if framework else category.name
+        group = category_groups.setdefault(key, {'label': label, 'sum': 0.0, 'count': 0, 'students': set()})
         group['sum'] += score.percentage
         group['count'] += 1
         group['students'].add(score.student_id)
     skill_breakdown = sorted(({
-        'category': name,
+        'category': group['label'],
         'avg_score': round(group['sum'] / group['count'], 1),
         'student_count': len(group['students']),
-    } for name, group in category_groups.items()), key=lambda item: -item['avg_score'])
+    } for group in category_groups.values()), key=lambda item: -item['avg_score'])
 
     # --- Top matched companies ---
     from django.db.models import Count as DCount, Avg as DAvg
@@ -5123,6 +5152,7 @@ def _serialize_placement_report_record(placement, capacity_by_position):
     return serialized
 
 
+@never_cache
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def placement_reports(request):
@@ -5150,6 +5180,8 @@ def placement_reports(request):
         'company_id': None,
         'position_id': None,
         'batch_id': None,
+        'institute_id': None,
+        'program_id': None,
         'course': request.query_params.get('course', '').strip(),
         'area': request.query_params.get('area', '').strip(),
         'city': request.query_params.get('city', '').strip(),
@@ -5163,6 +5195,8 @@ def placement_reports(request):
         ('company_id', 'company_id'),
         ('position_id', 'position_id'),
         ('batch_id', 'batch_id'),
+        ('institute_id', 'batch__institute_id'),
+        ('program_id', 'batch__program_id'),
     ):
         value, error = _positive_int(request.query_params.get(query_name), query_name)
         if error:
@@ -5170,6 +5204,10 @@ def placement_reports(request):
         applied_filters[query_name] = value
         if value:
             placements = placements.filter(**{field_name: value})
+
+    batch_scope = {key: applied_filters[key] for key in ('institute_id', 'program_id') if applied_filters[key]}
+    if batch_scope and request.user.role == 'instructor' and not managed_batches(request.user).filter(**batch_scope).exists():
+        return Response({'error': 'No accessible batches in this scope.'}, status=404)
 
     if applied_filters['course']:
         placements = placements.filter(student__course__iexact=applied_filters['course'])

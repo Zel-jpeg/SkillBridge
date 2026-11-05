@@ -399,6 +399,14 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
   }, [selected, editTitle, editDuration, editSettings, editedQuestions, showToast])
 
   // ─────────────────────────────────────────────────────────────────────────
+  const current = selected && assessmentsRaw?.find(a => a.id === selected.id)
+  if (role === 'instructor' && selected && Array.isArray(assessmentsRaw) && !current && !saving) {
+    setSelected(null)
+    setEditedQuestions([])
+    setShowSaveConfirm(false)
+    setConfirmRemoveQuestion(null)
+  }
+  const visibleSelection = role === 'instructor' && !current ? null : selected
   const dirty = Boolean(selected && (editTitle !== selected.title || String(editDuration) !== String(selected.duration_minutes) ||
     editedQuestions.some(q => q._dirty || q._isNew || q._deleted) ||
     ['publication_status', 'is_required', 'include_in_competency'].some(key => editSettings[key] !== selected[key]) ||
@@ -407,7 +415,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     editSettings.available_at !== toManilaInput(selected.available_at) || editSettings.due_at !== toManilaInput(selected.due_at)))
   return {
     dirty,
-    liveAssessment: selected ? assessmentsRaw?.find(a => a.id === selected.id) || selected : null,
+    liveAssessment: visibleSelection ? current || visibleSelection : null,
     importQuestions: rows => setEditedQuestions(previous => [...previous, ...questionImportPayload(rows).map(row => normalizeQuestion({
       ...row, category: (row.category_id == null ? categories.find(category => category.name.toLowerCase() === row.category.toLowerCase())
         : categories.find(category => category.id === row.category_id))
@@ -423,7 +431,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
     filterRequired, setFilterRequired, filterIncluded, setFilterIncluded,
     filterCategory, setFilterCategory, filterAvailability, setFilterAvailability, categoryOptions,
     // ── Modal open/close ──────────────────────────────────────────────────────
-    selected, loadingQuestions, questionError, retryQuestions: () => selected && loadQuestions(selected),
+    selected: visibleSelection, loadingQuestions, questionError, retryQuestions: () => visibleSelection && loadQuestions(visibleSelection),
     openAssessment, closeAssessment,
     // ── Assessment metadata edit ──────────────────────────────────────────────
     editTitle,    setEditTitle,

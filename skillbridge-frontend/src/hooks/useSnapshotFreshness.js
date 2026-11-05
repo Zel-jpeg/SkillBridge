@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export function useSnapshotFreshness(topics) {
   const key = topics.join(',')
   const revision = useRef(0)
+  const scopeRevision = useRef(0)
   const generatedAt = useRef(0)
   const [stale, setStale] = useState(false)
+  const [scopeVersion, setScopeVersion] = useState(0)
   useEffect(() => {
     const handler = event => {
+      if (event.detail?.topics?.includes('scope')) setScopeVersion(++scopeRevision.current)
       if (event.detail?.resync || event.detail?.topics?.some(topic => key.split(',').includes(topic))) {
         revision.current++
         setStale(true)
@@ -35,5 +38,6 @@ export function useSnapshotFreshness(topics) {
     generatedAt.current = Date.now()
     setStale(start !== revision.current)
   }, [])
-  return { stale, begin, complete }
+  const scopeCurrent = useCallback(version => version === scopeRevision.current, [])
+  return { stale, begin, complete, scopeVersion, scopeCurrent }
 }

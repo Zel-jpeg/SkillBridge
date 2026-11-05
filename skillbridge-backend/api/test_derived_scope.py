@@ -1,0 +1,125 @@
+from unittest.mock import patch
+
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APITestCase
+
+from .models import (Assessment, Batch, BatchEnrollment, ChangeEvent, Company,
+                     CompetencyFramework, Institute, InstructorAssignment, OJTPlacement,
+                     Position, Program, SkillCategory, StudentResponse, User)
+from .sse import scoped_change
+
+
+class DerivedScopeTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('derived-admin@example.test', role='admin')
+        self.owner = User.objects.create_user('derived-owner@example.test', role='instructor', is_approved=True)
+        self.foreign = User.objects.create_user('derived-other@example.test', role='instructor', is_approved=True)
+        self.first = self.cohort('FIRST', self.owner)
+        self.second = self.cohort('SECOND', self.foreign)
+        self.client.force_authenticate(self.owner)
+
+    def cohort(self, code, instructor):
+        institute = Institute.objects.create(code=code, name=f'{code} institute')
+        program = Program.objects.create(institute=institute, code=code, name=f'{code} program')
+        assignment = InstructorAssignment.objects.create(instructor=instructor, program=program)
+        batch = Batch.objects.create(name=f'{code} cohort', institute=institute, program=program, instructor=instructor)
+        student = User.objects.create_user(f'derived-{code.lower()}@example.test', name=f'{code} learner',
+                                           role='student', is_approved=True, program=program)
+        BatchEnrollment.objects.create(batch=batch, student=student)
+        assessment = Assessment.objects.create(title=f'{code} private assessment', batch=batch, created_by=instructor)
+        return batch, student, assessment, assignment
+
+    def test_analytics_hides_unrelated_openings_but_counts_shared_occupancy(self):
+        company = Company.objects.create(name='Shared partner')
+        visible = Position.objects.create(company=company, title='Shared opening', slots_available=2,
+                                          eligibility_configured_at=timezone.now())
+        visible.eligible_programs.add(self.first[0].program, self.second[0].program)
+        foreign = Position.objects.create(company=company, title='Private opening', slots_available=3,
+                                          eligibility_configured_at=timezone.now())
+        foreign.eligible_programs.add(self.second[0].program)
+        OJTPlacement.objects.create(student=self.second[1], batch=self.second[0], position=visible, company=company,
+                                    status='approved')
+        url = reverse('management_analytics')
+        result = self.client.get(url, {'program_id': self.first[0].program_id})
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual([row['id'] for row in result.data['capacity']], [visible.id])
+        self.assertEqual(result.data['capacity'][0]['remaining'], 1)
+        self.assertNotIn(self.second[1].name, str(result.data))
+        self.assertEqual(self.client.get(url, {'position_id': foreign.id}).status_code, 404)
+        self.assertEqual(self.client.get(url, {'program_id': self.second[0].program_id}).status_code, 404)
+
+    def test_reports_and_protected_images_use_scope_before_lookup_and_preserve_evidence(self):
+        report = reverse('management_assessment_reports')
+        self.assertEqual(self.client.get(report, {'program_id': self.second[0].program_id, 'export': 'csv'}).status_code, 404)
+        self.assertEqual(self.client.get(report, {'assessment_id': self.second[2].id, 'export': 'csv'}).status_code, 404)
+        placements = reverse('placement_reports')
+        self.assertEqual(self.client.get(placements, {'batch_id': self.second[0].id}).data['records'], [])
+        self.assertEqual(self.client.get(placements, {'program_id': self.second[0].program_id}).status_code, 404)
+        self.client.force_authenticate(self.admin)
+        result = self.client.get(report, {'assessment_id': self.first[2].id})
+        self.assertEqual([row['student_id'] for row in result.data['rows']], [self.first[1].id])
+
+        attempt = StudentResponse.objects.create(student=self.first[1], assessment=self.first[2],
+                                                  retake_image_key='retakes/' + 'b' * 32 + '.webp')
+        image = reverse('retake_request_evidence', args=[self.first[2].id, self.first[1].id])
+        self.client.force_authenticate(self.owner)
+        with patch('api.retake_evidence.download', return_value=b'test') as storage:
+            self.assertEqual(self.client.get(image).status_code, 200)
+            self.first[3].is_active = False
+            self.first[3].save(update_fields=['is_active'])
+            self.assertEqual(self.client.get(image).status_code, 404)
+            self.assertEqual(self.client.get(report, {'batch_id': self.first[0].id, 'export': 'csv'}).status_code, 404)
+            storage.assert_called_once()
+        attempt.refresh_from_db()
+        self.assertTrue(attempt.retake_image_key)
+
+    def test_analytics_separates_same_name_skills_and_counts_only_matching_framework(self):
+        categories = {}
+        for batch, student, _, _ in (self.first, self.second):
+            framework = CompetencyFramework.objects.create(program=batch.program, name='Pilot rubric', version=1)
+            batch.framework = framework
+            batch.save(update_fields=['framework'])
+            categories[student.id] = SkillCategory.objects.create(framework=framework, name='Shared name')
+
+        def states(students, batch, include_history):
+            return {student.id: ({
+                'all_required_completed': True, 'has_required_assessments': True,
+                'completed_required_count': 1, 'total_required_count': 1, 'assessment_results': [],
+                'combined_category_scores': [{'category_id': categories[student.id].id,
+                    'category': categories[student.id].name, 'percentage': 80}],
+            }, True) for student in students}
+
+        self.client.force_authenticate(self.admin)
+        with patch('api.views.bulk_management_states', side_effect=states):
+            response = self.client.get(reverse('management_analytics'))
+        self.assertEqual(response.status_code, 200, response.data)
+        rows = response.data['skills']
+        self.assertEqual({row['id'] for row in rows}, {category.id for category in categories.values()})
+        self.assertEqual(len({row['framework_label'] for row in rows}), 2)
+        self.assertTrue(all(row['sample'] == 1 and row['missing'] == 0 for row in rows))
+
+    def test_admin_scoped_rerun_only_processes_and_notifies_selected_cohort(self):
+        url = reverse('admin_rerun_recommendations')
+        self.assertEqual(self.client.post(url, {'batch_id': self.first[0].id}, format='json').status_code, 403)
+        self.client.force_authenticate(self.admin)
+        with patch('api.views.recalculate_combined', return_value=(None, {'all_required_completed': True}, [])) as rerun:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(url, {'program_id': self.first[0].program_id}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        rerun.assert_called_once_with(self.first[1], self.first[0])
+        recipients = set(ChangeEvent.objects.values_list('recipient_id', flat=True))
+        self.assertEqual(recipients, {self.admin.id, self.owner.id, self.first[1].id})
+
+    def test_queued_event_cannot_expose_ids_after_grant_revocation(self):
+        batch, student, assessment, assignment = self.first
+        rows = [{'payload': {'topics': ['assessments'], 'batch_ids': [batch.id], 'program_ids': [batch.program_id],
+                             'student_ids': [student.id], 'assessment_ids': [assessment.id]}}]
+        self.assertEqual(scoped_change(self.owner, rows)['assessment_ids'], [assessment.id])
+        self.assertEqual(scoped_change(self.owner, rows)['program_ids'], [batch.program_id])
+        assignment.is_active = False
+        assignment.save(update_fields=['is_active'])
+        event = scoped_change(self.owner, rows)
+        for field in ('batch_ids', 'program_ids', 'student_ids', 'assessment_ids'):
+            self.assertEqual(event[field], [])
+        self.assertEqual(scoped_change(self.admin, rows)['assessment_ids'], [assessment.id])

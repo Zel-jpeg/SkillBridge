@@ -22,9 +22,9 @@ export function recommendationRerunError(error) {
   return { state: 'rejected', type: 'error', refresh: false, message: requestErrorMessage(error, { mutation: true }) }
 }
 
-async function perform(client) {
+async function perform(client, scope) {
   try {
-    const { data } = await client.post('/api/admin/rerun-recommendations/', {}, { timeout: RECOMMENDATION_RERUN_TIMEOUT_MS })
+    const { data } = await client.post('/api/admin/rerun-recommendations/', scope, { timeout: RECOMMENDATION_RERUN_TIMEOUT_MS })
     if (data?.ok !== true || !count(data.students_processed) || !count(data.errors)) {
       return uncertain('Could not confirm the rerun result. Check the refreshed results before trying again.')
     }
@@ -40,12 +40,15 @@ async function perform(client) {
 // Navigating between admin entry points must not start a second pending POST.
 // A different authenticated session never shares the previous user's response.
 const pending = new WeakMap()
-export function rerunRecommendations(client, sessionKey) {
+export function rerunRecommendations(client, sessionKey, scope = {}) {
+  const key = JSON.stringify(Object.entries(scope).sort())
   const previous = pending.get(client)
-  if (previous && previous.sessionKey === sessionKey) return previous.promise
-  const promise = perform(client).finally(() => {
+  if (previous && previous.sessionKey === sessionKey) return previous.key === key ? previous.promise : Promise.resolve({
+    state: 'busy', type: 'warning', refresh: false, message: 'A rerun for a different scope is already in progress.',
+  })
+  const promise = perform(client, scope).finally(() => {
     if (pending.get(client)?.promise === promise) pending.delete(client)
   })
-  pending.set(client, { sessionKey, promise })
+  pending.set(client, { sessionKey, key, promise })
   return promise
 }

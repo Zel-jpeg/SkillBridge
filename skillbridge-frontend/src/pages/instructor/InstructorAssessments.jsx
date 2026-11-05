@@ -83,7 +83,7 @@ export default function InstructorAssessments() {
 
 
 
-      <AssessmentLibrary assessments={assessments} stats={stats} batches={batchOptions} onOpen={openAssessment} pending={loadingList} error={assessments.length ? undefined : listError} />
+      <AssessmentLibrary assessments={assessments} stats={stats} batches={batchOptions} onOpen={assessment => { setShowUpload(false); openAssessment(assessment) }} pending={loadingList} error={assessments.length ? undefined : listError} />
 
       {/* ════════════════════════════════════════════════════════════════════
           FULL EDIT MODAL

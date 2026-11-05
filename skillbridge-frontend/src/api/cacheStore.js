@@ -97,6 +97,20 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
     changed()
   }
 
+  function evict(url) {
+    ensureOwner()
+    versions.set(url, (versions.get(url) ?? 0) + 1)
+    inflight.delete(url)
+    controllers.forEach((requestUrl, controller) => {
+      if (requestUrl === url) controller.abort()
+    })
+    cache.delete(url)
+    errors.delete(url)
+    try { storage.removeItem(prefix + url) } catch { /* Storage can be unavailable. */ }
+    listeners.get(url)?.forEach(callback => callback(null))
+    changed()
+  }
+
   function clear() {
     clearEntries()
     owner = null
@@ -199,7 +213,7 @@ export function createCacheStore(getRequest, storage = globalThis.sessionStorage
   }
 
   return {
-    read, publish, invalidate, clear, subscribe, hasSubscribers, fetch, urls,
+    read, publish, invalidate, evict, clear, subscribe, hasSubscribers, fetch, urls,
     abortUnobserved,
     error: url => errors.get(url),
     pending: url => inflight.has(url),

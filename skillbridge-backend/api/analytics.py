@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -12,9 +13,10 @@ from rest_framework.response import Response
 
 from .placement_scope import current_approvals
 from .management_access import managed_batches
+from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
 from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, OJTPlacement,
-                     Position, Recommendation, StudentResponse, User)
+                     Recommendation, StudentResponse, User)
 
 MANILA = ZoneInfo('Asia/Manila')
 
@@ -48,12 +50,14 @@ def analytics_payload(user, params):
 
     if user.role not in ('admin', 'instructor') or not user.is_active or (user.role == 'instructor' and not user.is_approved):
         raise PermissionDenied('Approved staff only.')
-    allowed = {'batch_id', 'instructor_id', 'course', 'batch_status', 'assessment_id',
+    allowed = {'batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id',
                'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period', '_t'}
     if set(params) - allowed or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated analytics filter.'})
     batch_id = positive_id(params, 'batch_id')
     instructor_id = positive_id(params, 'instructor_id')
+    institute_id = positive_id(params, 'institute_id')
+    program_id = positive_id(params, 'program_id')
     assessment_id = positive_id(params, 'assessment_id')
     company_id = positive_id(params, 'company_id')
     position_id = positive_id(params, 'position_id')
@@ -66,11 +70,18 @@ def analytics_payload(user, params):
     today = now.astimezone(MANILA).date()
     activity_period, start, end = activity_dates(params, today)
 
-    owned = list(managed_batches(user).select_related('instructor').order_by('-created_at', '-id'))
+    owned_query = managed_batches(user).select_related('instructor', 'institute', 'program', 'framework__program').order_by('-created_at', '-id')
+    owned = list(owned_query)
     owned_map = {batch.id: batch for batch in owned}
     if batch_id and batch_id not in owned_map:
         raise NotFound('Batch not found.')
     selected = [batch for batch in owned if (status == 'all' or batch.status == status)]
+    organization_batches = [batch for batch in owned if (not institute_id or batch.institute_id == institute_id)
+                            and (not program_id or batch.program_id == program_id)]
+    if (institute_id or program_id) and not organization_batches and user.role == 'instructor':
+        raise NotFound('No accessible batches in this scope.')
+    organization_ids = {batch.pk for batch in organization_batches}
+    selected = [batch for batch in selected if batch.pk in organization_ids]
     if instructor_id:
         if instructor_id not in {batch.instructor_id for batch in owned}:
             raise NotFound('Instructor has no accessible batches.')
@@ -79,7 +90,7 @@ def analytics_payload(user, params):
         selected = [batch for batch in selected if batch.id == batch_id]
         if not selected:
             raise ValidationError({'error': 'Selected batch does not match the status/instructor filter.'})
-    elif user.role == 'instructor' and status == 'active':
+    elif user.role == 'instructor' and status == 'active' and not (institute_id or program_id):
         selected = selected[:1]  # Same default active-batch ordering as the dashboard.
     selected_ids = [batch.id for batch in selected]
     course = params.get('course', '').strip()
@@ -112,7 +123,7 @@ def analytics_payload(user, params):
     analysis_assessments = [assessment for assessment in assessments if not assessment_id or assessment.id == assessment_id]
     analysis_ids = [assessment.id for assessment in analysis_assessments]
     recs = defaultdict(list)
-    for rec in (Recommendation.objects.filter(student_id__in=current, batch_id__in=selected_ids, is_current=True)
+    for rec in (eligible_recommendations(Recommendation.objects.filter(student_id__in=current, batch_id__in=selected_ids, is_current=True))
             .select_related('position__company').order_by(*order_fields('student_id'))):
         if current[rec.student_id].batch_id == rec.batch_id:
             recs[(rec.student_id, rec.batch_id)].append(rec)
@@ -126,6 +137,7 @@ def analytics_payload(user, params):
                          .values_list('student_id', flat=True)) - set(approved)
     students = []
     skill_rows = {}
+    framework_sizes = Counter(enrollment.batch.framework_id for enrollment in current.values())
     batch_rows = {batch.id: {'id': batch.id, 'name': batch.name, 'instructor': batch.instructor.name,
                    'total': 0, 'completed': 0, 'approved': 0} for batch in selected}
     attempt_rows = {assessment.id: {'id': assessment.id, 'batch_id': assessment.batch_id,
@@ -135,7 +147,7 @@ def analytics_payload(user, params):
         for assessment in analysis_assessments}
     match_bands = Counter({'Strong': 0, 'Fair': 0, 'Low': 0, 'No current match': 0, 'Locked': 0})
     for student_id, enrollment in current.items():
-        student, batch = enrollment.student, enrollment.batch
+        student, batch = enrollment.student, owned_map[enrollment.batch_id]
         state, unlocked = states[(student_id, batch.id)]
         complete = state['all_required_completed']
         relevant_recs = recs[(student_id, batch.id)] if unlocked else []
@@ -178,6 +190,8 @@ def analytics_payload(user, params):
         for score in scores:
             key = score['category_id']
             group = skill_rows.setdefault(key, {'id': key, 'name': score['category'], 'sample': 0,
+                'framework_id': batch.framework_id, 'program_id': batch.program_id,
+                'framework_label': f'{batch.framework.program.name} · {batch.framework.name} v{batch.framework.version}' if batch.framework_id else '',
                 'strong': 0, 'fair': 0, 'needs_work': 0, 'sum': 0.0})
             group['sample'] += 1
             group['sum'] += score['percentage']
@@ -205,7 +219,7 @@ def analytics_payload(user, params):
     students.sort(key=lambda row: (row['name'].casefold(), row['id']))
     for group in skill_rows.values():
         group['average'] = round(group.pop('sum') / group['sample'], 2)
-        group['missing'] = len(students) - group['sample']
+        group['missing'] = max(0, framework_sizes[group['framework_id']] - group['sample'])
     for row in attempt_rows.values():
         row['completion_rate'] = rate(row['submitted'], row['assigned'])
     for row in batch_rows.values():
@@ -215,7 +229,11 @@ def analytics_payload(user, params):
     # are serialized. All approved assignments consume seats, regardless of filters.
     occupied = dict(current_approvals().values('position_id')
                     .annotate(total=Count('id')).values_list('position_id', 'total'))
-    catalog = list(Position.objects.filter(archived_at__isnull=True, company__archived_at__isnull=True).select_related('company').order_by('company__name', 'title', 'id'))
+    openings = active_positions()
+    scoped_catalog = user.role == 'instructor' or bool(institute_id or program_id or batch_id)
+    if scoped_catalog:
+        openings = for_programs(openings, {batch.program_id for batch in selected})
+    catalog = list(openings.select_related('company').order_by('company__name', 'title', 'id'))
     if position_id and position_id not in {position.id for position in catalog}:
         raise NotFound('Position not found.')
     if company_id and company_id not in {position.company_id for position in catalog}:
@@ -275,11 +293,12 @@ def analytics_payload(user, params):
     email_ready = email_storage_ready()
     return {'generated_at': now.isoformat(), 'role': user.role,
         'scope': {'batch_ids': selected_ids, 'batch_status': status, 'course': course, 'instructor_id': instructor_id,
+            'institute_id': institute_id, 'program_id': program_id,
             'assessment_id': assessment_id, 'company_id': company_id, 'position_id': position_id, 'area': params.get('area', ''),
             'date_from': start.isoformat(), 'date_to': end.isoformat(),
             'activity_period': activity_period, 'activity_interval': activity_interval,
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
-            'capacity_scope': 'Shared system-wide slots; only partner/position/area filters apply',
+            'capacity_scope': 'Eligible openings; occupancy includes all current approvals' if scoped_catalog else 'Shared system-wide slots; only partner/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},
         'summary': summary, 'email_storage_ready': email_ready,
         'email_notifications': reminders(selected) if email_ready else [],
@@ -291,7 +310,11 @@ def analytics_payload(user, params):
         'companies': [{'id': key[0], 'name': key[1], 'count': count} for key, count in company_counts.most_common()],
         'areas': [{'name': name, 'count': count} for name, count in area_counts.most_common()], 'geography': geography, 'activity': activity,
         'activity_days': [{'date': day.isoformat(), 'submissions': count} for day, count in sorted(activity_days.items())],
-        'options': {'batches': [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id} for batch in owned],
+        'options': {'batches': [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id,
+                                'institute_id': batch.institute_id, 'program_id': batch.program_id} for batch in owned],
+            'institutes': [{'id': key, 'name': name} for key, name in sorted({(batch.institute_id, batch.institute.name) for batch in owned if batch.institute_id})],
+            'programs': [{'id': key, 'name': name, 'institute_id': parent} for key, name, parent in sorted({
+                (batch.program_id, batch.program.name, batch.program.institute_id) for batch in owned if batch.program_id})],
             'instructors': [{'id': owner_id, 'name': name} for owner_id, name in sorted({(batch.instructor_id, batch.instructor.name) for batch in owned})] if user.role == 'admin' else [],
             'courses': sorted(set(BatchEnrollment.objects.filter(batch_id__in=owned_map, student__role='student')
                                   .exclude(student__course='').values_list('student__course', flat=True))),
@@ -301,6 +324,7 @@ def analytics_payload(user, params):
             'areas': sorted({area_of(position.company.address) for position in catalog})}}
 
 
+@never_cache
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def management_analytics(request):

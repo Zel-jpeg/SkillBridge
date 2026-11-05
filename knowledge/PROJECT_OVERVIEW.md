@@ -20,8 +20,9 @@ history-only/read-only mode, automatic archive or IC workflow restrictions are
 requested. F01 catalog, F02 instructor/program assignments, F03 program-bound
 batches/enrollment, F04 dynamic profiles/onboarding, F05 program competency
 catalogs, F06 scoped assistance and F07 framework-aware authoring are implemented
-and verified. General text, scoped matching and reviewed existing-record mapping
-remain subsequent features. See the
+and verified. Configurable result text, program-scoped matching, assessment-led
+ordering and staff questionnaire import/export are also implemented. Existing
+record mapping and integrated acceptance remain in the implementation tracker. See the
 [generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
 
 ## Architecture
@@ -79,6 +80,9 @@ regex preprocessing when optional models are unavailable; record the actual mode
 and fallback when explaining results.
 
 ## Existing knowledge
+
+- [Institute report scope](INSTITUTE_REPORT_SCOPE.md) covers F13 report and
+  analytics filters, scoped reruns, current evidence access and live invalidation.
 
 - [Questionnaire export](QUESTIONNAIRE_EXPORT.md) covers F12 staff access,
   saved questionnaire downloads, format coverage and round-trip verification.

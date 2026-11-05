@@ -237,9 +237,14 @@ def review_request(request, assessment_id, student_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def evidence(request, assessment_id, student_id):
-    attempt = get_object_or_404(StudentResponse.objects.select_related('assessment__batch'), assessment_id=assessment_id, student_id=student_id)
-    if not (can_manage(request.user, attempt) or (request.user.role == 'student' and request.user.id == student_id)):
+    rows = StudentResponse.objects.all()
+    if request.user.role == 'instructor':
+        rows = rows.filter(assessment__batch__in=managed_batches(request.user))
+    elif request.user.role == 'student':
+        rows = rows.filter(student=request.user)
+    elif request.user.role != 'admin':
         raise PermissionDenied()
+    attempt = get_object_or_404(rows, assessment_id=assessment_id, student_id=student_id)
     key = attempt.retake_image_key
     if request.query_params.get('history_id'):
         try:

@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { useSSE } from '../../hooks/useSSE'
 import { useToast } from '../../context/ToastContext'
+import api from '../../api/axios'
 import DataSection from '../../components/DataSection'
 import DialogShell from '../../components/DialogShell'
 import StudentModal from '../../components/instructor/StudentModal'
@@ -13,6 +14,7 @@ import AnalyticsStudentCards from '../../components/analytics/AnalyticsStudentCa
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { useAnalyticsRecords } from '../../hooks/useAnalyticsRecords'
 import { useAnalyticsData } from '../../hooks/useAnalyticsData'
+import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
 import ActivityDateFilter from '../../components/analytics/ActivityDateFilter'
 import AssessmentProgressPanels from '../../components/analytics/AssessmentProgressPanels'
 import { BriefcaseIcon, ChevronDown, ReportIcon, SearchIcon, SkillIcon } from '../../components/Icons'
@@ -80,6 +82,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   const group = params.get('group') || ''
   const url = analyticsSourceUrl(params)
   const { data: source, updating, error: sourceError, denied, previous, retry } = useAnalyticsData(url)
+  const { scopeVersion, scopeCurrent } = useSnapshotFreshness([])
   const activity = useMemo(() => activityReport(source, params), [source, params])
   const { data } = activity
   const error = sourceError || activity.error
@@ -102,7 +105,10 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   const pending = useRef(false)
   const opener = useRef(null)
   const recordsHeading = useRef(null)
-  if (denied && student) setStudent(null)
+  if ((denied || !source || (student && !source.students.some(row => row.id === student.id && row.batch_id === student.batch_id))) && student) setStudent(null)
+  const institute = params.get('institute_id') || ''
+  const program = params.get('program_id') || ''
+  const scopedBatches = options.batches.filter(batch => (!institute || String(batch.institute_id) === institute) && (!program || String(batch.program_id) === program))
   function update(changes, clearGroup = false, preserveRecords = false) {
     // Browser history updates before Router's transition commits. Read its latest
     // query so a rapid second action cannot restore filters just cleared by Reset.
@@ -145,12 +151,23 @@ export default function ReportsAnalytics({ role = 'admin' }) {
       'Student status scope': tab === 'placements' && ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group) ? 'Selected students; partner, position and area filters do not narrow this status view.' : 'Current report and record filters.',
       Capacity: data.scope.capacity_scope, Activity: `${activityPeriodLabel(data.scope.activity_period)}; ${data.scope.date_from} to ${data.scope.date_to}; grouped by ${data.scope.activity_interval || 'day'}; ${data.scope.activity_note}` }
     try {
+      const pdfModules = type === 'pdf' ? await Promise.all([import('jspdf'), import('jspdf-autotable')]) : null
+      if (!scopeCurrent(scopeVersion) || url !== analyticsSourceUrl(new URLSearchParams(window.location.search))) return
+      const { data: current } = await api.get(url)
+      if (!scopeCurrent(scopeVersion) || url !== analyticsSourceUrl(new URLSearchParams(window.location.search))) return
+      const fresh = activityReport(current, params).data
+      const freshTable = fresh && analyticsTable(fresh, tab, group, selectAnalyticsStudents(fresh, tab, group, search))
+      if (!freshTable || JSON.stringify(fresh.scope.batch_ids) !== JSON.stringify(data.scope.batch_ids) || JSON.stringify(freshTable) !== JSON.stringify(table)) {
+        retryReport()
+        showToast('The report changed. Review the updated records before downloading.', 'warning')
+        return
+      }
       if (type === 'csv') {
         const objectUrl = URL.createObjectURL(new Blob([analyticsCsv(snapshot, metadata)], { type: 'text/csv;charset=utf-8' }))
         const link = document.createElement('a'); link.href = objectUrl; link.download = `skillbridge-${role}-${tab}.csv`; link.click()
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
       } else {
-        const [{ jsPDF }, autoTable] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
+        const [{ jsPDF }, autoTable] = pdfModules
         const doc = new jsPDF({ orientation: 'landscape', format: 'a4' })
         doc.setFontSize(15); doc.text(`SkillBridge - ${snapshot.title}`, 12, 15)
         autoTable.default(doc, { startY: 22, body: Object.entries(metadata), styles: { fontSize: 8, overflow: 'linebreak' }, columnStyles: { 0: { cellWidth: 25 } }, margin: { left: 12, right: 12 } })
@@ -175,7 +192,9 @@ export default function ReportsAnalytics({ role = 'admin' }) {
       </div>
       <fieldset disabled={!source} aria-busy={!source} className={`grid gap-5 sm:grid-cols-2 ${role === 'admin' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
         <SelectFilter label="Batch status" value={params.get('batch_status') || 'active'} onChange={value => update({ batch_status: value, batch_id: '', assessment_id: '' }, true)}><option value="active">Active batches</option><option value="archived">Archived history</option><option value="all">Active and archived history</option></SelectFilter>
-        <SelectFilter label="Batch" value={params.get('batch_id') || ''} onChange={value => update({ batch_id: value, assessment_id: '' }, true)}><option value="">{role === 'admin' ? 'Current batches in scope' : 'Current batch / latest in history'}</option>{options.batches.filter(batch => (!params.get('batch_status') ? batch.status === 'active' : params.get('batch_status') === 'all' || batch.status === params.get('batch_status')) && (!params.get('instructor_id') || String(batch.instructor_id) === params.get('instructor_id'))).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</SelectFilter>
+        {!!options.institutes?.length && <SelectFilter label="Institute" value={institute} onChange={value => update({ institute_id: value, program_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">All accessible institutes</option>{options.institutes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectFilter>}
+        {!!options.programs?.length && <SelectFilter label="Program" value={program} onChange={value => update({ program_id: value, batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">All accessible programs</option>{options.programs.filter(item => !institute || String(item.institute_id) === institute).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectFilter>}
+        <SelectFilter label="Batch" value={params.get('batch_id') || ''} onChange={value => update({ batch_id: value, assessment_id: '', company_id: '', position_id: '', area: '' }, true)}><option value="">{role === 'admin' || institute || program ? 'Current batches in scope' : 'Current batch / latest in history'}</option>{scopedBatches.filter(batch => (!params.get('batch_status') ? batch.status === 'active' : params.get('batch_status') === 'all' || batch.status === params.get('batch_status')) && (!params.get('instructor_id') || String(batch.instructor_id) === params.get('instructor_id'))).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</SelectFilter>
         {role === 'admin' && <SelectFilter label="Instructor" value={params.get('instructor_id') || ''} onChange={value => update({ instructor_id: value, batch_id: '', assessment_id: '' }, true)}><option value="">All instructors</option>{options.instructors.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</SelectFilter>}
         <SelectFilter label="Course" value={params.get('course') || ''} onChange={value => update({ course: value }, true)}><option value="">All courses</option>{options.courses.map(course => <option key={course}>{course}</option>)}</SelectFilter>
       </fieldset>

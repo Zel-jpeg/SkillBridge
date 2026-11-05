@@ -22,10 +22,13 @@ function SectionCard({ title, subtitle, children }) {
 function NlpConfigurationCard() {
   const { showToast } = useToast()
   const { data: config, error: configError } = useApi('/api/admin/nlp-configuration/')
+  const { data: batches } = useApi('/api/instructor/batches/')
   const [selected, setSelected] = useState('spacy_md')
   const selectedSeeded = useRef(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [batchId, setBatchId] = useState('')
+  const activeBatches = (batches || []).filter(batch => batch.status === 'active')
 
   useEffect(() => {
     if (config && !selectedSeeded.current) {
@@ -56,7 +59,7 @@ function NlpConfigurationCard() {
     setBusy(true)
     setMessage('')
     try {
-      const result = await rerunRecommendations(api, readBrowserSession().id)
+      const result = await rerunRecommendations(api, readBrowserSession().id, batchId ? { batch_id: Number(batchId) } : {})
       if (result.state === 'cancelled') return
       if (result.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
       setMessage(result.message)
@@ -78,7 +81,14 @@ function NlpConfigurationCard() {
         </div>
         <button onClick={saveModel} disabled={busy || !config || selected === config?.active_model}
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 text-white disabled:opacity-50">Save Model</button>
-        <button onClick={rerun} disabled={busy}
+        <label className="block min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Rerun scope
+          <select aria-label="Rerun scope" value={batchId} disabled={busy} onChange={event => setBatchId(event.target.value)}
+            className="mt-1 min-h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800">
+            <option value="">All active batches</option>
+            {activeBatches.map(batch => <option key={batch.id} value={batch.id}>{batch.name}{batch.program?.name ? ` · ${batch.program.name}` : ''}</option>)}
+          </select>
+        </label>
+        <button onClick={rerun} disabled={busy || (!!batchId && !activeBatches.some(batch => String(batch.id) === batchId))}
           className="px-4 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white disabled:opacity-50">Re-run Recommendations</button>
       </div></DataSection>
       <div className="mt-3 flex flex-wrap gap-2">

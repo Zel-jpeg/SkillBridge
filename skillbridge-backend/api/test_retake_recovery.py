@@ -247,7 +247,7 @@ class RecoveryTests(APITestCase):
                 'explanation': 'A system dialog interrupted my synthetic assessment attempt.'}), 'image': image_upload()}, format='multipart')
         self.assertEqual(result.status_code, 201)
         self.assertEqual(Image.open(BytesIO(upload.call_args.args[0])).format, 'WEBP')
-        for user, status in [(self.stranger, 403), (self.other, 403), (self.student, 200), (self.owner, 200), (self.admin, 200)]:
+        for user, status in [(self.stranger, 404), (self.other, 404), (self.student, 200), (self.owner, 200), (self.admin, 200)]:
             self.client.force_authenticate(user)
             with patch('api.retake_evidence.download', return_value=b'synthetic-webp'):
                 result = self.client.get(self.evidence_url)

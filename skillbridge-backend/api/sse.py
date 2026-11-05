@@ -10,7 +10,9 @@ import time
 from django.db import DatabaseError, close_old_connections, connections
 from django.http import HttpResponse, HttpResponseNotAllowed, StreamingHttpResponse
 
+from .management_access import managed_assessments, managed_batches
 from .models import BatchEnrollment, ChangeEvent, User
+from .program_scope import assigned_program_ids
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -47,6 +49,44 @@ def _message(payload):
     return f'data: {json.dumps(payload)}\n\n'
 
 
+def scoped_change(user, rows):
+    change = {'type': 'data_changed'}
+    payloads = [row['payload'] for row in rows]
+    for field in ('topics', 'batch_ids', 'student_ids', 'assessment_ids', 'program_ids'):
+        if field == 'topics' or all(field in payload for payload in payloads):
+            values = sorted({value for payload in payloads for value in payload.get(field, [])})
+            if field == 'topics' or len(values) <= 100:
+                change[field] = values
+    if user.role == 'admin':
+        return change
+
+    batch_ids = change.get('batch_ids', [])
+    student_ids = change.get('student_ids', [])
+    if user.role == 'instructor':
+        if batch_ids or student_ids:
+            batches = managed_batches(user)
+            if batch_ids:
+                change['batch_ids'] = list(batches.filter(id__in=batch_ids).order_by('id').values_list('id', flat=True))
+            if student_ids:
+                change['student_ids'] = list(BatchEnrollment.objects.filter(batch__in=batches, student_id__in=student_ids)
+                                             .order_by('student_id').values_list('student_id', flat=True).distinct())
+        if change.get('assessment_ids'):
+            change['assessment_ids'] = list(managed_assessments(user).filter(id__in=change['assessment_ids'])
+                                            .order_by('id').values_list('id', flat=True))
+        if change.get('program_ids'):
+            change['program_ids'] = list(assigned_program_ids(user).filter(program_id__in=change['program_ids'])
+                                         .order_by('program_id').values_list('program_id', flat=True))
+    else:
+        if batch_ids:
+            change['batch_ids'] = list(BatchEnrollment.objects.filter(student=user, batch_id__in=batch_ids)
+                                       .order_by('batch_id').values_list('batch_id', flat=True))
+        if student_ids:
+            change['student_ids'] = [user.id] if user.id in student_ids else []
+        change.pop('assessment_ids', None)
+        change.pop('program_ids', None)
+    return change
+
+
 def _event_stream(request, role, user_id):
     try:
         cursor = (ChangeEvent.objects.filter(recipient_id=user_id).order_by('-id')
@@ -67,17 +107,13 @@ def _event_stream(request, role, user_id):
                     yield _message({'type': 'auth_expired'})
                     return
                 heartbeat = now
-                connections.close_all()
                 if rows:
                     cursor = rows[-1]['id']
-                    merged = {'type': 'data_changed'}
-                    for field in ('topics', 'batch_ids', 'student_ids', 'assessment_ids'):
-                        if field == 'topics' or all(field in row['payload'] for row in rows):
-                            values = sorted({value for row in rows for value in row['payload'].get(field, [])})
-                            if field == 'topics' or len(values) <= 100:
-                                merged[field] = values
+                    merged = scoped_change(user, rows)
+                    connections.close_all()
                     yield _message(merged)
                 else:
+                    connections.close_all()
                     yield _message({'type': 'heartbeat'})
             else:
                 connections.close_all()

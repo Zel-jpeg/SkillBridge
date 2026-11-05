@@ -41,11 +41,23 @@ export default function AssessmentReportPanel({ embedded = false }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const freshness = useSnapshotFreshness(['students', 'batches', 'assessments', 'results', 'placements', 'taxonomy', 'catalog'])
+  const [knownScope, setKnownScope] = useState(freshness.scopeVersion)
+  if (knownScope !== freshness.scopeVersion) {
+    setKnownScope(freshness.scopeVersion)
+    setPayload(null)
+    setBatch('')
+    setAssessment('')
+    setStudent('')
+  }
   const params = () => ({ type: kind, ...(batch && { batch_id: batch }), ...(assessment && { assessment_id: assessment }), ...(student && { student_id: student }) })
   const generate = async () => {
     setBusy(true); setError('')
     const revision = freshness.begin()
-    try { setPayload((await api.get('/api/management/assessment-reports/', { params: params() })).data); freshness.complete(revision); showToast('Assessment report generated.') }
+    try {
+      const { data } = await api.get('/api/management/assessment-reports/', { params: params() })
+      if (!freshness.scopeCurrent(knownScope)) return
+      setPayload(data); freshness.complete(revision); showToast('Assessment report generated.')
+    }
     catch (err) { const message = err.response?.data?.error || 'Report could not be generated.'; setError(message); showToast(message, 'error') }
     finally { setBusy(false) }
   }
@@ -53,6 +65,7 @@ export default function AssessmentReportPanel({ embedded = false }) {
     setBusy(true); setError('')
     try {
       const response = await api.get('/api/management/assessment-reports/', { params: { ...params(), export: 'csv' }, responseType: 'blob' })
+      if (!freshness.scopeCurrent(knownScope)) return
       const url = URL.createObjectURL(response.data)
       const link = document.createElement('a'); link.href = url; link.download = `skillbridge-${kind}-${new Date().toISOString().slice(0, 10)}.csv`; link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
@@ -64,7 +77,9 @@ export default function AssessmentReportPanel({ embedded = false }) {
     setBusy(true); setError('')
     try {
       const [{ jsPDF }, autoTableModule] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
-      const doc = buildAssessmentReportPdf(payload, {
+      const { data } = await api.get('/api/management/assessment-reports/', { params: params() })
+      if (!freshness.scopeCurrent(knownScope)) return
+      const doc = buildAssessmentReportPdf(data, {
         batch: batches.find(item => String(item.id) === batch)?.name,
         assessment: assessments.find(item => String(item.id) === assessment)?.title,
         student,
