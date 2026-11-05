@@ -1,5 +1,5 @@
 """Synthetic graded program evidence for local F08 browser checks only."""
-def seed(out, identities, owner):
+def seed(out, identities, owner, *, scoped_openings=False):
     import json
     from django.utils import timezone
     from rest_framework_simplejwt.tokens import AccessToken
@@ -25,7 +25,10 @@ def seed(out, identities, owner):
         BatchEnrollment.objects.create(batch=batch, student=student)
         assessment = Assessment.objects.create(title=f'{name} knowledge assessment', batch=batch, framework=framework, created_by=owner,
             publication_status='published', duration_minutes=30)
-        position = Position.objects.create(title=f'Synthetic {name} opportunity', company=company, tags=['Reviewed role vocabulary'])
+        position = Position.objects.create(title=f'Synthetic {name} opportunity', company=company, tags=['Reviewed role vocabulary'],
+                                           eligibility_configured_at=timezone.now() if scoped_openings else None)
+        if scoped_openings:
+            position.eligible_programs.add(program)
         answers = []
         for category_index, category_name in enumerate(categories):
             category = SkillCategory.objects.create(framework=framework, name=category_name,

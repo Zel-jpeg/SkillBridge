@@ -308,18 +308,18 @@ def update_assessment_profile(student, assessment):
     return profile
 
 
-def generate_combined_recommendations(student, batch, combined_scores, profile, categories):
+def generate_combined_recommendations(student, batch, combined_scores, profile, categories, *, scoped_catalog=None):
     """Use persisted weighted category totals and combined text for one batch."""
     insights = {'competency_profile_text': profile.competency_profile_text}
-    return _rank_recommendations(student, combined_scores, categories, insights, batch=batch)
+    return _rank_recommendations(student, combined_scores, categories, insights, batch=batch, scoped_catalog=scoped_catalog)
 
 
-def _rank_recommendations(student, skill_scores, categories, insights, batch):
+def _rank_recommendations(student, skill_scores, categories, insights, batch, *, scoped_catalog=None):
     from django.db import transaction
     from sklearn.feature_extraction.text import TfidfVectorizer
-    from .models import Position, Recommendation, RecommendationConfiguration
+    from .models import Recommendation, RecommendationConfiguration
     from .recommendation_nlp import (build_position_description, location_similarity, preprocess_texts,
-                                     company_address_text, valid_coordinates)
+                                     company_address_text, valid_coordinates, TEXT_GENERATION_VERSION)
     from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key
     from .nlp_explanations import explain_overlap
 
@@ -328,12 +328,10 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
     catalog_ids = {category.id for category in categories}
     if any(score.skill_category_id not in catalog_ids and
            getattr(getattr(score, 'skill_category', None), 'framework_id', None) is not None for score in skill_scores):
-        # During staged catalog rollout, scoped evidence must never enter the
-        # legacy global corpus or make otherwise valid assessment results fail.
-        # F10 supplies the compatible scoped catalog before matching these rows.
+        # A category outside the supplied framework cannot enter this corpus.
         Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
         return []
-    scores, totals, names, mapping = pooled_evidence(skill_scores, categories)
+    scores, totals, names, mapping = pooled_evidence(skill_scores, categories, exact_categories=scoped_catalog is not None)
     score_lookup = {score.skill_category_id: score.percentage for score in skill_scores}
     student_vec = np.array([score_lookup.get(category.id, 0.0) / 100.0 for category in categories], dtype=float)
 
@@ -342,19 +340,22 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
         return []
 
     from .opportunity_scope import legacy_positions
-    positions = list(
-        legacy_positions().order_by('id').select_related('company').prefetch_related(
-            'requirements', 'requirements__skill_category'
+    if scoped_catalog:
+        positions = scoped_catalog.positions
+    else:
+        positions = list(
+            legacy_positions().order_by('id').select_related('company').prefetch_related(
+                'requirements', 'requirements__skill_category'
+            )
         )
-    )
-    positions = [position for position in positions if position.requirements.all()]
+        positions = [position for position in positions if position.requirements.all()]
     if not positions:
         Recommendation.objects.filter(student=student, batch=batch).update(is_current=False)
         return []
 
     profile_text = insights['competency_profile_text']
-    position_texts = [build_position_description(position) for position in positions]
-    requested_model = RecommendationConfiguration.get_active().active_model
+    position_texts = scoped_catalog.position_texts if scoped_catalog else [build_position_description(position) for position in positions]
+    requested_model = scoped_catalog.requested_model if scoped_catalog else RecommendationConfiguration.get_active().active_model
     processed, model_used, _fallback_reason = preprocess_texts(
         [profile_text] + position_texts,
         requested_model,
@@ -401,7 +402,14 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch):
             'distance_km': round(distance_km, 2) if distance_km is not None else None,
             'generated_at': timezone.now(),
         }
-        details = describe(scores, totals, names, position_requirements(position, mapping))
+        targets = position_requirements(position, mapping)
+        details = describe(scores, totals, names, targets)
+        if scoped_catalog:
+            details['ranking_inputs'] = {**scoped_catalog.scope, 'catalog_fingerprint': scoped_catalog.fingerprint,
+                'text_generation_version': TEXT_GENERATION_VERSION, 'requested_model': requested_model,
+                'model_used': model_used}
+            for row, category_id in zip(details['requirements'], sorted(targets)):
+                row['category_id'] = category_id
         details.update(support=(25 * component_values['nlp_score_component']
                                 + 15 * component_values['location_score_component']) / 40,
                        legacy_hybrid_reference=component_values['match_score'],

@@ -24,6 +24,8 @@ if '--program-batches' in sys.argv or '--dynamic-profiles' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'program-batches'
 if '--general-text' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'general-text'
+if '--scoped-ranking' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'scoped-ranking'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
@@ -62,6 +64,7 @@ try:
             script = 'general_competency_playwright.py'
         for option, candidate in [('--profile-layout', 'student_profile_layout_playwright.py'),
             ('--opportunity-scope', 'opportunity_scope_playwright.py'),
+            ('--scoped-ranking', 'scoped_ranking_playwright.py'),
             ('--companies', 'company_collection_playwright.py'),
             ('--profile-recovery', 'profile_draft_recovery_playwright.py'), ('--external-recovery', 'external_recovery_playwright.py'),
             ('--assessment-result-navigation', 'student_assessment_result_navigation_playwright.py')]:

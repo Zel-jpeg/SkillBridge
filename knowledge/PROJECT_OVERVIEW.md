@@ -80,6 +80,10 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Scoped recommendation inputs and freshness](SCOPED_RECOMMENDATION_INPUTS.md)
+  covers F10 framework-specific ranking inputs, scoped invalidation, and the
+  separation between current rankings and retained placement evidence.
+
 - [Program-eligible opportunities and shared capacity](PROGRAM_OPPORTUNITY_ELIGIBILITY.md)
   covers F09 catalog administration, versioned requirements, browsing and
   placement eligibility, retained decisions and the additive 0038 migration.

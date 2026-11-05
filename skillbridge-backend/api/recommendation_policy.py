@@ -31,8 +31,12 @@ def canonical_context(categories):
     return by_id, mapping
 
 
-def pooled_evidence(skill_scores, categories):
-    by_id, mapping = canonical_context(categories)
+def pooled_evidence(skill_scores, categories, *, exact_categories=False):
+    if exact_categories:
+        by_id = {category.id: category for category in categories}
+        mapping = {key: key for key in by_id}
+    else:
+        by_id, mapping = canonical_context(categories)
     totals = defaultdict(lambda: [0, 0])
     for score in skill_scores:
         if score.skill_category_id not in mapping:

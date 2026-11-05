@@ -11,6 +11,8 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(OUT / 'synthetic-browser.sqlite3')
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking'):
+    settings.DATABASES['default'].setdefault('OPTIONS', {})['transaction_mode'] = 'IMMEDIATE'
 settings.SECRET_KEY = 'synthetic-organization-browser-key'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 settings.SECURE_SSL_REDIRECT = False
@@ -43,10 +45,10 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'program-batches':
     user = User.objects.create_user('program-learner@dnsc.edu.ph', role='student', name='Synthetic Program Learner')
     identities['program_student'] = {'token': str(AccessToken.for_user(user)),
         'user': {'id': user.id, 'role': user.role, 'name': user.name, 'is_approved': False}}
-if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'general-text':
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking'):
     settings.DEBUG = True
     from general_competency_fixture import seed
-    seed(OUT, identities, owner)
+    seed(OUT, identities, owner, scoped_openings=os.environ['SB_ORGANIZATION_SCENARIO'] == 'scoped-ranking')
 (OUT / 'auth.json').write_text(json.dumps(identities), encoding='utf-8')
 print('Synthetic organization API ready', flush=True)
 call_command('runserver', f"127.0.0.1:{os.environ['SB_ORGANIZATION_API_PORT']}", use_reloader=False, verbosity=0)

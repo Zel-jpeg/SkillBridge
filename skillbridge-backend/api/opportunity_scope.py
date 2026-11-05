@@ -2,7 +2,7 @@
 
 from django.db.models import Exists, OuterRef, Q
 
-from .models import Position, PositionRequirement
+from .models import BatchEnrollment, Position, PositionRequirement
 from .instructor_assignments import program_payload
 
 
@@ -64,9 +64,10 @@ def eligible_recommendations(rows):
         skill_category__framework_id=OuterRef('batch__framework_id'),
         skill_category__framework__program_id=OuterRef('batch__program_id'),
     )
+    enrollment = BatchEnrollment.objects.filter(student_id=OuterRef('student_id'), batch_id=OuterRef('batch_id'))
     return rows.filter(
         Q(batch__program_id__isnull=True, position__eligibility_configured_at__isnull=True)
-        | (Q(position__eligibility_configured_at__isnull=False) & Q(Exists(links)) & Q(Exists(rubric)))
+        | (Q(position__eligibility_configured_at__isnull=False) & Q(Exists(links)) & Q(Exists(rubric)) & Q(Exists(enrollment)))
     )
 
 

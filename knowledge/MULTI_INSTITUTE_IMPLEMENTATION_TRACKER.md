@@ -205,10 +205,10 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F10 — Scoped recommendation inputs and freshness
 
-- [ ] Branch `codex/scoped-recommendation-inputs` after F09.
-- [ ] Filter candidates before NLP/corpus creation; explicit compatible category
+- [x] Branch `codex/scoped-recommendation-inputs` after F09.
+- [x] Filter candidates before NLP/corpus creation; explicit compatible category
   identity; program/framework/corpus/text/policy provenance and scoped invalidation.
-- [ ] Preserve assessment-led ordering, coordinator review and allocation rules;
+- [x] Preserve assessment-led ordering, coordinator review and allocation rules;
   never compare unrelated program questionnaire percentages as universal mastery.
 - [ ] Test independent-catalog edits, shared eligibility changes, stale locks,
   conflicts, all-zero/no-opportunity cases and approval snapshots; receipt/merge.
@@ -276,7 +276,25 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F09 verified and locally merged (5 November 2026):
+Current checkpoint — ACTIVE on F10 (5 November 2026):
+
+- `codex/scoped-recommendation-inputs` was created from `0922790`, the F09
+  verification receipt on local `main`. F10 will use the batch's exact framework
+  IDs for evidence and filter the opportunity corpus before generating NLP text.
+- F10 code and synthetic tests are in the working tree. The scoped corpus,
+  fingerprints, exact category IDs and saved provenance are connected to
+  ranking, result/roster/report reads and placement approval and allocation.
+- Full PostgreSQL passed 721 tests (`work/organization-postgres-2336svqi/`).
+  The final 89-test focused run passed after adding scoped enrollment locking
+  and a two-refresh race (`work/organization-postgres-s8hilepl/`). The initial
+  targeted failure from an obsolete shared draft signature reference was fixed.
+- Three scoped ranking browser groups passed (`work/organization-browser-1enemi99/`),
+  and five retained result/preview/report groups passed (`work/organization-browser-d0a9hiun/`).
+  The isolated SQLite harness uses immediate transactions to handle overlapping
+  initial results requests. Frontend unit tests passed 275. Django check and
+  migration drift passed. F10 requires no migration.
+- Next step: commit F10 and fast-forward local `main`, then create F11's branch.
+- F09 was verified and locally merged before starting F10.
 
 - On CONTINUE, verified the previous pause checkpoint, committed the F08 receipt
   as `974d53f`, fast-forwarded local `main`, and created
@@ -301,9 +319,7 @@ Current checkpoint — F09 verified and locally merged (5 November 2026):
 - The first full run's instructor rollback fixture now uses the authorized
   admin role. The isolated browser harness uses a fresh instructor session for
   the post-save check because the harness suppresses live event delivery.
-- Next step: create `codex/scoped-recommendation-inputs` from local `main` and
-  trace matching inputs and freshness through scoring, reports and approvals.
-  No configured IC mapping, recalculation, GitHub push or deployment has occurred.
+- No configured IC mapping, recalculation, GitHub push or deployment has occurred.
 
 - F08 branch `codex/general-competency-text`, base `6087602`, implementation
   `faa4c6b` fast-forward merged into local main. No migration/configured write.

@@ -19,7 +19,7 @@ from .change_events import notify_changes
 from .combined_competency import combined_is_unlocked
 from .models import BatchEnrollment, ManagementAction, OJTPlacement, Position, Recommendation
 from .placement_allocator import allocate
-from .recommendation_freshness import catalog_fingerprint
+from .recommendation_freshness import cached_catalog_fingerprint, catalog_fingerprint
 
 
 def digest(value):
@@ -76,7 +76,7 @@ from .placement_scope import current_approvals
 
 
 def context():
-    catalog = catalog_fingerprint()
+    catalogs = {}
     enrollments = BatchEnrollment.objects.filter(
         batch__status='active', student__is_active=True, student__is_approved=True,
     ).select_related('student', 'batch').order_by('student_id', '-enrolled_at', '-id')
@@ -92,7 +92,8 @@ def context():
     for student_id, enrollment in by_student.items():
         if (student_id not in approved_students
                 and not enrollment.profile_review_required
-                and combined_is_unlocked(enrollment.student, enrollment.batch, catalog=catalog)):
+                and combined_is_unlocked(enrollment.student, enrollment.batch,
+                    catalog=cached_catalog_fingerprint(enrollment.batch, catalogs), review_required=False)):
             eligible[student_id] = enrollment
     latest = {}
     for row in OJTPlacement.objects.filter(student_id__in=eligible, is_active_suggestion=False).order_by('-updated_at', '-id').values('student_id', 'batch_id', 'position_id', 'status'):
@@ -107,9 +108,17 @@ def context():
     ):
         if row['batch_id'] == eligible[row['student_id']].batch_id and latest.get((row['student_id'], row['position_id'])) not in ('removed', 'rejected'):
             recommendations.append(row)
-    signature = digest({'policy': ALLOCATION_POLICY_VERSION, 'catalog': catalog, 'positions': positions, 'approvals': approvals,
-                        'memberships': [(key, value.batch_id) for key, value in by_student.items()],
-                        'eligible': sorted(eligible), 'recommendations': recommendations, 'decisions': sorted(latest.items())})
+    scoped_catalogs = sorted((program_id, framework_id or 0, fingerprint)
+                             for (program_id, framework_id), fingerprint in catalogs.items() if program_id)
+    legacy_catalog = catalogs.get((None, None))
+    if not scoped_catalogs and legacy_catalog is None:
+        legacy_catalog = catalog_fingerprint()
+    inputs = {'policy': ALLOCATION_POLICY_VERSION, 'catalog': legacy_catalog, 'positions': positions, 'approvals': approvals,
+              'memberships': [(key, value.batch_id) for key, value in by_student.items()],
+              'eligible': sorted(eligible), 'recommendations': recommendations, 'decisions': sorted(latest.items())}
+    if scoped_catalogs:
+        inputs['scoped_catalogs'] = scoped_catalogs
+    signature = digest(inputs)
     return {'signature': signature, 'recommendations': recommendations, 'capacities': capacities,
             'enrollments': by_student, 'eligible': eligible,
             'approved_students': approved_students,

@@ -35,7 +35,7 @@ from .models import (
 )
 from .change_events import category_created, notify_changes
 from .management_access import managed_batches, managed_assessments, selected_instructor, batch_payload, record_action, assessment_state
-from .recommendation_freshness import catalog_fingerprint, recommendations_stale
+from .recommendation_freshness import cached_catalog_fingerprint, catalog_fingerprint, recommendations_stale
 from .serializers import UserSerializer
 from .recommendation_policy import (api_fields, top_api_fields, order_fields, candidate_order_fields,
                                     coverage_or_legacy, assessment_band, placement_evidence, attach_placement_evidence, report_label)
@@ -53,7 +53,7 @@ from .assessment_progress import current_enrollment, assessment_availability, re
 from .assessment_archives import archive_metadata
 from .authoring_scope import metadata as authoring_metadata
 from .combined_competency import (
-    combined_is_unlocked, ensure_combined, recalculate_combined,
+    combined_is_unlocked, compatible_scores, ensure_combined, recalculate_combined,
     recalculate_enrolled_students, serialize_combined_scores,
 )
 from .recommendation_nlp import (
@@ -304,7 +304,7 @@ def management_combined_state(student, batch):
     }, unlocked
 
 
-def bulk_management_states(students, batch, include_history=True, *, summary_only=False, include_inactive_history=False):
+def bulk_management_states(students, batch, include_history=True, *, summary_only=False, include_inactive_history=False, catalog_cache=None):
     """Build roster/dashboard state in grouped queries without recalculating NLP."""
     ids = [student.id for student in students]
     review_required = set(BatchEnrollment.objects.filter(student_id__in=ids, batch=batch,
@@ -329,6 +329,8 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
             'category_scores': h.category_scores, 'answers': h.answers,
         })
     score_query = SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id)
+    if summary_only:
+        score_query = compatible_scores(score_query, batch)
     scores = list(score_query.only('student_id', 'assessment_id', 'raw_score', 'max_score') if summary_only else score_query.select_related('skill_category'))
     score_map = {}
     valid_score_ids = set()
@@ -339,6 +341,11 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
                 'raw_score': score.raw_score, 'max_score': score.max_score, 'percentage': score.percentage,
             })
         if score.max_score > 0 and score.raw_score <= score.max_score:
+            if not summary_only and batch.program_id and (
+                not batch.framework_id or assessment_by_id[score.assessment_id].framework_id != batch.framework_id
+                or score.skill_category.framework_id != batch.framework_id
+            ):
+                continue
             valid_score_ids.add((score.student_id, score.assessment_id))
     profile_query = CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)
     if summary_only:
@@ -351,7 +358,12 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
             'raw_score': score.raw_score, 'max_score': score.max_score,
             'percentage': score.percentage, 'source_assessment_ids': score.source_assessment_ids,
         })
-    catalog = catalog_fingerprint() if profiles else None
+    catalog = None
+    if profiles:
+        if catalog_cache is not None:
+            catalog = cached_catalog_fingerprint(batch, catalog_cache)
+        else:
+            catalog = catalog_fingerprint(batch) if batch.program_id else catalog_fingerprint()
     result = {}
     for student in students:
         completed = sum(bool((r := response_map.get((student.id, assessment_id))) and
@@ -419,25 +431,25 @@ def admin_current_management_states(students, **state_options):
     grouped = {}
     for student_id, enrollment in current.items():
         grouped.setdefault(enrollment.batch_id, {'batch': enrollment.batch, 'students': []})['students'].append(student_by_id[student_id])
-    states = {}
+    states, catalogs = {}, {}
     for group in grouped.values():
-        for student_id, state in bulk_management_states(group['students'], group['batch'], **state_options).items():
+        for student_id, state in bulk_management_states(group['students'], group['batch'], catalog_cache=catalogs, **state_options).items():
             states[student_id] = state
     return current, states
 
 
 def current_recommendations():
     """Only final, batch-scoped recommendations count as current reporting data."""
-    candidates = list(Recommendation.objects.filter(
+    candidates = list(eligible_recommendations(Recommendation.objects.filter(
         is_current=True, batch__status='active',
-    ).select_related('student', 'batch'))
+    )).select_related('student', 'batch'))
     grouped = {}
     for recommendation in candidates:
         entry = grouped.setdefault(recommendation.batch_id, {'batch': recommendation.batch, 'students': {}})
         entry['students'][recommendation.student_id] = recommendation.student
-    unlocked = {}
+    unlocked, catalogs = {}, {}
     for group in grouped.values():
-        states = bulk_management_states(list(group['students'].values()), group['batch'])
+        states = bulk_management_states(list(group['students'].values()), group['batch'], catalog_cache=catalogs)
         unlocked.update({(student_id, group['batch'].id): state[1] for student_id, state in states.items()})
     ids = []
     for recommendation in candidates:
@@ -1369,8 +1381,7 @@ def _batch_students_payload(batch, student_ids=None, *, include_history=True):
     # ── Bulk-load top-3 company recommendations per student ──────────
     from collections import defaultdict
     all_recs = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, batch=batch, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student_id__in=student_ids, batch=batch, is_current=True))
         .select_related('position', 'position__company')
         .order_by(*order_fields('student_id'))
     )
@@ -1542,7 +1553,9 @@ def management_assessment_reports(request):
     elif report_type == 'student_competency':
         rows = []
         rec_map = {}
-        for rec in Recommendation.objects.filter(student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by(*order_fields('student_id')):
+        for rec in eligible_recommendations(Recommendation.objects.filter(
+                student_id__in=[e.student_id for e in enrollments], batch_id__in=batch_ids, is_current=True)
+        ).select_related('position', 'position__company').prefetch_related('position__requirements__skill_category').order_by(*order_fields('student_id')):
             rec_map.setdefault((rec.student_id, rec.batch_id), []).append(rec)
         placements = {(sid, bid): row for bid in batch_ids for sid, row in
                       _visible_placements_by_student([e.student_id for e in enrollments], batch=bid).items()}
@@ -2858,8 +2871,7 @@ def instructor_student_recommendations(request):
     # ── Bulk-load all recommendations ─────────────────────────────
     from collections import defaultdict
     all_recs = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, batch=active_batch, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student_id__in=student_ids, batch=active_batch, is_current=True))
         .select_related('position', 'position__company')
         .order_by(*order_fields('student_id'))
     )
@@ -2955,10 +2967,10 @@ def instructor_companies(request):
             'status': e.batch.status
         }
     student_ids = list({student_id for student_id, _ in student_batch_info})
-    catalog = catalog_fingerprint()
+    catalogs = {}
     unlocked_batches = {
         (e.student_id, e.batch_id) for e in enrollments
-        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch, catalog=catalog)
+        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch, catalog=cached_catalog_fingerprint(e.batch, catalogs))
     }
 
     # Bulk-load all recommendations for those students
@@ -3136,8 +3148,7 @@ def student_results(request):
     combined_profile, progress, unlocked = ensure_combined(user, assessment.batch)
     skill_scores = SkillScore.objects.filter(student=user, assessment=assessment).select_related('skill_category')
     recommendations = (
-        Recommendation.objects
-        .filter(student=user, batch=assessment.batch, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student=user, batch=assessment.batch, is_current=True))
         .select_related('position', 'position__company')
         .order_by(*order_fields())
     )
@@ -3194,9 +3205,9 @@ def student_combined_results(request):
     evidence_unlocked = unlocked or combined_is_unlocked(user, batch, profile=profile, progress=progress, require_current_ranking=False)
     included_ids = profile.included_assessment_ids if profile else []
     numbers = assessment_numbers(user, batch)
-    recommendations = Recommendation.objects.filter(
+    recommendations = eligible_recommendations(Recommendation.objects.filter(
         student=user, batch=batch, is_current=True,
-    ).select_related('position', 'position__company').order_by(*order_fields()) if unlocked else []
+    )).select_related('position', 'position__company').order_by(*order_fields()) if unlocked else []
     combined_scores = serialize_combined_scores(user, batch) if evidence_unlocked else []
     overall_raw = sum(score['raw_score'] for score in combined_scores)
     overall_max = sum(score['max_score'] for score in combined_scores)
@@ -3212,7 +3223,7 @@ def student_combined_results(request):
         'is_finalized': evidence_unlocked,
         'competency_locked': not evidence_unlocked,
         'recommendations_locked': not unlocked,
-        'recommendations_stale': recommendations_stale(profile, user),
+        'recommendations_stale': recommendations_stale(profile, user, batch=batch),
         'recommendations': [serialize_recommendation(rec) for rec in recommendations],
         'active_model': profile.active_model if evidence_unlocked else RecommendationConfiguration.get_active().active_model,
         'model_used': profile.model_used if evidence_unlocked else None,
@@ -3383,8 +3394,7 @@ def admin_student_recommendations(request):
 
     # ── Bulk-load ALL recommendations in ONE query ────────────────────
     all_recs = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student_id__in=student_ids, is_current=True))
         .select_related('position', 'position__company', 'student')
         .order_by(*order_fields('student_id'))
     )
@@ -3552,8 +3562,7 @@ def _admin_users_payload(user_ids=None, *, include_history=True):
     student_ids = [s.id for s in students]
     profile_map = latest_competency_profiles(student_ids)
     all_recs = (
-        Recommendation.objects
-        .filter(student_id__in=student_ids, is_current=True)
+        eligible_recommendations(Recommendation.objects.filter(student_id__in=student_ids, is_current=True))
         .select_related('position', 'position__company')
         .prefetch_related('position__requirements__skill_category')
         .order_by(*order_fields('student_id'))
@@ -4104,11 +4113,11 @@ def admin_reports(request):
 
     # Final batch category totals only; stopped/partial assessment scores stay
     # available in assessment detail but do not enter the competency report.
-    catalog = catalog_fingerprint()
+    catalogs = {}
     unlocked_pairs = {
         (profile.student_id, profile.batch_id)
         for profile in CombinedCompetencyProfile.objects.filter(is_finalized=True).select_related('student', 'batch')
-        if combined_is_unlocked(profile.student, profile.batch, profile=profile, catalog=catalog)
+        if combined_is_unlocked(profile.student, profile.batch, profile=profile, catalog=cached_catalog_fingerprint(profile.batch, catalogs))
     }
     category_groups = {}
     for score in CombinedCategoryScore.objects.select_related('skill_category'):
@@ -4422,10 +4431,10 @@ def placement_suggestions(request):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
     for enrollment in scoped_enrollments.order_by('student_id', '-enrolled_at', '-id'):
         batch_by_student.setdefault(enrollment.student_id, enrollment.batch)
-    catalog = catalog_fingerprint()
+    catalogs = {}
     unlocked_pairs = {
         (student_id, batch.id) for student_id, batch in batch_by_student.items()
-        if combined_is_unlocked(User.objects.get(id=student_id), batch, catalog=catalog)
+        if combined_is_unlocked(User.objects.get(id=student_id), batch, catalog=cached_catalog_fingerprint(batch, catalogs))
     }
 
     companies = Company.objects.filter(archived_at__isnull=True).order_by('name', 'id')
@@ -4881,9 +4890,9 @@ def placement_manual_assign(request):
                 return Response({'error': 'This opening is unavailable for the student’s program.'}, status=409)
             if BatchEnrollment.objects.filter(student=student, batch=batch, profile_review_required=True).exists():
                 return Response({'error': 'The student must confirm their profile for this batch first.'}, status=409)
-            recommendation = (Recommendation.objects.filter(
+            recommendation = (eligible_recommendations(Recommendation.objects.filter(
                 student=student, batch=batch, position=position, is_current=True,
-            ).first() if batch and combined_is_unlocked(student, batch) else None)
+            )).first() if combined_is_unlocked(student, batch) else None)
             placement = OJTPlacement(
                 student=student,
                 company=position.company,
