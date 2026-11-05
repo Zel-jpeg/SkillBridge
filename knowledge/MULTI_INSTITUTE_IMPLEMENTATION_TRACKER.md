@@ -235,7 +235,9 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   native mixed-type option and correct answer order/keys under staff authorization.
 - [x] Test backend key access, mixed-type choices and supported round trips.
   Actual DNSC LMS reverse import is separately verified or explicitly unverified.
-- [ ] Complete responsive export UI/browser checks; receipt and local merge.
+- [x] Complete responsive export UI/browser checks; receipt and local merge.
+  Implementation `9eb9fbe`, fast-forward merged into local `main`.
+  [F12 receipt](QUESTIONNAIRE_EXPORT.md).
 
 ### F13 — Reports and derived-data scope
 
@@ -280,19 +282,20 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — ACTIVE on F12 (5 November 2026):
+Current checkpoint — F12 verified and locally merged (5 November 2026):
 
 - Local `main` recorded the F11 pause as `173f42e`. Branch
   `codex/questionnaire-export` was created from that revision on CONTINUE.
-- F01–F11 are verified and merged locally. Configured migrations are through
-  `0038_position_program_eligibility`. The F12 working tree adds protected
+- F01–F12 are verified and merged locally. Configured migrations are through
+  `0038_position_program_eligibility`. F12 (`9eb9fbe`) adds protected
   preview and download, AIKEN partial confirmation, SkillBridge text mixed-type
   export, and both staff interfaces. F12 needs no migration.
 - Frontend lint/build and 283 tests passed. The 27-test focused PostgreSQL run
   passed (`work/organization-postgres-c4k_tov7/`). Two real Chrome download and
   reimport groups passed (`work/organization-browser-eog3d03_/`), as did three
   retained import groups (`work/organization-browser-8a57ldxl/`). Django check
-  and migration drift passed. Next commit and merge F12 before starting F13.
+  and migration drift passed. Next create `codex/institute-report-scope` and
+  start the F13 derived-data access audit.
 - DNSC LMS-side import remains unverified. All changes have been local, with
   no deployment, IC mapping, or configured recommendation rerun.
 

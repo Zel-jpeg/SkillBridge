@@ -32,3 +32,6 @@ file in the importer and saved the native file as a new draft, checking every
 saved stem, type, category name, option and key against the original. The
 PostgreSQL tests verified authorization on both requests, revocation, saved
 order, stale review rejection and explicit confirmation of omissions.
+
+Implementation `9eb9fbe` was fast-forwarded into local `main`. F12 requires no
+database migration.
