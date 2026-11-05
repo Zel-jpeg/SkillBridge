@@ -280,7 +280,22 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F11 verified and locally merged (5 November 2026):
+Current checkpoint — PAUSED after verified F11 merge (5 November 2026):
+
+- User explicitly requested PAUSE. Local `main` is at `2ba5b3e`, the F11 receipt
+  that finished merging before this checkpoint. The only working-tree edit is
+  this pause record. F12 has not started and `codex/questionnaire-export` does
+  not exist. The owned test servers and PostgreSQL helpers have finished.
+- F01–F11 are verified and merged locally. Configured migrations are through
+  `0038_position_program_eligibility`. F12–F16 remain open. No unresolved F11
+  verification failures. DNSC LMS-side import and export round-trip acceptance
+  remain unverified. No GitHub push, deployment, IC mapping, or recommendation
+  rerun on the configured database was performed.
+- Exact next step on CONTINUE: read this checkpoint and Git status, reconcile
+  intervening edits, record this pause checkpoint locally, then create
+  `codex/questionnaire-export` from local `main`. Implement and verify F12 staff
+  authorization, supported MCQ AIKEN download, disclosed omissions and native
+  mixed-question export before proceeding to F13. Wait for explicit CONTINUE.
 
 - `codex/aiken-question-import` was created from `bcd9ec8`, the F10 receipt
   on local `main`. The supplied DNSC text export was verified locally against
@@ -296,8 +311,7 @@ Current checkpoint — F11 verified and locally merged (5 November 2026):
   including phone dark review (`work/organization-browser-ww1znsjq/`). Disposable
   test databases that contained the supplied questions were removed after review.
 - Frontend lint/build, local documentation links and Git whitespace passed.
-  F11 requires no migration. Next step: create `codex/questionnaire-export` and
-  verify server-side staff authorization, supported keys, and format round trips.
+  F11 requires no migration.
 
 - `codex/scoped-recommendation-inputs` was created from `0922790`, the F09
   verification receipt on local `main`. F10 implementation `70f5b5c` was
