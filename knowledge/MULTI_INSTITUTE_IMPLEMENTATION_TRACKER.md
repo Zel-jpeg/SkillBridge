@@ -320,9 +320,11 @@ may live in ignored `work/`; credentials and personal records must not be logged
 Current checkpoint — F17–F19 extension planned:
 
 - Planning branch `codex/instructor-partner-management-plan` starts at
-  `7b63ed0`. The working changes record the user-requested instructor/OJT
-  coordinator catalog feature and the evaluator context. Product code is
-  unchanged in this planning step.
+  `7b63ed0`. Plan commit `4a4d050` was fast-forwarded into local `main`.
+  It records the user-requested instructor/OJT coordinator catalog feature and
+  evaluator context. Link validation resolved 184 local targets in five
+  Markdown files, and the whitespace check passed. Product code is unchanged
+  in this planning step.
 - The coordinator who created a record and administrators can edit it, using
   the recorded interpretation of the user's response. Other same-program
   coordinators can view/reuse openings while private batches remain owner-scoped.

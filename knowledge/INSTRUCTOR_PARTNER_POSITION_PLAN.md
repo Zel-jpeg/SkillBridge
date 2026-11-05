@@ -163,3 +163,7 @@ The extension is recorded as F17–F19. F01–F16 remain completed. The immediat
 next implementation step is F17's backend authority and sharing audit, followed
 by the smallest compatible data model and API changes. The existing feature
 branch, verification, migration and local-merge rules apply.
+
+Plan commit `4a4d050` was fast-forwarded into local `main`. Documentation
+verification resolved 184 local link targets across five Markdown files.
+Application builds and database tests are outside this documentation-only change.
