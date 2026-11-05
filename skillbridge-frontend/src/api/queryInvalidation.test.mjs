@@ -1,6 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+test('coordinator catalogs refresh scoped lists, capabilities and shared capacity', () => {
+  for (const url of ['/api/management/programs/3/partners/?page=2', '/api/management/programs/3/partners/7/',
+    '/api/management/programs/3/positions/9/', '/api/management/programs/3/partner-options/?search=Example']) {
+    for (const topic of ['catalog', 'organization', 'assignments', 'users', 'capacity', 'placements']) {
+      assert.equal(queryAffected(url, { topics: [topic], program_ids: [3] }), true, topic + url)
+      assert.equal(queryAffected(url, { topics: [topic], program_ids: [4] }), false, topic + url)
+    }
+    assert.equal(queryAffected(url, { resync: true }), true)
+    assert.equal(queryAffected(url, { topics: ['scope'], program_ids: [4] }), true)
+  }
+  assert.equal(queryAffected('/api/management/programs/3/partners/7/positions/', { resync: true }), false)
+})
+
 test('competency invalidation stays within the affected program and never triggers legacy ranking reads', () => {
   const urls = ['/api/management/programs/3/frameworks/?page=2', '/api/management/programs/3/frameworks/7/', '/api/management/programs/3/frameworks/7/categories/?search=Any', '/api/management/competency-programs/3/', '/api/management/programs/3/frameworks/7/authoring/']
   for (const url of urls) {

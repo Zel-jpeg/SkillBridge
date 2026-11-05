@@ -18,6 +18,8 @@ const paths = {
 }
 
 // Account/enrollment/ownership changes can revoke or alter email management too.
+const coordinatorCatalog = /^\/api\/management\/programs\/\d+\/(?:partners\/(?:\d+\/)?|positions\/\d+\/|partner-options\/)$/
+for (const topic of ['catalog', 'organization', 'assignments', 'users', 'capacity', 'placements']) paths[topic].push(coordinatorCatalog)
 for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.email[0])
 paths.catalog.push(...paths.results, ...paths.capacity)
 paths.batches.push(/^\/api\/instructor\/companies\/$/, /^\/api\/nlp\/positions\/\d+\/text\/$/)

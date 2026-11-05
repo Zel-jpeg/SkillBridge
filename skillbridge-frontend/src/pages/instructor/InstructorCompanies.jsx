@@ -11,6 +11,7 @@ import DataSection from '../../components/DataSection'
 // Cards → click → detail modal (bottom-sheet on mobile, centered on desktop).
 
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useInstructorCompanies } from '../../hooks/instructor/useInstructorCompanies'
 import Avatar                     from '../../components/Avatar'
 import NlpTextPreview from '../../components/NlpTextPreview'
@@ -417,6 +418,7 @@ export default function InstructorCompanies() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">OJT Partners</h1>
+            <Link to="/instructor/companies/manage" className="mt-2 inline-flex min-h-11 items-center rounded-lg bg-green-700 px-4 text-xs font-semibold text-white hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-green-600">Manage partners & positions</Link>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {allCount} {allCount === 1 ? 'partner' : 'partners'} · tap a card to view details
             </p>

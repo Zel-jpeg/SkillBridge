@@ -11,7 +11,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(OUT / 'synthetic-browser.sqlite3')
-if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance'):
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'coordinator-catalog'):
     settings.DATABASES['default'].setdefault('OPTIONS', {})['transaction_mode'] = 'IMMEDIATE'
 settings.SECRET_KEY = 'synthetic-organization-browser-key'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
@@ -24,6 +24,20 @@ django.setup()
 from django.core.management import call_command
 from rest_framework_simplejwt.tokens import AccessToken
 from api.models import User, Institute, Program, Batch, BatchEnrollment
+if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'coordinator-catalog':
+    # The image codec and database transaction stay real; object transport is
+    # isolated to this owned fixture directory, with no external storage writes.
+    from api import company_images
+    image_dir = OUT / 'synthetic-images'
+    image_dir.mkdir()
+    settings.SUPABASE_STORAGE_URL = f"http://127.0.0.1:{os.environ['SB_ORGANIZATION_API_PORT']}"
+    def synthetic_storage(method, key=None, **kwargs):
+        if method == 'POST':
+            (image_dir / Path(key).name).write_bytes(kwargs['data'])
+        elif method == 'DELETE':
+            for item in kwargs['json']['prefixes']:
+                (image_dir / Path(item).name).unlink(missing_ok=True)
+    company_images._storage_request = synthetic_storage
 call_command('migrate', verbosity=0)
 identities = {}
 for role in ['admin', 'instructor', 'student']:

@@ -29,6 +29,7 @@ const InstructorPending = lazy(() => import('./pages/instructor/InstructorPendin
 const InstructorAssessments = lazy(() => import('./pages/instructor/InstructorAssessments'))
 const AssessmentArchives = lazy(() => import('./pages/assessments/AssessmentArchives'))
 const InstructorCompanies = lazy(() => import('./pages/instructor/InstructorCompanies'))
+const CoordinatorPartners = lazy(() => import('./pages/instructor/CoordinatorPartners'))
 const InstructorPlacements = lazy(() => import('./pages/placements/PlacementsPage').then(module => ({ default: module.InstructorPlacements })))
 const ReportsAnalytics = lazy(() => import('./pages/reports/ReportsAnalytics'))
 
@@ -114,6 +115,7 @@ function App() {
         <Route path="/instructor/assessments/archives" element={<Page><AssessmentArchives role="instructor" /></Page>} />
         <Route path="/instructor/assessment/create" element={<Page><InstructorUpload /></Page>} />
         <Route path="/instructor/companies" element={<Page><InstructorCompanies /></Page>} />
+        <Route path="/instructor/companies/manage" element={<Page><CoordinatorPartners /></Page>} />
         <Route path="/instructor/placements" element={<Page><InstructorPlacements /></Page>} />
       </Route>
 

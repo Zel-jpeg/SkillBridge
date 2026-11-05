@@ -30,6 +30,8 @@ if '--legacy-organization' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'legacy-organization'
 if '--multi-institute-acceptance' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'multi-institute-acceptance'
+if '--coordinator-catalog' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'coordinator-catalog'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
@@ -74,6 +76,8 @@ try:
             ('--derived-scope', 'derived_scope_playwright.py'),
             ('--legacy-organization', 'legacy_organization_playwright.py'),
             ('--multi-institute-acceptance', 'multi_institute_acceptance_playwright.py'),
+            ('--coordinator-catalog', 'coordinator_catalog_playwright.py'),
+            ('--position-dialog', 'position_dialog_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),
             ('--authoring-draft', 'authoring_draft_playwright.py'),
             ('--companies', 'company_collection_playwright.py'),

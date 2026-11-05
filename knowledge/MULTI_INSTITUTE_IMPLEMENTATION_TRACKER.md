@@ -297,8 +297,8 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F18 — Coordinator partner and position screens
 
-- [ ] Branch `codex/coordinator-partner-editor` after completed F17.
-- [ ] Add create/edit/reuse actions, program context, requirement selection and
+- [x] Branch `codex/coordinator-partner-editor` after completed F17.
+- [x] Add create/edit/reuse actions, program context, requirement selection and
   recovery behavior to the instructor partner area.
 - [ ] Verify scoped API flows, search/pagination, keyboard and phone/desktop
   behavior, lint/build and relevant regression, then commit and merge locally.
@@ -323,7 +323,18 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F17 verified and merged locally:
+Current checkpoint — F18 implementation in progress (6 November 2026):
+
+- Branch `codex/coordinator-partner-editor`, based on local `main` `1e9ac5a`.
+- F17 is completed and merged. Migration 0039 is already applied with verified
+  restore and preservation; no additional schema changes are planned for F18.
+- Coordinator management UI is being added under the existing partner area,
+  reusing image, location and position forms. Program selection, explicit reuse,
+  creator permissions and reviewed save recovery are implemented for verification.
+- Next: frontend checks, real-API coordinator browser journeys, fix/retest, then
+  document and merge F18 locally before starting F19. No push or deployment.
+
+Previous checkpoint — F17 verified and merged locally:
 
 - `codex/coordinator-partner-authority` starts at `737fffa`. The catalog
   authority audit confirmed that creator tracking is missing on positions and

@@ -19,10 +19,9 @@ recorded status and ownership. Entrepreneurship and Tourism under IBPA are
 synthetic examples for verification. [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) ·
 [Implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
 
-The user has requested a subsequent extension for instructor/OJT coordinator
-partner and position creation and editing. It is planned as F17–F19. Current
-catalog mutations remain admin-controlled until the extension is implemented.
-F19 also includes complete role workflows, exploratory bug review and
+The instructor/OJT coordinator extension adds program-scoped partner and position
+creation and editing. F17's backend and F18's coordinator screens implement it.
+F19 includes complete role workflows, exploratory bug review and
 reproduction/fix/retest gates across the existing system and the extension.
 [Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
 
@@ -88,6 +87,8 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Coordinator catalog screens](COORDINATOR_CATALOG_SCREENS.md) describes the
+  F18 program management workspace, reviewed reuse, save recovery and browser checks.
 - [Coordinator catalog authority](COORDINATOR_CATALOG_AUTHORITY.md) describes the
   F17 management API, creator/program checks and additive migration 0039.
 - [Coordinator partner and position plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md)

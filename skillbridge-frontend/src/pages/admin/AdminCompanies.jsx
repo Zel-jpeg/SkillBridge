@@ -88,12 +88,13 @@ function makePinIcon(L) {
 // ════════════════════════════════════════════════════════════════════════════
 // PinMap — interactive drop-pin map inside modals
 // ════════════════════════════════════════════════════════════════════════════
-function PinMap({ center, pinned, onPin, height = 248 }) {
+export function PinMap({ center, pinned, onPin, height = 248 }) {
   const elRef  = useRef(null)
   const mapRef = useRef(null)
   const mkRef  = useRef(null)
 
   const latest = useRef({ center, pinned, onPin })
+  const placeRef = useRef(null)
   useEffect(() => { latest.current = { center, pinned, onPin } }, [center, pinned, onPin])
   const [mapStatus, setMapStatus] = useState('loading')
   const [mapAttempt, setMapAttempt] = useState(0)
@@ -119,7 +120,7 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
       map.zoomControl.setPosition('bottomright')
       resizeTimer = setTimeout(() => map.invalidateSize(), 150)
 
-      function placeMk(lat, lng) {
+      function placeMk(lat, lng, emit = true) {
         if (mkRef.current) {
           mkRef.current.setLatLng([lat, lng])
         } else {
@@ -131,10 +132,11 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
             latest.current.onPin({ lat: p.lat, lng: p.lng })
           })
         }
-        latest.current.onPin({ lat, lng })
+        if (emit) latest.current.onPin({ lat, lng })
       }
 
-      if (pinned) placeMk(pinned.lat, pinned.lng)
+      placeRef.current = placeMk
+      if (pinned) placeMk(pinned.lat, pinned.lng, false)
       map.on('click', ev => placeMk(ev.latlng.lat, ev.latlng.lng))
       mapRef.current = map
       setMapStatus('ready')
@@ -144,20 +146,23 @@ function PinMap({ center, pinned, onPin, height = 248 }) {
     return () => {
       alive = false
       clearTimeout(resizeTimer)
+      mapRef.current?.stop()
       mapRef.current?.remove()
       mapRef.current = null
       mkRef.current  = null
+      placeRef.current = null
     }
   }, [mapAttempt])
 
   // Re-center whenever address selection changes
   useEffect(() => {
     if (mapRef.current && center) {
-      mapRef.current.setView([center.lat, center.lng], center.zoom ?? 15, { animate: true })
+      mapRef.current.setView([center.lat, center.lng], center.zoom ?? 15, { animate: false })
     }
   }, [center?.lat, center?.lng, center?.zoom]) // eslint-disable-line
 
   useEffect(() => {
+    if (pinned) placeRef.current?.(pinned.lat, pinned.lng, false)
     if (!pinned && mkRef.current) {
       mkRef.current.remove()
       mkRef.current = null

@@ -28,7 +28,7 @@ Review potential duplicate partners before linking existing organizations.
 Distinct opportunities can have different requirements and independent slots.
 A single actual shared opening must retain its shared capacity.
 
-## Current code baseline
+## Code baseline before the extension
 
 - `instructor_companies` currently lists openings eligible for the instructor's
   owned active batches and attaches only authorized student matches.
@@ -91,23 +91,23 @@ Branch `codex/coordinator-partner-authority`, from the completed plan receipt.
 
 Branch `codex/coordinator-partner-editor`, after F17 passes its gates.
 
-- [ ] Add **Add partner**, **Add position** and authorized edit actions to the
+- [x] Add **Add partner**, **Add position** and authorized edit actions to the
   existing instructor partner area. Reuse compatible administrator form and
   validation components.
-- [ ] Show the selected program, partner relationship, position eligibility,
+- [x] Show the selected program, partner relationship, position eligibility,
   numerical requirements, tags and actual shared capacity clearly.
-- [ ] Support choosing a program when a coordinator has several assignments,
+- [x] Support choosing a program when a coordinator has several assignments,
   and display newly created partners even before they have an opening or batch.
-- [ ] Offer authorized partner reuse with duplicate review. Keep shared metadata
+- [x] Offer authorized partner reuse with duplicate review. Keep shared metadata
   authority visible when another coordinator can add an opening but cannot edit
   the common organization details.
-- [ ] Provide ordinary search, program filters, pagination, readable phone/desktop
+- [x] Provide ordinary search, program filters, pagination, readable phone/desktop
   layouts and keyboard actions, following the collection UI skill.
-- [ ] Retain unsaved input on validation/network failure, confirm discard,
+- [x] Retain unsaved input on validation/network failure, confirm discard,
   prevent duplicate submission and handle uncertain save outcomes.
-- [ ] Revalidate available actions after assignment revocation and scope changes.
+- [x] Revalidate available actions after assignment revocation and scope changes.
   Show the API's access error and clear restricted cached records.
-- [ ] Verify real local create/edit flows, save/cancel/retry, empty and loading
+- [x] Verify real local create/edit flows, save/cancel/retry, empty and loading
   states, image/location behavior, shared reuse, keyboard focus, pagination and
   phone/light/dark layouts.
 - [ ] Pass frontend tests, lint/build and relevant backend regression. Commit
@@ -277,12 +277,12 @@ training/interview tracking or automated practical grading requires a separate
 request. Paper questionnaires can be authored or converted into the supported
 question formats after the instructor checks their keys and category mappings.
 
-## Current planning checkpoint
+## Current execution checkpoint
 
-The extension is recorded as F17–F19. F01–F16 remain completed. The immediate
-next implementation step is F17's backend authority and sharing audit, followed
-by the smallest compatible data model and API changes. The existing feature
-branch, verification, migration and local-merge rules apply.
+F01–F17 are merged locally. F18's coordinator screens have passed their checks
+on `codex/coordinator-partner-editor`; its [receipt](COORDINATOR_CATALOG_SCREENS.md)
+records the actual tests and fixes. Local commit/merge is the next gate, followed
+by F19. The existing branch, verification and no-push rules apply.
 
 The user's follow-up expands F19 to complete system flows, exploratory bug
 discovery and evaluation. The matrix above is the execution checklist. Its

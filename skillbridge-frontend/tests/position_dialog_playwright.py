@@ -1,4 +1,4 @@
-"""Position editor interactions and responsive layout; synthetic, intercepted API only."""
+"""Legacy position editing regression; scoped creation uses opportunity_scope_playwright."""
 import copy
 import json
 import os
@@ -89,7 +89,7 @@ class Fixture:
             return route.fulfill(json=data)
         return route.fulfill(json={} if path.endswith('/stats/') else [])
 
-    def open(self, edit=False):
+    def open(self, edit=True):
         self.page.goto(BASE + '/admin/companies', wait_until='networkidle')
         self.page.get_by_role('button', name=('Edit position Backend Developer Intern' if edit else 'Add position to Sample Company'), exact=True).click()
         dialog = self.page.get_by_role('dialog', name='Edit Position' if edit else 'Add Position', exact=True)
@@ -120,14 +120,17 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch(channel='chrome', headless=True)
     try:
         f = Fixture(browser)
+        f.company['positions'][0]['requirements'] = {}
+        f.company['positions'][0]['tags'] = []
         dialog = f.open()
+        dialog.get_by_label('Position title', exact=False).fill('')
         dialog.get_by_role('button', name='Suggest / refresh tags', exact=True).click()
         expect(dialog.locator('.position-editor-error')).to_have_text('Enter a position title before suggesting tags.')
-        dialog.get_by_role('button', name='Add Position', exact=True).click()
+        dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog.locator('.position-editor-error')).to_have_text('Position title is required.')
         dialog.get_by_label('Position title', exact=False).fill('Backend Developer Intern')
         dialog.get_by_label('Available slots', exact=False).fill('1.5')
-        dialog.get_by_role('button', name='Add Position', exact=True).click()
+        dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog.locator('.position-editor-error')).to_contain_text('whole number')
         assert not f.writes and not f.suggestions
         dialog.get_by_label('Available slots', exact=False).fill('0')
@@ -171,20 +174,20 @@ with sync_playwright() as playwright:
         dialog.get_by_role('button', name='All skills (14)', exact=True).click()
         f.page.screenshot(path=str(ARTIFACTS / 'desktop.png'))
         f.fail_save = True
-        dialog.get_by_role('button', name='Add Position', exact=True).evaluate('(el) => { el.click(); el.click() }')
+        dialog.get_by_role('button', name='Save Changes', exact=True).evaluate('(el) => { el.click(); el.click() }')
         expect(dialog.locator('.position-editor-error')).to_have_text('Synthetic save conflict')
         assert len(f.writes) == 1
         expect(dialog.get_by_label('Available slots', exact=False)).to_have_value('0')
         expect(dialog.get_by_label('Custom percentage for Cloud', exact=True)).to_have_value('65')
         f.fail_save = False
-        dialog.get_by_role('button', name='Add Position', exact=True).click()
+        dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog).to_have_count(0)
-        assert f.writes[-1] == ('POST', '/api/admin/companies/1/positions/', {
+        assert f.writes[-1] == ('PATCH', '/api/admin/positions/1/', {
             'title': 'Backend Developer Intern', 'slots': 0,
             'requirements': {'Web Development': 50, 'Database': 75, 'Backend': 75, 'Cloud': 65},
             'tags': ['Django', 'REST API', 'PostgreSQL', 'Custom tag'],
         })
-        checks.append('Unchanged create/suggest payloads, zero capacity, editable tags, failure preservation, single pending save and successful retry')
+        checks.append('Legacy edit/suggest payloads, zero capacity, editable tags, failure preservation, single pending save and successful retry')
         f.close()
 
         f = Fixture(browser)
@@ -206,6 +209,7 @@ with sync_playwright() as playwright:
 
         f = Fixture(browser)
         f.categories = [f'Synthetic skill {i:03d}' for i in range(80)]
+        f.company['positions'][0]['requirements'] = {}
         dialog = f.open()
         scroll = dialog.get_by_role('region', name='Skill requirements list')
         expect(dialog.get_by_role('button', name='All skills (80)', exact=True)).to_be_visible()
@@ -241,8 +245,8 @@ with sync_playwright() as playwright:
         f = Fixture(browser)
         f.fail_categories = True
         f.page.goto(BASE + '/admin/companies', wait_until='networkidle')
-        f.page.get_by_role('button', name='Add position to Sample Company', exact=True).click()
-        dialog = f.page.get_by_role('dialog', name='Add Position', exact=True)
+        f.page.get_by_role('button', name='Edit position Backend Developer Intern', exact=True).click()
+        dialog = f.page.get_by_role('dialog', name='Edit Position', exact=True)
         expect(dialog.locator('.sb-data-error')).to_contain_text('Could not load this section')
         f.fail_categories = False
         dialog.get_by_role('button', name='Retry', exact=True).click()

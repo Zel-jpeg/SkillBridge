@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import api from '../../api/axios'
 import DataSection from '../DataSection'
 import DialogShell from '../DialogShell'
@@ -6,6 +6,7 @@ import { RefreshIcon, SearchIcon } from '../Icons'
 import { useApi } from '../../hooks/useApi'
 import FrameworkSelect from '../assessment/FrameworkSelect'
 import PositionPrograms from './PositionPrograms'
+import ConfirmModal from './ConfirmModal'
 import './positionDialog.css'
 
 const LEVELS = [
@@ -53,19 +54,23 @@ function SkillRequirement({ category, value, onChange }) {
 export default function PositionDialog(props) {
   const { mode, companyName, onClose } = props
   const [saving, setSaving] = useState(false)
-  const close = () => { if (!saving) onClose() }
-  return <DialogShell title={mode === 'edit' ? 'Edit Position' : 'Add Position'}
+  const [dirty, setDirty] = useState(false)
+  const [discard, setDiscard] = useState(false)
+  const close = () => { if (!saving) { if (props.confirmDiscard && dirty) setDiscard(true); else onClose() } }
+  return <><DialogShell title={mode === 'edit' ? 'Edit Position' : 'Add Position'}
     description="Define the role, set skill levels, and add relevant tags."
     eyebrow={`${companyName} · OJT Partner`}
     headerDetails={<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Define the role, set skill levels, and add relevant tags.</p>}
     size="position" closeLabel="Close position editor" closeDisabled={saving} onClose={close}>
     <div className="position-editor-content">
-      <PositionForm {...props} saving={saving} setSaving={setSaving} />
+      <PositionForm {...props} onClose={close} onSaved={onClose} onDirtyChange={setDirty} saving={saving} setSaving={setSaving} />
     </div>
-  </DialogShell>
+  </DialogShell>{discard && <ConfirmModal title="Discard position changes?" message="Your unsaved position changes will be discarded."
+    confirmLabel="Discard changes" onCancel={() => setDiscard(false)} onConfirm={onClose} />}</>
 }
 
-function PositionForm({ mode = 'add', initialData = null, categories, onClose, onSubmit, saving, setSaving }) {
+function PositionForm({ mode = 'add', initialData = null, categories = [], onClose, onSaved, onDirtyChange,
+  onSubmit, saving, setSaving, fixedProgram, saveBlocked = false, recovery }) {
   const id = useId()
   const savePending = useRef(false)
   const suggestPending = useRef(false)
@@ -76,9 +81,9 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
   const [slots, setSlots] = useState(initialData?.slots ?? 1)
   const [tags, setTags] = useState((initialData?.tags || []).join(', '))
   const [scoped, setScoped] = useState(mode === 'add' || Boolean(initialData?.eligibility_configured))
-  const [programs, setPrograms] = useState(initialData?.eligible_programs || [])
+  const [programs, setPrograms] = useState(initialData?.eligible_programs || (fixedProgram ? [fixedProgram] : []))
   const firstRequirement = initialData?.category_requirements?.[0]
-  const [programId, setProgramId] = useState(firstRequirement?.program_id || null)
+  const [programId, setProgramId] = useState(firstRequirement?.program_id || fixedProgram?.id || null)
   const [frameworkId, setFrameworkId] = useState(firstRequirement?.framework_id || null)
   const [reqs, setReqs] = useState(() => scoped
     ? Object.fromEntries((initialData?.category_requirements || []).map(row => [row.category_id, row.percentage]))
@@ -87,6 +92,10 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedOnly, setSelectedOnly] = useState(false)
+  const original = useRef(JSON.stringify({ title, slots, tags, programId, frameworkId, reqs, programs }))
+  useEffect(() => {
+    onDirtyChange(JSON.stringify({ title, slots, tags, programId, frameworkId, reqs, programs }) !== original.current)
+  }, [title, slots, tags, programId, frameworkId, reqs, programs, onDirtyChange])
 
   const catalogUrl = scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
   const { data: catalog } = useApi(catalogUrl)
@@ -122,7 +131,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (savePending.current || suggestPending.current) return
+    if (savePending.current || suggestPending.current || saveBlocked) return
     if (!title.trim()) { reportError('Position title is required.'); return }
     if (!String(slots).trim() || !Number.isInteger(Number(slots)) || Number(slots) < 0 || Number(slots) > 2147483647) {
       reportError('Slots must be a whole number from 0 to 2147483647.'); return
@@ -142,7 +151,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
         } : { requirements: Object.fromEntries(Object.entries(reqs).filter(([, value]) => value > 0)) }),
         tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
       })
-      if (result?.ok) onClose()
+      if (result?.ok) onSaved()
       else reportError(result?.message || 'Position was not saved. Your changes are kept here.')
     } catch {
       reportError('Save could not be confirmed. Your changes are kept here; check the list before retrying.')
@@ -179,6 +188,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
   return <form className="position-editor-form" noValidate onSubmit={handleSubmit} aria-busy={saving}>
     <div className="position-editor-body">
       {error && <p ref={errorRef} tabIndex={-1} role="alert" className="position-editor-error">{error}</p>}
+      {recovery}
       <fieldset disabled={saving} className="position-editor-fields">
         <section className="position-editor-section" aria-labelledby={`${id}-details`}>
           <SectionHeading number="1" id={`${id}-details`}>Position details</SectionHeading>
@@ -199,7 +209,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
 
         <section className="position-editor-section" aria-labelledby={`${id}-programs`}>
           <SectionHeading number="2" id={`${id}-programs`}>Program eligibility</SectionHeading>
-          {scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
+          {fixedProgram ? <p className="position-editor-help">{fixedProgram.institute_code} · {fixedProgram.name}</p> : scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
             <p className="position-editor-help">This legacy opening serves batches without a configured program.</p>
             <button type="button" className="position-editor-cancel" onClick={() => { setScoped(true); selectFramework(null, null) }}>Configure program eligibility</button>
             <p className="position-editor-help">Configuring eligibility replaces the legacy requirement list when you save.</p>
@@ -209,12 +219,12 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
         <section className="position-editor-section" aria-labelledby={`${id}-skills`}>
           <SectionHeading number="3" id={`${id}-skills`}>Skill requirements</SectionHeading>
           {scoped && programs.length > 0 && <div className="space-y-2">
-            <label className="block position-editor-label">Requirement program
+            {!fixedProgram && <label className="block position-editor-label">Requirement program
               <select className="position-editor-input" value={programId || ''} onChange={event => selectFramework(Number(event.target.value) || null, null)}>
                 <option value="">Manual placement only</option>
                 {programs.map(program => <option key={program.id} value={program.id}>{program.institute_code} · {program.name}</option>)}
               </select>
-            </label>
+            </label>}
             <FrameworkSelect key={programId} programId={programId} value={frameworkId}
               onChange={value => selectFramework(programId, value)} help="Changing the framework clears requirement levels in this draft. Other eligible programs can use manual placement." />
           </div>}
@@ -261,7 +271,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
           </div>
           <label htmlFor={`${id}-tags`} className="sr-only">Position tags</label>
           <textarea id={`${id}-tags`} value={tags} onChange={event => setTags(event.target.value)} rows={2} disabled={suggesting}
-            aria-describedby={`${id}-tags-help`} placeholder="Django, REST API, authentication, PostgreSQL" className="position-editor-input" />
+            aria-describedby={`${id}-tags-help`} placeholder="Enter relevant skills, activities or tools" className="position-editor-input" />
           <p id={`${id}-tags-help`} className="position-editor-help">Comma-separated and editable. Refreshing replaces the current tag list.</p>
         </section>
       </fieldset>
@@ -270,7 +280,7 @@ function PositionForm({ mode = 'add', initialData = null, categories, onClose, o
       <p className="position-editor-help">Save when you’re ready.</p>
       <div className="position-editor-actions">
         <button type="button" onClick={onClose} disabled={saving} className="position-editor-cancel">Cancel</button>
-        <button type="submit" disabled={saving || suggesting} className="position-editor-save">
+        <button type="submit" disabled={saving || suggesting || saveBlocked} className="position-editor-save">
           {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Add Position'}
         </button>
       </div>

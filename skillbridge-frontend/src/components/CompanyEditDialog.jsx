@@ -2,11 +2,12 @@ import DialogShell from './DialogShell'
 import { CompanyIcon, PinIcon } from './Icons'
 import './companyEdit.css'
 
-export default function CompanyEditDialog({ details, location, saving, saveError, invalid, onSave, onClose, saveLabel = 'Save changes' }) {
+export default function CompanyEditDialog({ details, location, saving, saveError, invalid, onSave, onClose, saveLabel = 'Save changes',
+  title = 'Edit Partner', description = 'Keep your partner profile up to date.' }) {
   const close = () => { if (!saving) onClose() }
-  return <DialogShell title="Edit Partner" description="Keep your partner profile up to date."
+  return <DialogShell title={title} description={description}
     size="company-edit" onClose={close} closeLabel="Close partner editor"
-    headerDetails={<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Keep your partner profile up to date.</p>}
+    headerDetails={<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>}
     footer={<div className="company-edit-footer">
       <p className="text-xs text-gray-500 dark:text-gray-400">Your changes appear after you save.</p>
       <div className="company-edit-actions">
