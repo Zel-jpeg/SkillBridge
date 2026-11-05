@@ -250,14 +250,15 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F14 — Existing IC mapping and final migration reconciliation
 
-- [ ] Branch `codex/existing-institute-data-mapping` after F13.
-- [ ] Reviewed mapping of existing records into normal IC/IT/IS context; ambiguous
+- [x] Branch `codex/existing-institute-data-mapping` after F13 (`38d95dc`).
+- [x] Reviewed mapping of existing records into normal IC/IT/IS context; ambiguous
   labels/mixed batches remain reviewable, original IDs/statuses/evidence retained.
-- [ ] No data deletion, history-only state, forced split, automatic regrading,
+- [x] No data deletion, history-only state, forced split, automatic regrading,
   real recommendation rerun, account disabling or capacity release.
-- [ ] Rehearse upgrade on isolated synthetic legacy data, compare preserved facts,
+- [x] Rehearse upgrade on isolated synthetic legacy data, compare preserved facts,
   verify backup/restore, then apply authorized tested configured migrations and
-  save a private-data-free receipt; commit and merge locally.
+  save a private-data-free receipt.
+- [ ] Commit and merge locally.
 
 ### F15 — Help and project documentation
 
@@ -282,6 +283,38 @@ Record per completed feature: branch, base/commit/merge, changed behavior, exact
 checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
+
+Current checkpoint — F14 applied and verified (5 November 2026):
+
+- `codex/existing-institute-data-mapping` starts at `38d95dc`. F13 is tested and
+  merged. The configured migration receipt currently ends at 0038.
+- Batch program identity selects a different framework, grading and opportunity
+  contract. Reconciliation must preserve the existing cohort policy while
+  exposing confirmed IC links. Existing labels alone are insufficient if they
+  came from the old department default.
+- Configured inventory ran read-only. It found zero pending schema migrations,
+  no institute/program catalog entries, 11 unlinked BSIT students with the IC
+  department label, one active cohort with only the confirmed program label,
+  and six existing assessments. It recorded no identifiers.
+- The 67-test PostgreSQL suite passed (`work/organization-postgres-ixhqfrll/`).
+  Django system and drift checks passed. Frontend lint, build and all 284
+  tests passed. Chrome verified normal IC roster access, institute analytics
+  and foreign roster denial (`work/organization-browser-x3t3bul2/`).
+- The exact backup restore and pre-organization upgrade rehearsal passed on
+  isolated data (`work/program-migration-operator-cqn8re76/`), including a
+  rejected fingerprint and idempotent review. The 0038 migration operator
+  regression passed (`work/program-migration-operator-6zfpv_f2/`).
+- The first configured attempt stopped before writing after unrelated database
+  activity. The verified retry preserved that activity, created normal IC,
+  BSIT and BSIS catalog entries, and linked one active batch and 11 BSIT
+  student profiles. It verified 42 public tables outside catalog additions
+  and the two expected link columns. Existing assessments, scores, approvals
+  and capacities remained intact. No rerun or notifications were sent.
+- The private backup was restored and rehearsed. The successful receipt is
+  `work/organization-configured-migration-ul_ipbj3/receipt.json`.
+  An independent read-only review found zero remaining links and no pending
+  migrations. See the [reconciliation procedure](EXISTING_IC_RECONCILIATION.md).
+- Next commit F14, fast-forward local `main`, then start F15.
 
 Current checkpoint — F13 merged locally (5 November 2026):
 

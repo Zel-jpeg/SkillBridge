@@ -12,12 +12,15 @@ BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 OUT = Path(tempfile.mkdtemp(prefix='program-migration-operator-', dir=ROOT / 'work'))
 DATA = OUT / 'source-cluster'
 PYTHON = ROOT / 'skillbridge-backend/venv/Scripts/python.exe'
-MIGRATION = sys.argv[1] if len(sys.argv) > 1 else '0037_assessment_framework'
+RECONCILE = '--reconcile-ic' in sys.argv
+MIGRATION = sys.argv[1] if len(sys.argv) > 1 and not RECONCILE else '0037_assessment_framework'
 PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0035_neutral_user_department': '0034_program_batch_context',
             '0036_program_competency_frameworks': '0035_neutral_user_department',
             '0037_assessment_framework': '0036_program_competency_frameworks',
             '0038_position_program_eligibility': '0037_assessment_framework'}[MIGRATION]
+if RECONCILE:
+    PREVIOUS = '0031_recommendation_assessment_order'
 with socket.socket() as sock:
     sock.bind(('127.0.0.1', 0))
     port = sock.getsockname()[1]
@@ -53,13 +56,41 @@ User, Batch = apps.get_model('api','User'), apps.get_model('api','Batch')
 owner = User.objects.create(email='operator-owner@example.invalid', role='instructor', name='Synthetic Owner')
 batch = Batch.objects.create(name='Preserved mixed IC cohort', instructor_id=owner.id)
 for index, course in enumerate(['BSIT','BSIS']):
-    student = User.objects.create(email=f'operator-{index}@example.invalid', role='student', course=course)
+    student = User.objects.create(email=f'operator-{index}@example.invalid', role='student', course=course, department='Institute of Computing')
     apps.get_model('api','BatchEnrollment').objects.create(batch_id=batch.id, student_id=student.id)
+User.objects.create(email='operator-unknown@example.invalid', role='student', course='Unknown', department='Institute of Computing')
 apps.get_model('api','SkillCategory').objects.create(name='Retained IC category', description='Existing definition', tags=['Existing tag'])
 company = apps.get_model('api','Company').objects.create(name='Retained synthetic partner')
 apps.get_model('api','Position').objects.create(company_id=company.id, title='Retained opening', slots_available=2)
 """
     run([PYTHON, 'manage.py', 'shell', '-c', seed.replace('PREVIOUS_MIGRATION', PREVIOUS)], 'seed.txt')
+    if RECONCILE:
+        run([PYTHON, 'manage.py', 'migrate', '--noinput'], 'upgrade-from-pre-organization.txt')
+        command = [PYTHON, 'scripts/migrate_organization_catalog.py', '--reconcile-ic']
+        inspected = json.loads(run(command, 'inspect.txt').strip())
+        assert inspected['pending'] == []
+        assert inspected['mapping'] == {'students_by_program': {'BSIT': 1, 'BSIS': 1}, 'batches': 1,
+            'institute_to_create': True, 'programs_to_create': ['BSIS', 'BSIT'],
+            'review_counts': {'students_without_confirmed_labels': 1}}
+        try:
+            run([*command, '--apply', '--expected-target', inspected['target_fingerprint'],
+                 '--expected-plan', 'wrong-fingerprint'], 'reject-unreviewed.txt')
+        except RuntimeError:
+            assert 'IC mapping changed or was not reviewed' in (OUT / 'reject-unreviewed.txt').read_text(encoding='utf-8')
+        else:
+            raise AssertionError('Unreviewed data mapping was accepted')
+        result = run([*command, '--apply', '--expected-target', inspected['target_fingerprint'],
+                      '--expected-plan', inspected['mapping_fingerprint']], 'apply.txt')
+        applied = json.loads(result.strip().splitlines()[-1])
+        receipt = json.loads((Path(applied['receipt_directory']) / 'receipt.json').read_text(encoding='utf-8'))
+        assert receipt['backup_restored_and_hash_verified'] and receipt['pending_after'] == []
+        assert receipt['mapping'] == inspected['mapping'] and not receipt['regraded_or_recalculated']
+        repeat = json.loads(run(command, 'repeat.txt').strip())
+        assert repeat['mapping']['students_by_program'] == {} and repeat['mapping']['batches'] == 0
+        print(json.dumps({'passed': True, 'synthetic_source_only': True, 'preserved_tables': receipt['preserved_tables'],
+                          'actual_backup_restore_and_mapping_rehearsal': True, 'idempotent': True,
+                          'receipt_directory': applied['receipt_directory']}), flush=True)
+        raise SystemExit(0)
     command = [PYTHON, 'scripts/migrate_organization_catalog.py', '--migration', MIGRATION]
     inspected = json.loads(run(command, 'inspect.txt').strip())
     assert inspected['pending'] == [['api', MIGRATION, False]]

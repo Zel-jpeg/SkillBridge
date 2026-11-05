@@ -1061,7 +1061,7 @@ def instructor_batches(request):
 
     if request.method == 'GET':
         batches = managed_batches(request.user)
-        batches = batches.select_related('instructor', 'program__institute').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
+        batches = batches.select_related('instructor', 'institute', 'program__institute').annotate(enrolled_total=Count('enrollments')).order_by('-created_at')
         return Response([batch_payload(b, b.enrolled_total) for b in batches])
 
     # POST — create batch

@@ -32,6 +32,15 @@ for role in ['admin', 'instructor', 'student']:
 owner = User.objects.get(role='instructor')
 batch = Batch.objects.create(name='Existing IC mixed batch', instructor=owner)
 BatchEnrollment.objects.create(batch=batch, student=User.objects.get(role='student'))
+if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'legacy-organization':
+    from django.db import transaction
+    from api.legacy_organization import apply_mapping, mapping_plan
+    User.objects.filter(role='student').update(course='BSIT', department='Institute of Computing', school_id='2026-00001')
+    second = User.objects.create_user('mixed-learner@example.invalid', name='Second synthetic learner', role='student',
+        course='BSIS', department='Institute of Computing', school_id='2026-00002', is_approved=True)
+    BatchEnrollment.objects.create(batch=batch, student=second)
+    with transaction.atomic():
+        apply_mapping(mapping_plan())
 for number in range(9):
     candidate = User.objects.create_user(f'candidate-{number}@example.invalid', role='instructor', name=f'Synthetic Coordinator {number:02}', is_approved=True)
     if number == 0:

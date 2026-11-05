@@ -117,7 +117,7 @@ export default function AdminBatches() {
   const [showAudit, setShowAudit] = useState(false)
   const [auditPage, setAuditPage] = useState(1)
   const filtered = useMemo(() => batches.filter(batch =>
-    `${batch.name} ${batch.instructor_name}`.toLowerCase().includes(search.trim().toLowerCase()) &&
+    `${batch.name} ${batch.instructor_name} ${batch.institute_name || ''} ${batch.program?.code || ''}`.toLowerCase().includes(search.trim().toLowerCase()) &&
     (owner === 'all' || String(batch.instructor_id) === owner) && (status === 'all' || batch.status === status)), [batches, search, owner, status])
   const visiblePage = Math.min(page, Math.ceil(filtered.length / 10) || 1)
   const records = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
@@ -167,7 +167,7 @@ export default function AdminBatches() {
       <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-bold">Batches & students</h1><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Manage batches, instructors and student enrollment.</p></div><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} onClick={() => setEditor({ create: true })}><PlusIcon size={15} />Create batch</button></header>
       <section ref={batchCollectionRef} aria-label="Batch collection" className="space-y-5">
         <div className={`${surface} grid gap-4 p-4 sm:grid-cols-[1.2fr_1fr_1fr] sm:p-5`}>
-          <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Search batches<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><SearchIcon size={16} /></span><input aria-label="Search batches" placeholder="Search batch or instructor…" className={`${field} pl-9`} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></span></label>
+          <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Search batches<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><SearchIcon size={16} /></span><input aria-label="Search batches" placeholder="Search batch, institute or instructor…" className={`${field} pl-9`} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></span></label>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Instructor<select aria-label="Filter batches by instructor" className={`${field} mt-2`} value={owner} onChange={event => { setOwner(event.target.value); setPage(1) }}><option value="all">All instructors</option>{ownerOptions.map(([id, name]) => <option key={id} value={id}>{name || 'Instructor not assigned'}</option>)}</select></label>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Status<select aria-label="Filter batches by status" className={`${field} mt-2`} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="all">All statuses</option><option value="active">Active</option><option value="archived">Archived</option></select></label>
         </div>

@@ -358,6 +358,10 @@ def transfer_student(request, batch_id):
     if target.program_id and (student.program_id and student.program_id != target.program_id or
                               not matches_program(student.course, target.program)):
         return Response({'error': 'The student program differs from this batch. An administrator must review a program change first.'}, status=409)
+    if target.institute_id and not target.program_id:
+        source_institute = student.program.institute_id if student.program_id else source_batch.institute_id
+        if source_institute and source_institute != target.institute_id:
+            return Response({'error': 'The student belongs to a different institute. An administrator must review the program change first.'}, status=409)
     if unfinished(source_batch).filter(student=student).exists():
         return Response({'error': 'Resolve this student’s unfinished assessment before transferring.'}, status=409)
     if StudentResponse.objects.filter(assessment__batch=source_batch, student=student).filter(

@@ -43,6 +43,7 @@ def batch_payload(batch, student_count=None):
     return {'id': batch.id, 'name': batch.name, 'status': batch.status,
             'framework_id': batch.framework_id,
             'program_id': batch.program_id, 'institute_id': batch.institute_id,
+            'institute_name': batch.institute.name if batch.institute_id else '',
             'program': program_payload(batch.program) if batch.program_id else None,
             'created_at': batch.created_at, 'archived_at': batch.archived_at,
             'instructor_id': batch.instructor_id, 'instructor_name': batch.instructor.name,

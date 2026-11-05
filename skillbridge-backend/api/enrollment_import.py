@@ -48,6 +48,7 @@ def normalize_program(value):
     return {
         'bsit': 'BSIT', 'bachelorofscienceininformationtechnology': 'BSIT',
         'bsis': 'BSIS', 'bachelorofscienceininformationsystems': 'BSIS',
+        'bachelorofscienceininformationsystem': 'BSIS',
     }.get(normalized, str(value).strip().upper())
 
 
@@ -117,10 +118,17 @@ def match_row(row, batch, lock=False, matched_users=None, enrolled_ids=None, act
     else:
         users = matched_users
     student = users[0] if len(users) == 1 else None
+    mapped_program_conflict = False
+    if student and student.program_id:
+        if batch.program_id:
+            mapped_program_conflict = student.program_id != batch.program_id
+        else:
+            mapped_program_conflict = (not batch.institute_id or student.program.institute_id != batch.institute_id
+                                       or normalize_program(student.program.code) != row['course'])
     if users and (len(users) != 1 or student.role != 'student' or not student.is_active
                   or student.email.lower() != row['email']
                   or (student.school_id and student.school_id != row['school_id'])
-                  or (student.program_id and student.program_id != batch.program_id)
+                  or mapped_program_conflict
                   or (student.course and not (matches_program(student.course, batch.program) if batch.program_id else
                                               normalize_program(student.course) == row['course']))):
         row.update(status='conflict', issues=['Existing account identity or program conflicts; ask an administrator to resolve it.'])

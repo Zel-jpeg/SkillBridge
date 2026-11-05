@@ -81,6 +81,8 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Existing IC reconciliation](EXISTING_IC_RECONCILIATION.md) covers the
+  institute links, mixed-cohort compatibility and backup/restore operator.
 - [Institute report scope](INSTITUTE_REPORT_SCOPE.md) covers F13 report and
   analytics filters, scoped reruns, current evidence access and live invalidation.
 
