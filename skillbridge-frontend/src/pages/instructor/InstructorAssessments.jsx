@@ -25,6 +25,7 @@ import ConfirmModal                      from '../../components/admin/ConfirmMod
 import { useInstructorAssessments }      from '../../hooks/instructor/useInstructorAssessments'
 import DialogShell from '../../components/DialogShell'
 import QuestionImportPanel from '../../components/assessment/QuestionImportPanel'
+import QuestionnaireExportAction from '../../components/assessment/QuestionnaireExportAction'
 import AssessmentSettings from '../../components/instructor/AssessmentSettings'
 import AssessmentLibrary from '../../components/instructor/AssessmentLibrary'
 import AssessmentTitleEditor from '../../components/instructor/AssessmentTitleEditor'
@@ -149,7 +150,10 @@ export default function InstructorAssessments() {
                     />
                   ))}
 
-                  {!liveAssessment?.questions_locked && <button type="button" aria-label="Import questions" disabled={saving || loadingQuestions} onClick={() => setShowUpload(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><UploadIcon />Import questions</button>}
+                  <div className="flex flex-wrap gap-2">
+                    {!liveAssessment?.questions_locked && <button type="button" aria-label="Import questions" disabled={saving || loadingQuestions} onClick={() => setShowUpload(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"><UploadIcon />Import questions</button>}
+                    <QuestionnaireExportAction key={selected.id} assessmentId={selected.id} />
+                  </div>
                   {/* Add question buttons */}
                   {!liveAssessment?.questions_locked && <div className="flex flex-col sm:flex-row gap-2 mt-2 pb-2">
                     {[

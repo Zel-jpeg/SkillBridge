@@ -75,6 +75,15 @@ test('native text handles comments, separators, categories and all three types',
   assert.equal(rows[2].identAnswer, '0')
 })
 
+test('native export blocks preserve embedded line breaks and reject malformed encoded fields', () => {
+  const content = 'TYPE: mcq\nENCODING: JSON\nQUESTION: "Read the log:\\n---\\nprint(0)"\nA: "1"\nB: "0"\nCORRECT: "B"\nCATEGORY: "Records"'
+  const { rows, errs } = parseNativeQuestions(content)
+  assert.deepEqual(errs, [])
+  assert.equal(rows[0].question, 'Read the log:\n---\nprint(0)')
+  assert.deepEqual(questionImportPayload(rows)[0].choices, [{ text: '1', is_correct: false }, { text: '0', is_correct: true }])
+  assert.equal(parseNativeQuestions(content.replace('A: "1"', 'A: 1')).errs.length, 1)
+})
+
 test('spreadsheet numeric zero and boolean false survive normalization and stage payloads', () => {
   const { rows, errs } = parseSpreadsheetQuestions([
     { question: 'Numeric choice?', category: 'Records', choice_a: 0, choice_b: 1, correct: 'A' },

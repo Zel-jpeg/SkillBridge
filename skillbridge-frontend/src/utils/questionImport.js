@@ -106,15 +106,31 @@ export function parseNativeQuestions(content) {
   const blocks = content.replace(/\r\n|\r/g, '\n').split(/^\s*---+[^\S\n]*$/m)
   const values = blocks.map(block => block.split('\n').map(line => line.trim())
     .filter(line => line && !line.startsWith('#'))).filter(lines => lines.length)
-  return validatedRows(values.map((lines, index) => {
+  const rows = []
+  const errs = []
+  values.forEach((lines, index) => {
     const fields = new Map(lines.filter(line => line.includes(':')).map(line => {
       const colon = line.indexOf(':')
       return [line.slice(0, colon).trim().toUpperCase(), line.slice(colon + 1).trim()]
     }))
-    return { rowNum: index + 1, question: fields.get('QUESTION') || '', type: (fields.get('TYPE') || 'mcq').toLowerCase(),
-      choices: CHOICE_LABELS.map(letter => fields.get(letter) || ''), correct: fields.get('CORRECT') || '',
-      category: fields.get('CATEGORY') || '' }
-  }))
+    const rowNum = index + 1
+    const field = key => {
+      if (!fields.has(key)) return ''
+      if (fields.get('ENCODING') !== 'JSON') return fields.get(key)
+      const value = JSON.parse(fields.get(key))
+      if (typeof value !== 'string') throw new Error('Expected encoded text')
+      return value
+    }
+    try {
+      rows.push({ rowNum, question: field('QUESTION'), type: (fields.get('TYPE') || 'mcq').toLowerCase(),
+        choices: CHOICE_LABELS.map(field), correct: field('CORRECT'), category: field('CATEGORY') })
+    } catch {
+      errs.push({ rowNum, errors: ['The encoded SkillBridge text is invalid.'] })
+    }
+  })
+  if (!rows.length && errs.length) return { rows, errs }
+  const parsed = validatedRows(rows)
+  return { rows: parsed.rows, errs: [...parsed.errs, ...errs].sort((a, b) => a.rowNum - b.rowNum) }
 }
 
 export function parseSpreadsheetQuestions(raw) {

@@ -9,6 +9,7 @@ from .evaluation_views import admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
 from .assessment_archives import assessment_archive
+from .questionnaire_export import questionnaire_export
 from .assessment_release import publish_assessments
 from .assessment_lifecycle import assessment_duplicate, assessment_attempt_timing, assessment_extra_time
 from .assessment_interruptions import assessment_interruption
@@ -107,6 +108,7 @@ urlpatterns = [
     path('instructor/assessments/<int:assessment_id>/students/<int:student_id>/extra-time/', assessment_extra_time, name='assessment_extra_time'),
     path('assessments/<int:assessment_id>/timing/', assessment_attempt_timing, name='assessment_attempt_timing'),
     path('instructor/assessments/<int:assessment_id>/questions/',     views.instructor_assessment_questions,  name='instructor_assessment_questions'),
+    path('instructor/assessments/<int:assessment_id>/questionnaire-export/', questionnaire_export, name='questionnaire_export'),
     path('instructor/questions/<int:question_id>/', views.instructor_question_detail, name='instructor_question_detail'),
 
     # ── Instructor — Recommendations ──────────────────────────────────────────

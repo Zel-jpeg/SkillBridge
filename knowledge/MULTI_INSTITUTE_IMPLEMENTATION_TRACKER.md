@@ -230,10 +230,10 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F12 — Protected questionnaire export
 
-- [ ] Branch `codex/questionnaire-export` after F11.
-- [ ] Export supported MCQ AIKEN with disclosed omissions/metadata limits; preserve
+- [x] Branch `codex/questionnaire-export` after F11.
+- [x] Export supported MCQ AIKEN with disclosed omissions/metadata limits; preserve
   native mixed-type option and correct answer order/keys under staff authorization.
-- [ ] Test backend key access, mixed-type choices and supported round trips.
+- [x] Test backend key access, mixed-type choices and supported round trips.
   Actual DNSC LMS reverse import is separately verified or explicitly unverified.
 - [ ] Complete responsive export UI/browser checks; receipt and local merge.
 
@@ -280,22 +280,21 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — PAUSED after verified F11 merge (5 November 2026):
+Current checkpoint — ACTIVE on F12 (5 November 2026):
 
-- User explicitly requested PAUSE. Local `main` is at `2ba5b3e`, the F11 receipt
-  that finished merging before this checkpoint. The only working-tree edit is
-  this pause record. F12 has not started and `codex/questionnaire-export` does
-  not exist. The owned test servers and PostgreSQL helpers have finished.
+- Local `main` recorded the F11 pause as `173f42e`. Branch
+  `codex/questionnaire-export` was created from that revision on CONTINUE.
 - F01–F11 are verified and merged locally. Configured migrations are through
-  `0038_position_program_eligibility`. F12–F16 remain open. No unresolved F11
-  verification failures. DNSC LMS-side import and export round-trip acceptance
-  remain unverified. No GitHub push, deployment, IC mapping, or recommendation
-  rerun on the configured database was performed.
-- Exact next step on CONTINUE: read this checkpoint and Git status, reconcile
-  intervening edits, record this pause checkpoint locally, then create
-  `codex/questionnaire-export` from local `main`. Implement and verify F12 staff
-  authorization, supported MCQ AIKEN download, disclosed omissions and native
-  mixed-question export before proceeding to F13. Wait for explicit CONTINUE.
+  `0038_position_program_eligibility`. The F12 working tree adds protected
+  preview and download, AIKEN partial confirmation, SkillBridge text mixed-type
+  export, and both staff interfaces. F12 needs no migration.
+- Frontend lint/build and 283 tests passed. The 27-test focused PostgreSQL run
+  passed (`work/organization-postgres-c4k_tov7/`). Two real Chrome download and
+  reimport groups passed (`work/organization-browser-eog3d03_/`), as did three
+  retained import groups (`work/organization-browser-8a57ldxl/`). Django check
+  and migration drift passed. Next commit and merge F12 before starting F13.
+- DNSC LMS-side import remains unverified. All changes have been local, with
+  no deployment, IC mapping, or configured recommendation rerun.
 
 - `codex/aiken-question-import` was created from `bcd9ec8`, the F10 receipt
   on local `main`. The supplied DNSC text export was verified locally against

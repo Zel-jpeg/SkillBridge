@@ -66,6 +66,7 @@ try:
             ('--opportunity-scope', 'opportunity_scope_playwright.py'),
             ('--scoped-ranking', 'scoped_ranking_playwright.py'),
             ('--aiken-import', 'aiken_import_playwright.py'),
+            ('--questionnaire-export', 'questionnaire_export_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),
             ('--authoring-draft', 'authoring_draft_playwright.py'),
             ('--companies', 'company_collection_playwright.py'),

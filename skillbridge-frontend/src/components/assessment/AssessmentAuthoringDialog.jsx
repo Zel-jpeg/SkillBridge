@@ -8,6 +8,7 @@ import { useInstructorAssessments } from '../../hooks/instructor/useInstructorAs
 import AssessmentPolicyNotice from './AssessmentPolicyNotice'
 import { assessmentChangeImpact, assessmentLocks } from '../../utils/assessmentPolicy'
 import QuestionImportPanel from './QuestionImportPanel'
+import QuestionnaireExportAction from './QuestionnaireExportAction'
 import AssessmentDurationSuggestions from './AssessmentDurationSuggestions'
 
 const field = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800'
@@ -51,6 +52,7 @@ export default function AssessmentAuthoringDialog({ assessment, onClose, role = 
       </fieldset>
       <section className="space-y-3" aria-label="Question authoring">
         <h3 className="text-sm font-semibold">Questions and answer keys</h3>
+        <QuestionnaireExportAction assessmentId={assessment.id} />
         {locked && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">A student attempt exists. Questions and answer keys are locked; settings remain editable.</p>}
         {editor.loadingQuestions ? <p role="status">Loading authorized questions…</p> : editor.questionError ? <div role="alert">{editor.questionError}<button className={button} onClick={editor.retryQuestions}>Retry questions</button></div> : <>
           {editor.visibleQuestions.slice((visiblePage - 1) * 10, visiblePage * 10).map((question, index) => locked ? <article className="rounded-xl border border-gray-200 p-3 dark:border-gray-700" key={question._tempId}><p className="text-sm">{question.question_text}</p><p className="mt-2 text-xs text-green-800 dark:text-green-300">Key: {question.question_type === 'identification' ? question.identAnswer : question.choices.filter(choice => choice.is_correct).map(choice => choice.text).join(', ')}</p></article> : <fieldset className="min-w-0" disabled={editor.saving} key={question._tempId}><EditableQuestionCard q={question} index={(visiblePage - 1) * 10 + index} categories={editor.categories} framework={editor.framework} onUpdate={editor.updateQuestion} onChangeType={editor.changeQuestionType} onUpdateChoice={editor.updateChoice} onSetCorrect={editor.setCorrectChoice} onRemove={editor.removeQuestion} /></fieldset>)}

@@ -80,6 +80,9 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Questionnaire export](QUESTIONNAIRE_EXPORT.md) covers F12 staff access,
+  saved questionnaire downloads, format coverage and round-trip verification.
+
 - [Questionnaire import](QUESTIONNAIRE_IMPORT.md) covers F11 AIKEN as the
   default, the retained SkillBridge text and spreadsheet formats, and draft
   review and category mapping across staff roles.
