@@ -262,10 +262,11 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F15 — Help and project documentation
 
-- [ ] Branch `codex/multi-institute-guidance` after F14.
-- [ ] Update overview, ERD/data flow, roles, authoring/import/export help, competency
+- [x] Branch `codex/multi-institute-guidance` after F14 (`a4f647f`).
+- [x] Update overview, ERD/data flow, roles, authoring/import/export help, competency
   definitions, matching contract, evaluation scope and operator migration guide.
-- [ ] Verify links/examples/attribution and browser help behavior; local merge.
+- [x] Verify links, examples, attribution and browser help behavior.
+- [ ] Record local merge.
 
 ### F16 — Integrated acceptance and handoff
 
@@ -283,6 +284,22 @@ Record per completed feature: branch, base/commit/merge, changed behavior, exact
 checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
+
+Current checkpoint — F15 verified, ready for local merge (5 November 2026):
+
+- `codex/multi-institute-guidance` starts at the F14 verification receipt
+  `a4f647f`. Added the [staff workflow guide](MULTI_INSTITUTE_WORKFLOWS.md),
+  current ERD/DFD views, role and evaluation references, and expandable format
+  help using the downloadable template text.
+- Frontend lint, build and all 284 tests passed. Link checking resolved 209
+  local targets across 12 Markdown files. The Chrome import suite passed four
+  groups, including the supplied 20-question LMS export and keyboard help
+  (`work/organization-browser-vn92s4a0/`). The export suite passed three groups,
+  including keyboard help and downloaded round trips
+  (`work/organization-browser-z_r4phir/`). The phone captures were reviewed.
+- F15 changed staff help and references. No backend migration or configured
+  database write was required. The remaining LMS-side import check needs an
+  authorized test question bank. Next merge F15 locally, then start F16.
 
 Current checkpoint — F14 verified and merged locally (5 November 2026):
 

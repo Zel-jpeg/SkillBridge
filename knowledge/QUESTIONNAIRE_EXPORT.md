@@ -4,7 +4,8 @@ Open a saved assessment and choose **Export questionnaire**. Administrators can
 find it under **Questions** in assessment details and in the authoring editor.
 Instructors can find it with the questions in the assessment editor. Downloads
 contain saved questions and grading keys. Staff changes in an unsaved draft are
-outside the exported snapshot.
+outside the exported snapshot. Open **Questionnaire export guide** for
+format selection, partial downloads and key handling.
 
 | Format | Content |
 | --- | --- |

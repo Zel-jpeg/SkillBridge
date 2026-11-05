@@ -1,5 +1,10 @@
 # Colab evaluation of NLP contribution
 
+The multi-institute release checks software behavior with synthetic cohorts and
+scoped catalogs. Cross-program claims about category definitions or
+recommendation quality require independent, program-appropriate cases.
+[Current evaluation scope](MULTI_INSTITUTE_WORKFLOWS.md#evaluate-and-operate)
+
 The [standalone notebook](../outputs/colab_nlp/SkillBridge_NLP_Contribution_Evaluation.ipynb)
 and [usage guide](../outputs/colab_nlp/README.md) provide a new offline study of
 current SkillBridge preprocessing and ranking. They do not change application

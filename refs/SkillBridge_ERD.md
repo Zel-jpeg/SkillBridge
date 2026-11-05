@@ -3,7 +3,57 @@
 
 ---
 
-## Database Overview
+## Current multi-institute relationships
+
+This diagram focuses on organization, assessment evidence and placement. For
+all fields and operational tables, see [Django models](../skillbridge-backend/api/models.py)
+and [migrations](../skillbridge-backend/api/migrations/).
+
+```mermaid
+erDiagram
+    Institute ||--o{ Program : contains
+    Institute o|--o{ Batch : groups
+    Program o|--o{ User : identifies_students
+    User ||--o{ InstructorAssignment : receives_grants
+    Program ||--o{ InstructorAssignment : authorizes_staff
+    User ||--o{ Batch : owns
+    Program o|--o{ Batch : scopes
+    Batch ||--o{ BatchEnrollment : keeps_memberships
+    User ||--o{ BatchEnrollment : enrolls
+    Program ||--o{ CompetencyFramework : versions
+    CompetencyFramework o|--o{ Batch : governs
+    CompetencyFramework o|--o{ Assessment : governs
+    CompetencyFramework o|--o{ SkillCategory : defines
+    Batch o|--o{ Assessment : schedules
+    Assessment ||--o{ Question : contains
+    SkillCategory o|--o{ Question : categorizes
+    Assessment ||--o{ StudentResponse : receives
+    StudentResponse ||--o{ AssessmentAttemptHistory : retains
+    Assessment ||--o{ SkillScore : records
+    SkillCategory ||--o{ SkillScore : identifies
+    SkillCategory ||--o{ CombinedCategoryScore : identifies
+    Batch ||--o{ CombinedCategoryScore : aggregates
+    Company ||--o{ Position : offers
+    Program }o--o{ Position : permits
+    Position ||--o{ PositionRequirement : requires
+    SkillCategory ||--o{ PositionRequirement : measures
+    Position ||--o{ Recommendation : ranks
+    Batch o|--o{ Recommendation : scopes
+    Position ||--o{ OJTPlacement : allocates
+    Batch o|--o{ OJTPlacement : records
+```
+
+New batches belong to one program. Existing mixed cohorts can carry an
+institute link with no batch program, while their student profiles have program
+links. New scoped assessments use a recorded framework version. Position
+eligibility is many-to-many, while each opening has one shared capacity.
+Placement decisions keep the saved values from the review.
+
+## Earlier ERD baseline
+
+The sections below describe the original 14-table design.
+
+### Database Overview
 
 SkillBridge uses **PostgreSQL** (hosted on Supabase) with **14 application tables** organized into four logical groups:
 

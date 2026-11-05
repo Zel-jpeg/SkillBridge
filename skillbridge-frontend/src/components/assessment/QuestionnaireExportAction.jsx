@@ -83,6 +83,14 @@ function QuestionnaireExportDialog({ assessmentId, onClose }) {
       <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">The file contains saved questions and answer keys. {format === 'aiken'
         ? 'AIKEN carries multiple choice items. Assign categories again after import.'
         : 'SkillBridge text carries multiple choice, true/false, identification and saved category names.'} Frameworks, schedules and student records are outside this export.</p>
+      <details className="rounded-lg border border-gray-200 text-xs dark:border-gray-700">
+        <summary className="min-h-11 cursor-pointer rounded-lg px-3 py-3 font-semibold focus-visible:outline-2 focus-visible:outline-green-600">Questionnaire export guide</summary>
+        <ul className="list-disc space-y-1 px-3 pb-3 pl-7 leading-5 text-gray-700 dark:text-gray-200">
+          <li>Choose AIKEN for a multiple-choice question bank or SkillBridge text to keep supported mixed question types.</li>
+          <li>Review the listed omissions and confirm a partial download when it fits your needs.</li>
+          <li>Keep downloaded grading keys with authorized staff. Review the questions and map categories when importing into another assessment.</li>
+        </ul>
+      </details>
       {!preview && !error && <p role="status">Checking saved questions…</p>}
       {error && <div className="space-y-2"><p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>
         {!preview && <button type="button" className={button} onClick={() => { resetReview(); setAttempt(previous => previous + 1) }}>Retry review</button>}</div>}

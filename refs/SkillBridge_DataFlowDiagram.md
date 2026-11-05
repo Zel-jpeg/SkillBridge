@@ -3,7 +3,37 @@
 
 ---
 
-## 1. System Overview
+## Current multi-institute flow
+
+```mermaid
+flowchart TD
+    A["Administrator creates institutes, programs and instructor assignments"] --> B["Assigned staff configure framework categories and create a program batch"]
+    B --> C["Staff enroll students and author assessments manually or by importing questions"]
+    C --> D["Staff map categories, review keys and publish"]
+    D --> E["Enrolled student submits an assessment"]
+    E --> F["Grading records attempt and assessment-level category scores"]
+    F --> G["Eligible evidence combines within the batch after required completion"]
+    A --> H["Administrator configures eligible openings and framework requirements"]
+    G --> I["Personal recommendations rank eligible openings"]
+    H --> I
+    I --> J["Authorized staff review eligibility and shared capacity"]
+    J --> K["Coordinator approval records a placement snapshot"]
+    F --> L["Authorized staff reports and protected questionnaire exports"]
+    K --> L
+```
+
+The questionnaire import handles AIKEN, SkillBridge text and spreadsheets.
+Questionnaires and their answer keys have a staff-only export path from the
+saved assessment. Individual attempts, final competency and placement decisions
+remain separate records. Coverage and demand alignment lead the recommendation
+order. Text similarity and location supply support. See the
+[current workflow guide](../knowledge/MULTI_INSTITUTE_WORKFLOWS.md).
+
+## Earlier DFD baseline
+
+The sections below record the original single-domain flow and matching design.
+
+### 1. System Overview
 SkillBridge is a specialized web-based decision support system designed specifically for the Davao del Norte State College (DNSC) OJT placement program. Its primary goal is to digitize and improve the manual assessment process used to place IT students into appropriate internship roles. The system allows OJT coordinators to upload skill-based questionnaires, which are automatically scored via the platform when completed by students.
 
 Using Natural Language Processing (NLP) text normalization and algorithms like TF-IDF, the system processes responses dynamically. Finally, the system builds student skill vectors and runs a cosine similarity matching algorithm against company position demands to provide accurate and highly ranked placement recommendations without taking away the final assignment autonomy of the instructors.

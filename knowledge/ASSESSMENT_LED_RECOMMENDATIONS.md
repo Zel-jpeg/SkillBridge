@@ -1,5 +1,10 @@
 # Assessment-led recommendations
 
+For program-scoped cohorts, opening eligibility and positive requirements from
+the recorded framework determine the candidate set. Scoped evidence and role
+requirements use exact category IDs. The older virtual-equivalence rule
+described below applies to the legacy path. [Current scoped matching contract](SCOPED_RECOMMENDATION_INPUTS.md)
+
 ## Admin rerun feedback correction — 3 November 2026
 
 Both existing admin rerun buttons now use the same frontend helper and a

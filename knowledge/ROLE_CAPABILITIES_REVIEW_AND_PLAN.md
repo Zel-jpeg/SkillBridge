@@ -1,5 +1,8 @@
 # Instructor and administrator access review and plan
 
+See the [current workflow and role table](MULTI_INSTITUTE_WORKFLOWS.md#set-up-a-program)
+for program grants, private batch access and student boundaries.
+
 Implementation follow-up: the accepted operational gaps are addressed in the
 working tree. See [implementation and verification](ADMIN_MANAGEMENT_IMPLEMENTATION.md)
 for the delivered contract and pending runtime migration. The gap tables below

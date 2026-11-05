@@ -141,6 +141,19 @@ export default function QuestionImportPanel({ categories, scoped = false, onStag
       <button type="button" className={button} onClick={() => downloadTemplate(format)}>Download template</button>
     </div>
     <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">{help[format]}</p>
+    <details className="min-w-0 rounded-xl border border-gray-200 text-xs dark:border-gray-700">
+      <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-3 font-semibold focus-visible:outline-2 focus-visible:outline-green-600">Question import guide</summary>
+      <div className="space-y-3 px-3 pb-3 leading-5 text-gray-700 dark:text-gray-200">
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>Download the template for the chosen format. For a few questions, you can also return to the assessment editor and add each question manually.</li>
+          <li>Upload the file. Review each answer key and fix any questions listed under import errors.</li>
+          <li>Assign a saved category to each question or apply one to a selected group.</li>
+          <li>Add the selected questions to the draft, then save. Finish category mapping before publishing.</li>
+        </ol>
+        <p className="font-semibold">{formats[format]} example</p>
+        <pre className="whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-xs dark:bg-gray-900">{QUESTION_IMPORT_TEMPLATES[format][1].trimEnd()}</pre>
+      </div>
+    </details>
     <div className="min-w-0 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700"
       onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) void readFile(file) }}>
       <label className="block text-xs font-semibold">Question import file

@@ -23,8 +23,9 @@ rows. Completed category scores and issued placement snapshots remain available.
 Zero-score and no-opportunity cases can have finalized competency results with
 an empty recommendation list. The existing administrator refresh can recompute
 rankings. Ordinary result reads recover a missing finalized profile when all
-gates pass, and a stale saved ranking waits for an explicit refresh. Unmapped
-batches retain the existing legacy catalog and matching policy until F14.
+gates pass, and a stale saved ranking waits for an explicit refresh. Existing
+institute-linked batches with no batch program retain their original catalog
+and matching policy after IC reconciliation. [IC reconciliation](EXISTING_IC_RECONCILIATION.md)
 
 The full PostgreSQL regression passed 721 tests before the final enrollment
 lock was added. The final focused run passed 89 tests, including simultaneous

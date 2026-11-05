@@ -18,6 +18,10 @@ two-choice item remains multiple choice. The preview flags malformed questions,
 keys, and unsupported options or rich content with their question or row number.
 [MoodleDocs AIKEN format](https://docs.moodle.org/en/Aiken_format)
 
+Open **Question import guide** in the review panel to see the selected format's
+example and the steps for mapping categories and saving a draft. The assessment
+editor also provides buttons for manual entry.
+
 1. Choose a batch and framework when the assessment is program-scoped.
 2. Choose a file and check the valid, invalid, unmapped and selected counts.
 3. Check the option marked **Correct** in each valid question. If the file has

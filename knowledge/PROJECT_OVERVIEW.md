@@ -11,19 +11,13 @@ or completed. The [scope correction](OJT_CYCLE_SCOPE_REVIEW.md) removes that wor
 and preserves assessment, recommendation, decision and archive history. Current
 slots follow active enrolled batches; historical approvals remain unchanged.
 
-Proposed generalization scope, 4 November 2026: the user wants configurable DNSC
-institutes/programs, same-program category reuse and one program per new batch.
-IBPA is the confirmed current name; Entrepreneurship/Tourism are testing examples.
-Existing IC records stay in the normal IC section with their current statuses;
-IC will be left unused in practice because it uses InternLink. No special
-history-only/read-only mode, automatic archive or IC workflow restrictions are
-requested. F01 catalog, F02 instructor/program assignments, F03 program-bound
-batches/enrollment, F04 dynamic profiles/onboarding, F05 program competency
-catalogs, F06 scoped assistance and F07 framework-aware authoring are implemented
-and verified. Configurable result text, program-scoped matching, assessment-led
-ordering and staff questionnaire import/export are also implemented. Existing
-record mapping and integrated acceptance remain in the implementation tracker. See the
-[generalization guide](MULTI_INSTITUTE_GENERALIZATION_GUIDE.md).
+SkillBridge supports configurable DNSC institutes and programs. Administrators
+assign staff per program. Assigned instructors share competency definitions
+within the program and manage their own private batches. Each new batch uses one
+program. Existing IC records remain in the ordinary IC section with their
+recorded status and ownership. Entrepreneurship and Tourism under IBPA are
+synthetic examples for verification. [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) ·
+[Implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
 
 ## Architecture
 
@@ -42,12 +36,18 @@ Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 
 ## Main data flow
 
-1. An instructor creates batch assessments, questions, answer choices and skill categories.
+1. An administrator configures institutes, programs and instructor grants. Staff
+   prepare framework definitions, enroll students and author assessments. They can
+   add questions manually or import AIKEN, SkillBridge text or spreadsheets.
 2. An enrolled student starts and submits an assessment; backend access and attempt-state checks control submission.
 3. The backend grades answers and stores assessment-level `SkillScore` rows.
 4. Combined competency aggregates eligible category raw and maximum totals across assessments; it does not simply average percentages.
 5. Required completion and active-batch gates control finalization and recommendation visibility.
-6. Personal position order uses numerical requirement coverage, then requirement-demand alignment, then NLP/location support. The previous 60/25/15 score is retained as a legacy reference. Ranking staleness hides suggestions without removing valid category-based assessment profiles. See the [assessment-led contract](ASSESSMENT_LED_RECOMMENDATIONS.md).
+6. For program-scoped batches, openings must be eligible and have positive
+   requirements from the matching framework. Personal ordering uses numerical
+   coverage, demand alignment and NLP/location support. Stale suggestions become
+   unavailable while valid category evidence remains readable.
+   [Assessment-led contract](ASSESSMENT_LED_RECOMMENDATIONS.md)
 7. Placement approval applies additional rules and saves snapshots. A high recommendation score alone does not establish approval eligibility.
 
 ## Frontend data freshness
@@ -81,6 +81,8 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) provides the operator and staff
+  checklist, evaluation boundaries and links to the current technical contracts.
 - [Existing IC reconciliation](EXISTING_IC_RECONCILIATION.md) covers the
   institute links, mixed-cohort compatibility and backup/restore operator.
 - [Institute report scope](INSTITUTE_REPORT_SCOPE.md) covers F13 report and

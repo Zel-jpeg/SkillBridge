@@ -4,7 +4,9 @@ Branch `codex/program-competency-frameworks`, based on F04 receipt `f30c03e`.
 See the [active tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) for configured
 migration and local merge status. This is the category-library feature; selecting
 these versions during assessment authoring is now implemented in
-[F07](FRAMEWORK_ASSESSMENT_AUTHORING.md), and ranking integration remains F10.
+[F07](FRAMEWORK_ASSESSMENT_AUTHORING.md). The
+[scoped ranking contract](SCOPED_RECOMMENDATION_INPUTS.md) describes how matching
+uses the saved framework and category identities.
 
 ## Catalog workflow
 
