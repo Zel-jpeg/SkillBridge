@@ -5,6 +5,10 @@ Authorized 4 November 2026. This is the active execution tracker. Read it with t
 [research](DNSC_PROGRAM_AND_COMPETENCY_RESEARCH.md). Current code/tests take
 precedence over old notes. Checkboxes describe completed work only.
 
+After F16, the user requested instructor/OJT coordinator partner and position
+management. The [extension plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) defines
+F17–F19 and records the Tourism and Social Work evaluation contacts.
+
 ## Authorization and delivery contract
 
 - [x] User authorizes implementation of the agreed multi-institute update.
@@ -33,6 +37,8 @@ out of tracked files, logs and fixtures.
 - [x] Admin configures institutes/programs and instructor assignments.
 - [x] Instructors create category names, descriptions and tags in assigned programs;
   instructors in that same program can reuse them without sharing private batches.
+- [x] Record the requested extension for instructor/OJT coordinator partner and
+  position management. Implementation and verification remain F17–F19.
 - [x] One program per newly created batch; existing mixed IT/IS batches retain
   memberships/evidence through a compatibility path.
 - [x] Keep manual authoring, spreadsheet import and SkillBridge structured text;
@@ -279,6 +285,31 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 - [x] Verify owned helper cleanup.
 - [x] Commit and merge locally (`71b4c93`).
 
+### F17 — Coordinator catalog authority and backend operations
+
+- [ ] Branch `codex/coordinator-partner-authority` from the approved plan receipt.
+- [ ] Implement creator/program authority, program-scoped management reads and
+  partner/position writes, shared-partner controls, audit and invalidation.
+- [ ] Verify backend authorization, data preservation, shared capacity and
+  concurrency. Rehearse required migrations and backup restore before configured
+  application, then commit and merge locally.
+
+### F18 — Coordinator partner and position screens
+
+- [ ] Branch `codex/coordinator-partner-editor` after completed F17.
+- [ ] Add create/edit/reuse actions, program context, requirement selection and
+  recovery behavior to the instructor partner area.
+- [ ] Verify scoped API flows, search/pagination, keyboard and phone/desktop
+  behavior, lint/build and relevant regression, then commit and merge locally.
+
+### F19 — Coordinator catalog acceptance and updated handoff
+
+- [ ] Branch `codex/coordinator-catalog-acceptance` after completed F18.
+- [ ] Verify synthetic Tourism/Social Work/arbitrary-program workflows,
+  independent catalogs, IC preservation, recommendations and shared capacity.
+- [ ] Update staff guidance and evaluation demo, complete regression and inspect
+  artifacts, then commit and merge locally.
+
 ## Receipts and checkpoint
 
 Record per completed feature: branch, base/commit/merge, changed behavior, exact
@@ -286,7 +317,24 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — COMPLETE through F16, merged locally (Asia/Manila):
+Current checkpoint — F17–F19 extension planned:
+
+- Planning branch `codex/instructor-partner-management-plan` starts at
+  `7b63ed0`. The working changes record the user-requested instructor/OJT
+  coordinator catalog feature and the evaluator context. Product code is
+  unchanged in this planning step.
+- The coordinator who created a record and administrators can edit it, using
+  the recorded interpretation of the user's response. Other same-program
+  coordinators can view/reuse openings while private batches remain owner-scoped.
+- Tourism is a possible evaluator after the user's coordinator discussion.
+  Social Work workflow information comes from a student and awaits direct
+  coordinator confirmation.
+- Next implementation step is F17. Read the
+  [extension plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) and current code before
+  adding creator/program authority and scoped mutation paths. Each feature
+  must pass its tests and local merge gate before the next begins.
+
+Previous milestone — COMPLETE through F16, merged locally (Asia/Manila):
 
 - `codex/multi-institute-acceptance` starts at the F15 verification receipt
   `174c3c1`. F16 implementation and verification commit `71b4c93` was

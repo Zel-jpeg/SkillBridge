@@ -19,6 +19,11 @@ recorded status and ownership. Entrepreneurship and Tourism under IBPA are
 synthetic examples for verification. [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) ·
 [Implementation tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
 
+The user has requested a subsequent extension for instructor/OJT coordinator
+partner and position creation and editing. It is planned as F17–F19. Current
+catalog mutations remain admin-controlled until the extension is implemented.
+[Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
+
 ## Architecture
 
 | Area | Implementation | Entry points |
@@ -81,6 +86,9 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Coordinator partner and position plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
+  records F17–F19, creator/program edit authority and the user-reported Tourism
+  and Social Work evaluation context.
 - [Multi-institute acceptance and handoff](MULTI_INSTITUTE_ACCEPTANCE.md) records
   integrated verification, synthetic program journeys and remaining external checks.
 - [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.md) provides the operator and staff

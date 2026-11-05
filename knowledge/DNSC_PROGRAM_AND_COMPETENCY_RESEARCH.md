@@ -18,6 +18,13 @@ label, read-only mode or workflow exclusion is requested. No records are deleted
 
 ## Official DNSC website findings
 
+The user's later conversations identify a possible Tourism evaluator and a
+possible Social Work evaluation context. These reports are documented with
+their source and confirmation status in the
+[coordinator catalog and evaluation plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md#evaluation-contacts-and-workflow-discovery).
+The web findings below continue to describe the research conducted on the date
+above.
+
 DNSC's [program-offerings page](https://dnsc.edu.ph/program-offerings/) groups
 undergraduate offerings under IC, IAAS, Institute of Business and Public Affairs
 (IBPA), and Institute of Teacher Education (ITED). Its IBPA group includes

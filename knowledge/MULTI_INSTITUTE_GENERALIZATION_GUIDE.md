@@ -1,5 +1,10 @@
 # SkillBridge multi-institute generalization guide
 
+The subsequent [coordinator catalog plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
+extends the original admin-managed catalog with instructor/OJT coordinator
+partner and position creation and editing. Its F17–F19 requirements govern the
+requested extension.
+
 Prepared 4 November 2026 from the current local source on `main`, project
 documentation, and the user-supplied DNSC LMS AIKEN export. This is a proposal,
 not an implementation or deployment record. No application code, database,
