@@ -6,6 +6,9 @@ import socket
 import subprocess
 import sys
 import tempfile
+from threading import Event, Thread
+
+import psycopg2
 
 ROOT = Path(__file__).resolve().parents[2]
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
@@ -18,7 +21,8 @@ PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0035_neutral_user_department': '0034_program_batch_context',
             '0036_program_competency_frameworks': '0035_neutral_user_department',
             '0037_assessment_framework': '0036_program_competency_frameworks',
-            '0038_position_program_eligibility': '0037_assessment_framework'}[MIGRATION]
+            '0038_position_program_eligibility': '0037_assessment_framework',
+            '0039_coordinator_catalog_authority': '0038_position_program_eligibility'}[MIGRATION]
 if RECONCILE:
     PREVIOUS = '0031_recommendation_assessment_order'
 with socket.socket() as sock:
@@ -29,6 +33,29 @@ env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'DEBUG': 'True',
        'DB_HOST': '127.0.0.1', 'DB_PORT': str(port), 'DB_USER': 'program_migration',
        'DB_PASSWORD': '', 'DB_SSLMODE': 'disable', 'PYTHONIOENCODING': 'utf-8'}
 started = False
+activity_stop = Event()
+activity_worker = None
+activity_errors = []
+
+
+def concurrent_activity():
+    activity = None
+    try:
+        activity = psycopg2.connect(host='127.0.0.1', port=port, user='program_migration',
+                                    dbname='test_program_migration', sslmode='disable')
+        activity.autocommit = True
+        number = 0
+        while not activity_stop.is_set():
+            number += 1
+            with activity.cursor() as cursor:
+                cursor.execute('UPDATE api_company SET address=%s::jsonb WHERE name=%s',
+                               [json.dumps({'synthetic_counter': number}), 'Retained synthetic partner'])
+            activity_stop.wait(0.2)
+    except Exception as exc:
+        activity_errors.append(type(exc).__name__)
+    finally:
+        if activity:
+            activity.close()
 
 
 def run(command, filename):
@@ -94,6 +121,9 @@ apps.get_model('api','Position').objects.create(company_id=company.id, title='Re
     command = [PYTHON, 'scripts/migrate_organization_catalog.py', '--migration', MIGRATION]
     inspected = json.loads(run(command, 'inspect.txt').strip())
     assert inspected['pending'] == [['api', MIGRATION, False]]
+    if '--concurrent-activity' in sys.argv:
+        activity_worker = Thread(target=concurrent_activity, daemon=True)
+        activity_worker.start()
     result = run([*command, '--apply', '--expected-target', inspected['target_fingerprint']], 'apply.txt')
     applied = json.loads(result.strip().splitlines()[-1])
     receipt = json.loads((Path(applied['receipt_directory']) / 'receipt.json').read_text(encoding='utf-8'))
@@ -105,13 +135,27 @@ apps.get_model('api','Position').objects.create(company_id=company.id, title='Re
         '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
         '0037_assessment_framework': {'api_assessment': ['framework_id']},
         '0038_position_program_eligibility': {'api_position': ['eligibility_configured_at']},
+        '0039_coordinator_catalog_authority': {
+            'api_company': ['management_program_id'],
+            'api_position': ['created_by_id', 'management_program_id'],
+        },
     }[MIGRATION]
     expected_tables = {'0036': ['api_competencyframework'], '0038': ['api_position_eligible_programs']}
     assert receipt['new_empty_tables'] == expected_tables.get(MIGRATION[:4], [])
+    if activity_worker:
+        activity_stop.set()
+        activity_worker.join(timeout=10)
+        assert not activity_worker.is_alive() and not activity_errors, activity_errors
+        assert 'api_company' in receipt['tables_with_unrelated_changes_since_backup']
     summary = {'passed': True, 'migration': MIGRATION, 'synthetic_source_only': True, 'preserved_tables': receipt['preserved_tables'],
                'actual_backup_restore_and_django_rehearsal': True, 'receipt_directory': applied['receipt_directory']}
+    if activity_worker:
+        summary['concurrent_activity_preserved'] = True
     (OUT / 'results.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
     print(json.dumps(summary), flush=True)
 finally:
+    activity_stop.set()
+    if activity_worker:
+        activity_worker.join(timeout=10)
     if started and (DATA / 'postmaster.pid').exists():
         run([BIN / 'pg_ctl.exe', '-D', DATA, '-m', 'fast', '-w', 'stop'], 'stop.txt')

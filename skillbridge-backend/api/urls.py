@@ -20,10 +20,18 @@ from . import organization
 from . import instructor_assignments
 from . import competencies
 from . import competency_assistance
+from . import coordinator_catalog
 from .authoring_scope import authoring_catalog
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('management/programs/<int:program_id>/partner-options/', coordinator_catalog.partner_options, name='coordinator_partner_options'),
+    path('management/programs/<int:program_id>/partners/', coordinator_catalog.partners, name='coordinator_partners'),
+    path('management/programs/<int:program_id>/partners/<int:company_id>/', coordinator_catalog.partner_detail, name='coordinator_partner_detail'),
+    path('management/programs/<int:program_id>/partners/<int:company_id>/positions/', coordinator_catalog.positions, name='coordinator_positions'),
+    path('management/programs/<int:program_id>/positions/<int:position_id>/', coordinator_catalog.position_detail, name='coordinator_position_detail'),
+    path('management/programs/<int:program_id>/partners/<int:object_id>/archive/', coordinator_catalog.archive, {'kind': 'partner'}, name='coordinator_partner_archive'),
+    path('management/programs/<int:program_id>/positions/<int:object_id>/archive/', coordinator_catalog.archive, {'kind': 'position'}, name='coordinator_position_archive'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/authoring/', authoring_catalog, name='framework_authoring_catalog'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/assist/category/', competency_assistance.assist_category, name='framework_assist_category'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/assist/tags/', competency_assistance.assist_tags, name='framework_assist_tags'),

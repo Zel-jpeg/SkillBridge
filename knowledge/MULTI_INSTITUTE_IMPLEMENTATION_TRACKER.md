@@ -287,12 +287,13 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F17 — Coordinator catalog authority and backend operations
 
-- [ ] Branch `codex/coordinator-partner-authority` from the approved plan receipt.
-- [ ] Implement creator/program authority, program-scoped management reads and
+- [x] Branch `codex/coordinator-partner-authority` from the approved plan receipt (`737fffa`).
+- [x] Implement creator/program authority, program-scoped management reads and
   partner/position writes, shared-partner controls, audit and invalidation.
-- [ ] Verify backend authorization, data preservation, shared capacity and
+- [x] Verify backend authorization, data preservation, shared capacity and
   concurrency. Rehearse required migrations and backup restore before configured
-  application, then commit and merge locally.
+  application.
+- [ ] Commit and merge locally.
 
 ### F18 — Coordinator partner and position screens
 
@@ -322,7 +323,34 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F17–F19 extension planned:
+Current checkpoint — F17 verified, preparing local merge:
+
+- `codex/coordinator-partner-authority` starts at `737fffa`. The catalog
+  authority audit confirmed that creator tracking is missing on positions and
+  eligible programs do not establish edit rights. Implementation is in progress.
+- Added nullable management program links and position creator tracking while
+  retaining administrator control of existing unmapped catalog entries.
+  Program-scoped management reads work before a batch exists.
+- The full isolated PostgreSQL suite passed 746 tests. The final focused run
+  passed 23 tests after a duplicate-opening guard was added. Sixteen additional
+  cases passed for the expanded image compensation and management coverage.
+  System and drift checks passed. The synthetic backup/restore rehearsal passed
+  for migration 0039. See the
+  [F17 authority receipt](COORDINATOR_CATALOG_AUTHORITY.md).
+- The first configured attempt rolled back at the preservation check. A
+  read-only check confirmed 0039 remains the only pending migration. The
+  corrected operator passed normal and concurrent-activity rehearsals. The
+  synthetic writer's initial long transaction was corrected before its final
+  passing run. The configured retry applied only 0039 after verified restore.
+- The configured receipt is `work/organization-configured-migration-yyl9jtw5/receipt.json`.
+  All existing fields in 44 tables were preserved, including an intervening
+  email-dispatch control update. The three new authority columns remain null
+  for existing entries. A fresh read-only check found no pending migration.
+- Final capability-flag and scope tests passed 23 cases
+  (`work/organization-postgres-svgt0tj_/`). F17 is backend-only, so frontend
+  build/browser checks follow in F18. Next commit and merge F17 locally.
+
+Previous planning checkpoint — F17–F19 extension planned:
 
 - Planning branch `codex/instructor-partner-management-plan` starts at
   `7b63ed0`. Plan commit `4a4d050` was fast-forwarded into local `main`.

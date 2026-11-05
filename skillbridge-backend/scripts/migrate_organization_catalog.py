@@ -35,6 +35,7 @@ SUPPORTED = {
     '0036_program_competency_frameworks': {'api_competencyframework'},
     '0037_assessment_framework': set(),
     '0038_position_program_eligibility': {'api_position_eligible_programs'},
+    '0039_coordinator_catalog_authority': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -51,6 +52,10 @@ ADDED_COLUMNS = {
     '0036_program_competency_frameworks': {'api_batch': ['framework_id'], 'api_skillcategory': ['framework_id', 'source_category_id']},
     '0037_assessment_framework': {'api_assessment': ['framework_id']},
     '0038_position_program_eligibility': {'api_position': ['eligibility_configured_at']},
+    '0039_coordinator_catalog_authority': {
+        'api_company': ['management_program_id'],
+        'api_position': ['created_by_id', 'management_program_id'],
+    },
 }.get(args.migration, {})
 
 
@@ -220,11 +225,10 @@ try:
                 assert {column for column in columns(rehearsal) if column[0] not in ADDED_TABLES} == before_columns | added_columns
         finally:
             rehearsal.close()
-    # Apply in a fresh transaction so a newer write invalidates the backup review.
+    # Verify writes against a consistent current snapshot after restoring the backup.
     with transaction.atomic():
         with connection.cursor() as cursor:
-            if args.reconcile_ic:
-                cursor.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+            cursor.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             cursor.execute("SET LOCAL lock_timeout='5s'")
             cursor.execute("SET LOCAL statement_timeout='45s'")
             if args.reconcile_ic:
@@ -240,6 +244,8 @@ try:
             mapping = reconcile(connection, reviewed, live_preserved, 'default')
             assert columns(connection) == before_columns
         else:
+            assert columns(connection) == before_columns, 'Configured schema changed after backup'
+            live_before = snapshot(connection)
             MigrationExecutor(connection).migrate([TARGET])
             after = snapshot(connection, ADDED_COLUMNS)
             assert {column for column in columns(connection) if column[0] not in ADDED_TABLES} == before_columns | added_columns, 'Unexpected column changes; rollback'
@@ -250,7 +256,7 @@ try:
                             cursor.execute(f'SELECT count(*) FROM public."{table}" WHERE "{name}" IS NOT NULL')
                             assert cursor.fetchone()[0] == 0, 'New context was populated unexpectedly; rollback'
             assert set(after) - set(before) == ADDED_TABLES
-            assert all(after[name] == facts for name, facts in before.items()), 'Preserved data changed; rollback'
+            assert all(after[name] == facts for name, facts in live_before.items()), 'Preserved data changed; rollback'
             assert all(after[table]['count'] == 0 for table in ADDED_TABLES)
     if args.reconcile_ic:
         receipt = {'mapping': mapping, 'mapping_fingerprint': mapping_hash, 'target_fingerprint': target_hash,
@@ -265,7 +271,9 @@ try:
         raise SystemExit(0)
     receipt = {'migration': list(TARGET), 'target_fingerprint': target_hash, 'backup_scope': 'public schema only',
                'backup_restored_and_hash_verified': True, 'preserved_tables': len(before),
-               'preserved_facts': before, 'new_empty_tables': sorted(ADDED_TABLES),
+               'preserved_facts': live_before, 'new_empty_tables': sorted(ADDED_TABLES),
+               'tables_with_unrelated_changes_since_backup': sorted(
+                   name for name in before if live_before[name] != before[name]),
                'new_nullable_columns': ADDED_COLUMNS, 'new_context_all_null': bool(ADDED_COLUMNS),
                'pending_after': plan(), 'regraded_or_recalculated': False}
     (OUT / 'receipt.json').write_text(json.dumps(receipt, indent=2), encoding='utf-8')

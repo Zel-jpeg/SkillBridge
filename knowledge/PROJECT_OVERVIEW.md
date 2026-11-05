@@ -88,6 +88,8 @@ and fallback when explaining results.
 
 ## Existing knowledge
 
+- [Coordinator catalog authority](COORDINATOR_CATALOG_AUTHORITY.md) describes the
+  F17 management API, creator/program checks and additive migration 0039.
 - [Coordinator partner and position plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
   records F17–F19, creator/program edit authority and the user-reported Tourism
   and Social Work evaluation context.

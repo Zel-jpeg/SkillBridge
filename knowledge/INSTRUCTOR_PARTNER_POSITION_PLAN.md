@@ -52,36 +52,36 @@ A single actual shared opening must retain its shared capacity.
 
 Branch `codex/coordinator-partner-authority`, from the completed plan receipt.
 
-- [ ] Record stable creator and management-program authority for new partners
+- [x] Record stable creator and management-program authority for new partners
   and positions. Reuse the existing partner creator representation where valid.
   Existing entries with missing or admin creators retain administrator control
   until an explicit reviewed assignment.
-- [ ] Define and test partner sharing. A coordinator can create and manage their
+- [x] Define and test partner sharing. A coordinator can create and manage their
   own program's entries. Editing an organization shared with other programs
   requires administrator authority over the common details. Independently owned
   positions remain individually manageable within the authorized scope.
-- [ ] Add staff management reads that work for assigned coordinators before a
+- [x] Add staff management reads that work for assigned coordinators before a
   batch or student recommendation exists. Keep private matched-student
   information limited to the requesting coordinator's owned batches.
-- [ ] Add create/update operations for partner details, available image/location
+- [x] Add create/update operations for partner details, available image/location
   fields, positions, slots, tags and framework category requirements. Require
   a current approved coordinator and an active assigned program for each write.
-- [ ] Constrain coordinator-created eligibility and category IDs to their
+- [x] Constrain coordinator-created eligibility and category IDs to their
   authorized program. Explicit sharing across programs uses administrator
   controls. The existing single-framework requirement contract remains the
   starting scope for this feature.
-- [ ] Enforce write authority on detail IDs, nested position IDs, image mutations,
+- [x] Enforce write authority on detail IDs, nested position IDs, image mutations,
   archive/restore and related compatibility routes. Reject ownership,
   creator/program and institute changes supplied by an unauthorized caller.
-- [ ] Preserve approved decisions and recorded scores. Prevent slot reduction
+- [x] Preserve approved decisions and recorded scores. Prevent slot reduction
   below applicable occupied capacity. Recheck current assignment, catalog state
   and ownership under transaction locks during writes.
-- [ ] Audit successful operations and invalidate only the appropriate catalog,
+- [x] Audit successful operations and invalidate only the appropriate catalog,
   ranking, capacity and report views. Recheck event identifiers after revocation.
-- [ ] Verify backend role/scope tests, guessed IDs, same-program reuse, foreign
+- [x] Verify backend role/scope tests, guessed IDs, same-program reuse, foreign
   program denial, creator loss of assignment, archive behavior, atomic rollback,
   concurrent edits and shared capacity.
-- [ ] If a migration is required, rehearse fresh and upgraded schemas on an
+- [x] If a migration is required, rehearse fresh and upgraded schemas on an
   isolated PostgreSQL database. Verify private backup restore and preservation
   before applying the already-authorized configured migration.
 - [ ] Record the results, then commit and merge locally before F18.

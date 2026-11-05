@@ -441,6 +441,8 @@ class Company(models.Model):
     location_lat = models.FloatField(blank=True, null=True)
     location_lng = models.FloatField(blank=True, null=True)
     added_by     = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    management_program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.PROTECT,
+                                            related_name='managed_partners')
     created_at   = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -457,6 +459,10 @@ class Position(models.Model):
     # NULL identifies openings saved before program eligibility was introduced.
     eligibility_configured_at = models.DateTimeField(null=True, blank=True)
     eligible_programs = models.ManyToManyField(Program, related_name='eligible_positions', blank=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='created_positions')
+    management_program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.PROTECT,
+                                            related_name='managed_positions')
 
     def __str__(self):
         return f'{self.title} @ {self.company.name}'
