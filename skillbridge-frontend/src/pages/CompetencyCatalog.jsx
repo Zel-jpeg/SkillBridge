@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
-import { invalidateCache, useApi } from '../hooks/useApi'
+import { applyDataChange, invalidateCache, useApi } from '../hooks/useApi'
 import { useToast } from '../context/ToastContext'
 import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
@@ -292,9 +292,7 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
     const base = `/api/admin/institutes/${editor.institute ? editor.id : editor.institute_id}/`
     const result = await request('patch', editor.institute ? base : `${base}programs/${editor.id}/`, values, { silentError: true })
     if (result.ok) {
-      invalidateCache('/api/admin/institutes/')
-      invalidateCache(ORGANIZATION_OPTIONS)
-      invalidateCache(PROGRAMS)
+      applyDataChange({ topics: ['organization'] })
       setEditor(null)
       showToast('Card updated.')
     }

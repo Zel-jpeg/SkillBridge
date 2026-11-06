@@ -15,6 +15,16 @@ status filters, counts and shared eight-record pagination operate on server
 results. Search/status changes reset the requested page; the server clamps a page
 when the collection shrinks.
 
+The later `codex/institute-banner-cards` update gives both institute and program
+collections the same cover-banner treatment as skill-library cards. Existing
+uploaded WebP banners and the twelve saved geometric presets are reused. Grid
+and list layouts show the same filtered page, names, status, descriptions and
+aliases. A card opens its programs or instructor assignments; separate pencil
+and archive/restore icon controls have descriptive labels, tooltips and 44px
+targets. Successful edits publish the existing local organization invalidation
+so cached catalog and skill-page cards refresh in either direction. See the
+[staff checkpoint](STAFF_WORKSPACE_SCOPE_AND_NAVIGATION.md) for verification.
+
 Archiving retains records and IDs. Archive active programs before their institute;
 restore the institute before adding/restoring an active program. Restoring a
 parent does not silently restore its children. The API exposes no DELETE route.

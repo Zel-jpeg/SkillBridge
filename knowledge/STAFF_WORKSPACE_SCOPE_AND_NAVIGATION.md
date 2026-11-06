@@ -310,3 +310,47 @@ tests; Django check and no migration drift; 19 browser groups across the new
 editor, existing catalog and scoped saved-tag assistance. Evidence paths and
 resolved findings are recorded in the detailed guide. Next: review the updated
 editor locally. There are no remaining known failures for this feature.
+
+## Institute and program banner cards
+
+Active branch: `codex/institute-banner-cards`, based on the approved Imagegen
+concept. `OrganizationCatalogCard` uses the existing taxonomy cover renderer and
+saved institute/program image and palette fields. Grid cards use full-width
+banners; the alternate list uses a banner beside the same content on wider
+screens and stacks on phones. The layouts preserve names, descriptions, aliases,
+status, program counts, filters, search, pagination and instructor management.
+
+- [x] Use saved uploaded banners or the same twelve geometric color presets.
+- [x] Make cards open program/instructor management, with separate icon-only
+  edit and archive/restore controls, native keyboard actions, tooltips and 44px
+  hit targets. Keep archive confirmation and existing hierarchy checks.
+- [x] Reuse the organization invalidation path after successful saves in both
+  editors, so names/images/colors/status refresh across admin and skill pages.
+  Exact-path list invalidation alone had left program cards stale in the other
+  collection; the integrated browser check exposed and verified this fix.
+- [x] Pass existing institute/program CRUD, archive/restore hierarchy, error
+  recovery, role-denial and responsive dark/light browser checks.
+- [x] Verify program phone layouts and staff-scope workflows before local merge.
+
+No API, database, storage policy or migration changes are needed. No existing
+records are removed or relabeled. The bitmap concept is a visual reference;
+the implementation uses React and the existing project cover asset. Unrelated
+overview/optimization-plan edits remain outside the feature commit. No push or
+deployment is authorized.
+
+Verification completed: frontend lint, production build and all 348 Node tests
+passed. All eleven institute/program browser groups passed in
+`work/organization-browser-nao7t6ly/`, covering CRUD, archive hierarchy, validation,
+failure recovery, access denials and light/dark layouts. All twelve expanded
+staff-scope groups passed in `work/organization-browser-brw_nypk/`, including
+icon-only keyboard actions without unintended navigation, card/list views,
+uploaded-banner and preset propagation between both editors, and institute and
+program cards at 320, 768, 1024 and 1440 pixels. Desktop, list and phone screenshots
+were visually inspected. The shared-skill regression selectors now follow the
+previously delivered chip editor and its discard confirmation.
+
+Checkpoint: the tested feature is ready for its authorized local merge to `main`.
+No known failures remain. The next step is to review the institute/program cards
+in the local app. Backend test reruns and database migration were unnecessary
+for this frontend-only update; existing backend behavior was exercised through
+the isolated real-HTTP browser suites. No push or deployment is included.
