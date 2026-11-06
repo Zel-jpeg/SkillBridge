@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import CompanyImage from './CompanyImage'
+import TaxonomyCardBanner from './TaxonomyCardBanner'
 import { RefreshIcon, TrashIcon } from './Icons'
 import { companyImageError } from '../utils/companyImages'
 
@@ -9,7 +10,7 @@ function UploadIcon() {
   </svg>
 }
 
-export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image' }) {
+export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image', banner = false }) {
   const id = useId()
   const input = useRef(null)
   const [preview, setPreview] = useState(null)
@@ -67,10 +68,13 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
           // Selecting the same file again must still trigger validation.
           event.target.value = ''
         }} />
+      {banner && hasImage && <div className="aspect-[3/1] overflow-hidden rounded-xl bg-emerald-950">
+        <TaxonomyCardBanner name={name} imageUrl={displayUrl} loading="eager" />
+      </div>}
       {hasImage && <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-        <CompanyImage name={name} imageUrl={displayUrl} className="h-14 w-14 rounded-lg" loading="eager" />
+        {!banner && <CompanyImage name={name} imageUrl={displayUrl} className="h-14 w-14 rounded-lg" loading="eager" />}
         <div className="min-w-0 flex-1">
-          <p title={value.file?.name} className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">{value.file?.name || (label === 'Partner image' ? 'Current partner logo' : 'Current card image')}</p>
+          <p title={value.file?.name} className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">{value.file?.name || (banner ? 'Current card banner' : label === 'Partner image' ? 'Current partner logo' : 'Current card image')}</p>
           {value.file ? <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
             <span>{value.file.size < 1024 * 1024 ? `${Math.max(1, Math.round(value.file.size / 1024))} KB` : `${(value.file.size / (1024 * 1024)).toFixed(1)} MB`}</span>
             <span className={`inline-flex items-center gap-1.5 font-medium ${value.error ? 'text-gray-500 dark:text-gray-400' : 'text-green-700 dark:text-green-400'}`}>
@@ -78,7 +82,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
             </span>
           </div> : <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{label === 'Partner image' ? 'Currently displayed on your partner profile' : 'Currently displayed on this card'}</p>}
         </div>
-        <button type="button" aria-label="Remove image" title="Remove image" disabled={disabled} onClick={() => reset('remove')}
+        <button type="button" aria-label={banner ? 'Remove banner' : 'Remove image'} title={banner ? 'Remove banner' : 'Remove image'} disabled={disabled} onClick={() => reset('remove')}
           className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-rose-300">
           <span aria-hidden="true"><TrashIcon size={16} /></span>
         </button>
@@ -90,7 +94,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
       }`}>
         <button type="button" disabled={disabled} onClick={() => input.current.click()} aria-describedby={helpId}
           className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
-          <UploadIcon />{hasImage ? 'Replace image' : 'Upload image'}
+          <UploadIcon />{banner ? (hasImage ? 'Replace banner' : 'Upload banner') : (hasImage ? 'Replace image' : 'Upload image')}
         </button>
         <div>
           <p className="text-xs font-medium leading-5 text-gray-700 dark:text-gray-200">
@@ -100,15 +104,16 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
         </div>
       </div>
       {(value.action !== 'unchanged' || value.error) && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        {value.action === 'remove' && <p className="text-xs text-gray-500 dark:text-gray-400">Your current image will be removed when you save.</p>}
+        {value.action === 'remove' && <p className="text-xs text-gray-500 dark:text-gray-400">{banner ? 'The default banner will appear when you save.' : 'Your current image will be removed when you save.'}</p>}
         <button type="button" disabled={disabled} onClick={() => reset('unchanged')}
           className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-100">
-          <span aria-hidden="true"><RefreshIcon size={12} /></span>Undo image change
+          <span aria-hidden="true"><RefreshIcon size={12} /></span>{banner ? 'Undo banner change' : 'Undo image change'}
         </button>
       </div>}
     </div>
     <p id={`${id}-help`} className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
-      {label === 'Partner image' ? 'Partner images are publicly visible.' : 'Images are converted to WebP before upload.'}
+      {banner ? 'Use a wide image, ideally 3:1. The banner fills the card and may crop the edges. Images are converted to WebP before upload.'
+        : label === 'Partner image' ? 'Partner images are publicly visible.' : 'Images are converted to WebP before upload.'}
     </p>
     {value.error && <p id={`${id}-error`} role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{value.error}</p>}
   </div>

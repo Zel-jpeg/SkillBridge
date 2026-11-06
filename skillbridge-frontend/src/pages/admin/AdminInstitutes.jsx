@@ -48,7 +48,7 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
       onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} aria-describedby={hint ? `${id}-${key}-hint` : undefined} />
     {hint && <span id={`${id}-${key}-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">{hint}</span>}
   </div>
-  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name or image shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
+  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name or banner shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
     size="confirm" onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
     footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button>
       <button type="submit" form={id} className={primary} disabled={saving || Boolean(image.error)}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
@@ -63,7 +63,7 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
         <textarea id={`${id}-aliases`} className={field} rows={3} value={values.aliases} disabled={saving} aria-describedby={`${id}-aliases-hint`}
           onChange={event => setValues(previous => ({ ...previous, aliases: event.target.value }))} />
         <span id={`${id}-aliases-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">Optional. One per line, up to 12. These must be distinct from other programs in this institute.</span></div>}
-      <CompanyImageInput label={program ? 'Program image' : 'Institute image'} name={values.name} imageUrl={item?.image_url}
+      <CompanyImageInput banner label={program ? 'Program banner' : 'Institute banner'} name={values.name} imageUrl={item?.image_url}
         value={image} onChange={setImage} disabled={saving} />
     </form>
   </DialogShell>

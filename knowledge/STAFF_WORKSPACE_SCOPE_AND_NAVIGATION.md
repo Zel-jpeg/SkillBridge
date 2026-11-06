@@ -189,3 +189,31 @@ Browser checks covered the shared IC and non-IC program tables on desktop and
 phone (`work/organization-browser-cvowz9qd/`), search and version permissions
 (`work/organization-browser-dy88zimn/`) and the scoped question checker
 (`work/organization-browser-4zisq839/`).
+
+## Taxonomy card artwork
+
+Resumed on `codex/taxonomy-card-artwork`, based on local `main` at `31f3d00`.
+Uploaded institute and program images fill the banner, with the generated
+artwork as the fallback for missing or failed uploads. The upload editor previews
+the same cover crop. Cards keep their name and subtitle below the banner.
+The administrator’s pencil icon has an accessible name,
+tooltip and a 44px target separate from the navigation link.
+
+The built-in imagegen tool generated the cover. The project export is
+[`taxonomy-card-cover.webp`](../skillbridge-frontend/public/images/taxonomy-card-cover.webp)
+at 1440 × 480 pixels and 7,414 bytes.
+
+```text
+Use case: ui-mockup. Generate a single full-bleed wide, shallow decorative cover texture for the top of SkillBridge’s institute and program cards. Use the reference screenshot’s idea of geometric course-card banners as inspiration: layered curved bands, repeating inset squares and a few subtle diagonal facets. Use deep evergreen, jade and muted teal with restrained tonal contrast and clean edges. Spread the pattern across the frame so a centered shallow crop still reads clearly at phone and desktop widths. Include no text, logos, badges, people, shadows around the perimeter, UI controls, or frames. Output the cover artwork alone.
+```
+
+Frontend lint, production build and 288 frontend tests passed. All 11 isolated
+staff browser checks passed in `work/organization-browser-t7gtpdbk/`, covering
+the uploaded-banner preview, replacement, removal, failure fallback, 320, 768,
+1024 and 1440 pixel widths, and keyboard editing without card navigation. The
+existing partner collection suite passed seven checks in
+`work/organization-browser-37d9dckn/`. No schema change was needed.
+
+The user subsequently requested 12 selectable geometric banner colors alongside
+the uploaded-banner option. Save this preference on each institute/program and
+show its selected preset whenever its uploaded banner is absent.
