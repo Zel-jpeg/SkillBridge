@@ -589,7 +589,11 @@ export function useInstructorUpload() {
     },
     programId, frameworkId, scoped, scopedFramework, catalogUrl, catalogError,
     refreshCatalog: () => catalogUrl && invalidateCache(catalogUrl),
-    chooseFramework: value => { setSelectedFrameworkId(value); setQuestions(previous => previous.map(question => ({ ...question, categoryId: null }))) },
+    chooseFramework: value => {
+      if (value === frameworkId) return
+      setSelectedFrameworkId(value)
+      setQuestions(previous => previous.map(question => ({ ...question, categoryId: null })))
+    },
     // Metadata
     title, setTitle, duration, setDuration,
     publicationStatus, setPublicationStatus, isRequired, setIsRequired,

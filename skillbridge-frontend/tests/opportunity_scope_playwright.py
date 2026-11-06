@@ -49,7 +49,7 @@ def run(browser):
         dialog.get_by_role('checkbox', name=f'{program["code"]} · {program["name"]}', exact=True).check()
     expect(dialog.get_by_text('2 selected.', exact=False)).to_be_visible()
     dialog.get_by_role('combobox', name='Requirement program').select_option(str(port['id']))
-    dialog.get_by_role('combobox', name='Competency framework', exact=True).select_option(str(rubric['id']))
+    expect(dialog.get_by_role('combobox', name='Program skill set', exact=True)).to_have_value(str(rubric['id']))
     level = dialog.get_by_role('combobox', name='Minimum level for Cargo handling', exact=True)
     level.select_option('75')
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
@@ -87,7 +87,7 @@ def run(browser):
 
     page.get_by_role('button', name='Edit position Shared Training Slot', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Position', exact=True)
-    expect(dialog.get_by_role('combobox', name='Competency framework', exact=True)).to_have_value(str(rubric['id']))
+    expect(dialog.get_by_role('combobox', name='Program skill set', exact=True)).to_have_value(str(rubric['id']))
     expect(dialog.get_by_role('combobox', name='Minimum level for Cargo handling')).to_have_value('75')
     for program in programs:
         dialog.get_by_role('button', name=f'Remove {program["code"]} {program["name"]}', exact=True).click()

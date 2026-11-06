@@ -45,7 +45,7 @@ def opening(page, framework, title):
     dialog = page.get_by_role('dialog', name='Add Position', exact=True)
     dialog.get_by_label('Position title').fill(title)
     dialog.get_by_label('Available slots').fill('3')
-    dialog.get_by_role('combobox', name='Competency framework', exact=True).select_option(str(framework['id']))
+    expect(dialog.get_by_role('combobox', name='Program skill set', exact=True)).to_have_value(str(framework['id']))
     dialog.get_by_label('Minimum level for Service knowledge', exact=True).select_option('50')
     dialog.get_by_role('button', name='Suggest / refresh tags', exact=True).click()
     expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Client records')

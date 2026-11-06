@@ -96,7 +96,7 @@ Evidence is in `work/organization-browser-h7zohx2m/`.
 - [x] Verify and merge the shared-skill description validation and list display.
 - [x] Show shared IC and program skills from one taxonomy page. Keep version
   maintenance available for revisions to definitions that are already in use.
-- [ ] Select the applicable skill set for new assessments and position
+- [x] Select the applicable skill set for new assessments and position
   requirements when there is one safe choice. Keep the recorded set for existing
   batches and verify requirement compatibility before switching new work to a
   revised set.
@@ -123,3 +123,21 @@ Lint, build and 288 frontend tests passed. Browser checks passed for staff scope
 (`work/organization-browser-ny9gr9n4/`), versioning and permissions
 (`work/organization-browser-ths1jovu/`) and scoped NLP assistance
 (`work/organization-browser-mqystyp6/`).
+
+On `codex/default-program-skill-set`, assessment and position editors choose
+the saved skill set automatically when the program has exactly one version and
+it is active and contains skills. Existing selections and recorded batch
+bindings take precedence. Programs with revision history retain explicit
+selection so staff can review position requirements before choosing a different
+version for new work.
+
+Lint, build and 288 frontend tests passed. Browser checks passed for automatic
+selection during AIKEN and native assessment authoring
+(`work/organization-browser-5y5sar8u/`), explicit selection and draft recovery
+(`work/organization-browser-9q4kz9_3/`), coordinator position management
+(`work/organization-browser-avz0cqma/`), and admin program-eligible openings
+(`work/organization-browser-0ctcr3zl/`).
+
+A proposed position description would capture the intern's actual duties in
+both position editors and provide supporting NLP context alongside the current
+title, tags and skill requirements.

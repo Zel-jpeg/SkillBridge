@@ -84,7 +84,9 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   const [programs, setPrograms] = useState(initialData?.eligible_programs || (fixedProgram ? [fixedProgram] : []))
   const firstRequirement = initialData?.category_requirements?.[0]
   const [programId, setProgramId] = useState(firstRequirement?.program_id || fixedProgram?.id || null)
-  const [frameworkId, setFrameworkId] = useState(firstRequirement?.framework_id || null)
+  const [selectedFrameworkId, setSelectedFrameworkId] = useState(firstRequirement?.framework_id || null)
+  const [automaticFrameworkId, setAutomaticFrameworkId] = useState(null)
+  const frameworkId = selectedFrameworkId || automaticFrameworkId
   const [reqs, setReqs] = useState(() => scoped
     ? Object.fromEntries((initialData?.category_requirements || []).map(row => [row.category_id, row.percentage]))
     : { ...initialData?.requirements })
@@ -92,10 +94,10 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedOnly, setSelectedOnly] = useState(false)
-  const original = useRef(JSON.stringify({ title, slots, tags, programId, frameworkId, reqs, programs }))
+  const original = useRef(JSON.stringify({ title, slots, tags, programId, selectedFrameworkId, reqs, programs }))
   useEffect(() => {
-    onDirtyChange(JSON.stringify({ title, slots, tags, programId, frameworkId, reqs, programs }) !== original.current)
-  }, [title, slots, tags, programId, frameworkId, reqs, programs, onDirtyChange])
+    onDirtyChange(JSON.stringify({ title, slots, tags, programId, selectedFrameworkId, reqs, programs }) !== original.current)
+  }, [title, slots, tags, programId, selectedFrameworkId, reqs, programs, onDirtyChange])
 
   const catalogUrl = scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
   const { data: catalog } = useApi(catalogUrl)
@@ -107,7 +109,8 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
 
   function selectFramework(nextProgram, nextFramework) {
     setProgramId(nextProgram)
-    setFrameworkId(nextFramework)
+    setSelectedFrameworkId(nextFramework)
+    setAutomaticFrameworkId(null)
     setReqs({})
     setSearch('')
     setSelectedOnly(false)
@@ -226,7 +229,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
               </select>
             </label>}
             <FrameworkSelect key={programId} programId={programId} value={frameworkId}
-              onChange={value => selectFramework(programId, value)} help="Changing the framework clears requirement levels in this draft. Other eligible programs can use manual placement." />
+              onChange={value => { if (value !== frameworkId) selectFramework(programId, value) }} onAutoSelect={setAutomaticFrameworkId} help="Changing the skill set clears requirement levels in this draft. Other eligible programs can use manual placement." />
           </div>}
           <DataSection url={scoped ? catalogUrl : '/api/categories/'} layout="control" label="Loading skill requirements">
           <p className="position-editor-help position-editor-intro">Choose a minimum level. Leave unused skills as Not required.</p>

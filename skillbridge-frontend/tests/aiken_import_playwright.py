@@ -30,12 +30,8 @@ def fill_creator(page, role, batch, framework, title):
     page.goto(BASE + f'/{role}/assessment/create?batch_id={batch["id"]}', wait_until='networkidle')
     page.get_by_placeholder('e.g. OJT Skills Assessment 2026–2027').fill(title)
     page.get_by_placeholder('e.g. 60', exact=True).fill('30')
-    framework_select = page.get_by_role('combobox', name='Competency framework', exact=True)
-    expect(framework_select).to_be_visible()
-    if framework_select.is_enabled():
-        framework_select.select_option(str(framework['id']))
-    else:
-        expect(framework_select).to_have_value(str(framework['id']))
+    framework_select = page.get_by_role('combobox', name='Program skill set', exact=True)
+    expect(framework_select).to_have_value(str(framework['id']))
     page.get_by_role('button', name='Upload file', exact=True).click()
     panel = page.get_by_role('region', name='Import questions', exact=True)
     expect(panel.get_by_label('Question import format', exact=True)).to_have_value('aiken')
