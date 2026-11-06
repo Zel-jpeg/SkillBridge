@@ -185,15 +185,19 @@ class SharedCategoryValidationTests(APITestCase):
         admin = User.objects.create_user('category-contract@example.invalid', role='admin')
         self.client.force_authenticate(admin)
         for route in ('categories', 'admin_skills'):
-            for value in ([], {'name': 'Valid', 'description': []}, {'name': 'Valid', 'tags': [42]},
-                          {'name': 'Valid', 'tags': {'bad': True}}):
+            for value in ([], {'name': 'Valid', 'description': []}, {'name': 'Valid', 'description': '   '},
+                          {'name': 'Valid', 'description': 'Edit a photo.', 'tags': [42]},
+                          {'name': 'Valid', 'description': 'Edit a photo.', 'tags': {'bad': True}}):
                 with self.subTest(route=route, value=value):
                     result = self.client.post(reverse(route), value, format='json')
                     self.assertEqual(result.status_code, 400)
         self.assertEqual(SkillCategory.objects.count(), 0)
-        result = self.client.post(reverse('categories'), {'name': '  Photo Editing  ', 'tags': ['retouching']}, format='json')
+        result = self.client.post(reverse('categories'), {
+            'name': '  Photo Editing  ', 'description': '  Edit and retouch photos.  ', 'tags': ['retouching'],
+        }, format='json')
         self.assertEqual(result.status_code, 201)
         duplicate = self.client.post(reverse('categories'), {'name': 'photo editing'}, format='json')
         self.assertEqual(duplicate.status_code, 200)
         self.assertFalse(duplicate.data['created'])
-        self.assertEqual(SkillCategory.objects.get().tags, ['retouching'])
+        category = SkillCategory.objects.get()
+        self.assertEqual((category.description, category.tags), ('Edit and retouch photos.', ['retouching']))

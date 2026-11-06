@@ -87,3 +87,28 @@ Frontend lint, production build, **288 unit tests** and **nine** staff browser
 checks passed. The browser verified the IC selection, shared taxonomy heading,
 category and Add Skill control, and the return link to the program picker.
 Evidence is in `work/organization-browser-h7zohx2m/`.
+
+## Simplified skill taxonomy
+
+- [x] Fill the blank descriptions on the 12 shared IC skills using their saved
+  categories and tags. A read-only check confirmed all 12 descriptions and tags
+  and the same six assessments and six openings linked to the shared categories.
+- [x] Verify and merge the shared-skill description validation and list display.
+- [ ] Show shared IC and program skills from one taxonomy page. Keep version
+  maintenance available for revisions to definitions that are already in use.
+- [ ] Select the applicable skill set for new assessments and position
+  requirements when there is one safe choice. Keep the recorded set for existing
+  batches and verify requirement compatibility before switching new work to a
+  revised set.
+
+The configured IC update wrote description fields in one transaction and used
+the existing taxonomy change notification. Skill definitions are part of the NLP
+matching inputs. Saved recommendations follow the ordinary freshness checks.
+On `codex/require-ic-skill-descriptions`, the shared list now shows
+descriptions and the taxonomy form/API require a description on save. The
+category API still returns an existing skill when asked to reuse it by name.
+The existing IC assessment-authoring path continues to resolve recorded names.
+The focused PostgreSQL run passed 52 tests
+(`work/organization-postgres-ps384l8k/`). Lint, build and 288 frontend tests
+passed. All nine staff browser checks passed
+(`work/organization-browser-4r4znkkz/`), including the required description.

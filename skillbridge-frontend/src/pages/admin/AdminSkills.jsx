@@ -59,6 +59,10 @@ function SkillModal({ skill, onClose, onSave, saving }) {
       setError('Skill name is required.')
       return
     }
+    if (!description.trim()) {
+      setError('Enter a description for this skill.')
+      return
+    }
     const res = await onSave({
       id: skill?.id,
       name: name.trim(),
@@ -102,9 +106,9 @@ function SkillModal({ skill, onClose, onSave, saving }) {
               className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-              placeholder="Optional context for this category"
+            <label htmlFor="shared-skill-description" className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Description <span aria-hidden="true" className="text-rose-500">*</span></label>
+            <textarea id="shared-skill-description" required maxLength={2000} value={description} onChange={e => { setDescription(e.target.value); setError('') }} rows={2}
+              placeholder="Describe the knowledge or tasks this skill covers"
               className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
 
@@ -207,7 +211,7 @@ export default function AdminSkills() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skill Name</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skill</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Tags</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 w-24">Actions</th>
                   </tr>
@@ -216,7 +220,8 @@ export default function AdminSkills() {
                   {skills.map((skill, i) => (
                     <tr key={skill.id} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
                       <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
-                        {skill.name}
+                        <span>{skill.name}</span>
+                        {skill.description && <p className="mt-1 max-w-md whitespace-pre-wrap break-words text-xs font-normal leading-5 text-gray-600 dark:text-gray-300">{skill.description}</p>}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1">

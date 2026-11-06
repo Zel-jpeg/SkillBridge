@@ -154,7 +154,7 @@ class TextPreviewAPITests(APITestCase):
         self.assertEqual(self.category.tags, ['AWS'])
         self.assertEqual(SkillScore.objects.filter(student=self.student).count(), 2)
         accepted = self.client.put(reverse('admin_skill_detail', args=[self.category.id]),
-            {'name': 'Cloud', 'description': '', 'tags': response.data['suggested_tags']}, format='json')
+            {'name': 'Cloud', 'description': 'Deploy and secure hosted services.', 'tags': response.data['suggested_tags']}, format='json')
         self.assertEqual(accepted.status_code, 200)
         changed_position = self.client.patch(reverse('admin_position_detail', args=[self.position.id]),
             {'tags': ['cloud deployment', 'serverless']}, format='json')

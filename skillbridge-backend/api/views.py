@@ -939,7 +939,12 @@ def categories(request):
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
-    name, description, tags = _skill_data(request.data)
+    name, description, tags = _skill_data(request.data, allow_blank_description=True)
+    if not description:
+        existing = SkillCategory.objects.filter(framework__isnull=True, name__iexact=name).order_by('pk').first()
+        if existing is None:
+            invalid('description', 'Enter a description for this skill.')
+        return Response({'id': existing.id, 'name': existing.name, 'tags': existing.tags or [], 'created': False})
 
     cat, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
         name__iexact=name,
@@ -4037,7 +4042,7 @@ def admin_position_detail(request, position_id):
 
 
 # ── GET/POST /api/admin/skills/ ───────────────────────────────────────────
-def _skill_data(data):
+def _skill_data(data, *, allow_blank_description=False):
     if not isinstance(data, dict):
         invalid('name', 'Skill details must be an object.')
     name = _question_category_name(data.get('name', ''))
@@ -4046,7 +4051,12 @@ def _skill_data(data):
     description = data.get('description', '')
     if not isinstance(description, str):
         invalid('description', 'Description must be text.')
-    return name, description.strip(), tags_value(data.get('tags'))
+    description = description.strip()
+    if not description and not allow_blank_description:
+        invalid('description', 'Enter a description for this skill.')
+    if len(description) > 2000:
+        invalid('description', 'Use at most 2000 characters for the description.')
+    return name, description, tags_value(data.get('tags'))
 
 
 @api_view(['GET', 'POST'])

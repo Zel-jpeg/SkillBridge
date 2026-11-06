@@ -32,13 +32,24 @@ class BatchTaxonomyRecoveryTests(APITestCase):
     def test_malformed_taxonomy_create_edit_cannot_partially_save(self):
         self.client.force_authenticate(self.admin)
         for data in [{'name': []}, {'name': 'x' * 101}, {'name': 'Updated', 'description': []},
-                     {'name': 'Updated', 'tags': [{'bad': 'shape'}]}]:
+                     {'name': 'Updated', 'description': '  '},
+                     {'name': 'Updated', 'description': 'Describe a skill.', 'tags': [{'bad': 'shape'}]}]:
             with self.subTest(data=data):
                 self.assertEqual(self.client.post(reverse('admin_skills'), data, format='json').status_code, 400)
                 self.assertEqual(self.client.put(reverse('admin_skill_detail', args=[self.category.id]), data, format='json').status_code, 400)
                 self.category.refresh_from_db()
                 self.assertEqual(self.category.name, 'Original category')
                 self.assertEqual(SkillCategory.objects.count(), 1)
+
+    def test_admin_can_complete_existing_description_without_replacing_category(self):
+        self.client.force_authenticate(self.admin)
+        result = self.client.put(reverse('admin_skill_detail', args=[self.category.id]), {
+            'name': self.category.name, 'description': '  Review records for accuracy.  ', 'tags': ['review'],
+        }, format='json')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['id'], self.category.id)
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.description, 'Review records for accuracy.')
 
     def test_referenced_category_cannot_be_deleted_but_unused_category_can(self):
         assessment = Assessment.objects.create(title='History boundary', batch=self.batch, created_by=self.owner)
