@@ -84,6 +84,18 @@ Enter a new password interactively. `createsuperuser` sets Django staff/superuse
 flags; choose application role `admin` as shown. Use runserver for Windows
 development; Gunicorn belongs to the later Linux hosting checks.
 
+After model changes, confirm that the local server has reloaded the current
+models, especially after switching branches while it is running. An
+`AttributeError: 'Institute' object has no attribute 'banner_color'` with the
+field present in `api/models.py` and migration 0041 already recorded can mean
+that the running worker still holds the previous model class. Restart the local
+Django server from this checkout and retry the request. Refreshing the browser
+alone cannot reload a Python model. Verify the running authenticated
+`/api/management/organization-options/` request for both staff roles; a successful
+test in a fresh Python process does not verify an existing server worker. Do not
+reapply an already completed migration or hide the missing attribute with a
+serializer fallback.
+
 Admins inspect/select NLP configuration in Reports. Default selection is Medium.
 Verify requested/actual/fallback metadata rather than assuming installation means
 a successful model load. See [NLP runtime verification](NLP_RUNTIME_VERIFICATION.md).

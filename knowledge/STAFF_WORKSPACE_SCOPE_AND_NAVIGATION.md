@@ -252,3 +252,33 @@ known failures for this feature. No GitHub push or deployment is included.
 The next step is to review the institute/program pencil editor in the local app;
 further feature work awaits the user's next request. Unrelated overview and
 optimization-plan edits are kept outside this feature's commit.
+
+## Skill-page runtime recovery
+
+The user reported errors on both staff skill pages after the palette delivery.
+The supplied traceback showed `AttributeError` at the institute's `banner_color`
+in `/api/management/organization-options/`. A read-only check confirmed that
+both database columns and migration 0041 were present. Both authenticated
+roles returned 200 from a fresh Python process against the configured database,
+but 500 from the existing localhost Django worker.
+
+On `codex/fix-skill-page-runtime`, updating the model file's modification time
+triggered Django's normal automatic reload without changing its contents. The
+worker changed, and both admin and approved-instructor requests then returned
+200 with banner-color keys present in their institute and program rows. No
+application code, migrations, user records or saved banners needed changes.
+The admin screenshot's retained cards came from its last-good cache; the
+instructor screenshot had no cached response to display.
+
+The local operations guide now covers this stale-worker diagnosis and calls for
+checking the currently running API after model changes, in addition to isolated
+tests. No browser UI verification was possible through Computer Use; the running
+server's authenticated requests were verified directly. Application builds and
+database test reruns were unnecessary for this runtime recovery and documentation
+change. The diagnostic stayed under ignored `work/` and printed only role names,
+HTTP statuses and schema facts, without identities or credentials.
+
+Recovery checkpoint: both local staff endpoints are healthy. This branch contains
+only the recovery/operations documentation for local merge to `main`. The next
+step is to refresh or select Retry on the two existing skill pages. No remaining
+backend failure was found, and no push or deployment is included.
