@@ -67,3 +67,23 @@ run passed **six checks** in `work/organization-browser-lohbedqk/`, including
 an actual filtered XLSX download. **Four** retained opportunity checks passed in
 `work/organization-browser-jed4h755/`. The initial browser run exposed an
 ambiguous accessible filter label. The corrected controls passed the rerun.
+
+## IC shared skill taxonomy follow-up
+
+The administrator's taxonomy page opens the **IC shared skill taxonomy** for
+the shared categories and tags used by IC assessments and position requirements.
+Select BSIT or BSIS in the program picker to see that program's framework
+versions. The shared library is part of the current IC workflow.
+
+The user requested working examples. The configured catalog now has
+**BSIT Starter Skills** v1 with Networking and **BSIS Starter Skills** v1 with
+Database Management. Each has one example description and the tags copied from
+the corresponding existing IC category. The starter versions are unused and
+editable by admins. The catalog endpoints were verified read-only for admin
+and assigned instructor access, and all 12 shared IC categories remain present.
+
+The label and navigation were checked on `codex/ic-shared-skill-taxonomy`.
+Frontend lint, production build, **288 unit tests** and **nine** staff browser
+checks passed. The browser verified the IC selection, shared taxonomy heading,
+category and Add Skill control, and the return link to the program picker.
+Evidence is in `work/organization-browser-h7zohx2m/`.

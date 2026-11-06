@@ -78,7 +78,7 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
         from api.models import Assessment, Company, OJTPlacement, Position, SkillCategory
         legacy = Company.objects.create(name='Synthetic IC legacy partner')
         Position.objects.create(company=legacy, title='Synthetic IC legacy opening', slots_available=4)
-        SkillCategory.objects.create(name='Synthetic IC legacy skill')
+        SkillCategory.objects.create(name='Synthetic IC shared skill')
         Assessment.objects.create(title='Synthetic IC mixed assessment', batch=batch, created_by=owner)
         scenarios = json.loads((OUT / 'general-text.json').read_text(encoding='utf-8'))
         shared = Position.objects.get(pk=scenarios[0]['position_id'])

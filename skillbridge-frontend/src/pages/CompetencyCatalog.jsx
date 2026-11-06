@@ -197,9 +197,11 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 className="text-xl font-bold">{admin ? 'Skill taxonomy' : 'Program competencies'}</h1>
-        <p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">This is the skill library for a program. Use its categories to group assessment questions and set the skills an opening requires. Descriptions and tags give those skills context.</p>
+        <p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">{admin
+          ? 'Choose a program to manage its skill library, or open the shared IC taxonomy to manage the categories and tags used by IC.'
+          : 'This is the skill library for a program. Use its categories to group assessment questions and set the skills an opening requires. Descriptions and tags give those skills context.'}</p>
       </div>
-      {admin && <Link className={button} to="/admin/skills">Legacy IC taxonomy</Link>}
+      {admin && <Link className={button} to="/admin/skills">IC shared skill taxonomy</Link>}
     </header>
     <details className="rounded-xl border border-gray-200 bg-white p-4 text-xs dark:border-gray-700 dark:bg-gray-900">
       <summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">How do frameworks and categories work?</summary>
