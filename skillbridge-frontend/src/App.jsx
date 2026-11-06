@@ -122,7 +122,7 @@ function App() {
       <Route element={<PrivateRoute role="admin"><AuthenticatedShell role="admin" /></PrivateRoute>}>
         <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
         <Route path="/admin/skills" element={<Page><AdminSkills /></Page>} />
-        <Route path="/admin/competencies" element={<Page><CompetencyCatalog /></Page>} />
+        <Route path="/admin/competencies" element={<Page><CompetencyCatalog role="admin" /></Page>} />
         <Route path="/admin/companies" element={<Page><AdminCompanies /></Page>} />
         <Route path="/admin/placements" element={<Page><AdminPlacements /></Page>} />
         <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />

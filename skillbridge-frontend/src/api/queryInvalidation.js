@@ -24,6 +24,7 @@ for (const topic of ['users', 'students', 'batches']) paths[topic].push(paths.em
 paths.catalog.push(...paths.results, ...paths.capacity)
 paths.batches.push(/^\/api\/instructor\/companies\/$/, /^\/api\/nlp\/positions\/\d+\/text\/$/)
 paths.organization.push(paths.catalog[0], paths.catalog[1])
+for (const topic of ['organization', 'assignments', 'users']) paths[topic].push(/^\/api\/management\/organization-options\/$/)
 paths.users.push(paths.assignments[0], paths.assignments[1])
 for (const topic of ['organization', 'assignments']) paths[topic].push(...paths.batches, ...paths.email, ...paths.management,
   ...paths.students, ...paths.assessments, ...paths.placements, /^\/api\/admin\/batch-instructors\/$/,

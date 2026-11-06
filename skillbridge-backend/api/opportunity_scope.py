@@ -22,6 +22,7 @@ def catalog_position_payload(position):
         'id': position.pk, 'title': position.title, 'slots': position.slots_available,
         'archived_at': position.archived_at, 'tags': position.tags or [],
         **position_scope_payload(position),
+        'management_program_id': position.management_program_id,
         'requirements': {row.skill_category.name: row.required_percentage for row in requirements},
         'category_requirements': [
             {'category_id': row.skill_category_id, 'name': row.skill_category.name,

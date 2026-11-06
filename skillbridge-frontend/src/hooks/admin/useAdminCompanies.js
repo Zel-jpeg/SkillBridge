@@ -69,6 +69,7 @@ function normalizeCompany(c) {
     id:          c.id,
     archived_at: c.archived_at ?? null,
     name:        c.name,
+    management_program_id: c.management_program_id ?? null,
     image_url:   c.image_url ?? null,
     // Compute display string from the stored JSON address
     address:     addrToString(c.address) || 'No address set',

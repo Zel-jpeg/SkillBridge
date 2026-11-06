@@ -128,6 +128,19 @@ def catalog_programs(request, program_id=None):
         search_fields=('code', 'name', 'institute__code', 'institute__name')))
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def organization_options(request):
+    programs = [program_payload(row) for row in readable_programs(request.user).order_by('name', 'pk')]
+    institutes = Institute.objects.order_by('name', 'pk')
+    if request.user.role != 'admin':
+        institutes = institutes.filter(pk__in={row['institute_id'] for row in programs})
+    return Response({
+        'institutes': list(institutes.values('id', 'name', 'code', 'is_active')),
+        'programs': programs,
+    })
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('competency')

@@ -29,6 +29,8 @@ const FILTER_LABELS = {
   company_id: 'Partner',
   position_id: 'Position',
   batch_id: 'Batch',
+  institute_id: 'Institute',
+  program_id: 'Program',
   course: 'Course',
   area: 'Partner area',
   date_field: 'Date field',

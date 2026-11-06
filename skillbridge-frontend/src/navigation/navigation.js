@@ -25,8 +25,7 @@ export const ROLE_NAVIGATION = {
   ],
   admin: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'Skills', path: '/admin/skills', icon: 'skills' },
-    { label: 'Program competencies', path: '/admin/competencies', icon: 'skills' },
+    { label: 'Skill taxonomy', path: '/admin/competencies', icon: 'skills', aliases: ['/admin/skills'] },
     { label: 'OJT Partners', path: '/admin/companies', icon: 'companies' },
     { label: 'Placements', path: '/admin/placements', icon: 'placements' },
     { label: 'Users', path: '/admin/users', icon: 'users' },
@@ -40,7 +39,8 @@ export const ROLE_NAVIGATION = {
 }
 
 export function activeNavigationPath(role, pathname) {
-  return ROLE_NAVIGATION[role]?.find(item => pathname === item.path || pathname.startsWith(`${item.path}/`))?.path ?? null
+  return ROLE_NAVIGATION[role]?.find(item => [item.path, ...(item.aliases || [])]
+    .some(path => pathname === path || pathname.startsWith(`${path}/`)))?.path ?? null
 }
 
 export function parseSidebarPreference(value) {

@@ -1,5 +1,6 @@
 import DataSection from '../../components/DataSection'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import SearchBar from '../../components/SearchBar'
@@ -169,11 +170,12 @@ export default function AdminSkills() {
       )}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+        <Link to="/admin/competencies" className="inline-flex min-h-10 items-center rounded-lg border border-gray-200 px-3 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-green-300 dark:hover:bg-green-950">Back to program skill taxonomy</Link>
         <TaxonomyQuality />
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Skill Taxonomy</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage the global list of skill categories used for recommendations.</p>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Legacy IC Skill Taxonomy</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Categories for existing IC assessments and openings that use the original skill library. Use the program taxonomy for new program work.</p>
           </div>
           <button onClick={openAdd}
             className="flex items-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0 shadow-sm shadow-green-600/20">

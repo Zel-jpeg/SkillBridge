@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
 import { invalidateCache, useApi } from '../hooks/useApi'
@@ -6,6 +7,8 @@ import { useToast } from '../context/ToastContext'
 import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
 import ProgramSelect from '../components/ProgramSelect'
+import OrganizationScope from '../components/OrganizationScope'
+import { ALL_ORGANIZATIONS } from '../utils/organizationScope'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
 import { useScopedAssistance } from '../hooks/useScopedAssistance'
@@ -173,11 +176,24 @@ function Versions({ programId }) {
   </section></DataSection>
 }
 
-export default function CompetencyCatalog() {
-  const [programId, setProgramId] = useState('')
+export default function CompetencyCatalog({ role = 'instructor' }) {
+  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const admin = role === 'admin'
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-    <header><h1 className="text-xl font-bold">Program competencies</h1><p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">Create your program’s assessment categories, definitions and tags. Instructors assigned to the same program share this catalog; their batches remain private.</p></header>
-    <div className={surface}><ProgramSelect value={programId} onChange={setProgramId} endpoint={PROGRAMS} status="all" /></div>
-    {programId ? <Versions key={programId} programId={programId} /> : <p className="py-8 text-center text-xs text-gray-500">Select a program to open its competency framework.</p>}
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 className="text-xl font-bold">{admin ? 'Skill taxonomy' : 'Program competencies'}</h1>
+        <p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">This is the skill library for a program. Use its categories to group assessment questions and set the skills an opening requires. Descriptions and tags give those skills context.</p>
+      </div>
+      {admin && <Link className={button} to="/admin/skills">Legacy IC taxonomy</Link>}
+    </header>
+    <details className="rounded-xl border border-gray-200 bg-white p-4 text-xs dark:border-gray-700 dark:bg-gray-900">
+      <summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">How do frameworks and categories work?</summary>
+      <p className="mt-2 max-w-3xl leading-6 text-gray-600 dark:text-gray-300">A framework is a version of the program’s skill library. For example, a category called “Reservation records” could group questions about booking forms and cancellations. A partner opening can set a minimum score for that category. Instructors assigned to the same program can reuse its categories. Once a version is used, create a new version to revise the definitions.</p>
+    </details>
+    <div className={surface}>{admin
+      ? <OrganizationScope value={scope} onChange={setScope} programPlaceholder="Select a program" />
+      : <ProgramSelect value={scope.program} onChange={program => setScope({ ...scope, program })} endpoint={PROGRAMS} status="all" />}</div>
+    {scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500">Select a program to view or create its skill frameworks.</p>}
   </div>
 }

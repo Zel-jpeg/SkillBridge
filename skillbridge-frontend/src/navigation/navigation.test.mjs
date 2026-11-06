@@ -5,7 +5,7 @@ import { ROLE_NAVIGATION, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPa
 const expected = {
   student: ['dashboard', 'assessments', 'results'],
   instructor: ['dashboard', 'students', 'competencies', 'assessments', 'retake-requests', 'assessment/create', 'companies', 'placements', 'reports'],
-  admin: ['dashboard', 'skills', 'competencies', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
+  admin: ['dashboard', 'competencies', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
 }
 
 test('identity labels follow structured student programs and live instructor assignments', () => {
@@ -33,6 +33,7 @@ test('assessment results activate Assessments, while final matches and profile r
   assert.equal(activeNavigationPath('student', '/student/results'), '/student/results')
   for (const path of ['/student/profile', '/student/setup', '/student/assessment', '/student/assessments-other', '/login']) assert.equal(activeNavigationPath('student', path), null)
   assert.equal(activeNavigationPath('instructor', '/instructor/assessment/create'), '/instructor/assessment/create')
+  assert.equal(activeNavigationPath('admin', '/admin/skills'), '/admin/competencies')
   assert.equal(activeNavigationPath('unknown', '/student/dashboard'), null)
 })
 

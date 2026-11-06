@@ -14,6 +14,8 @@ import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import Pagination from '../../components/Pagination'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
+import OrganizationScope from '../../components/OrganizationScope'
+import { ALL_ORGANIZATIONS, matchesOrganization } from '../../utils/organizationScope'
 import { BatchCollection, BatchStatus, BatchStudentCollection, CollectionRange } from '../../components/admin/BatchCollections'
 import StudentEnrollmentModal from '../../components/enrollment/StudentEnrollmentModal'
 const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
@@ -116,9 +118,11 @@ export default function AdminBatches() {
   const [feedback, setFeedback] = useState(null)
   const [showAudit, setShowAudit] = useState(false)
   const [auditPage, setAuditPage] = useState(1)
-  const filtered = useMemo(() => batches.filter(batch =>
+  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const scopedBatches = useMemo(() => batches.filter(batch => matchesOrganization(batch, scope)), [batches, scope])
+  const filtered = useMemo(() => scopedBatches.filter(batch =>
     `${batch.name} ${batch.instructor_name} ${batch.institute_name || ''} ${batch.program?.code || ''}`.toLowerCase().includes(search.trim().toLowerCase()) &&
-    (owner === 'all' || String(batch.instructor_id) === owner) && (status === 'all' || batch.status === status)), [batches, search, owner, status])
+    (owner === 'all' || String(batch.instructor_id) === owner) && (status === 'all' || batch.status === status)), [scopedBatches, search, owner, status])
   const visiblePage = Math.min(page, Math.ceil(filtered.length / 10) || 1)
   const records = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
   const selected = batches.find(batch => batch.id === selectedId)
@@ -161,11 +165,12 @@ export default function AdminBatches() {
     const attempt = assessmentRetakeCandidate(students.find(student => student.id === id), assessmentId)
     if (attempt) return mutate(`/api/instructor/students/${id}/retake/`, 'patch', { assessment_id: assessmentId, retake_allowed: !attempt.retake_allowed })
   }
-  const ownerOptions = [...new Map(batches.map(batch => [batch.instructor_id, batch.instructor_name])).entries()]
+  const ownerOptions = [...new Map(scopedBatches.map(batch => [batch.instructor_id, batch.instructor_name])).entries()]
   return <div className="admin-batches mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
     {!selected ? <>
       <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-bold">Batches & students</h1><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Manage batches, instructors and student enrollment.</p></div><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} onClick={() => setEditor({ create: true })}><PlusIcon size={15} />Create batch</button></header>
       <section ref={batchCollectionRef} aria-label="Batch collection" className="space-y-5">
+        <OrganizationScope value={scope} onChange={next => { setScope(next); setOwner('all'); setPage(1) }} />
         <div className={`${surface} grid gap-4 p-4 sm:grid-cols-[1.2fr_1fr_1fr] sm:p-5`}>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Search batches<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><SearchIcon size={16} /></span><input aria-label="Search batches" placeholder="Search batch, institute or instructor…" className={`${field} pl-9`} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></span></label>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Instructor<select aria-label="Filter batches by instructor" className={`${field} mt-2`} value={owner} onChange={event => { setOwner(event.target.value); setPage(1) }}><option value="all">All instructors</option>{ownerOptions.map(([id, name]) => <option key={id} value={id}>{name || 'Instructor not assigned'}</option>)}</select></label>
@@ -173,7 +178,7 @@ export default function AdminBatches() {
         </div>
         <div className="flex items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">{batchData == null ? 'Loading batches…' : `${filtered.length} ${filtered.length === 1 ? 'batch' : 'batches'}`}</p><CollectionViewToggle view={view} onChange={setView} label="Batch view" /></div>
         <DataSection url={BATCHES} skeleton={<CollectionSkeleton kind="batch" view={view} />} >
-          {!records.length ? <div className={`${surface} py-12 text-center`}><p className="text-sm font-medium">{batches.length ? 'No batches match your filters.' : 'No batches yet'}</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{batches.length ? 'Try another search or clear your filters.' : 'Create a batch and select its responsible instructor to begin.'}</p>{batches.length > 0 && <button className="mt-3 min-h-11 text-xs font-semibold text-green-700 dark:text-green-300" onClick={() => { setSearch(''); setOwner('all'); setStatus('all'); setPage(1) }}>Clear filters</button>}</div> : <BatchCollection records={records} view={view} onOpen={choose} />}
+          {!records.length ? <div className={`${surface} py-12 text-center`}><p className="text-sm font-medium">{batches.length ? 'No batches match your filters.' : 'No batches yet'}</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{batches.length ? 'Try another search or clear your filters.' : 'Create a batch and select its responsible instructor to begin.'}</p>{batches.length > 0 && <button className="mt-3 min-h-11 text-xs font-semibold text-green-700 dark:text-green-300" onClick={() => { setScope(ALL_ORGANIZATIONS); setSearch(''); setOwner('all'); setStatus('all'); setPage(1) }}>Clear filters</button>}</div> : <BatchCollection records={records} view={view} onOpen={choose} />}
           <CollectionRange total={filtered.length} page={visiblePage} onPage={setPage} noun="batches" />
         </DataSection>
         {!!records.length && <p className="text-xs text-gray-500 dark:text-gray-400">Select a batch to view its students.</p>}

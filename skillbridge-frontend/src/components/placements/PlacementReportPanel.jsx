@@ -1,5 +1,8 @@
 import { useMemo, useState, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
+import OrganizationScope from '../OrganizationScope'
+import { useApi } from '../../hooks/useApi'
+import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, matchesOrganization } from '../../utils/organizationScope'
 import {
   downloadPlacementPdf,
   downloadPlacementXlsx,
@@ -32,6 +35,8 @@ export default function PlacementReportPanel({ companies, positions, placements,
   const [companyId, setCompanyId] = useState('')
   const [positionId, setPositionId] = useState('')
   const [batchId, setBatchId] = useState('')
+  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const { data: organizationOptions } = useApi(role === 'admin' ? ORGANIZATION_OPTIONS : null)
   const [course, setCourse] = useState('')
   const [area, setArea] = useState('')
   const [dateField, setDateField] = useState('created_at')
@@ -45,8 +50,8 @@ export default function PlacementReportPanel({ companies, positions, placements,
   )
   const batchOptions = useMemo(() => uniqueOptions(
     [...students, ...placements],
-    item => item.batch ? { value: item.batch.id, label: item.batch.name } : null,
-  ), [placements, students])
+    item => item.batch && matchesOrganization(item.batch, scope) ? { value: item.batch.id, label: item.batch.name } : null,
+  ), [placements, students, scope])
   const courseOptions = useMemo(() => uniqueOptions(
     [...students, ...placements],
     item => {
@@ -69,6 +74,8 @@ export default function PlacementReportPanel({ companies, positions, placements,
       company_id: companyId,
       position_id: positionId,
       batch_id: batchId,
+      ...(scope.institute ? { institute_id: scope.institute } : {}),
+      ...(scope.program ? { program_id: scope.program } : {}),
       course,
       area,
       date_field: dateField,
@@ -82,6 +89,8 @@ export default function PlacementReportPanel({ companies, positions, placements,
       company_id: Object.fromEntries(companies.map(item => [String(item.id), item.name])),
       position_id: Object.fromEntries(positions.map(item => [String(item.id), `${item.title} — ${item.company_name}`])),
       batch_id: Object.fromEntries(batchOptions.map(item => [String(item.value), item.label])),
+      institute_id: Object.fromEntries((organizationOptions?.institutes || []).map(item => [String(item.id), item.name])),
+      program_id: Object.fromEntries((organizationOptions?.programs || []).map(item => [String(item.id), item.name])),
     }
   }
 
@@ -126,6 +135,7 @@ export default function PlacementReportPanel({ companies, positions, placements,
         <p className="text-[11px] text-gray-400">PDF for official records · XLSX for raw data · Dates use Philippine time</p>
       </div>
 
+      {role === 'admin' && <div className="mb-4"><OrganizationScope value={scope} onChange={next => { setScope(next); setBatchId('') }} /></div>}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Report type</span><select value={reportType} onChange={event => setReportType(event.target.value)} className={selectClass}><option value="company_placements">Partner / position placements</option><option value="student_placements">Student placements</option><option value="placement_history">Placement history</option></select></label>
         <label><span className="block text-[11px] font-semibold text-gray-500 mb-1">Status</span><select value={status} onChange={event => setStatus(event.target.value)} className={selectClass}><option value="all">All statuses</option><option value="suggested">Suggested</option><option value="approved">Approved</option><option value="removed">Removed</option><option value="rejected">Rejected</option></select></label>

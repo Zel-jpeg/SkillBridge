@@ -2,6 +2,9 @@ import { useMemo, useRef, useState } from 'react'
 import DialogShell from '../../components/DialogShell'
 import DataSection from '../../components/DataSection'
 import PageHeader from '../../components/PageHeader'
+import OrganizationScope from '../../components/OrganizationScope'
+import { useApi } from '../../hooks/useApi'
+import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, matchesOrganization, scopedPartners } from '../../utils/organizationScope'
 import ScoreLabel from '../../components/ScoreLabel'
 import { recommendationDisplay, isAssessmentLed, recommendationDetails, recommendationMetrics } from '../../utils/recommendationResults'
 import PlacementReportPanel from '../../components/placements/PlacementReportPanel'
@@ -25,6 +28,7 @@ function slice(rows, page) { const current = Math.min(page, Math.max(1, Math.cei
 export default function PlacementWorkspace({ role = 'admin' }) {
   const [tab, setTab] = useState('companies')
   const [search, setSearch] = useState('')
+  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
   const [batch, setBatch] = useState('')
   const [area, setArea] = useState('')
   const [availability, setAvailability] = useState('all')
@@ -35,9 +39,12 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   const [companyPage, setCompanyPage] = useState(1)
   const [historyPage, setHistoryPage] = useState(1)
   const [historyStatus, setHistoryStatus] = useState('')
+  const { data: organizationOptions } = useApi(role === 'admin' ? ORGANIZATION_OPTIONS : null)
   const params = new URLSearchParams({ limit: '10', offset: String((historyPage - 1) * 10) })
   if (search.trim()) params.set('q', search.trim())
   if (batch) params.set('batch_id', batch)
+  if (scope.institute) params.set('institute_id', scope.institute)
+  if (scope.program) params.set('program_id', scope.program)
   if (historyStatus) params.set('status', historyStatus)
   const data = usePlacements(`/api/placements/?${params}`)
   const [reports, setReports] = useState(false)
@@ -59,15 +66,20 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   const draft = data.draft
   const counts = draft?.proposed_counts || {}
   const students = draft?.students || []
-  const inScope = item => !batch || String(item.batch?.id) === batch
+  const inOrganization = item => matchesOrganization(item.batch, scope)
+  const inScope = item => inOrganization(item) && (!batch || String(item.batch?.id) === batch)
   const visible = students.filter(inScope)
   const approved = data.approvedPlacements.filter(inScope)
+  const scopedCompanies = scopedPartners(data.companies, scope, organizationOptions, { includeEmpty: false })
+  const visiblePositions = scopedCompanies.flatMap(company => company.positions.map(position => ({ ...position, company_id: company.id, company_name: company.name })))
+  const manualStudents = data.students.filter(inScope)
+  const remaining = scope.institute || scope.program ? visiblePositions.reduce((sum, position) => sum + position.remaining_slots, 0) : data.stats.remaining
   const approvedByStudent = useMemo(() => new Map(data.approvedPlacements.map(item => [item.student.id, item])), [data.approvedPlacements])
   const pairs = useMemo(() => data.companies.flatMap(company => company.positions.flatMap(position => position.suggested_students.map(suggestion => ({ company, position, suggestion })))), [data.companies])
   const review = pairs.find(item => item.suggestion.recommendation_id === reviewId)
   const reviewing = review && students.find(item => item.student.id === review.suggestion.student.id)
-  const batches = [...new Map([...students, ...data.approvedPlacements].filter(item => item.batch).map(item => [item.batch.id, item.batch])).values()]
-  const company = data.companies.find(item => item.id === companyId)
+  const batches = [...new Map([...data.students, ...students, ...data.approvedPlacements].filter(item => item.batch && inOrganization(item)).map(item => [item.batch.id, item.batch])).values()]
+  const company = scopedCompanies.find(item => item.id === companyId)
   const position = company?.positions.find(item => item.id === positionId) || company?.positions.find(item => item.remaining_slots > 0) || company?.positions[0]
   const rankByRecommendation = useMemo(() => new Map((position?.suggested_students || []).filter(actionable).map((item, index) => [item.recommendation_id, index + 1])), [position])
   const term = search.trim().toLowerCase()
@@ -92,7 +104,7 @@ export default function PlacementWorkspace({ role = 'admin' }) {
       window.scrollTo({ top: overviewScroll.current, behavior: 'instant' })
     })
   }
-  const companies = data.companies.filter(item => {
+  const companies = scopedCompanies.filter(item => {
     const open = item.positions.some(pos => pos.remaining_slots > (counts[pos.id] || 0))
     return (!area || address(item.address) === area) && (availability === 'all' || (availability === 'open' ? open : !open)) &&
       (matches(item.name, address(item.address)) || item.positions.some(pos => matches(pos.title) || pos.suggested_students.some(row => inScope(row) && matches(row.student.name, row.student.school_id))) || approved.some(row => row.company.id === item.id && matches(row.student.name, row.student.school_id)))
@@ -108,8 +120,15 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   if (data.suggestionsReady && companyPage > maxCompanyPage) setCompanyPage(maxCompanyPage)
   const maxPage = Math.max(1, Math.ceil((tab === 'awaiting' ? awaiting : candidates).length / (tab === 'awaiting' ? 10 : CANDIDATE_PAGE_SIZE)))
   if (data.suggestionsReady && draft && (tab === 'awaiting' || company) && page > maxPage) setPage(maxPage)
-  const areas = [...new Set(data.companies.map(item => address(item.address)).filter(Boolean))].sort()
+  const areas = [...new Set(scopedCompanies.map(item => address(item.address)).filter(Boolean))].sort()
   function filter(setter, value) { setter(value); setPage(1); setCompanyPage(1); setHistoryPage(1) }
+  function changeScope(next) {
+    filter(setScope, next)
+    setBatch('')
+    setArea('')
+    setCompanyId(null)
+    setPositionId(null)
+  }
   function changeTab(value) { setTab(value); setCompanyId(null); setPositionId(null); setPage(1) }
   async function refreshChoice() {
     const attempt = ++refreshAttempt.current
@@ -156,19 +175,20 @@ export default function PlacementWorkspace({ role = 'admin' }) {
     {reports && <p className="pl-muted">Report filters are independent of the placement workspace. Downloads include recorded decisions and official capacity; provisional slots are not approved placements.</p>}
     {reports && <PlacementReportPanel companies={data.companies} positions={data.positions} placements={[...data.approvedPlacements, ...data.placements]} students={data.students} role={role} />}
     <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout="placement-stats" count={3}>
-      <div className="pl-stats">{[[visible.length, 'Students awaiting placement', 'Current student scope', UserIcon], [approved.length, 'Approved placements', 'Current student scope', CheckCircleIcon], [data.stats.remaining, 'Slots not yet approved', 'All batches; includes suggested slots', BriefcaseIcon]].map((stat, index) => { const [value, label, note] = stat; const Icon = stat[3]; return <div key={label}><span className={`pl-stat-icon pl-stat-icon--${index}`} aria-hidden="true"><Icon size={25} /></span><div className="pl-stat-content"><p>{label}</p><strong>{value}</strong><span>{note}</span></div></div> })}</div>
+      <div className="pl-stats">{[[visible.length, 'Students awaiting placement', 'Current student scope', UserIcon], [approved.length, 'Approved placements', 'Current student scope', CheckCircleIcon], [remaining, 'Slots not yet approved', 'Shared capacity counts approvals from every program', BriefcaseIcon]].map((stat, index) => { const [value, label, note] = stat; const Icon = stat[3]; return <div key={label}><span className={`pl-stat-icon pl-stat-icon--${index}`} aria-hidden="true"><Icon size={25} /></span><div className="pl-stat-content"><p>{label}</p><strong>{value}</strong><span>{note}</span></div></div> })}</div>
       <p className="pl-muted pl-auto-status" role="status"><span className={`pl-sync-dot ${draft?.stale || data.syncError ? 'pl-sync-dot--warning' : ''}`} aria-hidden="true" />{data.syncing || !draft?.generated ? 'Updating suggestions…' : draft.stale ? 'Suggestions need updating.' : 'Suggestions updated automatically · Awaiting coordinator approval'}</p>
       {data.syncError && <p role="alert" className="pl-error">Could not update suggestions. {data.syncError} Use Refresh suggestions to retry.</p>}
     </DataSection>
     {error && <p role="alert" className="pl-error">{error}</p>}
     <nav className="pl-tabs pl-overview-tabs" aria-label="Placement views">{[['companies', 'Partners'], ['awaiting', 'Awaiting allocation'], ['history', 'Decision history']].map(([key, label]) => <button key={key} aria-label={key === 'awaiting' ? `${label} (${visible.filter(item => !item.proposal).length})` : label} aria-current={tab === key ? 'page' : undefined} onClick={() => changeTab(key)}>{label}{key === 'awaiting' && <span className="pl-tab-count">{visible.filter(item => !item.proposal).length}</span>}</button>)}</nav>
+    {role === 'admin' && <OrganizationScope value={scope} onChange={changeScope} />}
     <div className="pl-filters"><label className="pl-search">Search<span className="pl-search-control"><SearchIcon size={16} /><input type="search" value={search} onChange={event => filter(setSearch, event.target.value)} placeholder="Partner, position, student or school ID" /></span></label><label>Student scope<select aria-label="Student scope" value={batch} onChange={event => filter(setBatch, event.target.value)}><option value="">{role === 'admin' ? 'All authorized batches' : 'My batches'}</option>{batches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       {tab === 'companies' && !company && <><label>Partner area<select value={area} onChange={event => filter(setArea, event.target.value)}><option value="">All areas</option>{areas.map(item => <option key={item}>{item}</option>)}</select></label><label>Suggestion availability<select value={availability} onChange={event => filter(setAvailability, event.target.value)}><option value="all">All partners</option><option value="open">Available suggestion slots</option><option value="full">No available suggestion slots</option></select></label></>}
       {tab === 'history' && <label>Decision<select aria-label="Decision" value={historyStatus} onChange={event => filter(setHistoryStatus, event.target.value)}><option value="">All decisions</option>{['approved', 'rejected', 'removed', 'suggested'].map(item => <option key={item} value={item}>{STATUS[item]}</option>)}</select></label>}
-      {(search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { setSearch(''); setBatch(''); setArea(''); setAvailability('all'); setHistoryStatus(''); setPage(1); setCompanyPage(1); setHistoryPage(1) }}>Clear filters</button>}
+      {(scope.institute || scope.program || search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { changeScope(ALL_ORGANIZATIONS); setSearch(''); setAvailability('all'); setHistoryStatus('') }}>Clear filters</button>}
     </div>
     {tab === 'companies' && <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout={company ? 'position-review' : 'placement-company-cards'} columns={2}>{!company ? <>
-      <div className="pl-section-heading"><p><strong>{companies.length} partners</strong><span className="pl-muted"> · Open a partner to review its positions</span></p><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested slots await approval.</p><button className="pl-button" onClick={() => setManual({})} disabled={!data.students.length}><UserIcon size={16} />Manual assignment</button></div>
+      <div className="pl-section-heading"><p><strong>{companies.length} partners</strong><span className="pl-muted"> · Open a partner to review its positions</span></p><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested slots await approval.</p><button className="pl-button" onClick={() => setManual({})} disabled={!manualStudents.length}><UserIcon size={16} />Manual assignment</button></div>
       <div className="pl-company-grid">{slice(companies, companyPage).map(co => <CompanyOverviewCard key={co.id} company={co} counts={counts} suggestedInScope={visible.filter(item => item.proposal?.company_id === co.id).length} address={address(co.address)} onOpen={openCompany} />)}</div>
       {!companies.length && <Empty>No partners match these filters.</Empty>}<Pager rows={companies} page={companyPage} onPage={setCompanyPage} noun="partners" />
     </> : <PositionReviewWorkspace company={company} position={position} counts={counts} proposed={proposed} ranked={ranked} approved={approvedHere}
@@ -184,7 +204,7 @@ export default function PlacementWorkspace({ role = 'admin' }) {
 
     {review && <DialogShell title="Review suggested placement" description="Review evidence, alternatives and capacity before deciding." size="placement" onClose={() => setReviewId(null)} closeLabel="Close candidate review" footer={<div className="pl-dialog-actions"><button className="pl-button" onClick={() => setReviewId(null)}>Close</button><button className="pl-button pl-danger" disabled={busy || data.mutating || data.syncing || !actionable(review.suggestion)} onClick={() => setAction({ ...review, type: 'reject' })}>Decline suggestion</button><button className="pl-button pl-primary" disabled={busy || !actionable(review.suggestion) || review.position.remaining_slots <= 0 || draft?.stale || data.syncing || data.mutating} onClick={() => setAction({ ...review, type: 'approve' })}>Approve placement</button></div>}><div className="pl-dialog-body">{savedStudentId === review.suggestion.student.id && (choiceRefreshError ? <div role="alert" className="pl-notice"><p>Suggestion saved, but related placement data could not refresh. Retry the refresh; you do not need to submit the choice again.</p><button type="button" className="pl-button" disabled={data.refreshing} onClick={refreshChoice}>{data.refreshing ? 'Refreshing…' : 'Retry refresh'}</button></div> : <p role="status" className="pl-notice">Suggestion saved. Review the updated position before approving.</p>)}<Identity student={review.suggestion.student} batch={review.suggestion.batch} /><div className="pl-target"><h3>{review.position.title}</h3><p>{review.company.name}</p><Capacity position={review.position} held={counts[review.position.id] || 0} /><p className="pl-muted">{reviewing?.proposal?.id === reviewId ? 'Current suggested position' : 'Alternative / ranked candidate'}{reviewing?.coordinator_choice ? ' · Coordinator chosen' : ''}</p></div>{(isAssessmentLed(review.suggestion) ? !recommendationDetails(review.suggestion).all_targets_met : review.suggestion.match_score < 60) && <p className="pl-notice">Review the unmet or unassessed requirements and alternatives carefully; this is not an automatic rejection.</p>}{draft?.stale && <p className="pl-notice">The shared suggestions need updating before approval.</p>}<div className="pl-score-grid">{recommendationMetrics(review.suggestion).map(([label, value]) => <div key={label}><strong>{value}</strong><ScoreLabel label={label} /></div>)}</div><p className="pl-muted">Scores support your judgment; they do not guarantee suitability.</p>{reviewing?.proposal && reviewing.alternatives[0]?.id !== reviewing.proposal.id && <p className="pl-notice">First personal recommendation: {reviewing.alternatives[0]?.position} at {reviewing.alternatives[0]?.company} ({recommendationDisplay(reviewing.alternatives[0])}). The proposed placement balances shared slots and other students’ alternatives, or reflects a coordinator choice.</p>}<details className="pl-more"><summary>Position requirements and tags</summary><p className="pl-muted">Role requirements and descriptive tags; these are not independently assessed student skills.</p><p>{reviewing?.alternatives.find(item => item.id === reviewId)?.tags?.join(', ') || 'Not available for this suggestion.'}</p></details><h3 className="pl-subheading">First three personal recommendations</h3>{reviewing?.proposal && <p className="pl-muted">Current suggestion: {reviewing.proposal.position} at {reviewing.proposal.company} ({recommendationDisplay(reviewing.proposal)}).</p>}<p className="pl-muted">Alternatives reserve no slots. Shared allocation considers other students and available capacity.</p><div className="pl-alternatives">{reviewing?.alternatives.slice(0, 3).map(alternative)}</div>{reviewing?.alternatives.length > 3 && <details className="pl-more"><summary>All other matches ({reviewing.alternatives.length - 3})</summary>{reviewing.alternatives.slice(3).map(option => alternative(option))}</details>}{error && <p role="alert" className="pl-error">{error}</p>}</div></DialogShell>}
     {liveAction && <ActionModal key={`${liveAction.type}-${liveAction.suggestion.recommendation_id || liveAction.suggestion.placement_id}`} action={liveAction} busy={data.mutating || data.syncing} onClose={() => setAction(null)} onSubmit={decide} />}
-    {manual && <ManualAssignmentModal students={data.students} positions={data.positions} approvedByStudent={approvedByStudent} initialPositionId={manual.positionId} busy={data.mutating || data.syncing} onClose={() => setManual(null)} onSubmit={data.manualAssign} />}
+    {manual && <ManualAssignmentModal students={manualStudents} positions={visiblePositions} approvedByStudent={approvedByStudent} initialPositionId={manual.positionId} busy={data.mutating || data.syncing} onClose={() => setManual(null)} onSubmit={data.manualAssign} />}
 
   </section>
 }

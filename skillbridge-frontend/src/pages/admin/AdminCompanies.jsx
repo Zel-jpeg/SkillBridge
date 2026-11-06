@@ -24,9 +24,12 @@ import AddressDropdowns from '../../components/AddressDropdowns'
 import ConfirmModal    from '../../components/admin/ConfirmModal'
 import { useAdminCompanies } from '../../hooks/admin/useAdminCompanies'
 import api from '../../api/axios'
-import { invalidateCache, fetchWithDedup } from '../../hooks/useApi'
+import { invalidateCache, fetchWithDedup, useApi } from '../../hooks/useApi'
 import Pagination from '../../components/Pagination'
 import CompanyCollectionCard, { CompanyCollectionSkeleton } from '../../components/admin/CompanyCollectionCard'
+import OrganizationScope from '../../components/OrganizationScope'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
+import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, scopedPartners } from '../../utils/organizationScope'
 import { companyDisclosures } from '../../utils/companyCollection'
 import CompanyImageInput from '../../components/CompanyImageInput'
 import CompanyEditDialog from '../../components/CompanyEditDialog'
@@ -713,6 +716,9 @@ export default function AdminCompanies() {
   } = useAdminCompanies()
 
   const [search,        setSearch]        = useState('')
+  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const [view, setView] = useState('grid')
+  const { data: organizationOptions } = useApi(ORGANIZATION_OPTIONS)
   const [catalogStatus, setCatalogStatus] = useState('active')
   const [catalogPage, setCatalogPage] = useState(1)
   const [archiveTarget, setArchiveTarget] = useState(null)
@@ -730,16 +736,17 @@ export default function AdminCompanies() {
   const [expandedPositions, setExpandedPositions] = useReducer(companyDisclosures, new Set())
   useEffect(() => { setExpandedPositions({ type: 'reconcile', companies }) }, [companies])
 
-  const searched = search.trim()
-    ? companies.filter(co =>
-        co.name.toLowerCase().includes(search.toLowerCase()) ||
-        co.address.toLowerCase().includes(search.toLowerCase()))
-    : companies
+  const scoped = scopedPartners(companies, scope, organizationOptions)
+  const term = search.trim().toLowerCase()
+  const searched = term
+    ? scoped.filter(co => [co.name, co.address, ...co.positions.map(position => position.title)]
+      .some(value => value.toLowerCase().includes(term)))
+    : scoped
   const filtered = searched.filter(co => catalogStatus === 'all' || (catalogStatus === 'archived' ? Boolean(co.archived_at) : !co.archived_at))
   const visiblePage = Math.min(catalogPage, Math.max(1, Math.ceil(filtered.length / 10)))
   const displayed = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
 
-  const activeCompanies = companies.filter(co => !co.archived_at)
+  const activeCompanies = scoped.filter(co => !co.archived_at)
   const totalSlots = activeCompanies.reduce((sum, co) => sum + co.positions.filter(p => !p.archived_at).reduce((s, p) => s + p.slots, 0), 0)
   const pinnedCount = activeCompanies.filter(c => c.lat != null && c.lng != null).length
 
@@ -816,7 +823,7 @@ export default function AdminCompanies() {
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">OJT Partners & Positions</h1>
             <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="text" count={1}><p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {companies.length} partners · {companies.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} active configured slots
+              {scoped.length} partners · {scoped.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} active configured slots
             </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
@@ -836,8 +843,9 @@ export default function AdminCompanies() {
         </div>
 
         <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
-        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status">{filtered.length} matching partners</p></div>
-        <p className="text-xs leading-6 text-gray-500">Reuse partners across OJT cycles. Archive discontinued partners or positions to retain their history; update total slots when the next cycle's capacity is confirmed.</p>
+        <OrganizationScope value={scope} onChange={next => { setScope(next); setCatalogPage(1) }} />
+        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching partners</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
+        <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Program views show their eligible openings. To see the existing IC openings, select Institute of Computing and leave Program on All programs. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
@@ -871,7 +879,7 @@ export default function AdminCompanies() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className={`grid grid-cols-1 items-start gap-4 ${view === 'grid' ? 'lg:grid-cols-2' : ''}`}>
           {displayed.map(company => <CompanyCollectionCard key={company.id} company={company}
             expanded={expandedPositions}
             onTogglePosition={key => setExpandedPositions({ type: 'toggle', key })}

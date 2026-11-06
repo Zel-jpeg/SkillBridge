@@ -120,6 +120,10 @@ export function validateApiResponse(response) {
         typeof row.company === 'string' && typeof row.position === 'string' && Array.isArray(row.tags))
   } else if (method === 'get' && ['/api/admin/companies/', '/api/instructor/companies/', '/api/student/companies/'].includes(path)) {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string' && Array.isArray(row.positions))
+  } else if (method === 'get' && path === '/api/management/organization-options/') {
+    const named = row => object(row) && id(row.id) && typeof row.name === 'string' && typeof row.code === 'string'
+    valid = object(data) && Array.isArray(data.institutes) && data.institutes.every(named) &&
+      Array.isArray(data.programs) && data.programs.every(row => named(row) && id(row.institute_id))
   } else if (method === 'get' && path === '/api/admin/batch-instructors/') {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string')
   } else if (method === 'get' && path === '/api/admin/management-actions/') {

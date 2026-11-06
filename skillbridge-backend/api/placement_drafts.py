@@ -228,7 +228,9 @@ def payload(user, ctx, state, proposed=None):
         entries.append({'student': {'id': student_id, 'name': enrollment.student.name,
                         'school_id': enrollment.student.school_id, 'course': enrollment.student.course,
                         'photo_url': enrollment.student.photo_url},
-                        'batch': {'id': enrollment.batch_id, 'name': enrollment.batch.name},
+                        'batch': {'id': enrollment.batch_id, 'name': enrollment.batch.name,
+                                  'program_id': enrollment.batch.program_id,
+                                  'institute_id': enrollment.batch.institute_id},
                         'status': reason, 'proposal': chosen, 'alternatives': options,
                         'coordinator_choice': str(student_id) in state.manual_choices,
                         'needs_review': bool(chosen and recommendation_needs_review(chosen))})

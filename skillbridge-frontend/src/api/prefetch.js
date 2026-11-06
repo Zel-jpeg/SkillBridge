@@ -6,7 +6,7 @@ import { adminUsersUrl } from '../utils/collectionQueries.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
 export const DESTINATION_QUERIES = {
-  '/admin/competencies': ['/api/management/competency-programs/?status=all&page=1&page_size=8&search='],
+  '/admin/competencies': ['/api/management/organization-options/'],
   '/instructor/competencies': ['/api/management/competency-programs/?status=all&page=1&page_size=8&search='],
   '/student/dashboard': ['/api/students/me/', '/api/assessments/', '/api/student/results/combined/'],
   '/student/assessments': ['/api/assessments/'],

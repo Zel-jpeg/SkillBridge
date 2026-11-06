@@ -1670,7 +1670,8 @@ def instructor_assessments(request):
 
     if request.method == 'GET':
         assessments = (Assessment.objects.all()
-                       .select_related('batch', 'batch__instructor', 'created_by', 'archived_by', 'framework')
+                       .select_related('batch__instructor', 'batch__institute', 'batch__program',
+                                       'created_by', 'archived_by', 'framework__program__institute')
                        .prefetch_related('questions__skill_category')
                        .annotate(
                            submission_total=Count('responses', filter=Q(responses__status=StudentResponse.STATUS_SUBMITTED), distinct=True),
@@ -1690,6 +1691,11 @@ def instructor_assessments(request):
             'title':            a.title,
             'batch_id':         a.batch_id,
             'batch_name':       a.batch.name if a.batch else None,
+            'institute_id': a.framework.program.institute_id if a.framework else (a.batch.institute_id if a.batch else None),
+            'institute_code': (a.framework.program.institute.code if a.framework else
+                               (a.batch.institute.code if a.batch and a.batch.institute else None)),
+            'program_code': (a.framework.program.code if a.framework else
+                             (a.batch.program.code if a.batch and a.batch.program else None)),
             'instructor_id': a.batch.instructor_id if a.batch else None,
             'created_by_id': a.created_by_id,
             'created_by_name': a.created_by.name,
@@ -3821,6 +3827,7 @@ def admin_companies(request):
                 'id':       co.id,
                 'archived_at': co.archived_at,
                 'name':     co.name,
+                'management_program_id': co.management_program_id,
                 **image_fields(co),
                 'address':  co.address,
                 'lat':      co.location_lat,
@@ -4263,7 +4270,8 @@ def _serialize_placement(placement):
         },
         'recommendation_id': placement.recommendation_id,
         'batch': (
-            {'id': placement.batch_id, 'name': placement.batch.name}
+            {'id': placement.batch_id, 'name': placement.batch.name,
+             'program_id': placement.batch.program_id, 'institute_id': placement.batch.institute_id}
             if placement.batch_id else None
         ),
         'match_score_at_assignment': placement.match_score_at_assignment,
@@ -4552,7 +4560,8 @@ def placement_suggestions(request):
                         'course': recommendation.student.course,
                         'photo_url': recommendation.student.photo_url,
                     },
-                    'batch': {'id': batch.id, 'name': batch.name} if batch else None,
+                    'batch': {'id': batch.id, 'name': batch.name, 'program_id': batch.program_id,
+                              'institute_id': batch.institute_id} if batch else None,
                     'match_score': recommendation.match_score,
                     'category_score_component': recommendation.category_score_component,
                     'nlp_score_component': recommendation.nlp_score_component,
@@ -4602,7 +4611,7 @@ def placement_suggestions(request):
             'student_id': student.school_id,
             'course': student.course,
             'photo_url': student.photo_url,
-            'batch': {'id': batch.id, 'name': batch.name, 'program_id': batch.program_id,
+            'batch': {'id': batch.id, 'name': batch.name, 'program_id': batch.program_id, 'institute_id': batch.institute_id,
                       'status': batch.status} if batch else None,
         })
 
@@ -4971,6 +4980,8 @@ def placement_history(request):
         ('company_id', 'company_id'),
         ('position_id', 'position_id'),
         ('batch_id', 'batch_id'),
+        ('institute_id', 'batch__institute_id'),
+        ('program_id', 'batch__program_id'),
     ):
         value, error = _positive_int(request.query_params.get(query_name), query_name)
         if error:

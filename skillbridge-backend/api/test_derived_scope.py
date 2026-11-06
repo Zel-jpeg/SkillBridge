@@ -30,6 +30,38 @@ class DerivedScopeTests(APITestCase):
         assessment = Assessment.objects.create(title=f'{code} private assessment', batch=batch, created_by=instructor)
         return batch, student, assessment, assignment
 
+    def test_staff_organization_choices_and_scoped_assessment_metadata(self):
+        first, second = self.first[0], self.second[0]
+        url = reverse('staff_organization_options')
+        self.assertEqual([row['id'] for row in self.client.get(url).data['programs']], [first.program_id])
+        self.client.force_authenticate(self.first[1])
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(self.admin)
+        empty = Institute.objects.create(name='Institute without programs', code='EMPTY')
+        choices = self.client.get(url).data
+        self.assertEqual({row['id'] for row in choices['institutes']}, {first.institute_id, second.institute_id, empty.id})
+        framework = CompetencyFramework.objects.create(program=second.program, name='Draft library', version=1)
+        draft = Assessment.objects.create(title='Unassigned scoped draft', framework=framework, created_by=self.admin)
+        records = {row['id']: row for row in self.client.get(reverse('instructor_assessments')).data}
+        self.assertEqual((records[draft.id]['institute_id'], records[draft.id]['program_id']),
+                         (second.institute_id, second.program_id))
+        self.assertEqual(records[self.first[2].id]['institute_id'], first.institute_id)
+
+    def test_placement_history_filters_before_pagination_and_uses_recorded_batch(self):
+        company = Company.objects.create(name='Shared partner')
+        position = Position.objects.create(company=company, title='Shared role')
+        records = [OJTPlacement.objects.create(student=student, batch=batch, company=company, position=position, status='removed')
+                   for batch, student, _, _ in [self.first, self.second]]
+        url = reverse('placement_history')
+        params = {'institute_id': self.second[0].institute_id, 'program_id': self.second[0].program_id, 'limit': 1}
+        self.assertEqual(self.client.get(url, params).data['placements'], [])
+        self.client.force_authenticate(self.admin)
+        result = self.client.get(url, params)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['count'], 1)
+        self.assertEqual([row['id'] for row in result.data['placements']], [records[1].id])
+        self.assertEqual(result.data['placements'][0]['batch']['program_id'], self.second[0].program_id)
+
     def test_analytics_hides_unrelated_openings_but_counts_shared_occupancy(self):
         company = Company.objects.create(name='Shared partner')
         visible = Position.objects.create(company=company, title='Shared opening', slots_available=2,

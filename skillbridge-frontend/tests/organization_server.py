@@ -11,7 +11,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(OUT / 'synthetic-browser.sqlite3')
-if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'coordinator-catalog'):
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'coordinator-catalog', 'staff-scope'):
     settings.DATABASES['default'].setdefault('OPTIONS', {})['transaction_mode'] = 'IMMEDIATE'
 settings.SECRET_KEY = 'synthetic-organization-browser-key'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
@@ -46,7 +46,7 @@ for role in ['admin', 'instructor', 'student']:
 owner = User.objects.get(role='instructor')
 batch = Batch.objects.create(name='Existing IC mixed batch', instructor=owner)
 BatchEnrollment.objects.create(batch=batch, student=User.objects.get(role='student'))
-if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('legacy-organization', 'multi-institute-acceptance'):
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('legacy-organization', 'multi-institute-acceptance', 'staff-scope'):
     from django.db import transaction
     from api.legacy_organization import apply_mapping, mapping_plan
     User.objects.filter(role='student').update(course='BSIT', department='Institute of Computing', school_id='2026-00001')
@@ -68,12 +68,26 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'program-batches':
     user = User.objects.create_user('program-learner@dnsc.edu.ph', role='student', name='Synthetic Program Learner')
     identities['program_student'] = {'token': str(AccessToken.for_user(user)),
         'user': {'id': user.id, 'role': user.role, 'name': user.name, 'is_approved': False}}
-if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance'):
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'staff-scope'):
     settings.DEBUG = True
     from general_competency_fixture import seed
     scenario = os.environ['SB_ORGANIZATION_SCENARIO']
-    acceptance_owner = User.objects.get(email='candidate-0@example.invalid') if scenario == 'multi-institute-acceptance' else None
+    acceptance_owner = User.objects.get(email='candidate-0@example.invalid') if scenario in ('multi-institute-acceptance', 'staff-scope') else None
     seed(OUT, identities, owner, scoped_openings=scenario != 'general-text', acceptance_owner=acceptance_owner)
+    if scenario == 'staff-scope':
+        from api.models import Assessment, Company, OJTPlacement, Position, SkillCategory
+        legacy = Company.objects.create(name='Synthetic IC legacy partner')
+        Position.objects.create(company=legacy, title='Synthetic IC legacy opening', slots_available=4)
+        SkillCategory.objects.create(name='Synthetic IC legacy skill')
+        Assessment.objects.create(title='Synthetic IC mixed assessment', batch=batch, created_by=owner)
+        scenarios = json.loads((OUT / 'general-text.json').read_text(encoding='utf-8'))
+        shared = Position.objects.get(pk=scenarios[0]['position_id'])
+        shared.slots_available = 2
+        shared.save(update_fields=['slots_available'])
+        shared.eligible_programs.add(scenarios[1]['program_id'])
+        for item in scenarios[:2]:
+            OJTPlacement.objects.create(student_id=item['student_id'], batch_id=item['batch_id'],
+                position=shared, company_id=shared.company_id, status='approved')
 (OUT / 'auth.json').write_text(json.dumps(identities), encoding='utf-8')
 print('Synthetic organization API ready', flush=True)
 call_command('runserver', f"127.0.0.1:{os.environ['SB_ORGANIZATION_API_PORT']}", use_reloader=False, verbosity=0)
