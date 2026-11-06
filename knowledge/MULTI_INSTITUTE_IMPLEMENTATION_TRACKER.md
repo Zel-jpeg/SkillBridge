@@ -315,7 +315,7 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
   fix confirmed in-scope bugs and retest affected flows before acceptance.
 - [x] Update staff guidance and evaluation demo, complete regression and inspect
   artifacts. See [F19 acceptance](COORDINATOR_CATALOG_ACCEPTANCE.md).
-- [ ] Commit and merge locally.
+- [x] Commit and merge locally as `74128c1`.
 
 ## Receipts and checkpoint
 
@@ -324,9 +324,10 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F19 verified on its feature branch (6 November 2026):
+Current checkpoint — F19 verified and merged locally (6 November 2026):
 
-- Branch `codex/coordinator-catalog-acceptance` is based on `cbdcde1`.
+- Branch `codex/coordinator-catalog-acceptance` was based on `cbdcde1`.
+  Verified feature commit `74128c1` fast-forwarded into local `main`.
 - Local acceptance covers synthetic Tourism, Social Work and an arbitrary
   program, plus retained IC data and the real phone attempt recovery flow.
 - The audit fixed the administrator-closed opening's status and coordinator
@@ -337,9 +338,11 @@ Current checkpoint — F19 verified on its feature branch (6 November 2026):
   passed during F19. Evidence and limitations are in the
   [acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md).
 - F19 has no migration. Migration 0039 was verified and applied in F17.
-- Next local gate is commit and fast-forward into local `main`. The separate
-  [evaluator checklist](COORDINATOR_EVALUATOR_CHECKLIST.md) tracks faculty and
-  authorized LMS validation.
+- Verified 207 documentation links and the downloaded IBPA CSV. The isolated
+  PostgreSQL clusters and browser servers stopped after the runs.
+- The separate [evaluator checklist](COORDINATOR_EVALUATOR_CHECKLIST.md)
+  tracks faculty and authorized LMS validation. Local implementation is
+  complete through F19.
 
 Previous checkpoint — F18 verified and merged locally (6 November 2026):
 

@@ -133,7 +133,7 @@ Branch `codex/coordinator-catalog-acceptance`, after F18 passes.
   deployment/migration receipts and evaluator demonstration checklist.
 - [x] Run relevant PostgreSQL and frontend regression, lint/build, drift and
   responsive Chrome checks. Inspect generated reports and stop owned helpers.
-- [ ] Commit and merge locally after the checks pass. Publication and deployment
+- [x] Commit and merge locally after the checks pass. Publication and deployment
   follow the user's existing separate-instruction requirement.
 
 ## System flow and bug review checklist
@@ -280,8 +280,8 @@ question formats after the instructor checks their keys and category mappings.
 
 ## Current execution checkpoint
 
-F01–F18 are merged locally. F19 completed the local audit, corrected the
-closed-opening issue and passed final regression on its feature branch.
+F01–F19 are merged locally. F19 completed the local audit, corrected the
+closed-opening issue and passed final regression before merging as `74128c1`.
 See the [acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md) and the
 [active tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md). The evaluator
 session and authorized provider checks are listed separately in the
