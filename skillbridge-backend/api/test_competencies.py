@@ -59,6 +59,14 @@ class CompetencyCatalogTests(APITestCase):
         self.assertEqual(self.add(name='Peer knowledge category').status_code, 201)
         self.assertEqual(self.change(name='Peer rename').status_code, 403)
 
+    def test_skill_search_matches_tags_within_the_selected_version(self):
+        category = self.add(tags=['Unique vocabulary']).data
+        self.add(name='Unrelated category', tags=['Unrelated tag'])
+        SkillCategory.objects.create(name='Shared category', tags=['Unique vocabulary'])
+        response = self.client.get(self.base + 'categories/', {'search': 'VOCABULARY'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['id'] for row in response.data['results']], [category['id']])
+
     def test_first_skill_and_its_version_save_atomically_and_replay(self):
         nonce = str(uuid.uuid4())
         category = {'name': 'Guest records', 'description': 'Review booking records.', 'tags': ['Booking']}

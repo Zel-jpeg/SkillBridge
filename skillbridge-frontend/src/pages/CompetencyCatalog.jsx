@@ -8,6 +8,7 @@ import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
 import CollectionViewToggle from '../components/CollectionViewToggle'
 import TaxonomyLibraryCards from '../components/TaxonomyLibraryCards'
+import SkillLibraryTable, { SkillLibraryOptions } from '../components/SkillLibraryTable'
 import { ORGANIZATION_OPTIONS } from '../utils/organizationScope'
 import { CatalogForm } from './admin/AdminInstitutes'
 import Pagination from '../components/Pagination'
@@ -18,7 +19,6 @@ import { organizationField as field, organizationButton as button, organizationP
 
 const PROGRAMS = '/api/management/competency-programs/'
 const AdminSkills = lazy(() => import('./admin/AdminSkills'))
-const surface = 'rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900'
 
 const assistanceMessages = {
   empty_catalog: 'No saved categories yet. Enter your own definition and tags.',
@@ -45,7 +45,7 @@ function QuestionCheck({ detail, digest }) {
   </div>
 }
 
-function Editor({ kind, row, source, url, framework, starterName, skillView = false, onClose, onSaved }) {
+function Editor({ kind, row, source, url, framework, starterName, onClose, onSaved }) {
   const category = kind === 'category'
   const [name, setName] = useState(row?.name || source?.name || '')
   const [description, setDescription] = useState(row?.description || source?.description || '')
@@ -57,7 +57,7 @@ function Editor({ kind, row, source, url, framework, starterName, skillView = fa
   const pending = useRef(false)
   const assistance = useScopedAssistance(`${url.replace(/categories\/$/, '')}assist/tags/`, { name, description }, framework?.digest)
   const title = category
-    ? (skillView ? (row ? 'Edit Skill' : 'Add Skill') : (row ? 'Edit category' : 'Add category'))
+    ? (row ? 'Edit Skill' : 'Add Skill')
     : (row ? 'Edit framework' : source ? 'Create new version' : 'Create framework')
   const changed = name !== (row?.name || source?.name || '') || description !== (row?.description || source?.description || '') || tags !== (row?.tags || []).join(', ')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
@@ -99,7 +99,6 @@ function Editor({ kind, row, source, url, framework, starterName, skillView = fa
 }
 
 function Categories({ programId, frameworkId, onBack, current = false }) {
-  const [view, setView] = useState('grid')
   const { showToast } = useToast()
   const base = `/api/management/programs/${programId}/frameworks/`
   const detail = `${base}${frameworkId}/`
@@ -126,11 +125,16 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
     finally { pending.current = false; setBusy(false) }
   }
   return <DataSection url={detail} layout="panel"><div className="space-y-5">
-    <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={onBack}>{current ? 'Skill set versions' : '← All versions'}</button><button type="button" className={button} onClick={refresh}>Refresh catalog</button></div>
     {framework && <>
       <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{current ? `${framework.program.name} skills` : `${framework.name} · v${framework.version}`}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
+        {available && !framework.locked && <button type="button" className={primary} onClick={() => setEditor({ kind: 'category' })}>Add Skill</button>}
+      </header>
+      {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
+      {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
+      <SkillLibraryOptions>
         <div className="flex flex-wrap gap-2">
-          {available && !framework.locked && <button className={primary} onClick={() => setEditor({ kind: 'category' })}>{current ? 'Add Skill' : 'Add category'}</button>}
+          <button type="button" className={button} onClick={onBack}>{current ? 'Skill set versions' : '← All versions'}</button>
+          <button type="button" className={button} onClick={refresh}>Refresh catalog</button>
           {!current && <>
             {framework.can_edit && available && <button className={button} onClick={() => setEditor({ kind: 'framework', row: framework })}>Edit framework</button>}
             {framework.program.is_active && <button className={button} onClick={() => setEditor({ kind: 'framework', source: framework })}>Create new version</button>}
@@ -138,24 +142,13 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
             {framework.can_manage && <button className={button} disabled={busy} onClick={() => setAction(framework.is_active ? 'retire' : 'restore')}>{framework.is_active ? 'Retire version' : 'Restore version'}</button>}
           </>}
         </div>
-      </header>
-      {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
-      {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
-      <details className={`${surface} break-words text-xs`}><summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
-      <label className="block space-y-2 text-xs font-semibold">Search categories<input className={field} type="search" aria-label="Search categories" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
-      <DataSection url={url} layout="cards" count={4}>
-        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" role="status">{data?.count ?? 0} {data?.count === 1 ? 'category' : 'categories'}</p><CollectionViewToggle view={view} onChange={setView} label="Category view" mobile /></div>
-        <div className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>{data?.results?.map(category => <article key={category.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start' : ''}`}>
-          <div className="min-w-0">
-            <h3 className="break-words text-sm font-semibold">{category.name}</h3><p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6">{category.description}</p>
-            <ul className="mt-3 flex flex-wrap gap-2" aria-label={`Tags for ${category.name}`}>{category.tags.map(tag => <li key={tag} className="max-w-full break-words rounded-lg bg-gray-100 px-2 py-1 text-xs dark:bg-gray-800">{tag}</li>)}</ul>
-          </div>
-          {category.can_edit && <button className={`${button} max-w-full justify-self-start break-words sm:max-w-56`} onClick={() => setEditor({ kind: 'category', row: category })}>Edit {category.name}</button>}
-        </article>)}</div>
-        {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">{search ? 'No categories match this search.' : 'No categories yet. Add a defined skill area for this program.'}</p>}
-        {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
-      </DataSection>
-      {editor && <Editor {...editor} skillView={current} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
+        <details className="break-words text-xs"><summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
+      </SkillLibraryOptions>
+      <SkillLibraryTable url={url} skills={data?.results} total={data?.count ?? null} search={search} onSearch={value => { setSearch(value); setPage(1) }}
+        renderActions={available && !framework.locked ? category => category.can_edit && <button type="button"
+          className={button} aria-label={`Edit ${category.name}`} onClick={() => setEditor({ kind: 'category', row: category })}>Edit</button> : undefined}
+        footer={data && <div className="px-4"><Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} /></div>} />
+      {editor && <Editor {...editor} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
       {action && <ConfirmModal tone="confirm" title={action === 'freeze' ? 'Freeze this version?' : action === 'retire' ? 'Retire this version?' : 'Restore this version?'} message={action === 'freeze' ? 'Names, descriptions and tags will become read-only. Review every category first. Later revisions need a new version; existing evidence keeps these definitions.' : action === 'retire' ? 'This version remains available for retained records. Its definitions will not accept new edits.' : 'Restore this version for its existing context. Frozen definitions stay frozen.'} confirmLabel={action === 'freeze' ? 'Freeze definitions' : action === 'retire' ? 'Retire version' : 'Restore version'} onCancel={() => { if (!busy) setAction(null) }} onConfirm={changeVersion} />}
     </>}
   </div></DataSection>
@@ -164,7 +157,8 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
 function Versions({ programId }) {
   const [view, setView] = useState('grid')
   const { showToast } = useToast()
-  const { data: program } = useApi(`${PROGRAMS}${programId}/`)
+  const programUrl = `${PROGRAMS}${programId}/`
+  const { data: program } = useApi(programUrl)
   const base = `/api/management/programs/${programId}/frameworks/`
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -176,21 +170,25 @@ function Versions({ programId }) {
   const url = `${base}?page=${page}&page_size=8&status=${status}&search=${encodeURIComponent(search)}`
   const { data } = useApi(url)
   if (selected) return <Categories key={selected} programId={programId} frameworkId={selected} onBack={() => setSelected(null)} />
+  if (!program || !data) return <DataSection urls={[programUrl, url]} layout="panel" label="Loading program skills" />
   if (!advanced && !starter && data?.count === 1 && data.results[0]?.is_active) {
     return <Categories key={data.results[0].id} programId={programId} frameworkId={data.results[0].id} current onBack={() => setAdvanced(true)} />
   }
-  if (!advanced && (starter || data?.count === 0)) return <section className={`${surface} space-y-4`}>
-    <h2 className="text-lg font-bold">{program?.name} skills</h2>
-    <p className="text-xs text-gray-500 dark:text-gray-400">Add the first skill to start this program’s skill library.</p>
-    <div className="flex flex-wrap gap-2">
+  if (!advanced && (starter || data?.count === 0)) return <section className="space-y-4">
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div><h2 className="text-lg font-bold">{program?.name} skills</h2>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Add the first skill to start this program’s skill library.</p></div>
       <button type="button" className={primary} disabled={!program?.is_active} onClick={() => setStarter(true)}>Add Skill</button>
+    </header>
+    <SkillLibraryOptions>
       <button type="button" className={button} onClick={() => setAdvanced(true)}>Skill set versions</button>
-    </div>
-    {starter && <Editor kind="category" skillView starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
+    </SkillLibraryOptions>
+    <SkillLibraryTable />
+    {starter && <Editor kind="category" starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
       setStarter(false); invalidateCache(base); showToast('Skill added.')
     }} />}
   </section>
-  return <DataSection url={`${PROGRAMS}${programId}/`} layout="panel"><section className="space-y-4">
+  return <DataSection url={programUrl} layout="panel"><section className="space-y-4">
     {advanced && <button type="button" className={button} onClick={() => {
       setAdvanced(false); setSearch(''); setPage(1); setStatus('all')
     }}>Back to skills</button>}

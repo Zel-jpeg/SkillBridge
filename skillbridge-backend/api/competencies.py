@@ -305,7 +305,7 @@ def framework_categories(request, program_id, framework_id, category_id=None):
             raise ValidationError({'error': 'Category retirement is managed at version level. Use status=all.'})
         params['status'] = 'all'
         return Response(page_payload(rows, params,
-            serialize=lambda row: category_payload(row, request.user, locked), search_fields=('name', 'description'),
+            serialize=lambda row: category_payload(row, request.user, locked), search_fields=('name', 'description', 'tags'),
             order_fields=('name', 'id')))
     if request.method == 'POST' and category_id is not None or request.method == 'PATCH' and category_id is None:
         return Response({'error': 'Use the category collection to create and its detail to edit.'}, status=405)

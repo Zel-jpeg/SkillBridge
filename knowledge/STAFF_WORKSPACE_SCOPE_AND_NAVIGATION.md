@@ -172,3 +172,20 @@ Configured migration `0040_organization_card_images` passed backup/restore
 rehearsal and applied two nullable fields. The operator verified preserved
 data in 44 existing tables. Its receipt is in
 `work/organization-configured-migration-pynkah9u/`.
+
+## Consistent skill library tables
+
+The shared IC catalog and every program use the same skill table for admins
+and instructors. The table shows a skill’s name, description and tags. Edit
+and delete actions follow the existing library and version permissions.
+Program search matches names, descriptions and tags within the selected
+skill set and retains server pagination. Version tools, refresh and the
+question checker are under **More options**. Admins open the shared catalog’s
+quality check from the same disclosure.
+
+`codex/unify-skill-library-tables` passed 34 isolated PostgreSQL tests
+(`work/organization-postgres-v7hkyyrr/`), lint, build and 288 frontend tests.
+Browser checks covered the shared IC and non-IC program tables on desktop and
+phone (`work/organization-browser-cvowz9qd/`), search and version permissions
+(`work/organization-browser-dy88zimn/`) and the scoped question checker
+(`work/organization-browser-4zisq839/`).

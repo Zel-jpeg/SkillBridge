@@ -1,10 +1,9 @@
-import DataSection from '../../components/DataSection'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
-import SearchBar from '../../components/SearchBar'
-import EmptyState from '../../components/EmptyState'
+import SkillLibraryTable, { SkillLibraryOptions } from '../../components/SkillLibraryTable'
+import { organizationPrimary as primary } from '../../components/admin/organizationUi'
 import { useAdminSkills } from '../../hooks/admin/useAdminSkills'
 import api from '../../api/axios'
 
@@ -179,80 +178,25 @@ export default function AdminSkills({ embedded = false, readOnly = false }) {
         {!embedded && <Link to="/admin/competencies" className="inline-flex min-h-10 items-center rounded-lg border border-gray-200 px-3 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-green-300 dark:hover:bg-green-950">Back to program skill taxonomy</Link>}
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Heading className="text-xl font-semibold text-gray-900 dark:text-white">IC shared skill taxonomy</Heading>
+            <Heading className="text-lg font-bold text-gray-900 dark:text-white">IC shared skill taxonomy</Heading>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{readOnly ? 'View the shared skill definitions used by IC assessments and position requirements.' : 'Manage the shared Institute of Computing skill categories and tags used by IC assessments and position requirements.'}</p>
           </div>
-          {!readOnly && <button onClick={openAdd}
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0 shadow-sm shadow-green-600/20">
+          {!readOnly && <button type="button" onClick={openAdd} className={primary}>
             <PlusIcon /> Add Skill
           </button>}
         </header>
-        {!readOnly && <TaxonomyQuality />}
-
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-between">
-            <SearchBar value={search} onChange={setSearch} placeholder="Search skills..." className="w-full sm:max-w-sm" />
-            <div className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-              {skills.length} {skills.length === 1 ? 'skill' : 'skills'}
-            </div>
-          </div>
-
-          <DataSection url={url} layout="table" columns={readOnly ? 2 : 3} label="Loading skill categories">
-          {loading ? (
-            <div className="py-12 flex justify-center text-gray-400">
-              <Spinner />
-            </div>
-          ) : error ? (
-            <div className="py-12 flex justify-center">
-              <p className="text-sm text-rose-500">{error}</p>
-            </div>
-          ) : skills.length === 0 ? (
-            <EmptyState message="No skill categories found." onClear={() => setSearch('')} />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skill</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Tags</th>
-                    {!readOnly && <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 w-24">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {skills.map((skill, i) => (
-                    <tr key={skill.id} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
-                      <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
-                        <span>{skill.name}</span>
-                        {skill.description && <p className="mt-1 max-w-md whitespace-pre-wrap break-words text-xs font-normal leading-5 text-gray-600 dark:text-gray-300">{skill.description}</p>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {(skill.tags || []).slice(0, 6).map(tag => (
-                            <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">{tag}</span>
-                          ))}
-                          {!skill.tags?.length && <span className="text-xs text-gray-400">Optional</span>}
-                        </div>
-                      </td>
-                      {!readOnly && <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => openEdit(skill)} title="Edit skill"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
-                            <PencilIcon />
-                          </button>
-                          <button onClick={() => setDeleteConfirm(skill)} title="Delete skill"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
-                            <TrashIcon />
-                          </button>
-                        </div>
-                      </td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          </DataSection>
-        </div>
+        {!readOnly && <SkillLibraryOptions><TaxonomyQuality /></SkillLibraryOptions>}
+        <SkillLibraryTable url={url} skills={skills} total={loading || error ? null : skills.length} search={search} onSearch={setSearch}
+          renderActions={readOnly ? undefined : skill => <>
+            <button type="button" onClick={() => openEdit(skill)} title="Edit skill" aria-label={`Edit ${skill.name}`}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-gray-500 hover:bg-green-50 hover:text-green-800 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-gray-300 dark:hover:bg-green-950">
+              <PencilIcon />
+            </button>
+            <button type="button" onClick={() => setDeleteConfirm(skill)} title="Delete skill" aria-label={`Delete ${skill.name}`}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-gray-500 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-gray-300 dark:hover:bg-rose-950">
+              <TrashIcon />
+            </button>
+          </>} />
       </section>
     </div>
   )

@@ -40,6 +40,7 @@ def run(browser):
 
     context, page = support.session(browser, 'instructor')
     open_program(page, advanced=False)
+    page.get_by_text('More options', exact=True).click()
     page.get_by_text('Check a question against saved categories', exact=True).click()
     question = page.get_by_label('Question to check', exact=True)
     question.fill('Explain booking records for arrival reservations.')
@@ -126,6 +127,7 @@ def run(browser):
     # The server must not offer a confident choice between identical definitions.
     call(context, bases[1] + 'categories/', 'post', {'name': 'Different knowledge',
         'description': category['description'], 'tags': ['Independent vocabulary']}, role='instructor', status=201)
+    page.get_by_text('More options', exact=True).click()
     with page.expect_response(lambda response: response.request.method == 'GET' and response.url.split('?')[0].endswith(bases[1])):
         page.get_by_role('button', name='Refresh catalog', exact=True).click()
     page.get_by_text('Check a question against saved categories', exact=True).click()

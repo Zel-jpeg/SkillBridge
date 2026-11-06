@@ -9,7 +9,7 @@
 //   placeholder — string (default: 'Search…')
 //   className   — optional extra classes for the wrapper div
 
-export default function SearchBar({ value, onChange, placeholder = 'Search…', className = '' }) {
+export default function SearchBar({ value, onChange, placeholder = 'Search…', className = '', label, type = 'text', maxLength }) {
   return (
     <div className={`relative ${className}`}>
       <svg
@@ -20,7 +20,9 @@ export default function SearchBar({ value, onChange, placeholder = 'Search…', 
           d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
       </svg>
       <input
-        type="text"
+        type={type}
+        aria-label={label}
+        maxLength={maxLength}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
