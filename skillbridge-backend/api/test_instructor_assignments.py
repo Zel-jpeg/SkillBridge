@@ -34,6 +34,19 @@ class InstructorAssignmentTests(APITestCase):
                 self.assertIn(response.status_code, [401, 403])
         self.assertFalse(InstructorAssignment.objects.exists())
 
+    def test_admin_cards_use_the_same_identity_photo_and_id_for_candidates_and_assignments(self):
+        self.owner.school_id = 'SYN-COORD-01'
+        self.owner.photo_url = 'https://images.example.invalid/synthetic-coordinator.webp'
+        self.owner.save(update_fields=['school_id', 'photo_url'])
+        candidate = next(row for row in self.client.get(self.options).data['results'] if row['id'] == self.owner.id)
+        assigned = self.grant().data
+        for row in (candidate, assigned):
+            self.assertEqual(row['school_id'], self.owner.school_id)
+            self.assertEqual(row['photo_url'], self.owner.photo_url)
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(self.options).status_code, 403)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
     def test_assign_is_idempotent_and_revoke_restore_keeps_identity(self):
         first = self.grant()
         self.assertEqual(first.status_code, 201)

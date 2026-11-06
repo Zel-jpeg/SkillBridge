@@ -104,7 +104,7 @@ with sync_playwright() as playwright:
     expect(page.get_by_role('heading', name='Tourism Management', exact=True)).to_be_visible()
     expect_full_banner(program_cards.locator('img').first)
     page.get_by_role('button', name='Manage instructors for Entrepreneurship', exact=True).press('Enter')
-    page.get_by_role('dialog', name='Instructors: Entrepreneurship', exact=True).get_by_role('button', name='Done', exact=True).click()
+    page.get_by_role('dialog', name='Program instructors', exact=True).get_by_role('button', name='Done', exact=True).click()
     for label, dialog_name in (('Edit Entrepreneurship', 'Edit program'), ('Archive Entrepreneurship', 'Archive program')):
         icon = page.get_by_role('button', name=label, exact=True)
         expect(icon).to_have_text('')
@@ -165,6 +165,7 @@ with sync_playwright() as playwright:
     expect_full_banner(page.get_by_role('img', name='Synthetic Institute 05 renamed banner', exact=True))
     expect(page.get_by_role('img', name='Synthetic Institute 05 renamed banner', exact=True)).to_have_js_property('naturalWidth', 60)
     page.get_by_role('button', name='Edit Synthetic Institute 05 renamed', exact=True).click()
+    page.get_by_role('dialog', name='Edit institute', exact=True).get_by_role('button', name='Preset colors', exact=True).click()
     page.get_by_role('dialog', name='Edit institute', exact=True).get_by_role('radio', name='Magenta geometric banner', exact=True).check()
     page.get_by_role('dialog', name='Edit institute', exact=True).get_by_role('button', name='Save institute', exact=True).click()
     expect(page.get_by_role('img', name='Synthetic Institute 05 renamed banner', exact=True)).to_have_count(0)

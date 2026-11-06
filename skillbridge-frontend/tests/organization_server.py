@@ -11,7 +11,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'core.test_settings'
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 from django.conf import settings
 settings.DATABASES['default']['NAME'] = str(OUT / 'synthetic-browser.sqlite3')
-if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'coordinator-catalog', 'staff-scope'):
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-ranking', 'multi-institute-acceptance', 'coordinator-catalog', 'staff-scope', 'management-dialogs'):
     settings.DATABASES['default'].setdefault('OPTIONS', {})['transaction_mode'] = 'IMMEDIATE'
 settings.SECRET_KEY = 'synthetic-organization-browser-key'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
@@ -55,8 +55,9 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('legacy-organization', 'multi-
     BatchEnrollment.objects.create(batch=batch, student=second)
     with transaction.atomic():
         apply_mapping(mapping_plan())
-for number in range(9):
-    candidate = User.objects.create_user(f'candidate-{number}@example.invalid', role='instructor', name=f'Synthetic Coordinator {number:02}', is_approved=True)
+for number in range(35 if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'management-dialogs' else 9):
+    candidate = User.objects.create_user(f'candidate-{number}@example.invalid', role='instructor', name=f'Synthetic Coordinator {number:02}', is_approved=True,
+        school_id=f'SYN-C{number:02}' if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'management-dialogs' else '')
     if number == 0:
         identities['other_instructor'] = {'token': str(AccessToken.for_user(candidate)), 'user': {'id': candidate.id, 'role': 'instructor', 'name': candidate.name, 'is_approved': True}}
 for index in range(12):

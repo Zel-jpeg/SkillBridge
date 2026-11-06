@@ -41,7 +41,7 @@ def assignment_payload(row):
     user = row.instructor
     return {'id': row.id, 'instructor_id': user.id, 'program_id': row.program_id,
             'institute_id': row.program.institute_id, 'name': user.name, 'email': user.email,
-            'school_id': user.school_id, 'is_active': row.is_active,
+            'school_id': user.school_id, 'photo_url': user.photo_url, 'is_active': row.is_active,
             'effective': bool(row.is_active and user.is_active and user.is_approved
                               and row.program.is_active and row.program.institute.is_active),
             'created_at': row.created_at, 'updated_at': row.updated_at}
@@ -141,7 +141,8 @@ def instructor_options(request, institute_id, program_id):
     rows = User.objects.filter(role='instructor', is_active=True, is_approved=True).annotate(
         assigned=Exists(assigned)).order_by('name', 'id')
     return Response(page_payload(rows, request.query_params,
-        serialize=lambda row: {'id': row.id, 'name': row.name, 'email': row.email, 'school_id': row.school_id, 'assigned': row.assigned},
+        serialize=lambda row: {'id': row.id, 'name': row.name, 'email': row.email, 'school_id': row.school_id,
+                               'photo_url': row.photo_url, 'assigned': row.assigned},
         search_fields=('name', 'email', 'school_id')))
 
 

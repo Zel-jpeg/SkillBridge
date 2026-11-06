@@ -92,6 +92,7 @@ def run(browser):
     page.get_by_role('button', name='Manage programs in Independent Test Institute').click()
     expect(page.get_by_text('No programs yet. Add one to get started.', exact=True)).to_be_visible()
     dialog = form(page, 'program', 'Independent Test Program', 'ANY')
+    dialog.locator('summary').filter(has_text='Other names or codes').click()
     dialog.get_by_label('Other names or codes', exact=True).fill('Synthetic degree\nIndependent course')
     dialog.get_by_role('button', name='Save program', exact=True).click()
     expect(dialog).to_have_count(0)

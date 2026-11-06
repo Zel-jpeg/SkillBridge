@@ -34,6 +34,8 @@ if '--coordinator-catalog' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'coordinator-catalog'
 if '--staff-scope' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+if '--management-dialogs' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'management-dialogs'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
@@ -68,6 +70,8 @@ try:
             script = 'competency_assistance_playwright.py'
         if '--skill-editor' in sys.argv:
             script = 'skill_editor_playwright.py'
+        if '--management-dialogs' in sys.argv:
+            script = 'program_management_dialogs_playwright.py'
         if '--framework-authoring' in sys.argv:
             script = 'framework_authoring_playwright.py'
         if '--general-text' in sys.argv:

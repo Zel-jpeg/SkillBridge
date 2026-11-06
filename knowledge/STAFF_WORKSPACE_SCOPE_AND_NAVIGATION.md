@@ -354,3 +354,27 @@ No known failures remain. The next step is to review the institute/program cards
 in the local app. Backend test reruns and database migration were unnecessary
 for this frontend-only update; existing backend behavior was exercised through
 the isolated real-HTTP browser suites. No push or deployment is included.
+
+## Program setup and instructor dialog redesign
+
+Feature branch: `codex/program-management-dialogs`. See
+[Program management dialogs](PROGRAM_MANAGEMENT_DIALOGS.md) for the current
+workflow, limits and receipts.
+
+- [x] Split program details from banner settings, retain all twelve presets and
+  upload/replace/remove/undo, collapse optional aliases and phone banner options.
+- [x] Match Users identity cards in the assigned-instructor manager and candidate
+  picker, with existing photos/IDs, clear program context and scoped access actions.
+- [x] Keep eight-record server pages, search and status filters; add consistent
+  views and persistent compact phone pagination without unbounded rendering.
+- [x] Preserve assignment confirmation, retry/idempotency, hierarchy checks,
+  nested keyboard focus and admin-only/private-batch boundaries.
+- [x] Verify 37 PostgreSQL tests, 348 frontend tests, lint/build and 43 browser
+  groups, including a synthetic 36-candidate/25-assignment directory and both
+  dark/light phone layouts. Review screenshots and confirm no model drift.
+
+No schema migration or configured-record changes are required. The test-only
+large-directory scenario is isolated from normal browser fixtures and configured
+accounts. The feature is verified for local merge. Next: review the updated
+dialogs locally. No known failures, push or deployment are included; unrelated
+overview/optimization-plan edits stay outside this commit.

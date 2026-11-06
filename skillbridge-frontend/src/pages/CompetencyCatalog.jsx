@@ -318,6 +318,6 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
           <TaxonomyLibraryCards key={instituteId || role} items={items} label={choosingInstitute ? 'Institutes' : 'Skill libraries'} onEdit={admin ? setEditor : null} />
         </>}
     </DataSection>
-    {editor && <CatalogForm item={editor} program={!editor.institute} brandingOnly onClose={() => setEditor(null)} onSave={saveCard} />}
+    {editor && <CatalogForm item={editor} program={!editor.institute} institute={data?.institutes.find(row => row.id === editor.institute_id)} brandingOnly onClose={() => setEditor(null)} onSave={saveCard} />}
   </div>
 }

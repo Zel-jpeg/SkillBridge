@@ -10,7 +10,8 @@ function UploadIcon() {
   </svg>
 }
 
-export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image', banner = false, bannerColor = 0 }) {
+export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image', banner = false, bannerColor = 0,
+  controlsPrefix = null, showUploadControls = true, hideLabel = false, previewBadge }) {
   const id = useId()
   const input = useRef(null)
   const [preview, setPreview] = useState(null)
@@ -26,7 +27,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
   const displayUrl = value.action === 'remove' ? null : value.file
     ? (preview?.file === value.file ? preview.url : null) : imageUrl
   const hasImage = value.action !== 'remove' && Boolean(imageUrl || value.file)
-  const helpId = `${id}-formats ${id}-help${value.error ? ` ${id}-error` : ''}`
+  const helpId = `${showUploadControls ? `${id}-formats ${id}-help` : ''}${value.error ? ` ${id}-error` : ''}`.trim() || undefined
 
   function selectFile(file) {
     if (!file || disabled) return
@@ -39,7 +40,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
     onChange({ action, file: null, error: '' })
   }
   return <div className="space-y-2.5">
-    <label htmlFor={id} className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+    <label htmlFor={id} className={hideLabel ? 'sr-only' : 'flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200'}>
       {label} <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
     </label>
     <div role="group" aria-label={`${label} upload`}
@@ -68,10 +69,12 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
           // Selecting the same file again must still trigger validation.
           event.target.value = ''
         }} />
-      {banner && <div className="aspect-[3/1] overflow-hidden rounded-xl bg-emerald-950">
+      {banner && <div className="relative aspect-[3/1] overflow-hidden rounded-xl bg-emerald-950">
         <TaxonomyCardBanner name={name} imageUrl={displayUrl} color={bannerColor} loading="eager" />
+        {previewBadge && <span className="absolute left-3 top-3 max-w-[calc(100%_-_24px)] truncate rounded-full bg-emerald-950/90 px-2.5 py-1 text-xs font-semibold text-white">{previewBadge}</span>}
       </div>}
-      {hasImage && <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+      {controlsPrefix}
+      {hasImage && showUploadControls && <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
         {!banner && <CompanyImage name={name} imageUrl={displayUrl} className="h-14 w-14 rounded-lg" loading="eager" />}
         <div className="min-w-0 flex-1">
           <p title={value.file?.name} className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">{value.file?.name || (banner ? 'Current card banner' : label === 'Partner image' ? 'Current partner logo' : 'Current card image')}</p>
@@ -87,7 +90,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
           <span aria-hidden="true"><TrashIcon size={16} /></span>
         </button>
       </div>}
-      <div className={`flex min-h-40 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${
+      {showUploadControls && <div className={`flex min-h-40 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${
         dragging ? 'border-green-500 bg-green-50 ring-2 ring-green-500/15 dark:border-green-400 dark:bg-green-950/30'
           : value.error ? 'border-rose-300 bg-rose-50/30 dark:border-rose-800 dark:bg-rose-950/10'
             : 'border-gray-300 bg-gray-50/40 dark:border-gray-600 dark:bg-gray-800/20'
@@ -102,7 +105,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
           </p>
           <p id={`${id}-formats`} className="mt-1 text-[11px] leading-5 text-gray-500 dark:text-gray-400">JPEG, PNG or WebP · Up to 5 MiB</p>
         </div>
-      </div>
+      </div>}
       {(value.action !== 'unchanged' || value.error) && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         {value.action === 'remove' && <p className="text-xs text-gray-500 dark:text-gray-400">{banner ? 'Your selected geometric banner will appear when you save.' : 'Your current image will be removed when you save.'}</p>}
         <button type="button" disabled={disabled} onClick={() => reset('unchanged')}
@@ -111,10 +114,10 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
         </button>
       </div>}
     </div>
-    <p id={`${id}-help`} className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
+    {showUploadControls && <p id={`${id}-help`} className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
       {banner ? 'Use a wide image, ideally 3:1. The banner fills the card and may crop the edges. Images are converted to WebP before upload.'
         : label === 'Partner image' ? 'Partner images are publicly visible.' : 'Images are converted to WebP before upload.'}
-    </p>
+    </p>}
     {value.error && <p id={`${id}-error`} role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{value.error}</p>}
   </div>
 }

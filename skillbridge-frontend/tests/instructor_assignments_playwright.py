@@ -13,7 +13,7 @@ def open_program(page, name='Synthetic Program 00'):
     page.get_by_role('button', name='Manage programs in Synthetic Institute 00').click()
     page.get_by_role('searchbox', name='Search by name or code').fill(name)
     page.get_by_role('button', name=f'Manage instructors for {name}', exact=True).click()
-    return page.get_by_role('dialog', name=f'Instructors: {name}', exact=True)
+    return page.get_by_role('dialog', name='Program instructors', exact=True)
 
 
 def picker(page, panel, name):
@@ -74,7 +74,7 @@ def run(browser):
 
     selection = picker(page, panel, '')
     selection.get_by_role('button', name='Next →', exact=True).click()
-    expect(selection.get_by_text('Showing 9–10 of 10', exact=True)).to_be_visible()
+    expect(selection.get_by_text('Showing 9–10 of 10', exact=False)).to_be_visible()
     selection.get_by_role('searchbox').fill('Synthetic Coordinator 00')
     expect(selection.get_by_role('button', name='Next →', exact=True)).to_have_count(0)
     selection.get_by_role('button', name='Cancel', exact=True).click()
@@ -84,13 +84,13 @@ def run(browser):
     panel.get_by_role('searchbox', name='Search assigned instructors').fill('Synthetic Coordinator')
     expect(panel.get_by_text('9 assignments', exact=True)).to_be_visible()
     panel.get_by_role('button', name='Next →', exact=True).click()
-    expect(panel.get_by_text('Showing 9–9 of 9', exact=True)).to_be_visible()
+    expect(panel.get_by_text('Showing 9–9 of 9', exact=False)).to_be_visible()
     checks.append('candidate and assignment lists share correct counts/search/page reset/clamping')
 
     panel.get_by_role('button', name='Done', exact=True).click()
     page.get_by_role('searchbox', name='Search by name or code').fill(second['name'])
     page.get_by_role('button', name=f"Manage instructors for {second['name']}", exact=True).click()
-    panel = page.get_by_role('dialog', name=f"Instructors: {second['name']}", exact=True)
+    panel = page.get_by_role('dialog', name='Program instructors', exact=True)
     failed = {'post': True}
     def interrupt(route):
         if route.request.method == 'POST' and failed['post']:
@@ -126,12 +126,12 @@ def run(browser):
             page.evaluate("document.documentElement.classList.add('dark')")
         assert panel.evaluate('(node) => node.getBoundingClientRect().left >= 0 && node.getBoundingClientRect().right <= innerWidth')
         panel.get_by_role('button', name='Next →', exact=True).click()
-        expect(panel.get_by_text('Showing 9–10 of 10', exact=True)).to_be_visible()
+        expect(panel.get_by_text('Showing 9–10 of 10', exact=False)).to_be_visible()
         page.screenshot(path=str(OUT / f'assignments-{width}-{dark}.png'), animations='disabled')
         selection = picker(page, panel, '')
         expect(selection.get_by_role('button', name='Next →', exact=True)).to_be_visible()
         selection.get_by_role('button', name='Next →', exact=True).click()
-        expect(selection.get_by_text('Showing 9–10 of 10', exact=True)).to_be_visible()
+        expect(selection.get_by_text('Showing 9–10 of 10', exact=False)).to_be_visible()
         page.screenshot(path=str(OUT / f'assignment-picker-{width}-{dark}.png'), animations='disabled')
         selection.get_by_role('button', name='Cancel', exact=True).click()
         panel.get_by_role('button', name='Done', exact=True).click()

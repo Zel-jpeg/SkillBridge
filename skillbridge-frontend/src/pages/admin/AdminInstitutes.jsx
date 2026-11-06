@@ -11,14 +11,13 @@ import ProgramInstructors from '../../components/admin/ProgramInstructors'
 import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationError as errorText } from '../../components/admin/organizationUi'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import OrganizationCatalogCard from '../../components/admin/OrganizationCatalogCard'
-import CompanyImageInput from '../../components/CompanyImageInput'
-import TaxonomyBannerPicker from '../../components/TaxonomyBannerPicker'
+import CatalogBannerEditor from '../../components/CatalogBannerEditor'
 import { companyRequest } from '../../utils/companyImages'
 import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
 
 const ROOT = '/api/admin/institutes/'
 
-export function CatalogForm({ item, program, onClose, onSave, brandingOnly = false }) {
+export function CatalogForm({ item, program, institute, onClose, onSave, brandingOnly = false }) {
   const id = useId()
   const [values, setValues] = useState({ code: item?.code || '', name: item?.name || '', description: item?.description || '', aliases: (item?.aliases || []).join('\n') })
   const [saving, setSaving] = useState(false)
@@ -47,30 +46,38 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
   }
   const kind = program ? 'program' : 'institute'
   const input = (key, label, maxLength, hint) => <div className="text-xs text-gray-700 dark:text-gray-200">
-    <label className="font-medium" htmlFor={`${id}-${key}`}>{label}</label><input id={`${id}-${key}`} className={field} maxLength={maxLength} required value={values[key]} disabled={saving}
+    <label className="font-medium" htmlFor={`${id}-${key}`}>{label} <span className="text-rose-600">*</span></label><input id={`${id}-${key}`} aria-label={key === 'name' ? 'Name' : 'Code'} className={field} maxLength={maxLength} required value={values[key]} disabled={saving}
       onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} aria-describedby={hint ? `${id}-${key}-hint` : undefined} />
     {hint && <span id={`${id}-${key}-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">{hint}</span>}
   </div>
   return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name or banner shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
-    size="confirm" fixedHeader onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
+    size="catalog" fixedHeader headerDetails={<div className="mt-2 space-y-2 text-xs text-gray-500 dark:text-gray-400"><p>{brandingOnly ? `Update the name or banner shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}</p>
+      {program && institute && <p className="inline-flex rounded-md bg-green-50 px-2 py-1 text-green-800 dark:bg-green-950 dark:text-green-200">{institute.name} · {institute.code}</p>}</div>}
+    onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
     footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button>
       <button type="submit" form={id} className={primary} disabled={saving || Boolean(image.error)}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
-    <form id={id} onSubmit={save} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+    <form id={id} onSubmit={save} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
-      {input('name', 'Name', 255)}
-      {!brandingOnly && input('code', 'Code', 30, 'Use letters, numbers, spaces, hyphens or underscores.')}
-      {!brandingOnly && <label className="block text-xs font-medium text-gray-700 dark:text-gray-200" htmlFor={`${id}-description`}>Description
-        <textarea id={`${id}-description`} className={field} rows={3} maxLength={2000} value={values.description} disabled={saving}
+      <div className="grid items-start gap-6 md:grid-cols-2">
+      <section aria-label={`${program ? 'Program' : 'Institute'} details`} className="min-w-0 space-y-4">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{brandingOnly ? 'Card details' : `${program ? 'Program' : 'Institute'} details`}</h3>
+      {input('name', `${program ? 'Program' : 'Institute'} name`, 255)}
+      {!brandingOnly && input('code', `${program ? 'Program' : 'Institute'} code`, 30, 'Use a short, unique code.')}
+      {!brandingOnly && <label className="block text-xs font-medium text-gray-700 dark:text-gray-200" htmlFor={`${id}-description`}>Description <span className="ml-2 font-normal text-gray-500">Optional</span>
+        <textarea id={`${id}-description`} aria-label="Description" className={field} rows={3} maxLength={2000} value={values.description} disabled={saving}
           onChange={event => setValues(previous => ({ ...previous, description: event.target.value }))} /></label>}
-      {!brandingOnly && program && <div className="text-xs text-gray-700 dark:text-gray-200"><label className="font-medium" htmlFor={`${id}-aliases`}>Other names or codes</label>
+      {!brandingOnly && program && <details open={Boolean(item?.aliases?.length)} className="rounded-lg border border-gray-200 p-3 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-200">
+        <summary className="cursor-pointer font-medium hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600">Other names or codes <span className="ml-2 font-normal text-gray-500">Optional</span></summary>
+        <div className="mt-3"><label className="font-medium" htmlFor={`${id}-aliases`}>Other names or codes</label>
         <textarea id={`${id}-aliases`} className={field} rows={3} value={values.aliases} disabled={saving} aria-describedby={`${id}-aliases-hint`}
           onChange={event => setValues(previous => ({ ...previous, aliases: event.target.value }))} />
-        <span id={`${id}-aliases-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">Optional. One per line, up to 12. These must be distinct from other programs in this institute.</span></div>}
-      <TaxonomyBannerPicker value={bannerColor} disabled={saving}
-        uploaded={image.action !== 'remove' && Boolean(image.file || item?.image_url)}
-        onChange={value => { setBannerColor(value); setImage({ action: 'remove', file: null, error: '' }) }} />
-      <CompanyImageInput banner bannerColor={bannerColor} label={program ? 'Program banner' : 'Institute banner'} name={values.name} imageUrl={item?.image_url}
-        value={image} onChange={setImage} disabled={saving} />
+        <span id={`${id}-aliases-hint`} className="mt-1 block font-normal leading-5 text-gray-500 dark:text-gray-400">One per line, up to 12. Use names distinct from other programs in this institute.</span></div></details>}
+      </section>
+      <div className="min-w-0 border-t border-gray-100 pt-5 md:border-t-0 md:border-l md:pt-0 md:pl-6 dark:border-gray-800">
+        <CatalogBannerEditor item={item} program={program} name={values.name} code={values.code} color={bannerColor} onColorChange={setBannerColor}
+          image={image} onImageChange={setImage} disabled={saving} />
+      </div>
+      </div>
     </form>
   </DialogShell>
 }
@@ -140,7 +147,7 @@ function CatalogCollection({ institute: selected, onSelect }) {
       </ul>}
       <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={page => setFilters(previous => ({ ...previous, page }))} />
     </>}
-    {form && <CatalogForm item={form} program={Boolean(institute)} onClose={() => setForm(null)} onSave={save} />}
+    {form && <CatalogForm item={form} program={Boolean(institute)} institute={institute} onClose={() => setForm(null)} onSave={save} />}
     {instructorProgram && <ProgramInstructors program={instructorProgram} institute={institute} onClose={() => setInstructorProgram(null)} />}
     {confirmation && <ConfirmModal title={`${confirmation.is_active ? 'Archive' : 'Restore'} ${kind}`} confirmLabel={confirmation.is_active ? 'Archive' : 'Restore'} archive tone="neutral"
       message={confirmation.is_active ? `Archive ${confirmation.name}? Records are retained. ${institute ? '' : 'Archive its active programs first.'}` : `Restore ${confirmation.name}?`}

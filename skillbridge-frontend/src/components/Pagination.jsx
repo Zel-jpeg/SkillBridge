@@ -9,7 +9,7 @@
 //   onPage  — callback(newPage)
 //   pageSize — items per page (default 10)
 
-export default function Pagination({ total, page, onPage, pageSize = 10, summary }) {
+export default function Pagination({ total, page, onPage, pageSize = 10, summary, compact = false }) {
   const pages = Math.ceil(total / pageSize)
   if (pages <= 1) return null
 
@@ -25,7 +25,7 @@ export default function Pagination({ total, page, onPage, pageSize = 10, summary
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-1 py-1">
       <p className="text-xs text-gray-400 dark:text-gray-500 order-2 sm:order-1">
-        {summary ?? `Showing ${from}–${to} of ${total}`}
+        {summary ?? `Showing ${from}–${to} of ${total}${compact ? ` · Page ${page} of ${pages}` : ''}`}
       </p>
       <div className="flex items-center gap-1 order-1 sm:order-2">
         <button type="button"
@@ -43,12 +43,12 @@ export default function Pagination({ total, page, onPage, pageSize = 10, summary
           return acc
         }, []).map((p, i) =>
           p === '…'
-            ? <span key={`ellipsis-${i}`} className="text-xs text-gray-300 dark:text-gray-700 px-1">…</span>
+            ? <span key={`ellipsis-${i}`} className={`text-xs text-gray-300 dark:text-gray-700 px-1 ${compact ? 'hidden sm:inline' : ''}`}>…</span>
             : <button type="button"
                 key={p}
                 aria-current={p === page ? 'page' : undefined}
                 onClick={() => onPage(p)}
-                className={`${btnBase} w-8 h-8
+                className={`${btnBase} w-8 h-8 ${compact && p !== page ? 'hidden sm:inline-block' : ''}
                   ${p === page
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}

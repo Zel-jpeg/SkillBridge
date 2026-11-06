@@ -17,6 +17,12 @@ pagination and assignment-status filters. The instructor picker shows existing
 active assignments and does not create or email accounts. Account creation stays
 in Users.
 
+The [program-management dialog update](PROGRAM_MANAGEMENT_DIALOGS.md) now gives
+the manager and picker the Users-page identity-card styling, view toggles,
+scrolling content and persistent responsive pagination. The admin-only payloads
+include existing profile photo URLs; assignment behavior and access checks remain
+the same. Larger-directory verification uses synthetic accounts only.
+
 Each `InstructorAssignment` links an instructor to one program; its institute is
 derived from that program. The same instructor can have multiple programs, even
 in different institutes. Revoke/restore preserves the assignment's ID and creator,
