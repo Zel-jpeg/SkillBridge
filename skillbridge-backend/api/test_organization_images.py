@@ -53,6 +53,25 @@ class OrganizationCardImageTests(APITestCase):
             self.assertEqual(self.upload(self.program_url, name='Denied').status_code, 403)
             storage.assert_not_called()
 
+    def test_all_twelve_banner_colors_persist_and_are_readable_without_uploads(self):
+        with patch('api.company_images._storage_request') as storage:
+            for color in range(12):
+                for url in (self.institute_url, self.program_url):
+                    saved = self.client.patch(url, {'banner_color': color}, format='json')
+                    self.assertEqual((saved.status_code, saved.data['banner_color']), (200, color))
+                options = self.client.get(reverse('staff_organization_options')).data
+                self.assertEqual(options['institutes'][0]['banner_color'], color)
+                self.assertEqual(options['programs'][0]['banner_color'], color)
+            for color in (-1, 12, True, '1', 1.5, []):
+                for url in (self.institute_url, self.program_url):
+                    self.assertEqual(self.client.patch(url, {'banner_color': color}, format='json').status_code, 400)
+            storage.assert_not_called()
+        self.program.refresh_from_db()
+        self.assertEqual(self.program.banner_color, 11)
+        self.client.force_authenticate(self.instructor)
+        self.assertEqual(self.client.get(reverse('staff_organization_options')).data['programs'][0]['banner_color'], 11)
+        self.assertEqual(self.client.patch(self.program_url, {'banner_color': 0}, format='json').status_code, 403)
+
     def test_replacement_removal_and_failures_preserve_the_right_object(self):
         old_key = 'organization/programs/' + 'a' * 32 + '.webp'
         self.program.image_key = old_key

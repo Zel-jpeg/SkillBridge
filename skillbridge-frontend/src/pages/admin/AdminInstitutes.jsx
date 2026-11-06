@@ -12,7 +12,9 @@ import { organizationButton as button, organizationPrimary as primary, organizat
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import CompanyImage from '../../components/CompanyImage'
 import CompanyImageInput from '../../components/CompanyImageInput'
+import TaxonomyBannerPicker from '../../components/TaxonomyBannerPicker'
 import { companyRequest } from '../../utils/companyImages'
+import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
 
 const ROOT = '/api/admin/institutes/'
 
@@ -21,6 +23,7 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
   const [values, setValues] = useState({ code: item?.code || '', name: item?.name || '', description: item?.description || '', aliases: (item?.aliases || []).join('\n') })
   const [saving, setSaving] = useState(false)
   const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
+  const [bannerColor, setBannerColor] = useState(() => taxonomyBannerColor(item?.banner_color, item?.id))
   const [error, setError] = useState('')
   const pending = useRef(false)
   const close = () => { if (!pending.current) onClose() }
@@ -31,7 +34,7 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
     setSaving(true)
     setError('')
     try {
-      const details = { name: values.name.trim(), ...(!brandingOnly && {
+      const details = { name: values.name.trim(), banner_color: bannerColor, ...(!brandingOnly && {
         code: values.code.trim(), description: values.description.trim(),
         ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
       }) }
@@ -49,10 +52,10 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
     {hint && <span id={`${id}-${key}-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">{hint}</span>}
   </div>
   return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name or banner shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
-    size="confirm" onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
+    size="confirm" fixedHeader onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
     footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button>
       <button type="submit" form={id} className={primary} disabled={saving || Boolean(image.error)}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
-    <form id={id} onSubmit={save} className="space-y-4 px-6 pb-6">
+    <form id={id} onSubmit={save} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
       {input('name', 'Name', 255)}
       {!brandingOnly && input('code', 'Code', 30, 'Use letters, numbers, spaces, hyphens or underscores.')}
@@ -63,7 +66,10 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
         <textarea id={`${id}-aliases`} className={field} rows={3} value={values.aliases} disabled={saving} aria-describedby={`${id}-aliases-hint`}
           onChange={event => setValues(previous => ({ ...previous, aliases: event.target.value }))} />
         <span id={`${id}-aliases-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">Optional. One per line, up to 12. These must be distinct from other programs in this institute.</span></div>}
-      <CompanyImageInput banner label={program ? 'Program banner' : 'Institute banner'} name={values.name} imageUrl={item?.image_url}
+      <TaxonomyBannerPicker value={bannerColor} disabled={saving}
+        uploaded={image.action !== 'remove' && Boolean(image.file || item?.image_url)}
+        onChange={value => { setBannerColor(value); setImage({ action: 'remove', file: null, error: '' }) }} />
+      <CompanyImageInput banner bannerColor={bannerColor} label={program ? 'Program banner' : 'Institute banner'} name={values.name} imageUrl={item?.image_url}
         value={image} onChange={setImage} disabled={saving} />
     </form>
   </DialogShell>

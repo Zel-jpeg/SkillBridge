@@ -215,5 +215,40 @@ existing partner collection suite passed seven checks in
 `work/organization-browser-37d9dckn/`. No schema change was needed.
 
 The user subsequently requested 12 selectable geometric banner colors alongside
-the uploaded-banner option. Save this preference on each institute/program and
-show its selected preset whenever its uploaded banner is absent.
+the uploaded-banner option. On `codex/taxonomy-banner-colors`, each institute
+and program saves a nullable palette index. Existing cards with no saved palette
+choose a stable color from the same twelve presets. The editor keeps all twelve
+thumbnails available, allows switching an uploaded cover back to a preset, and
+previews either choice at the card’s aspect ratio.
+
+The twelve choices are Emerald, Teal, Blue, Indigo, Violet, Magenta, Rose,
+Coral, Amber, Olive, Lime and Green. They reuse the generated geometric cover;
+uploaded images retain their own colors. Removing an upload restores the saved
+preset. These options apply to every institute and program, with existing
+administrator editing and instructor viewing permissions preserved. The palette
+uses labeled native radio controls with keyboard arrow navigation. The editor
+scrolls its body while keeping its heading, close icon and Save button visible.
+
+Final frontend lint, build and all 346 discovered Node tests passed. All eleven
+isolated staff browser checks passed in `work/organization-browser-9riffmeu/`,
+including twelve distinct previews, mouse and keyboard selection, save/reload,
+upload replacement/removal/failure fallback, institute and program banners at
+320, 768, 1024 and 1440 pixels, and the phone dialog's visible controls.
+Forty isolated PostgreSQL tests passed in `work/organization-postgres-ars6suvo/`,
+including all twelve stored values, invalid values and authorization. Django
+checks and migration drift verification passed. The pointer hit-area and phone
+heading compression found during browser testing were corrected and verified.
+
+Migration `0041_organization_banner_colors` was applied only after the operator
+restored and hash-verified its backup and rehearsed the migration. It verified
+unchanged data in 44 existing tables, two new nullable palette fields and no
+pending migrations. Existing palette fields remain null until edited, so no
+existing card data was rewritten. The private receipt is in
+`work/organization-configured-migration-b2b95zn_/`.
+
+Delivery checkpoint: the palette feature was developed on
+`codex/taxonomy-banner-colors` for local merge into `main`. There are no remaining
+known failures for this feature. No GitHub push or deployment is included.
+The next step is to review the institute/program pencil editor in the local app;
+further feature work awaits the user's next request. Unrelated overview and
+optimization-plan edits are kept outside this feature's commit.

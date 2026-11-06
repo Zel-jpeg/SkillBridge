@@ -16,6 +16,7 @@
 .sb-detail-header { display: flex; align-items: flex-start; flex-shrink: 0; gap: 12px; padding: 20px 24px; border-bottom: 1px solid #e5e7eb; overflow-y: auto; max-height: 40dvh; }
 .dark .sb-detail-header, .dark .sb-detail-footer { border-color: #374151; }
 .sb-detail-dialog--confirm .sb-detail-header { max-height: none; flex-shrink: 1; }
+.sb-detail-dialog .sb-detail-header--fixed { max-height: 40dvh; flex-shrink: 0; }
 .sb-detail-header h2, .sb-detail-header p, .sb-detail-header span { overflow-wrap: anywhere; }
 .sb-detail-close { position: sticky; top: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; color: #6b7280; cursor: pointer; }
 .dark .sb-detail-close { color: #d1d5db; }

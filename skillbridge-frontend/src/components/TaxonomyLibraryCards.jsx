@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { ChevronRightIcon, PencilIcon } from './Icons'
 import Pagination from './Pagination'
 import TaxonomyCardBanner from './TaxonomyCardBanner'
+import { taxonomyBannerColor } from '../utils/taxonomyBannerColors'
 import { organizationCard as card, organizationField as field } from './admin/organizationUi'
 
 const PAGE_SIZE = 9
-const PROGRAM_TONES = ['hue-rotate-[28deg]', 'hue-rotate-[54deg]', 'hue-rotate-[82deg]']
 
 export default function TaxonomyLibraryCards({ items, label, onEdit }) {
   const [search, setSearch] = useState('')
@@ -24,12 +24,11 @@ export default function TaxonomyLibraryCards({ items, label, onEdit }) {
       {term ? 'No cards match your search.' : 'No skill libraries are available here yet.'}
     </p> : <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {rows.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE).map(item => {
-        const tone = item.institute || item.shared ? '' : PROGRAM_TONES[item.id % PROGRAM_TONES.length]
         const editLabel = `Edit ${item.name}`
         return <li key={item.to} className={`${card} relative flex flex-col overflow-hidden`}>
           <Link to={item.to} aria-label={item.name} className="group flex flex-1 flex-col rounded-2xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600">
             <div className="relative aspect-[3/1] min-h-24 max-h-36 overflow-hidden rounded-t-2xl bg-emerald-950">
-              <TaxonomyCardBanner imageUrl={item.image_url} name={item.name} fallbackTone={tone} />
+              <TaxonomyCardBanner imageUrl={item.image_url} name={item.name} color={taxonomyBannerColor(item.banner_color, item.id)} />
               <div className="absolute left-3 right-16 top-3 flex">
                 <span title={item.code || undefined} className="truncate rounded-full bg-emerald-950/90 px-2.5 py-1 text-xs font-semibold leading-4 text-white">
                   {item.code || 'Shared'}

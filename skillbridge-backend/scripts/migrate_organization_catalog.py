@@ -37,6 +37,7 @@ SUPPORTED = {
     '0038_position_program_eligibility': {'api_position_eligible_programs'},
     '0039_coordinator_catalog_authority': set(),
     '0040_organization_card_images': set(),
+    '0041_organization_banner_colors': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -58,6 +59,7 @@ ADDED_COLUMNS = {
         'api_position': ['created_by_id', 'management_program_id'],
     },
     '0040_organization_card_images': {'api_institute': ['image_key'], 'api_program': ['image_key']},
+    '0041_organization_banner_colors': {'api_institute': ['banner_color'], 'api_program': ['banner_color']},
 }.get(args.migration, {})
 
 

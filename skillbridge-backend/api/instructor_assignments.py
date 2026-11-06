@@ -32,6 +32,7 @@ def require_program(user, program_id):
 def program_payload(program):
     return {'id': program.id, 'code': program.code, 'name': program.name, 'is_active': program.is_active,
             'image_url': organization_image_url(program),
+            'banner_color': program.banner_color,
             'institute_id': program.institute_id, 'institute_name': program.institute.name,
             'institute_code': program.institute.code}
 

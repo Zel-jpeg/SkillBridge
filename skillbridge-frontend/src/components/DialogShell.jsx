@@ -26,7 +26,7 @@ function lockBody() {
 }
 
 /** Native top-layer modality supplies inert background, focus trapping and nested Escape handling. */
-export default function DialogShell({ title, description, avatar, headerDetails, eyebrow, headerBadge, children, footer, onClose, size = 'detail', closeLabel = 'Close details', closeDisabled = false, restoreFocusRef }) {
+export default function DialogShell({ title, description, avatar, headerDetails, eyebrow, headerBadge, children, footer, onClose, size = 'detail', closeLabel = 'Close details', closeDisabled = false, restoreFocusRef, fixedHeader = false }) {
   const { expired } = useSession()
   const dialog = useRef(null)
   const backdropStart = useRef(false)
@@ -81,7 +81,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
       if (backdropStart.current && outside(event)) onClose()
       backdropStart.current = false
     }}>
-    <header className="sb-detail-header">
+    <header className={`sb-detail-header${fixedHeader ? ' sb-detail-header--fixed' : ''}`}>
       {avatar}
       <div className="min-w-0 flex-1">
         {eyebrow && <p className="sb-detail-eyebrow">{eyebrow}</p>}

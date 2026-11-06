@@ -10,7 +10,7 @@ function UploadIcon() {
   </svg>
 }
 
-export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image', banner = false }) {
+export default function CompanyImageInput({ name, imageUrl, value, onChange, disabled, label = 'Partner image', banner = false, bannerColor = 0 }) {
   const id = useId()
   const input = useRef(null)
   const [preview, setPreview] = useState(null)
@@ -68,8 +68,8 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
           // Selecting the same file again must still trigger validation.
           event.target.value = ''
         }} />
-      {banner && hasImage && <div className="aspect-[3/1] overflow-hidden rounded-xl bg-emerald-950">
-        <TaxonomyCardBanner name={name} imageUrl={displayUrl} loading="eager" />
+      {banner && <div className="aspect-[3/1] overflow-hidden rounded-xl bg-emerald-950">
+        <TaxonomyCardBanner name={name} imageUrl={displayUrl} color={bannerColor} loading="eager" />
       </div>}
       {hasImage && <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
         {!banner && <CompanyImage name={name} imageUrl={displayUrl} className="h-14 w-14 rounded-lg" loading="eager" />}
@@ -104,7 +104,7 @@ export default function CompanyImageInput({ name, imageUrl, value, onChange, dis
         </div>
       </div>
       {(value.action !== 'unchanged' || value.error) && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        {value.action === 'remove' && <p className="text-xs text-gray-500 dark:text-gray-400">{banner ? 'The default banner will appear when you save.' : 'Your current image will be removed when you save.'}</p>}
+        {value.action === 'remove' && <p className="text-xs text-gray-500 dark:text-gray-400">{banner ? 'Your selected geometric banner will appear when you save.' : 'Your current image will be removed when you save.'}</p>}
         <button type="button" disabled={disabled} onClick={() => reset('unchanged')}
           className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-100">
           <span aria-hidden="true"><RefreshIcon size={12} /></span>{banner ? 'Undo banner change' : 'Undo image change'}

@@ -10,6 +10,7 @@ class Institute(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
     image_key = models.CharField(max_length=120, null=True, blank=True)
+    banner_color = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -18,6 +19,8 @@ class Institute(models.Model):
         constraints = [
             models.UniqueConstraint(models.functions.Lower('code'), name='unique_institute_code'),
             models.UniqueConstraint(models.functions.Lower('name'), name='unique_institute_name'),
+            models.CheckConstraint(condition=models.Q(banner_color__isnull=True) | models.Q(banner_color__lte=11),
+                                   name='institute_banner_color_range'),
         ]
 
     def __str__(self):
@@ -31,6 +34,7 @@ class Program(models.Model):
     description = models.TextField(blank=True, default='')
     aliases = models.JSONField(default=list, blank=True)
     image_key = models.CharField(max_length=120, null=True, blank=True)
+    banner_color = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -39,6 +43,8 @@ class Program(models.Model):
         constraints = [
             models.UniqueConstraint(models.functions.Lower('code'), 'institute', name='unique_program_code_institute'),
             models.UniqueConstraint(models.functions.Lower('name'), 'institute', name='unique_program_name_institute'),
+            models.CheckConstraint(condition=models.Q(banner_color__isnull=True) | models.Q(banner_color__lte=11),
+                                   name='program_banner_color_range'),
         ]
 
     def __str__(self):

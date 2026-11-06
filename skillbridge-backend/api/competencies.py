@@ -154,7 +154,7 @@ def organization_options(request):
         institutes = institutes.filter(pk__in={row['institute_id'] for row in programs})
     return Response({
         'institutes': [{'id': row.id, 'name': row.name, 'code': row.code, 'is_active': row.is_active,
-                        'image_url': organization_image_url(row)} for row in institutes],
+                        'image_url': organization_image_url(row), 'banner_color': row.banner_color} for row in institutes],
         'programs': programs,
         'shared_skill_institute_id': shared_skill_institute(request.user),
     })

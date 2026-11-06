@@ -45,6 +45,7 @@ class CatalogSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     description = serializers.CharField(max_length=2000, allow_blank=True, required=False)
     is_active = StrictBoolean(required=False)
+    banner_color = serializers.IntegerField(min_value=0, max_value=11, allow_null=True, required=False)
 
     def to_internal_value(self, data):
         if not isinstance(data, dict) or set(data) - set(self.fields):
@@ -53,6 +54,8 @@ class CatalogSerializer(serializers.Serializer):
         for key in ('code', 'name', 'description'):
             if key in data and not isinstance(data[key], str):
                 raise ValidationError({key: 'Use text.'})
+        if 'banner_color' in data and data['banner_color'] is not None and type(data['banner_color']) is not int:
+            raise ValidationError({'banner_color': 'Choose one of the twelve banner colors.'})
         return super().to_internal_value(data)
 
     def validate_code(self, value):
@@ -83,7 +86,7 @@ class ProgramSerializer(CatalogSerializer):
 
 
 def payload(row):
-    result = {key: getattr(row, key) for key in ('id', 'code', 'name', 'description', 'is_active', 'created_at')}
+    result = {key: getattr(row, key) for key in ('id', 'code', 'name', 'description', 'is_active', 'created_at', 'banner_color')}
     result['image_url'] = organization_image_url(row)
     if isinstance(row, Program):
         result.update(institute_id=row.institute_id, aliases=row.aliases)
