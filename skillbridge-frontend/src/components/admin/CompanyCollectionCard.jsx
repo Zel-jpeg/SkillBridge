@@ -26,7 +26,7 @@ function PositionSummary({ company, position, expanded, onToggle, onEdit, onDele
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{requirements.length} requirement{requirements.length !== 1 ? 's' : ''} · {keywords.length} keyword{keywords.length !== 1 ? 's' : ''}</p><button id={`${id}-toggle`} type="button" aria-expanded={expanded} aria-controls={`${id}-details`} aria-label={`${expanded ? 'Hide' : 'Show'} details for ${position.title}`} onClick={onToggle} className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300 dark:hover:bg-green-950"><span>{expanded ? 'Hide details' : 'Details'}</span><span aria-hidden="true"><ChevronDown size={14} open={expanded} /></span></button></div>
       <p className="break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{!position.eligibility_configured
-        ? 'Legacy batch eligibility'
+        ? 'IC shared batch eligibility'
         : programs.length ? programs.map(program => `${program.institute_code} · ${program.name}`).join(', ') : 'No eligible programs'}</p>
     </div>
     <div id={`${id}-details`} hidden={!expanded} role="region" aria-labelledby={`${id}-toggle`} className="space-y-5 border-t border-gray-100 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">

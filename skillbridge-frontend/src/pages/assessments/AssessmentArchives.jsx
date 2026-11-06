@@ -6,8 +6,8 @@ import { fetchWithDedup } from '../../hooks/useApi'
 import { ASSESSMENTS_URL } from '../../utils/adminAssessmentState'
 import { manilaDateTime } from '../../utils/assessmentDates'
 import Pagination from '../../components/Pagination'
-import OrganizationScope from '../../components/OrganizationScope'
-import { ALL_ORGANIZATIONS, matchesOrganization } from '../../utils/organizationScope'
+import AdminScopeNavigator from '../../components/admin/AdminScopeNavigator'
+import { ALL_ORGANIZATIONS, matchesOrganization, organizationSearch } from '../../utils/organizationScope'
 import AssessmentManagementDialog from '../../components/admin/AssessmentManagementDialog'
 import { AssessmentRetry, AssessmentSkeleton, AssessmentStatus } from '../../components/admin/AssessmentPresentation'
 import AssessmentArchiveAction from '../../components/assessment/AssessmentArchiveAction'
@@ -16,6 +16,11 @@ const control = 'min-h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-
 const PAGE_SIZE = 10
 
 export default function AssessmentArchives({ role }) {
+  return role === 'admin' ? <AdminScopeNavigator title="Assessment archives">{scope => <ScopedArchives role={role} scope={scope} />}</AdminScopeNavigator>
+    : <ScopedArchives role={role} scope={ALL_ORGANIZATIONS} />
+}
+
+function ScopedArchives({ role, scope }) {
   useSSE(`/api/${role}/events/`)
   const { data, error, errorStatus } = useAdminAssessments()
   const [search, setSearch] = useState('')
@@ -23,7 +28,6 @@ export default function AssessmentArchives({ role }) {
   const [instructor, setInstructor] = useState('all')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState(null)
-  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
   const archives = useMemo(() => (Array.isArray(data) ? data : []).filter(a => a.is_archived && matchesOrganization(a, scope)).sort((a, b) => new Date(b.archived_at) - new Date(a.archived_at) || b.id - a.id), [data, scope])
   const filtered = archives.filter(a => `${a.title} ${a.batch_name || ''} ${a.instructor_name || ''}`.toLowerCase().includes(search.trim().toLowerCase()) && (batch === 'all' || String(a.batch_id) === batch) && (instructor === 'all' || String(a.instructor_id ?? a.created_by_id) === instructor))
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
@@ -36,9 +40,8 @@ export default function AssessmentArchives({ role }) {
   const activeFilters = search || batch !== 'all' || instructor !== 'all'
   function reset() { setSearch(''); setBatch('all'); setInstructor('all'); setPage(1) }
   return <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment archives</h1><p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">Archived assessments are read-only. Results, reports and competency evidence are retained. Restore an assessment before editing it.</p></div><Link className={`${control} inline-flex items-center`} to={`/${role}/assessments`}>Back to assessments</Link></header>
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-xl font-semibold text-gray-900 dark:text-white">Assessment archives</h1><p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">Archived assessments are read-only. Results, reports and competency evidence are retained. Restore an assessment before editing it.</p></div><Link className={`${control} inline-flex items-center`} to={`/${role}/assessments${role === 'admin' ? organizationSearch(scope) : ''}`}>Back to assessments</Link></header>
     <section aria-label="Archived assessments" className="space-y-4">
-      {role === 'admin' && <OrganizationScope value={scope} onChange={next => { setScope(next); reset() }} />}
       <div className="flex flex-wrap items-end gap-3"><label className="w-full min-w-0 text-xs sm:w-auto sm:flex-[2] text-gray-600 dark:text-gray-300">Search archives<input type="search" className={`${control} mt-1 w-full`} placeholder="Title, instructor, or batch…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} /></label>
         <label className="min-w-40 flex-1 text-xs text-gray-600 dark:text-gray-300">Batch<select className={`${control} mt-1 w-full`} value={batch} onChange={e => { setBatch(e.target.value); setPage(1) }}><option value="all">All batches</option>{batches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         {role === 'admin' && <label className="min-w-40 flex-1 text-xs text-gray-600 dark:text-gray-300">Instructor<select className={`${control} mt-1 w-full`} value={instructor} onChange={e => { setInstructor(e.target.value); setPage(1) }}><option value="all">All instructors</option>{instructors.map(([id, name]) => <option key={id} value={id}>{name || 'Unassigned'}</option>)}</select></label>}

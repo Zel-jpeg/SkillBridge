@@ -34,9 +34,16 @@ if '--coordinator-catalog' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'coordinator-catalog'
 if '--staff-scope' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+if '--admin-navigation' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+    env['SB_ADMIN_SCOPE_NAVIGATION'] = '1'
 if '--management-dialogs' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'management-dialogs'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
+if frontend_mode:
+    # A concurrent workspace build must not replace this run's hashed assets.
+    shutil.copytree(ROOT / 'skillbridge-frontend/dist', OUT / 'bundle')
+    frontend_mode.extend(['--outDir', str(OUT / 'bundle')])
 commands = [([sys.executable, '-u', str(ROOT / 'skillbridge-frontend/tests/organization_server.py')], api_port),
     ([shutil.which('node'), str(ROOT / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_mode, str(ROOT / 'skillbridge-frontend'),
       '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'], frontend_port)]
@@ -86,6 +93,7 @@ try:
             ('--multi-institute-acceptance', 'multi_institute_acceptance_playwright.py'),
             ('--coordinator-catalog', 'coordinator_catalog_playwright.py'),
             ('--staff-scope', 'staff_scope_playwright.py'),
+            ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),
             ('--authoring-draft', 'authoring_draft_playwright.py'),

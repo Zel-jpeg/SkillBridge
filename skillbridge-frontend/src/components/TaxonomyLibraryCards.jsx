@@ -8,7 +8,7 @@ import { organizationCard as card, organizationField as field } from './admin/or
 
 const PAGE_SIZE = 9
 
-export default function TaxonomyLibraryCards({ items, label, onEdit }) {
+export default function TaxonomyLibraryCards({ items, label, onEdit, emptyMessage = 'No skill libraries are available here yet.' }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const term = search.trim().toLocaleLowerCase()
@@ -21,7 +21,7 @@ export default function TaxonomyLibraryCards({ items, label, onEdit }) {
       <input className={field} type="search" maxLength={255} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} />
     </label>}
     {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
-      {term ? 'No cards match your search.' : 'No skill libraries are available here yet.'}
+      {term ? 'No cards match your search.' : emptyMessage}
     </p> : <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {rows.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE).map(item => {
         const editLabel = `Edit ${item.name}`

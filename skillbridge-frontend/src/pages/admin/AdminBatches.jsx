@@ -14,8 +14,8 @@ import { BatchEmailProgress } from '../../components/enrollment/EmailProgress'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import Pagination from '../../components/Pagination'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
-import OrganizationScope from '../../components/OrganizationScope'
-import { ALL_ORGANIZATIONS, matchesOrganization } from '../../utils/organizationScope'
+import AdminScopeNavigator from '../../components/admin/AdminScopeNavigator'
+import { matchesOrganization } from '../../utils/organizationScope'
 import { BatchCollection, BatchStatus, BatchStudentCollection, CollectionRange } from '../../components/admin/BatchCollections'
 import StudentEnrollmentModal from '../../components/enrollment/StudentEnrollmentModal'
 const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
@@ -34,11 +34,11 @@ const field = 'min-h-11 w-full min-w-0 rounded-xl border border-gray-200 bg-whit
 const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-green-950'
 const surface = 'rounded-2xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'
 
-function BatchEditor({ batch, owners, onClose, onSaved }) {
+function BatchEditor({ batch, defaultProgram, owners, onClose, onSaved }) {
   const { showToast } = useToast()
   const [name, setName] = useState(batch?.name || '')
   const [owner, setOwner] = useState(String(batch?.instructor_id || ''))
-  const [programId, setProgramId] = useState(String(batch?.program_id || ''))
+  const [programId, setProgramId] = useState(String(batch?.program_id || defaultProgram || ''))
   const ownerUrl = programId ? `${OWNERS}?program_id=${programId}` : OWNERS
   const { data: scopedOwners } = useApi(programId ? ownerUrl : null)
   owners = programId ? scopedOwners || [] : owners
@@ -47,7 +47,7 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
   const [review, setReview] = useState(false)
   const [discard, setDiscard] = useState(false)
   const pending = useRef(false)
-  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '') || programId !== String(batch?.program_id || '')
+  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '') || programId !== String(batch?.program_id || defaultProgram || '')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
   function prepare(event) {
     event.preventDefault()
@@ -68,7 +68,7 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
   return <DialogShell title={batch ? 'Manage batch' : 'Create batch'} description="Choose the instructor responsible for the selected students." onClose={close} size="confirm" footer={<div className="flex gap-2"><button className={button} disabled={saving} onClick={close}>Cancel</button><button className={`${button} bg-green-700 text-white hover:bg-green-800`} disabled={saving || !changed} form="batch-editor" type="submit">{saving ? 'Saving…' : 'Review batch changes'}</button></div>}>
     <form id="batch-editor" onSubmit={prepare} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
       <fieldset disabled={saving} className="space-y-4"><label className="block text-xs font-semibold">Batch name<input aria-label="Batch name" className={field} maxLength={100} value={name} onChange={event => setName(event.target.value)} /></label>
-        {!batch && <ProgramSelect value={programId} onChange={value => { setProgramId(value); setOwner('') }} disabled={saving} />}
+        {!batch && <ProgramSelect value={programId} onChange={value => { setProgramId(value); setOwner('') }} disabled={saving || Boolean(defaultProgram)} />}
         {batch?.program && <p className="text-xs">{batch.program.institute_code} · {batch.program.code} — {batch.program.name}</p>}
         <label className="block text-xs font-semibold">Responsible instructor<DataSection url={ownerUrl} layout="control" count={1}><select aria-label="Responsible instructor" className={field} value={owner} onChange={event => setOwner(event.target.value)}><option value="">Select an instructor</option>{batch && !owners.some(person => person.id === batch.instructor_id) && <option value={batch.instructor_id} disabled>{batch.instructor_name} (current owner unavailable for new assignments)</option>}{owners.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></DataSection></label>
         {batch && <p className="text-xs text-gray-500">Reassignment transfers access to this batch, including its assessments and student history. Scores and placement snapshots are preserved.</p>}
@@ -80,6 +80,10 @@ function BatchEditor({ batch, owners, onClose, onSaved }) {
 }
 
 export default function AdminBatches() {
+  return <AdminScopeNavigator title="Batches & students">{(scope, { institute, program }) => <ScopedBatches scope={scope} canCreate={Boolean(scope.program) && institute.is_active && program?.is_active} />}</AdminScopeNavigator>
+}
+
+function ScopedBatches({ scope, canCreate }) {
   const emailLocation = useLocation()
   const { showToast } = useToast()
   const { data: batchData } = useApi(BATCHES)
@@ -110,6 +114,7 @@ export default function AdminBatches() {
   const emailParams = new URLSearchParams(emailLocation.search)
   const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
   const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0 && closedEmailKey !== emailLocation.key
+    && batches.some(batch => batch.id === routeEmailId && matchesOrganization(batch, scope))
   const [confirm, setConfirm] = useState(null)
   const [studentId, setStudentId] = useState(null)
   const [leaderCategory, setLeaderCategory] = useState('')
@@ -118,14 +123,13 @@ export default function AdminBatches() {
   const [feedback, setFeedback] = useState(null)
   const [showAudit, setShowAudit] = useState(false)
   const [auditPage, setAuditPage] = useState(1)
-  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
   const scopedBatches = useMemo(() => batches.filter(batch => matchesOrganization(batch, scope)), [batches, scope])
   const filtered = useMemo(() => scopedBatches.filter(batch =>
     `${batch.name} ${batch.instructor_name} ${batch.institute_name || ''} ${batch.program?.code || ''}`.toLowerCase().includes(search.trim().toLowerCase()) &&
     (owner === 'all' || String(batch.instructor_id) === owner) && (status === 'all' || batch.status === status)), [scopedBatches, search, owner, status])
   const visiblePage = Math.min(page, Math.ceil(filtered.length / 10) || 1)
   const records = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
-  const selected = batches.find(batch => batch.id === selectedId)
+  const selected = scopedBatches.find(batch => batch.id === selectedId)
   const rosterUrl = selected ? `${BATCHES}${selected.id}/students/` : null
   const { data: roster } = useApi(rosterUrl)
   const auditUrl = showAudit && selected ? `/api/admin/management-actions/?batch_id=${selected.id}&offset=${(auditPage - 1) * 50}` : null
@@ -168,9 +172,8 @@ export default function AdminBatches() {
   const ownerOptions = [...new Map(scopedBatches.map(batch => [batch.instructor_id, batch.instructor_name])).entries()]
   return <div className="admin-batches mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
     {!selected ? <>
-      <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-bold">Batches & students</h1><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Manage batches, instructors and student enrollment.</p></div><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} onClick={() => setEditor({ create: true })}><PlusIcon size={15} />Create batch</button></header>
+      <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-bold">Batches & students</h1><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Manage batches, instructors and student enrollment.</p></div><button className={`${button} border-green-700 bg-green-700 text-white hover:bg-green-800`} disabled={!canCreate} title={!canCreate ? "Choose an active program to create a batch" : undefined} onClick={() => setEditor({ create: true })}><PlusIcon size={15} />Create batch</button></header>
       <section ref={batchCollectionRef} aria-label="Batch collection" className="space-y-5">
-        <OrganizationScope value={scope} onChange={next => { setScope(next); setOwner('all'); setPage(1) }} />
         <div className={`${surface} grid gap-4 p-4 sm:grid-cols-[1.2fr_1fr_1fr] sm:p-5`}>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Search batches<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><SearchIcon size={16} /></span><input aria-label="Search batches" placeholder="Search batch, institute or instructor…" className={`${field} pl-9`} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></span></label>
           <label className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Instructor<select aria-label="Filter batches by instructor" className={`${field} mt-2`} value={owner} onChange={event => { setOwner(event.target.value); setPage(1) }}><option value="all">All instructors</option>{ownerOptions.map(([id, name]) => <option key={id} value={id}>{name || 'Instructor not assigned'}</option>)}</select></label>
@@ -178,7 +181,7 @@ export default function AdminBatches() {
         </div>
         <div className="flex items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">{batchData == null ? 'Loading batches…' : `${filtered.length} ${filtered.length === 1 ? 'batch' : 'batches'}`}</p><CollectionViewToggle view={view} onChange={setView} label="Batch view" /></div>
         <DataSection url={BATCHES} skeleton={<CollectionSkeleton kind="batch" view={view} />} >
-          {!records.length ? <div className={`${surface} py-12 text-center`}><p className="text-sm font-medium">{batches.length ? 'No batches match your filters.' : 'No batches yet'}</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{batches.length ? 'Try another search or clear your filters.' : 'Create a batch and select its responsible instructor to begin.'}</p>{batches.length > 0 && <button className="mt-3 min-h-11 text-xs font-semibold text-green-700 dark:text-green-300" onClick={() => { setScope(ALL_ORGANIZATIONS); setSearch(''); setOwner('all'); setStatus('all'); setPage(1) }}>Clear filters</button>}</div> : <BatchCollection records={records} view={view} onOpen={choose} />}
+          {!records.length ? <div className={`${surface} py-12 text-center`}><p className="text-sm font-medium">{scopedBatches.length ? 'No batches match your filters.' : 'No batches yet'}</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{scopedBatches.length ? 'Try another search or clear your filters.' : 'Create a batch and select its responsible instructor to begin.'}</p>{scopedBatches.length > 0 && <button className="mt-3 min-h-11 text-xs font-semibold text-green-700 dark:text-green-300" onClick={() => { setSearch(''); setOwner('all'); setStatus('all'); setPage(1) }}>Clear filters</button>}</div> : <BatchCollection records={records} view={view} onOpen={choose} />}
           <CollectionRange total={filtered.length} page={visiblePage} onPage={setPage} noun="batches" />
         </DataSection>
         {!!records.length && <p className="text-xs text-gray-500 dark:text-gray-400">Select a batch to view its students.</p>}
@@ -216,7 +219,7 @@ export default function AdminBatches() {
         {showAudit && <section aria-label="Batch action history" className="border-t border-gray-100 pt-4 dark:border-gray-800"><h3 className="mb-3 text-sm font-semibold">Action history</h3><DataSection url={auditUrl} layout="timeline" label="Loading batch action history"><ol className="space-y-3 text-xs">{audit?.results.map(row => <li key={row.id} className="border-t border-gray-100 pt-3 dark:border-gray-800"><strong>{row.action}</strong> · {row.actor_name}<p className="mt-1 text-gray-500 dark:text-gray-400">{new Date(row.created_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} · {row.target_type} #{row.target_id}</p></li>)}</ol>{audit?.count === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">No recorded actions yet. Historical actions before this feature are not backfilled.</p>}<Pagination total={audit?.count || 0} page={auditPage} onPage={setAuditPage} pageSize={50} /></DataSection></section>}
       </section>
     </>}
-    {editor && <BatchEditor batch={editor.batch} owners={owners} onClose={() => setEditor(null)} onSaved={batch => { refresh(); setSelectedId(batch.id); setEditor(null); setFeedback({ text: 'Batch saved.' }) }} />}
+    {editor && <BatchEditor batch={editor.batch} defaultProgram={scope.program} owners={owners} onClose={() => setEditor(null)} onSaved={batch => { refresh(); setSelectedId(batch.id); setEditor(null); setFeedback({ text: 'Batch saved.' }) }} />}
     {(showEmails || emailRouteOpen) && (emailRouteOpen || selected) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : selected.id} batchId={emailRouteOpen ? routeEmailId : selected.id} onClose={() => { setShowEmails(false); setClosedEmailKey(emailLocation.key) }} /></Suspense>}
     {selected && enrolling && <StudentEnrollmentModal requireConfirmation batchId={selected.id} onClose={() => setEnrolling(false)} onEnrolled={refresh} />}
     {selected && currentStudent && <StudentModal student={{ ...currentStudent, batchLabel: selected.name }} instructorName={selected.instructor_name} isArchived={selected.status === 'archived'} onClose={() => setStudentId(null)} onToggleRetake={retake} />}

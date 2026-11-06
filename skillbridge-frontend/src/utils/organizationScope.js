@@ -1,6 +1,10 @@
 export const ORGANIZATION_OPTIONS = '/api/management/organization-options/'
 export const ALL_ORGANIZATIONS = { institute: '', program: '' }
 
+export function organizationSearch(scope) {
+  return scope.institute ? `?${new URLSearchParams({ institute: scope.institute, program: scope.program || 'all' })}` : ''
+}
+
 export function matchesOrganization(record, { institute, program }) {
   return (!institute || String(record?.institute_id) === institute)
     && (!program || String(record?.program_id) === program)

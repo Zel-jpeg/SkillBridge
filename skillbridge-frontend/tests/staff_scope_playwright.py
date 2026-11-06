@@ -14,10 +14,8 @@ def scope(page, label='Institute and program scope'):
 
 
 def choose(page, institute, program=None):
-    group = scope(page)
-    group.get_by_label('Institute', exact=True).select_option(str(institute))
-    if program:
-        group.get_by_label('Program', exact=True).select_option(str(program))
+    path = urlparse(page.url).path
+    page.goto(BASE + f'{path}?institute={institute}&program={program or "all"}', wait_until='networkidle')
 
 
 def switch_to_list(page, name):
@@ -296,6 +294,7 @@ with sync_playwright() as playwright:
 
     page.goto(BASE + '/admin/companies', wait_until='networkidle')
     scope(page).get_by_label('Institute', exact=True).select_option(label='Institute of Computing')
+    scope(page).get_by_label('Program', exact=True).select_option('all')
     expect(page.get_by_role('heading', name='Synthetic IC legacy partner')).to_be_visible()
     expect(page.get_by_role('heading', name='Synthetic cross-program partner')).to_have_count(0)
     choose(page, tourism['institute_id'], tourism['program_id'])
@@ -310,7 +309,8 @@ with sync_playwright() as playwright:
     print('PASS IC catalog and shared program opening filters preserve scope when switching views')
 
     page.goto(BASE + '/admin/assessments', wait_until='networkidle')
-    scope(page).get_by_label('Institute', exact=True).select_option(label='Institute of Computing')
+    page.get_by_role('link', name='Institute of Computing', exact=True).click()
+    page.get_by_role('link', name='All IC programs', exact=True).click()
     expect(page.get_by_role('button', name='View details for Synthetic IC mixed assessment')).to_be_visible()
     choose(page, tourism['institute_id'], tourism['program_id'])
     expect(page.get_by_role('button', name=f"View details for {tourism['assessment_title']}")).to_be_visible()
@@ -327,7 +327,8 @@ with sync_playwright() as playwright:
     print('PASS assessment creation stays in its workspace and the grouped desktop rail retains links')
 
     page.goto(BASE + '/admin/batches', wait_until='networkidle')
-    scope(page).get_by_label('Institute', exact=True).select_option(label='Institute of Computing')
+    page.get_by_role('link', name='Institute of Computing', exact=True).click()
+    page.get_by_role('link', name='All IC programs', exact=True).click()
     expect(page.get_by_role('button').filter(has_text='Existing IC mixed batch')).to_be_visible()
     choose(page, tourism['institute_id'], tourism['program_id'])
     expect(page.get_by_role('button').filter(has_text=tourism['batch_name'])).to_be_visible()

@@ -18,6 +18,7 @@ from .change_events import notify_changes
 from .management_access import record_action
 from .cycle_lifecycle import lifecycle_lock
 from . import retake_evidence
+from .instructor_assignments import program_payload
 
 
 def request_snapshot(attempt):
@@ -151,6 +152,10 @@ def queue_row(attempt, history=None):
             'assessment': attempt.assessment.title, 'student_id': attempt.student_id,
             'student': attempt.student.name, 'school_id': attempt.student.school_id,
             'batch': attempt.assessment.batch.name if attempt.assessment.batch_id else '',
+            'batch_id': attempt.assessment.batch_id,
+            'institute_id': attempt.assessment.batch.institute_id if attempt.assessment.batch_id else None,
+            'institute_name': attempt.assessment.batch.institute.name if attempt.assessment.batch_id and attempt.assessment.batch.institute_id else '',
+            'program': program_payload(attempt.assessment.batch.program) if attempt.assessment.batch_id and attempt.assessment.batch.program_id else None,
             'attempt_started_at': (history.started_at if history else attempt.started_at).isoformat(),
             'attempt_status': history.status if history else attempt.status,
             'stopped_reason': history.stopped_reason if history else attempt.stopped_reason_display,
@@ -165,7 +170,20 @@ def queue_row(attempt, history=None):
 def request_queue(request):
     if request.user.role not in ('admin', 'instructor'):
         raise PermissionDenied()
-    rows = StudentResponse.objects.select_related('assessment__batch', 'student').exclude(retake_request_status='')
+    context = {}
+    for field in ('institute_id', 'program_id'):
+        value = request.query_params.get(field)
+        if value:
+            try:
+                number = int(value)
+                if number <= 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValidationError({'error': f'Invalid {field}.'}) from None
+            context[field] = number
+    relations = ('assessment__batch__institute', 'assessment__batch__program__institute', 'student')
+    rows = StudentResponse.objects.select_related(*relations).exclude(retake_request_status='')
+    rows = rows.filter(**{f'assessment__batch__{key}': value for key, value in context.items()})
     if request.user.role == 'instructor':
         rows = rows.filter(assessment__batch__in=managed_batches(request.user))
     status = request.query_params.get('status', 'pending')
@@ -182,7 +200,8 @@ def request_queue(request):
     except ValueError:
         raise ValidationError({'error': 'Invalid page.'}) from None
     if status == 'history':
-        histories = AssessmentAttemptHistory.objects.select_related('response__assessment__batch', 'response__student').exclude(retake_request={})
+        histories = AssessmentAttemptHistory.objects.select_related(*(f'response__{path}' for path in relations)).exclude(retake_request={})
+        histories = histories.filter(**{f'response__assessment__batch__{key}': value for key, value in context.items()})
         if request.user.role == 'instructor':
             histories = histories.filter(response__assessment__batch__in=managed_batches(request.user))
         if query:

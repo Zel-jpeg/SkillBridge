@@ -70,7 +70,7 @@ export default function PositionDialog(props) {
 }
 
 function PositionForm({ mode = 'add', initialData = null, categories = [], onClose, onSaved, onDirtyChange,
-  onSubmit, saving, setSaving, fixedProgram, saveBlocked = false, recovery }) {
+  onSubmit, saving, setSaving, fixedProgram, defaultProgram, saveBlocked = false, recovery }) {
   const id = useId()
   const savePending = useRef(false)
   const suggestPending = useRef(false)
@@ -81,9 +81,9 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   const [slots, setSlots] = useState(initialData?.slots ?? 1)
   const [tags, setTags] = useState((initialData?.tags || []).join(', '))
   const [scoped, setScoped] = useState(mode === 'add' || Boolean(initialData?.eligibility_configured))
-  const [programs, setPrograms] = useState(initialData?.eligible_programs || (fixedProgram ? [fixedProgram] : []))
+  const [programs, setPrograms] = useState(initialData?.eligible_programs || (fixedProgram || defaultProgram ? [fixedProgram || defaultProgram] : []))
   const firstRequirement = initialData?.category_requirements?.[0]
-  const [programId, setProgramId] = useState(firstRequirement?.program_id || fixedProgram?.id || null)
+  const [programId, setProgramId] = useState(firstRequirement?.program_id || fixedProgram?.id || defaultProgram?.id || null)
   const [selectedFrameworkId, setSelectedFrameworkId] = useState(firstRequirement?.framework_id || null)
   const [automaticFrameworkId, setAutomaticFrameworkId] = useState(null)
   const frameworkId = selectedFrameworkId || automaticFrameworkId
@@ -213,9 +213,9 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
         <section className="position-editor-section" aria-labelledby={`${id}-programs`}>
           <SectionHeading number="2" id={`${id}-programs`}>Program eligibility</SectionHeading>
           {fixedProgram ? <p className="position-editor-help">{fixedProgram.institute_code} · {fixedProgram.name}</p> : scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
-            <p className="position-editor-help">This legacy opening serves batches without a configured program.</p>
+            <p className="position-editor-help">This shared IC opening serves batches without a single program assignment.</p>
             <button type="button" className="position-editor-cancel" onClick={() => { setScoped(true); selectFramework(null, null) }}>Configure program eligibility</button>
-            <p className="position-editor-help">Configuring eligibility replaces the legacy requirement list when you save.</p>
+            <p className="position-editor-help">Configuring program eligibility replaces the shared requirement list when you save.</p>
           </>}
         </section>
 

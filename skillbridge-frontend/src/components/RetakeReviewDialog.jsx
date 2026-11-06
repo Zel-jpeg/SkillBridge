@@ -75,7 +75,7 @@ export default function RetakeReviewDialog({ row, onClose, onSaved }) {
     <div className="retake-review-body text-xs leading-relaxed">
       <div className="retake-review-identity">
         <div className="retake-review-student"><Avatar name={row.student} tone="neutral" className="h-10 w-10 rounded-full text-xs" /><div className="min-w-0"><p className="break-words font-semibold text-gray-900 dark:text-white">{row.student}</p><p className="break-words retake-muted">{row.school_id || 'No student ID'} · {row.batch || 'No batch'}</p></div></div>
-        <div className="retake-review-assessment"><p className="font-semibold text-gray-900 dark:text-white">{row.assessment}</p><p className="retake-muted">{row.attempt_status === 'stopped' ? 'Stopped' : row.attempt_status} · {row.stopped_reason || 'No stop reason recorded'}</p>
+        <div className="retake-review-assessment"><p className="font-semibold text-gray-900 dark:text-white">{row.assessment}</p><p className="retake-muted">{row.program ? `${row.program.institute_code} · ${row.program.code} — ${row.program.name}` : row.institute_name ? `${row.institute_name} · Shared institute batch` : 'Program not assigned'}</p><p className="retake-muted">{row.attempt_status === 'stopped' ? 'Stopped' : row.attempt_status} · {row.stopped_reason || 'No stop reason recorded'}</p>
           {row.history_id && <p className="retake-muted">Previous attempt · Read only</p>}
           {row.read_only && !row.history_id && <p className="retake-muted">Archived account, batch or assessment · Read only</p>}
         </div>

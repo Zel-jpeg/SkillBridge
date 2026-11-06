@@ -1,5 +1,11 @@
 # Staff workspace scope and navigation
 
+Current admin navigation is described in [the institute/program navigation
+plan](ADMIN_SCOPE_NAVIGATION_PLAN.md). The initial global collections below are
+superseded: administrators choose an institute and program before seeing batch,
+assessment, retake, partner or placement records. Explicit All programs is limited
+to the chosen institute and retains shared IC records in their normal workflow.
+
 The staff follow-up has two local delivery gates. Each gate gets its own feature
 branch, focused tests and a local merge before work starts on the next gate.
 

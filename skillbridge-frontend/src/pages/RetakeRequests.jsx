@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router-dom'
+import AdminScopeNavigator from '../components/admin/AdminScopeNavigator'
 import { useState } from 'react'
 import { useApi, invalidateCache, fetchWithDedup } from '../hooks/useApi'
 import Pagination from '../components/Pagination'
@@ -28,9 +30,18 @@ function StudentIdentity({ row }) {
 function EvidenceLabel({ row }) { return <span className="text-gray-500 dark:text-gray-400">{row.has_image ? 'Image attached' : 'No image'}</span> }
 
 export default function RetakeRequests() {
+  const { pathname } = useLocation()
+  return pathname.startsWith('/admin/') ? <AdminScopeNavigator title="Retake requests">{scope => <ScopedRetakeRequests scope={scope} />}</AdminScopeNavigator> : <ScopedRetakeRequests />
+}
+
+function RequestProgram({ row }) {
+  return <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{row.program ? `${row.program.institute_code} · ${row.program.code} — ${row.program.name}` : row.institute_name ? `${row.institute_name} · Shared institute batch` : 'Program not assigned'}</p>
+}
+
+function ScopedRetakeRequests({ scope }) {
   const [search, setSearch] = useState(''), [status, setStatus] = useState('pending'), [page, setPage] = useState(1)
   const [view, setView] = useState('list'), [selected, setSelected] = useState(null), [message, setMessage] = useState('')
-  const url = `/api/retake-requests/?${new URLSearchParams({ search: search.trim(), status, page: String(page) })}`
+  const url = `/api/retake-requests/?${new URLSearchParams({ search: search.trim(), status, page: String(page), ...(scope?.institute ? { institute_id: scope.institute } : {}), ...(scope?.program ? { program_id: scope.program } : {}) })}`
   const { data, loading, error } = useApi(url)
   const rows = data?.results || []
   // Resolve the selected identity against refreshed data, rather than reviewing a stale row.
@@ -68,7 +79,7 @@ export default function RetakeRequests() {
       {rows.length ? <>
         <div className={`${view === 'cards' ? 'grid' : 'grid lg:hidden'} grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3`}>{rows.map(row => <article key={rowKey(row)} className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-xs leading-relaxed transition-colors hover:border-green-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-green-700">
           <div className="flex flex-wrap items-start justify-between gap-3"><StudentIdentity row={row} /><span className="retake-status" data-status={row.request.status}>{row.request.status}</span></div>
-          <p className="mt-4 break-words font-semibold">{row.assessment}</p><p className="mt-1 break-words text-gray-500 dark:text-gray-400">{row.batch || 'No batch'}</p>
+          <p className="mt-4 break-words font-semibold">{row.assessment}</p><p className="mt-1 break-words text-gray-500 dark:text-gray-400">{row.batch || 'No batch'}</p><RequestProgram row={row} />
           <p className="mt-3 line-clamp-2 break-words text-gray-600 dark:text-gray-300">{row.request.explanation}</p>
           <div className="mt-auto pt-4"><div className="space-y-1 border-t border-gray-100 pt-3 dark:border-gray-800"><EvidenceLabel row={row} /><p className="text-gray-500 dark:text-gray-400">{requestedAt(row)}</p></div><div className="mt-3 [&>button]:w-full"><RequestAction row={row} onOpen={() => open(row)} /></div></div>
         </article>)}</div>
@@ -76,7 +87,7 @@ export default function RetakeRequests() {
           <table className={`${table.table} min-w-[900px]`}><caption className="sr-only">Retake requests and review actions</caption><thead className={table.head}><tr>{['Student', 'Assessment', 'Batch', 'Evidence', 'Requested', 'Status', 'Action'].map(label => <th key={label} scope="col" className="px-3 py-3.5 text-left font-semibold">{label}</th>)}</tr></thead>
             <tbody>{rows.map(row => <tr key={rowKey(row)} className={table.row}>
               <td className={`${table.cell} min-w-44`}><StudentIdentity row={row} /></td><td className={`${table.cell} min-w-48`}><p className="font-semibold text-gray-900 dark:text-gray-100">{row.assessment}</p><p className="mt-1 line-clamp-2 text-gray-500 dark:text-gray-400">{row.request.explanation}</p></td>
-              <td className={table.cell}>{row.batch || 'No batch'}</td><td className={table.cell}><EvidenceLabel row={row} /></td><td className={`${table.cell} min-w-32`}>{requestedAt(row)}</td><td className={table.cell}><span className="retake-status" data-status={row.request.status}>{row.request.status}</span></td><td className={`${table.cell} whitespace-nowrap`}><RequestAction row={row} onOpen={() => open(row)} /></td>
+              <td className={table.cell}>{row.batch || 'No batch'}<RequestProgram row={row} /></td><td className={table.cell}><EvidenceLabel row={row} /></td><td className={`${table.cell} min-w-32`}>{requestedAt(row)}</td><td className={table.cell}><span className="retake-status" data-status={row.request.status}>{row.request.status}</span></td><td className={`${table.cell} whitespace-nowrap`}><RequestAction row={row} onOpen={() => open(row)} /></td>
             </tr>)}</tbody>
           </table>
         </div>}

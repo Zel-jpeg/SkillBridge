@@ -27,9 +27,9 @@ import api from '../../api/axios'
 import { invalidateCache, fetchWithDedup, useApi } from '../../hooks/useApi'
 import Pagination from '../../components/Pagination'
 import CompanyCollectionCard, { CompanyCollectionSkeleton } from '../../components/admin/CompanyCollectionCard'
-import OrganizationScope from '../../components/OrganizationScope'
+import AdminScopeNavigator from '../../components/admin/AdminScopeNavigator'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
-import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, scopedPartners } from '../../utils/organizationScope'
+import { ORGANIZATION_OPTIONS, scopedPartners } from '../../utils/organizationScope'
 import { companyDisclosures } from '../../utils/companyCollection'
 import CompanyImageInput from '../../components/CompanyImageInput'
 import CompanyEditDialog from '../../components/CompanyEditDialog'
@@ -697,6 +697,10 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
 // Main Page
 // ════════════════════════════════════════════════════════════════════════════
 export default function AdminCompanies() {
+  return <AdminScopeNavigator title="OJT Partners & Positions" dropdowns>{(scope, { institute, program }) => <ScopedCompanies scope={scope} canCreate={institute.is_active && program?.is_active} />}</AdminScopeNavigator>
+}
+
+function ScopedCompanies({ scope, canCreate }) {
   const {
     companies, initialCompaniesPending,
     categories,
@@ -716,7 +720,6 @@ export default function AdminCompanies() {
   } = useAdminCompanies()
 
   const [search,        setSearch]        = useState('')
-  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
   const [view, setView] = useState('grid')
   const { data: organizationOptions } = useApi(ORGANIZATION_OPTIONS)
   const [catalogStatus, setCatalogStatus] = useState('active')
@@ -762,7 +765,7 @@ export default function AdminCompanies() {
         <CompanyModal
           mode="add"
           onClose={() => setShowAddCompany(false)}
-          onSubmit={handleAddCompany}
+          onSubmit={company => handleAddCompany({ ...company, management_program_id: Number(scope.program) })}
         />
       )}
 
@@ -779,6 +782,7 @@ export default function AdminCompanies() {
         <PositionModal
           mode="add"
           companyName={addPositionFor.name}
+          defaultProgram={organizationOptions?.programs.find(row => String(row.id) === scope.program)}
           categories={categories}
           onClose={() => setAddPositionFor(null)}
           onSubmit={pos => handleAddPosition(addPositionFor, pos)}
@@ -836,17 +840,16 @@ export default function AdminCompanies() {
                 placeholder="Search partners…"
                 className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
             </div>
-            <button onClick={() => setShowAddCompany(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
+            <button disabled={!canCreate} title={!canCreate ? "Choose an active program to add a partner" : undefined} onClick={() => setShowAddCompany(true)}
+              className="flex cursor-pointer items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <span className="text-base leading-none">+</span> Add Partner
             </button>
           </div>
         </div>
 
         <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
-        <OrganizationScope value={scope} onChange={next => { setScope(next); setCatalogPage(1) }} />
         <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
-        <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Program views show their eligible openings. To see the existing IC openings, select Institute of Computing and leave Program on All programs. Shared openings have one slot count across programs.</p>
+        <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Choose a program to manage its partners and eligible openings. Original shared IC openings are under Institute of Computing → All IC programs. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">

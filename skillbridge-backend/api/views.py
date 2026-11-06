@@ -3852,8 +3852,11 @@ def admin_companies(request):
     if not name:
         return Response({'error': 'name is required'}, status=400)
 
+    from .program_scope import active_program
+    management_program = active_program(request.user, data['management_program_id']) if data.get('management_program_id') is not None else None
     company = Company(
         name=name,
+        management_program=management_program,
         address=address,
         location_lat=lat,
         location_lng=lng,
@@ -3861,8 +3864,10 @@ def admin_companies(request):
     )
     with CompanyImageChange(request, data) as image_change:
         with transaction.atomic():
+            if management_program:
+                company.management_program = active_program(request.user, management_program.id, lock=True)
             image_change.save(company)
-    return Response({'id': company.id, 'name': company.name, **image_fields(company)}, status=201)
+    return Response({'id': company.id, 'name': company.name, 'management_program_id': company.management_program_id, **image_fields(company)}, status=201)
 
 
 # ── PATCH + DELETE  /api/admin/companies/{id}/ ────────────────────────────────

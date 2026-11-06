@@ -91,6 +91,17 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
         for item in scenarios[:2]:
             OJTPlacement.objects.create(student_id=item['student_id'], batch_id=item['batch_id'],
                 position=shared, company_id=shared.company_id, status='approved')
+if os.environ.get('SB_ADMIN_SCOPE_NAVIGATION'):
+    from django.utils import timezone
+    from api.models import AssessmentAttemptHistory, StudentResponse
+    from api.retake_requests import request_snapshot
+    for item in scenarios:
+        for index in range(10):
+            student = User.objects.create_user(email=f"nav-{item['program_id']}-{index}@example.invalid", role='student', name=f'Synthetic retake {index}', is_approved=True)
+            BatchEnrollment.objects.create(student=student, batch_id=item['batch_id'])
+            response = StudentResponse.objects.create(student=student, assessment_id=item['assessment_id'], status='stopped', started_at=timezone.now(),
+                retake_request_status='pending', retake_requested_at=timezone.now(), retake_explanation='Synthetic device interruption for review.')
+            AssessmentAttemptHistory.objects.create(response=response, attempt_number=1, started_at=response.started_at, status='stopped', retake_request=request_snapshot(response))
 (OUT / 'auth.json').write_text(json.dumps(identities), encoding='utf-8')
 print('Synthetic organization API ready', flush=True)
 call_command('runserver', f"127.0.0.1:{os.environ['SB_ORGANIZATION_API_PORT']}", use_reloader=False, verbosity=0)

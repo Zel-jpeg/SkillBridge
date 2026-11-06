@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react'
 import DialogShell from '../../components/DialogShell'
 import DataSection from '../../components/DataSection'
 import PageHeader from '../../components/PageHeader'
-import OrganizationScope from '../../components/OrganizationScope'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { useApi } from '../../hooks/useApi'
 import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, matchesOrganization, scopedPartners } from '../../utils/organizationScope'
@@ -26,10 +25,10 @@ function Empty({ children }) { return <p className="pl-empty">{children}</p> }
 function Pager({ rows, page, onPage, noun }) { return <CollectionPagination total={rows.length} page={page} onPage={onPage} noun={noun} /> }
 function slice(rows, page) { const current = Math.min(page, Math.max(1, Math.ceil(rows.length / 10))); return rows.slice((current - 1) * 10, current * 10) }
 
-export default function PlacementWorkspace({ role = 'admin' }) {
+export default function PlacementWorkspace({ role = 'admin', organizationScope = ALL_ORGANIZATIONS }) {
   const [tab, setTab] = useState('companies')
   const [search, setSearch] = useState('')
-  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const scope = organizationScope
   const [batch, setBatch] = useState('')
   const [area, setArea] = useState('')
   const [availability, setAvailability] = useState('all')
@@ -124,8 +123,10 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   if (data.suggestionsReady && draft && (tab === 'awaiting' || company) && page > maxPage) setPage(maxPage)
   const areas = [...new Set(scopedCompanies.map(item => address(item.address)).filter(Boolean))].sort()
   function filter(setter, value) { setter(value); setPage(1); setCompanyPage(1); setHistoryPage(1) }
-  function changeScope(next) {
-    filter(setScope, next)
+  function clearScopeFilters() {
+    setPage(1)
+    setCompanyPage(1)
+    setHistoryPage(1)
     setBatch('')
     setArea('')
     setCompanyId(null)
@@ -183,11 +184,10 @@ export default function PlacementWorkspace({ role = 'admin' }) {
     </DataSection>
     {error && <p role="alert" className="pl-error">{error}</p>}
     <nav className="pl-tabs pl-overview-tabs" aria-label="Placement views">{[['companies', 'Partners'], ['awaiting', 'Awaiting allocation'], ['history', 'Decision history']].map(([key, label]) => <button key={key} aria-label={key === 'awaiting' ? `${label} (${visible.filter(item => !item.proposal).length})` : label} aria-current={tab === key ? 'page' : undefined} onClick={() => changeTab(key)}>{label}{key === 'awaiting' && <span className="pl-tab-count">{visible.filter(item => !item.proposal).length}</span>}</button>)}</nav>
-    {role === 'admin' && <OrganizationScope value={scope} onChange={changeScope} />}
-    <div className="pl-filters"><label className="pl-search">Search<span className="pl-search-control"><SearchIcon size={16} /><input type="search" value={search} onChange={event => filter(setSearch, event.target.value)} placeholder="Partner, position, student or school ID" /></span></label><label>Student scope<select aria-label="Student scope" value={batch} onChange={event => filter(setBatch, event.target.value)}><option value="">{role === 'admin' ? 'All authorized batches' : 'My batches'}</option>{batches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+    <div className="pl-filters"><label className="pl-search">Search<span className="pl-search-control"><SearchIcon size={16} /><input type="search" value={search} onChange={event => filter(setSearch, event.target.value)} placeholder="Partner, position, student or school ID" /></span></label><label>Student scope<select aria-label="Student scope" value={batch} onChange={event => filter(setBatch, event.target.value)}><option value="">{role === 'admin' ? 'All batches in this scope' : 'My batches'}</option>{batches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       {tab === 'companies' && !company && <><label>Partner area<select value={area} onChange={event => filter(setArea, event.target.value)}><option value="">All areas</option>{areas.map(item => <option key={item}>{item}</option>)}</select></label><label>Suggestion availability<select value={availability} onChange={event => filter(setAvailability, event.target.value)}><option value="all">All partners</option><option value="open">Available suggestion slots</option><option value="full">No available suggestion slots</option></select></label></>}
       {tab === 'history' && <label>Decision<select aria-label="Decision" value={historyStatus} onChange={event => filter(setHistoryStatus, event.target.value)}><option value="">All decisions</option>{['approved', 'rejected', 'removed', 'suggested'].map(item => <option key={item} value={item}>{STATUS[item]}</option>)}</select></label>}
-      {(scope.institute || scope.program || search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { changeScope(ALL_ORGANIZATIONS); setSearch(''); setAvailability('all'); setHistoryStatus('') }}>Clear filters</button>}
+      {(search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { clearScopeFilters(); setSearch(''); setAvailability('all'); setHistoryStatus('') }}>Clear filters</button>}
     </div>
     {tab === 'companies' && <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout={company ? 'position-review' : 'placement-company-cards'} columns={2}>{!company ? <>
       <div className="pl-section-heading"><p><strong>{companies.length} {companies.length === 1 ? 'partner' : 'partners'}</strong><span className="pl-muted"> · Open a partner to review its positions</span></p><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested slots await approval.</p><button className="pl-button" onClick={() => setManual({})} disabled={!manualStudents.length}><UserIcon size={16} />Manual assignment</button><CollectionViewToggle view={companyView} onChange={setCompanyView} label="Placement partner view" mobile /></div>

@@ -127,6 +127,7 @@ export function useAdminCompanies() {
   async function handleAddCompany(company) {
     const res = await request('post', '/api/admin/companies/', companyRequest({
       name:    company.name,
+      ...(company.management_program_id ? { management_program_id: company.management_program_id } : {}),
       address: company.addressParts || null,   // store structured JSON
       lat:     company.lat  ?? null,           // FIX: was 'latitude'
       lng:     company.lng  ?? null,           // FIX: was 'longitude'
@@ -135,6 +136,7 @@ export function useAdminCompanies() {
 
     const newCompany = {
       id:          res.data.id,
+      management_program_id: res.data.management_program_id ?? null,
       name:        company.name,
       image_url:   res.data?.image_url ?? null,
       address:     addrToString(company.addressParts) || company.name,
