@@ -17,7 +17,7 @@ function staffNavigation(role) {
       link('Users', 'users', 'users'),
     ] } : { id: 'students', items: [link('Students', 'students', 'users')] },
     { id: 'learning', label: 'Learning & assessment', icon: 'assessments', items: [
-      link(admin ? 'Skill taxonomy' : 'Program competencies', 'competencies', 'skills', admin ? ['/admin/skills'] : []),
+      link('Skill taxonomy', 'competencies', 'skills', admin ? ['/admin/skills'] : []),
       link('Assessments', 'assessments', 'assessments', [`/${role}/assessment/create`]),
       link('Retake requests', 'retake-requests', 'retakes'),
     ] },

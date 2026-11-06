@@ -142,12 +142,13 @@ function SkillModal({ skill, onClose, onSave, saving }) {
   )
 }
 
-export default function AdminSkills() {
+export default function AdminSkills({ embedded = false }) {
   const {
     skills, loading, error, search, setSearch,
     showModal, setShowModal, selectedSkill, openAdd, openEdit,
     saving, handleSave, deleteConfirm, setDeleteConfirm, handleDelete
   } = useAdminSkills()
+  const Heading = embedded ? 'h2' : 'h1'
 
   return (
     <div className="min-w-0">
@@ -173,11 +174,11 @@ export default function AdminSkills() {
         />
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
-        <Link to="/admin/competencies" className="inline-flex min-h-10 items-center rounded-lg border border-gray-200 px-3 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-green-300 dark:hover:bg-green-950">Back to program skill taxonomy</Link>
+      <section className={embedded ? 'space-y-5' : 'max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5'}>
+        {!embedded && <Link to="/admin/competencies" className="inline-flex min-h-10 items-center rounded-lg border border-gray-200 px-3 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-green-300 dark:hover:bg-green-950">Back to program skill taxonomy</Link>}
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">IC shared skill taxonomy</h1>
+            <Heading className="text-xl font-semibold text-gray-900 dark:text-white">IC shared skill taxonomy</Heading>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Manage the shared Institute of Computing skill categories and tags used by IC assessments and position requirements.</p>
           </div>
           <button onClick={openAdd}

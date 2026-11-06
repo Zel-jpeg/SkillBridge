@@ -11,12 +11,22 @@ OUT, AUTH, BASE, API = support.OUT, support.AUTH, support.BASE, support.API
 checks, errors = support.checks, support.errors
 
 
-def open_program(page, role='instructor', name='Synthetic Catalog Degree'):
+def open_program(page, role='instructor', name='Synthetic Catalog Degree', advanced=True):
     page.goto(BASE + f'/{role}/competencies', wait_until='networkidle')
-    expect(page.get_by_role('heading', name='Program competencies', exact=True)).to_be_visible()
-    page.get_by_role('searchbox', name='Search assigned programs').fill(name)
-    page.get_by_role('radio', name=re.compile(name)).check()
-    expect(page.get_by_role('button', name='Create framework', exact=True)).to_be_visible()
+    expect(page.get_by_role('heading', name='Skill taxonomy', exact=True)).to_be_visible()
+    if role == 'admin':
+        page.get_by_label('Institute', exact=True).select_option(label='Arbitrary Catalog Institute')
+        page.get_by_label('Program', exact=True).select_option(label=name)
+    else:
+        page.get_by_role('searchbox', name='Search assigned programs').fill(name)
+        page.get_by_role('radio', name=re.compile(name)).check()
+    if advanced:
+        versions = page.get_by_role('button', name='Skill set versions', exact=True)
+        create = page.get_by_role('button', name='Create framework', exact=True)
+        expect(versions.or_(create)).to_be_visible()
+        if versions.is_visible():
+            versions.click()
+        expect(create).to_be_visible()
 
 
 def run(browser):
@@ -30,28 +40,21 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor')
-    open_program(page)
-    expect(page.get_by_text('No competency framework yet.', exact=False)).to_be_visible()
-    page.get_by_role('button', name='Create framework', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Create framework', exact=True)
-    dialog.get_by_label('Name', exact=True).fill('Synthetic Knowledge Framework')
-    dialog.get_by_label('Description', exact=True).fill('Reviewed knowledge definitions for this program.')
-    dialog.get_by_role('button', name='Create framework', exact=True).click()
-    expect(dialog).to_have_count(0)
-    expect(page.get_by_role('heading', name='Synthetic Knowledge Framework · v1', exact=True)).to_be_visible()
-    frameworks = f'/api/management/programs/{program["id"]}/frameworks/'
-    version = call(context, frameworks, role='instructor')['results'][0]
-    base = frameworks + f'{version["id"]}/'
-    page.get_by_role('button', name='Add category', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Add category', exact=True)
+    open_program(page, advanced=False)
+    expect(page.get_by_text('Add the first skill', exact=False)).to_be_visible()
+    page.get_by_role('button', name='Add Skill', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Add Skill', exact=True)
     dialog.get_by_label('Name', exact=True).fill('Shared service knowledge')
     dialog.get_by_label('Description', exact=True).fill('Recognizes service records and explains an appropriate response.')
     dialog.get_by_label('Tags', exact=True).fill('Service records, Clear communication')
-    dialog.get_by_role('button', name='Add category', exact=True).click()
+    dialog.get_by_role('button', name='Add Skill', exact=True).click()
     expect(dialog).to_have_count(0)
     expect(page.get_by_role('heading', name='Shared service knowledge', exact=True)).to_be_visible()
+    frameworks = f'/api/management/programs/{program["id"]}/frameworks/'
+    version = call(context, frameworks, role='instructor')['results'][0]
+    base = frameworks + f'{version["id"]}/'
     original = call(context, base + 'categories/', role='instructor')['results'][0]
-    checks.append('instructor creates arbitrary program framework and manual category description/tags through real HTTP')
+    checks.append('instructor adds the first skill and the program skill set is created atomically through real HTTP')
 
     # Seed extra synthetic definitions to exercise the actual paginated UI.
     for index in range(9):
@@ -114,7 +117,7 @@ def run(browser):
     context.route('**' + frameworks, lose_once)
     dialog.get_by_role('button', name='Create version', exact=True).click()
     expect(dialog.locator('form [role="alert"]')).to_be_visible()
-    expect(dialog.get_by_label('Name', exact=True)).to_have_value('Synthetic Knowledge Framework')
+    expect(dialog.get_by_label('Name', exact=True)).to_have_value('ANY skills')
     dialog.get_by_role('button', name='Create version', exact=True).click()
     expect(dialog).to_have_count(0)
     versions = call(context, frameworks, role='instructor')['results']

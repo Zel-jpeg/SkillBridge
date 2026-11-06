@@ -39,8 +39,7 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor')
-    open_program(page)
-    page.get_by_role('button', name='Open v1', exact=True).click()
+    open_program(page, advanced=False)
     page.get_by_text('Check a question against saved categories', exact=True).click()
     question = page.get_by_label('Question to check', exact=True)
     question.fill('Explain booking records for arrival reservations.')
@@ -53,7 +52,7 @@ def run(browser):
     checks.append('real saved-description match and unfamiliar-text abstention; editing input immediately hides old suggestions')
 
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Edit category', exact=True)
+    dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     dialog.get_by_label('Tags', exact=True).fill('Manual First, BOOKING RECORDS')
     dialog.get_by_role('button', name='Find saved tags', exact=True).click()
     expect(dialog.get_by_text('Saved tags from Records knowledge:', exact=False)).to_be_visible()
@@ -72,8 +71,8 @@ def run(browser):
         held.append((route, response))
     pattern = '**' + base + 'assist/tags/'
     page.route(pattern, hold)
-    page.get_by_role('button', name='Add category', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Add category', exact=True)
+    page.get_by_role('button', name='Add Skill', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Add Skill', exact=True)
     dialog.get_by_label('Name', exact=True).fill('Records knowledge')
     dialog.get_by_label('Description', exact=True).fill('Manual new category definition.')
     dialog.get_by_label('Tags', exact=True).fill('Keep manual')
@@ -94,7 +93,7 @@ def run(browser):
     dialog.get_by_role('button', name='Find saved tags', exact=True).click()
     expect(dialog.get_by_text('Manual entry is still available.', exact=False)).to_be_visible()
     dialog.get_by_label('Name', exact=True).fill('Manual fallback knowledge')
-    dialog.get_by_role('button', name='Add category', exact=True).click()
+    dialog.get_by_role('button', name='Add Skill', exact=True).click()
     expect(dialog).to_have_count(0)
     expect(page.get_by_role('heading', name='Manual fallback knowledge', exact=True)).to_be_visible()
     saved = call(context, base + 'categories/?search=Manual%20fallback', role='instructor')['results'][0]
@@ -114,11 +113,10 @@ def run(browser):
     await_held(page, held)
     page.get_by_role('searchbox', name='Search assigned programs').fill('Separate Assistance Degree')
     page.get_by_role('radio', name='ASSIST · OTHER — Separate Assistance Degree', exact=True).check()
-    page.get_by_role('button', name='Open v1', exact=True).click()
     held[0][0].fulfill(response=held[0][1])
     expect(page.get_by_text('Suggested category:', exact=False)).to_have_count(0)
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Edit category', exact=True)
+    dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     dialog.get_by_role('button', name='Find saved tags', exact=True).click()
     expect(dialog.get_by_text('Saved tags from Records knowledge: Independent vocabulary', exact=True)).to_be_visible()
     expect(dialog.get_by_role('region', name='Optional tag assistance').get_by_role('status')).not_to_contain_text('Arrival reservations')
@@ -139,7 +137,7 @@ def run(browser):
     checks.append('ambiguous definitions show both saved choices and require manual review')
 
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Edit category', exact=True)
+    dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     record = call(context, bases[1] + 'categories/?search=Records', role='instructor')['results'][0]
     call(context, bases[1] + f'categories/{record["id"]}/', 'patch', {'name': record['name'],
         'description': record['description'], 'tags': ['Changed remotely'], 'expected_digest': record['digest']}, role='instructor')
@@ -152,10 +150,9 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor', width=390, dark=True)
-    open_program(page)
-    page.get_by_role('button', name='Open v1', exact=True).click()
+    open_program(page, advanced=False)
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Edit category', exact=True)
+    dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     dialog.get_by_role('button', name='Find saved tags', exact=True).click()
     expect(dialog.get_by_role('button', name='Add suggested tags', exact=True)).to_be_visible()
     page.keyboard.press('Tab')

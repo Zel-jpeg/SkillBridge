@@ -257,7 +257,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
           {!selectedBatchId && <div className="space-y-3"><p className="text-xs">For a program draft, choose its program and framework before assigning categories.</p><ProgramSelect value={draftProgramId} onChange={setDraftProgramId} endpoint="/api/management/competency-programs/" />{draftProgramId && <button type="button" className="text-xs underline" onClick={() => setDraftProgramId('')}>Clear program selection</button>}</div>}
           {scoped && <FrameworkSelect key={programId} programId={programId} value={frameworkId} onChange={chooseFramework} disabled={Boolean(batches.find(batch => batch.id === selectedBatchId)?.framework_id)} />}
-          {scoped && <p className="text-xs text-gray-500">Categories come from this program’s saved framework. Manage definitions in Program competencies. Changing batch, program or framework clears category assignments for review and keeps question text and answer keys.</p>}
+          {scoped && <p className="text-xs text-gray-500">Categories come from this program’s saved skill set. Manage definitions in Skill taxonomy. Changing the batch, program or skill set clears category assignments for review and keeps question text and answer keys.</p>}
           {catalogError && <p role="alert" className="text-xs text-rose-700">Could not load the selected framework. Your question draft is preserved.</p>}
           {scoped && catalogUrl && <button type="button" className="self-start text-xs underline" onClick={refreshCatalog}>Refresh framework definitions</button>}
           <div>

@@ -149,12 +149,19 @@ def frameworks(request, program_id):
         program = context(request.user, program_id)
         return Response(page_payload(framework_rows(program), request.query_params,
             serialize=lambda row: framework_payload(row, request.user), order_fields=('-version', 'id')))
-    fields(request.data, ['name', 'description', 'source_framework_id', 'request_id'], ['name', 'request_id'])
+    fields(request.data, ['name', 'description', 'source_framework_id', 'request_id', 'initial_category'], ['name', 'request_id'])
     name = text(request.data['name'], 'name', 160)
     description = text(request.data.get('description', ''), 'description', 2000, blank=True)
     source_id = request.data.get('source_framework_id')
     if source_id is not None and (type(source_id) is not int or source_id <= 0):
         raise ValidationError({'error': 'Choose a source version from this program.'})
+    initial = None
+    if 'initial_category' in request.data:
+        if source_id is not None:
+            raise ValidationError({'error': 'Add the skill to the copied set after reviewing its definitions.'})
+        category = request.data['initial_category']
+        fields(category, ['name', 'description', 'tags'], ['name', 'description'])
+        initial = definition(category)
     try:
         creation_key = uuid.UUID(request.data['request_id'])
     except (ValueError, TypeError, AttributeError):
@@ -167,11 +174,15 @@ def frameworks(request, program_id):
             if (previous.program_id, previous.created_by_id, previous.name, previous.description, previous.source_framework_id) != (
                     program.id, request.user.id, name, description, source_id):
                 return Response({'error': 'This creation request ID is already in use.'}, status=409)
+            if initial and not previous.categories.filter(**initial).exists():
+                return Response({'error': 'The saved starter skill has changed. Refresh the skill list.'}, status=409)
             response = Response(framework_payload(current_framework(request.user, program, previous.id), request.user))
             response.skip_change_event = True
             return response
         source = current_framework(request.user, program, source_id, lock=True) if source_id else None
         version = (program.competency_frameworks.aggregate(latest=Max('version'))['latest'] or 0) + 1
+        if initial and version != 1:
+            return Response({'error': 'A skill set already exists. Refresh the skill list and add the skill there.'}, status=409)
         framework = CompetencyFramework.objects.create(program=program, version=version, name=name,
             description=description, created_by=request.user, source_framework=source, creation_key=creation_key)
         if source:
@@ -180,6 +191,10 @@ def frameworks(request, program_id):
                 for category in source.categories.all()])
         record_action(request.user, 'framework.create', 'competency_framework', framework.id,
                       program_id=program.id, source_framework_id=source_id)
+        if initial:
+            category = SkillCategory.objects.create(framework=framework, created_by=request.user, **initial)
+            record_action(request.user, 'category.create', 'skill_category', category.id, program_id=program.id,
+                          framework_id=framework.id)
         return Response(framework_payload(current_framework(request.user, program, framework.id), request.user), status=201)
 
 

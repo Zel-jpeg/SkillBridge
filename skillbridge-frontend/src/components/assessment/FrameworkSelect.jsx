@@ -17,7 +17,7 @@ export default function FrameworkSelect({ programId, value, onChange, disabled =
       {value && !data?.results.some(row => row.id === value) && <option value={value}>Selected framework #{value}</option>}
     </select></label>
     {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
-    {data?.count === 0 && <p>No active frameworks yet. Create and review categories in Program competencies first.</p>}
+    {data?.count === 0 && <p>Add and review skills for this program in Skill taxonomy first.</p>}
     {help && <p className="text-gray-500">{help}</p>}
   </div></DataSection>
 }

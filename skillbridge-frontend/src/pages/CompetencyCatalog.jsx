@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { lazy, Suspense, useRef, useState } from 'react'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
 import { invalidateCache, useApi } from '../hooks/useApi'
@@ -9,7 +8,7 @@ import DialogShell from '../components/DialogShell'
 import ProgramSelect from '../components/ProgramSelect'
 import OrganizationScope from '../components/OrganizationScope'
 import CollectionViewToggle from '../components/CollectionViewToggle'
-import { ALL_ORGANIZATIONS } from '../utils/organizationScope'
+import { ALL_ORGANIZATIONS, SHARED_IC_SKILLS } from '../utils/organizationScope'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
 import { useScopedAssistance } from '../hooks/useScopedAssistance'
@@ -17,6 +16,7 @@ import { mergeSuggestedTags } from '../utils/competencyAssistance'
 import { organizationField as field, organizationButton as button, organizationPrimary as primary, organizationCard as card } from '../components/admin/organizationUi'
 
 const PROGRAMS = '/api/management/competency-programs/'
+const AdminSkills = lazy(() => import('./admin/AdminSkills'))
 const surface = 'rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900'
 
 const assistanceMessages = {
@@ -44,7 +44,7 @@ function QuestionCheck({ detail, digest }) {
   </div>
 }
 
-function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
+function Editor({ kind, row, source, url, framework, starterName, skillView = false, onClose, onSaved }) {
   const category = kind === 'category'
   const [name, setName] = useState(row?.name || source?.name || '')
   const [description, setDescription] = useState(row?.description || source?.description || '')
@@ -55,7 +55,9 @@ function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
   const [requestId] = useState(() => crypto.randomUUID())
   const pending = useRef(false)
   const assistance = useScopedAssistance(`${url.replace(/categories\/$/, '')}assist/tags/`, { name, description }, framework?.digest)
-  const title = category ? row ? 'Edit category' : 'Add category' : row ? 'Edit framework' : source ? 'Create new version' : 'Create framework'
+  const title = category
+    ? (skillView ? (row ? 'Edit Skill' : 'Add Skill') : (row ? 'Edit category' : 'Add category'))
+    : (row ? 'Edit framework' : source ? 'Create new version' : 'Create framework')
   const changed = name !== (row?.name || source?.name || '') || description !== (row?.description || source?.description || '') || tags !== (row?.tags || []).join(', ')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
   async function save(event) {
@@ -67,13 +69,14 @@ function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
       ...(category ? { tags: tags.split(',').map(tag => tag.trim()).filter(Boolean) } : {}),
       ...(row ? { expected_digest: row.digest } : !category ? { request_id: requestId, ...(source ? { source_framework_id: source.id } : {}) } : {}) }
     try {
-      const { data } = await api[row ? 'patch' : 'post'](row ? `${url}${row.id}/` : url, content)
+      const payload = starterName ? { name: starterName, request_id: requestId, initial_category: content } : content
+      const { data } = await api[row ? 'patch' : 'post'](row ? `${url}${row.id}/` : url, payload)
       onSaved(data)
     } catch (failure) { setError(requestErrorMessage(failure, { mutation: true })) }
     finally { pending.current = false; setSaving(false) }
   }
   return <DialogShell title={title} description={category ? 'Define the knowledge this category measures. Tags provide vocabulary; they are not separately scored.' : source ? `Copy v${source.version} into a new editable version. Existing batches and categories keep their original definitions.` : 'A framework is a program’s reviewed set of assessment skill categories.'}
-    onClose={close} closeDisabled={saving} size="confirm" footer={<div className="flex gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button><button type="submit" form="competency-editor" className={primary} disabled={saving}>{saving ? 'Saving…' : row ? 'Save changes' : source ? 'Create version' : category ? 'Add category' : 'Create framework'}</button></div>}>
+    onClose={close} closeDisabled={saving} size="confirm" footer={<div className="flex gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button><button type="submit" form="competency-editor" className={primary} disabled={saving}>{saving ? 'Saving…' : row ? 'Save changes' : source ? 'Create version' : title}</button></div>}>
     <form id="competency-editor" onSubmit={save} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-xs">
       {error && <p role="alert" className="text-rose-700 dark:text-rose-300">{error}</p>}
       <fieldset disabled={saving} className="space-y-4">
@@ -94,7 +97,7 @@ function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
   </DialogShell>
 }
 
-function Categories({ programId, frameworkId, onBack }) {
+function Categories({ programId, frameworkId, onBack, current = false }) {
   const [view, setView] = useState('grid')
   const { showToast } = useToast()
   const base = `/api/management/programs/${programId}/frameworks/`
@@ -122,15 +125,17 @@ function Categories({ programId, frameworkId, onBack }) {
     finally { pending.current = false; setBusy(false) }
   }
   return <DataSection url={detail} layout="panel"><div className="space-y-5">
-    <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={onBack}>← All versions</button><button type="button" className={button} onClick={refresh}>Refresh catalog</button></div>
+    <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={onBack}>{current ? 'Skill set versions' : '← All versions'}</button><button type="button" className={button} onClick={refresh}>Refresh catalog</button></div>
     {framework && <>
-      <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{framework.name} · v{framework.version}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
+      <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{current ? `${framework.program.name} skills` : `${framework.name} · v${framework.version}`}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
         <div className="flex flex-wrap gap-2">
-          {available && !framework.locked && <button className={primary} onClick={() => setEditor({ kind: 'category' })}>Add category</button>}
-          {framework.can_edit && available && <button className={button} onClick={() => setEditor({ kind: 'framework', row: framework })}>Edit framework</button>}
-          {framework.program.is_active && <button className={button} onClick={() => setEditor({ kind: 'framework', source: framework })}>Create new version</button>}
-          {framework.can_manage && available && !framework.locked && <button className={button} disabled={busy} onClick={() => setAction('freeze')}>Freeze definitions</button>}
-          {framework.can_manage && <button className={button} disabled={busy} onClick={() => setAction(framework.is_active ? 'retire' : 'restore')}>{framework.is_active ? 'Retire version' : 'Restore version'}</button>}
+          {available && !framework.locked && <button className={primary} onClick={() => setEditor({ kind: 'category' })}>{current ? 'Add Skill' : 'Add category'}</button>}
+          {!current && <>
+            {framework.can_edit && available && <button className={button} onClick={() => setEditor({ kind: 'framework', row: framework })}>Edit framework</button>}
+            {framework.program.is_active && <button className={button} onClick={() => setEditor({ kind: 'framework', source: framework })}>Create new version</button>}
+            {framework.can_manage && available && !framework.locked && <button className={button} disabled={busy} onClick={() => setAction('freeze')}>Freeze definitions</button>}
+            {framework.can_manage && <button className={button} disabled={busy} onClick={() => setAction(framework.is_active ? 'retire' : 'restore')}>{framework.is_active ? 'Retire version' : 'Restore version'}</button>}
+          </>}
         </div>
       </header>
       {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
@@ -149,7 +154,7 @@ function Categories({ programId, frameworkId, onBack }) {
         {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">{search ? 'No categories match this search.' : 'No categories yet. Add a defined skill area for this program.'}</p>}
         {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
       </DataSection>
-      {editor && <Editor {...editor} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
+      {editor && <Editor {...editor} skillView={current} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
       {action && <ConfirmModal tone="confirm" title={action === 'freeze' ? 'Freeze this version?' : action === 'retire' ? 'Retire this version?' : 'Restore this version?'} message={action === 'freeze' ? 'Names, descriptions and tags will become read-only. Review every category first. Later revisions need a new version; existing evidence keeps these definitions.' : action === 'retire' ? 'This version remains available for retained records. Its definitions will not accept new edits.' : 'Restore this version for its existing context. Frozen definitions stay frozen.'} confirmLabel={action === 'freeze' ? 'Freeze definitions' : action === 'retire' ? 'Retire version' : 'Restore version'} onCancel={() => { if (!busy) setAction(null) }} onConfirm={changeVersion} />}
     </>}
   </div></DataSection>
@@ -165,10 +170,29 @@ function Versions({ programId }) {
   const [status, setStatus] = useState('all')
   const [selected, setSelected] = useState(null)
   const [create, setCreate] = useState(false)
+  const [advanced, setAdvanced] = useState(false)
+  const [starter, setStarter] = useState(false)
   const url = `${base}?page=${page}&page_size=8&status=${status}&search=${encodeURIComponent(search)}`
   const { data } = useApi(url)
   if (selected) return <Categories key={selected} programId={programId} frameworkId={selected} onBack={() => setSelected(null)} />
+  if (!advanced && !starter && data?.count === 1 && data.results[0]?.is_active) {
+    return <Categories key={data.results[0].id} programId={programId} frameworkId={data.results[0].id} current onBack={() => setAdvanced(true)} />
+  }
+  if (!advanced && (starter || data?.count === 0)) return <section className={`${surface} space-y-4`}>
+    <h2 className="text-lg font-bold">{program?.name} skills</h2>
+    <p className="text-xs text-gray-500 dark:text-gray-400">Add the first skill to start this program’s skill library.</p>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className={primary} disabled={!program?.is_active} onClick={() => setStarter(true)}>Add Skill</button>
+      <button type="button" className={button} onClick={() => setAdvanced(true)}>Skill set versions</button>
+    </div>
+    {starter && <Editor kind="category" skillView starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
+      setStarter(false); invalidateCache(base); showToast('Skill added.')
+    }} />}
+  </section>
   return <DataSection url={`${PROGRAMS}${programId}/`} layout="panel"><section className="space-y-4">
+    {advanced && <button type="button" className={button} onClick={() => {
+      setAdvanced(false); setSearch(''); setPage(1); setStatus('all')
+    }}>Back to skills</button>}
     <header className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold">{program?.institute_code} · {program?.code}</h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{program?.name}</p></div><div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => invalidateCache(base)}>Refresh catalog</button><button className={primary} disabled={!program?.is_active} onClick={() => setCreate(true)}>Create framework</button></div></header>
     <div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="space-y-2 text-xs font-semibold">Search versions<input className={field} type="search" aria-label="Search versions" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><label className="space-y-2 text-xs font-semibold">Version status<select className={field} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="all">All versions</option><option value="active">Active</option><option value="archived">Retired</option></select></label></div>
     <DataSection url={url} layout="cards" count={4}>
@@ -196,20 +220,17 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-xl font-bold">{admin ? 'Skill taxonomy' : 'Program competencies'}</h1>
+        <h1 className="text-xl font-bold">Skill taxonomy</h1>
         <p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">{admin
-          ? 'Choose a program to manage its skill library, or open the shared IC taxonomy to manage the categories and tags used by IC.'
+          ? 'Choose an institute and program to manage its skills. Select Shared IC skills for the categories and tags used by IC.'
           : 'This is the skill library for a program. Use its categories to group assessment questions and set the skills an opening requires. Descriptions and tags give those skills context.'}</p>
       </div>
-      {admin && <Link className={button} to="/admin/skills">IC shared skill taxonomy</Link>}
     </header>
-    <details className="rounded-xl border border-gray-200 bg-white p-4 text-xs dark:border-gray-700 dark:bg-gray-900">
-      <summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">How do frameworks and categories work?</summary>
-      <p className="mt-2 max-w-3xl leading-6 text-gray-600 dark:text-gray-300">A framework is a version of the program’s skill library. For example, a category called “Reservation records” could group questions about booking forms and cancellations. A partner opening can set a minimum score for that category. Instructors assigned to the same program can reuse its categories. Once a version is used, create a new version to revise the definitions.</p>
-    </details>
     <div className={surface}>{admin
-      ? <OrganizationScope value={scope} onChange={setScope} programPlaceholder="Select a program" />
+      ? <OrganizationScope value={scope} onChange={setScope} programPlaceholder="Select a program" includeSharedIc />
       : <ProgramSelect value={scope.program} onChange={program => setScope({ ...scope, program })} endpoint={PROGRAMS} status="all" />}</div>
-    {scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">Select a program to view or create its skill frameworks.</p>}
+    {admin && scope.program === SHARED_IC_SKILLS
+      ? <Suspense fallback={<p role="status">Loading shared IC skills…</p>}><AdminSkills embedded /></Suspense>
+      : scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">Select a program to view its skills.</p>}
   </div>
 }

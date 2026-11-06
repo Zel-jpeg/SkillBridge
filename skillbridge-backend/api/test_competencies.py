@@ -59,6 +59,22 @@ class CompetencyCatalogTests(APITestCase):
         self.assertEqual(self.add(name='Peer knowledge category').status_code, 201)
         self.assertEqual(self.change(name='Peer rename').status_code, 403)
 
+    def test_first_skill_and_its_version_save_atomically_and_replay(self):
+        nonce = str(uuid.uuid4())
+        category = {'name': 'Guest records', 'description': 'Review booking records.', 'tags': ['Booking']}
+        self.assertEqual(self.create(self.other_program, initial_category=category).status_code, 404)
+        self.client.force_authenticate(self.foreign)
+        malformed = {**category, 'description': ' '}
+        self.assertEqual(self.create(self.other_program, initial_category=malformed).status_code, 400)
+        self.assertFalse(self.other_program.competency_frameworks.exists())
+        saved = self.create(self.other_program, initial_category=category, request_id=nonce)
+        self.assertEqual(saved.status_code, 201)
+        self.assertEqual(saved.data['category_count'], 1)
+        replay = self.create(self.other_program, initial_category=category, request_id=nonce)
+        self.assertEqual((replay.status_code, replay.data['id']), (200, saved.data['id']))
+        self.assertEqual(self.create(self.other_program, initial_category=category).status_code, 409)
+        self.assertEqual(self.other_program.competency_frameworks.get().categories.get().name, 'Guest records')
+
     def test_foreign_context_and_student_are_denied_even_when_names_and_codes_match(self):
         original = self.add().data
         for actor, expected in [(self.foreign, 404), (self.student, 403)]:

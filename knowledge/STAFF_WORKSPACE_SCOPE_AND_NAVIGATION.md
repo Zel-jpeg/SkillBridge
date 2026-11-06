@@ -94,7 +94,7 @@ Evidence is in `work/organization-browser-h7zohx2m/`.
   categories and tags. A read-only check confirmed all 12 descriptions and tags
   and the same six assessments and six openings linked to the shared categories.
 - [x] Verify and merge the shared-skill description validation and list display.
-- [ ] Show shared IC and program skills from one taxonomy page. Keep version
+- [x] Show shared IC and program skills from one taxonomy page. Keep version
   maintenance available for revisions to definitions that are already in use.
 - [ ] Select the applicable skill set for new assessments and position
   requirements when there is one safe choice. Keep the recorded set for existing
@@ -112,3 +112,14 @@ The focused PostgreSQL run passed 52 tests
 (`work/organization-postgres-ps384l8k/`). Lint, build and 288 frontend tests
 passed. All nine staff browser checks passed
 (`work/organization-browser-4r4znkkz/`), including the required description.
+
+On `codex/unify-skill-taxonomy`, admins can switch between shared IC skills and
+program skills from the same picker. Assigned instructors use **Skill taxonomy**.
+A single active version opens its skills directly. Saving the first skill in a
+new program creates its initial version in the same transaction. Version
+management remains available under **Skill set versions**.
+The PostgreSQL regression passed 38 tests (`work/organization-postgres-azeixv5j/`).
+Lint, build and 288 frontend tests passed. Browser checks passed for staff scope
+(`work/organization-browser-ny9gr9n4/`), versioning and permissions
+(`work/organization-browser-ths1jovu/`) and scoped NLP assistance
+(`work/organization-browser-mqystyp6/`).
