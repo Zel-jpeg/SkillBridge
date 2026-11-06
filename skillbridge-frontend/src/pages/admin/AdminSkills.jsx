@@ -1,11 +1,10 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import SkillLibraryTable, { SkillLibraryOptions } from '../../components/SkillLibraryTable'
 import { organizationPrimary as primary } from '../../components/admin/organizationUi'
 import { useAdminSkills } from '../../hooks/admin/useAdminSkills'
-import api from '../../api/axios'
+import SkillModal from '../../components/admin/SharedSkillEditor'
 
 const PlusIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const PencilIcon = ({ size = 14 }) => (
@@ -20,127 +19,6 @@ const TrashIcon = ({ size = 14 }) => (
     <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
   </svg>
 )
-const XIcon = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M18 6L6 18M6 6l12 12"/>
-  </svg>
-)
-const Spinner = () => (
-  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-  </svg>
-)
-
-function SkillModal({ skill, onClose, onSave, saving }) {
-  const [name, setName] = useState(skill?.name || '')
-  const [description, setDescription] = useState(skill?.description || '')
-  const [tags, setTags] = useState((skill?.tags || []).join(', '))
-  const [suggesting, setSuggesting] = useState(false)
-  const [error, setError] = useState('')
-
-  const suggestTags = async () => {
-    if (!name.trim()) { setError('Enter a skill name before suggesting tags.'); return }
-    setSuggesting(true)
-    try {
-      const res = await api.post('/api/tags/suggest/', { type: 'skill', name, description })
-      setTags((res.data?.suggested_tags || []).join(', '))
-    } catch (err) {
-      setError(err.response?.data?.error || 'Could not suggest tags.')
-    } finally {
-      setSuggesting(false)
-    }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!name.trim()) {
-      setError('Skill name is required.')
-      return
-    }
-    if (!description.trim()) {
-      setError('Enter a description for this skill.')
-      return
-    }
-    const res = await onSave({
-      id: skill?.id,
-      name: name.trim(),
-      description: description.trim(),
-      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-    })
-    if (!res.ok) setError(res.error)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
-        <div className="flex items-start justify-between gap-3 mb-5">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {skill ? 'Edit Skill Category' : 'Add Skill Category'}
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Define a skill category for the shared IC taxonomy.
-            </p>
-          </div>
-          <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
-            <XIcon size={16}/>
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-4 px-3 py-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-medium rounded-lg border border-rose-100 dark:border-rose-900">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
-              Skill Name <span className="text-rose-500">*</span>
-            </label>
-            <input value={name} onChange={e => { setName(e.target.value); setError('') }} autoFocus
-              placeholder="e.g. ReactJS"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
-          </div>
-          <div>
-            <label htmlFor="shared-skill-description" className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Description <span aria-hidden="true" className="text-rose-500">*</span></label>
-            <textarea id="shared-skill-description" required maxLength={2000} value={description} onChange={e => { setDescription(e.target.value); setError('') }} rows={2}
-              placeholder="Describe the knowledge or tasks this skill covers"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Skill Tags</label>
-              <button type="button" onClick={suggestTags} disabled={suggesting}
-                className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline disabled:opacity-50">
-                {suggesting ? 'Suggesting…' : 'Suggest/Refresh Tags'}
-              </button>
-            </div>
-            <textarea value={tags} onChange={e => setTags(e.target.value)} rows={3}
-              placeholder="Python, Java, OOP, debugging"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
-            <p className="text-[11px] text-gray-400 mt-1">Comma-separated. Suggestions remain editable and are saved only when you submit.</p>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed">
-              {saving ? <><Spinner /> Saving...</> : skill ? 'Save Changes' : 'Add Skill'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 export default function AdminSkills({ embedded = false, readOnly = false }) {
   const url = readOnly ? '/api/management/shared-ic-skills/' : '/api/admin/skills/'
   const {

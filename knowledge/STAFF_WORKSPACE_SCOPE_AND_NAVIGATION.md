@@ -282,3 +282,31 @@ Recovery checkpoint: both local staff endpoints are healthy. This branch contain
 only the recovery/operations documentation for local merge to `main`. The next
 step is to refresh or select Retry on the two existing skill pages. No remaining
 backend failure was found, and no push or deployment is included.
+
+## Reimagined skill editor and program coordinator controls
+
+Active feature: `codex/program-skill-editor`. The detailed workflow, API and
+preservation contract are in [Program skill editor](PROGRAM_SKILL_EDITOR.md).
+
+- [x] Apply the Imagegen layout to shared and program skill editors, including
+  required fields, editable tag chips, visible Suggest tags and optional saved-tag
+  reuse. Keep manual and pending input when saving or adding suggestions.
+- [x] Let assigned coordinators edit unused skills created by same-program peers
+  or admins, and remove unreferenced unused skills after confirmation.
+- [x] Handle used/frozen skill edits and removals through updated copies while
+  preserving original category IDs, batches, questions, requirements and scores.
+- [x] Verify program access, revoked/student denial, stale digests, idempotent
+  retries, atomic audit/rollback and unchanged original evidence on PostgreSQL.
+- [x] Check both running local staff organization-options endpoints return 200.
+- [x] Finish editor visual checks and verify the feature for local merge.
+
+No schema migration or configured-record cleanup is part of this update. The
+existing IC shared catalog keeps its admin-write boundary; program coordinators
+manage their assigned program libraries. Unrelated overview and optimization-plan
+edits remain outside this feature's commit. No GitHub push is authorized.
+
+Final checks: frontend lint/build and 348 Node tests; 61 isolated PostgreSQL
+tests; Django check and no migration drift; 19 browser groups across the new
+editor, existing catalog and scoped saved-tag assistance. Evidence paths and
+resolved findings are recorded in the detailed guide. Next: review the updated
+editor locally. There are no remaining known failures for this feature.

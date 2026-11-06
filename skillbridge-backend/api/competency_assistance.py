@@ -13,6 +13,30 @@ MIN_SIMILARITY = 0.12
 MIN_MARGIN = 0.06
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def suggest_description_tags(request, program_id):
+    """Offer short phrases from the supplied definition, without a domain dictionary."""
+    context(request.user, program_id)
+    fields(request.data, ['name', 'description'], ['name', 'description'])
+    name = text(request.data['name'], 'name', 100)
+    description = text(request.data['description'], 'description', 2000)
+    # Conservative, language-independent punctuation plus common English function
+    # words. Unsupported wording can abstain; no discipline expertise is invented.
+    fragments = re.split(r'[,;.!?\n]+|\b(?:and|or|in|on|at|to|of|for|from|with|the|a|an|'
+                         r'be|is|are|can|should|students|student|know|able|organize|recognize|'
+                         r'understand|explain|demonstrate|apply|use)\b', description, flags=re.I)
+    tags, seen = [], {name.casefold()}
+    for fragment in fragments:
+        tag = ' '.join(fragment.strip(' :-/').split())
+        if tag.casefold() not in seen and 1 <= len(tag.split()) <= 4 and 2 <= len(tag) <= 80:
+            tags.append(tag)
+            seen.add(tag.casefold())
+        if len(tags) == 12:
+            break
+    return Response({'suggested_tags': tags, 'source': 'description', 'method': 'description-phrases-v1'})
+
+
 def tokens(value):
     return set(re.findall(r'[^\W_]{2,}', unicodedata.normalize('NFKC', value).casefold()))
 

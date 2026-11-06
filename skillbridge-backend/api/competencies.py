@@ -5,6 +5,7 @@ import uuid
 
 from django.db import transaction
 from django.db.models import Exists, Max, OuterRef
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -16,7 +17,7 @@ from .change_events import notify_changes
 from .instructor_assignments import program_payload
 from .management_access import record_action
 from .models import (Assessment, Batch, CombinedCategoryScore, CompetencyFramework, Institute, Program,
-                     PositionRequirement, Question, SkillCategory, SkillScore)
+                     PositionRequirement, Question, SkillCategory, SkillScore, ManagementAction)
 from .organization import organization_image_url, page_payload
 from .program_scope import assigned_program_ids
 
@@ -83,9 +84,11 @@ def category_content(category):
 
 def category_payload(category, user, locked):
     content = category_content(category)
+    has_revisions = getattr(category, 'has_revisions', None)
     return {**content, 'framework_id': category.framework_id, 'created_by_id': category.created_by_id,
             'source_category_id': category.source_category_id, 'digest': digest(content),
-            'can_edit': not locked and (user.role == 'admin' or category.created_by_id == user.id)}
+            'can_edit': not locked,
+            'remove_requires_revision': locked or (has_revisions if has_revisions is not None else category.revisions.exists())}
 
 
 def framework_rows(program):
@@ -116,6 +119,7 @@ def framework_payload(framework, user):
         'created_by_id': framework.created_by_id, 'source_framework_id': framework.source_framework_id,
         'category_count': len(categories), 'digest': digest(content),
         'can_manage': owner, 'can_edit': owner and not locked, 'created_at': framework.created_at,
+        'can_update_skills': framework.is_active and framework.program.is_active and framework.program.institute.is_active,
     }.items() if key != 'categories'}
 
 
@@ -190,6 +194,8 @@ def frameworks(request, program_id):
         writable_program(program)
         previous = CompetencyFramework.objects.filter(program=program, creation_key=creation_key).first()
         if previous:
+            if ManagementAction.objects.filter(action='category.revise', target_type='competency_framework', target_id=previous.id).exists():
+                return Response({'error': 'This request ID belongs to a skill revision.'}, status=409)
             if (previous.program_id, previous.created_by_id, previous.name, previous.description, previous.source_framework_id) != (
                     program.id, request.user.id, name, description, source_id):
                 return Response({'error': 'This creation request ID is already in use.'}, status=409)
@@ -287,14 +293,15 @@ def definition(data):
     return {'name': name, 'description': description, 'tags': result}
 
 
-@api_view(['GET', 'POST', 'PATCH'])
+@api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('competency')
 def framework_categories(request, program_id, framework_id, category_id=None):
     if request.method == 'GET':
         program = context(request.user, program_id)
         framework = current_framework(request.user, program, framework_id)
-        rows = framework.categories.order_by('name', 'id')
+        rows = framework.categories.annotate(has_revisions=Exists(
+            SkillCategory.objects.filter(source_category_id=OuterRef('pk')))).order_by('name', 'id')
         locked = frozen(framework) or not framework.is_active or not program.is_active or not program.institute.is_active
         if category_id is not None:
             return Response(category_payload(get_object_or_404(rows, pk=category_id), request.user, locked))
@@ -307,16 +314,32 @@ def framework_categories(request, program_id, framework_id, category_id=None):
         return Response(page_payload(rows, params,
             serialize=lambda row: category_payload(row, request.user, locked), search_fields=('name', 'description', 'tags'),
             order_fields=('name', 'id')))
-    if request.method == 'POST' and category_id is not None or request.method == 'PATCH' and category_id is None:
+    if request.method == 'POST' and category_id is not None or request.method in ('PATCH', 'DELETE') and category_id is None:
         return Response({'error': 'Use the category collection to create and its detail to edit.'}, status=405)
-    fields(request.data, ['name', 'description', 'tags', 'expected_digest'], ['name', 'description'])
-    values = definition(request.data)
+    if request.method == 'DELETE':
+        fields(request.data, ['expected_digest'], ['expected_digest'])
+        values = None
+    else:
+        fields(request.data, ['name', 'description', 'tags', 'expected_digest'], ['name', 'description'])
+        values = definition(request.data)
     with transaction.atomic():
         program = context(request.user, program_id, lock=True)
         writable_program(program)
         framework = current_framework(request.user, program, framework_id, lock=True)
         if frozen(framework) or not framework.is_active:
             return Response({'error': 'Used, frozen or retired definitions are preserved. Create a new version.'}, status=409)
+        if request.method == 'DELETE':
+            category = get_object_or_404(framework.categories.select_for_update(), pk=category_id)
+            expect_digest(request.data['expected_digest'], digest(category_content(category)))
+            category_pk = category.pk
+            try:
+                with transaction.atomic():
+                    category.delete()
+            except ProtectedError:
+                return Response({'error': 'This skill has retained references. Remove it from an updated skill set instead.'}, status=409)
+            record_action(request.user, 'category.remove', 'skill_category', category_pk,
+                          program_id=program.id, framework_id=framework.id)
+            return Response(status=204)
         if request.method == 'POST':
             existing = framework.categories.filter(name__iexact=values['name']).first()
             if existing:
@@ -329,8 +352,6 @@ def framework_categories(request, program_id, framework_id, category_id=None):
             action, code = 'category.create', 201
         else:
             category = get_object_or_404(framework.categories.select_for_update(), pk=category_id)
-            if request.user.role != 'admin' and category.created_by_id != request.user.id:
-                raise PermissionDenied('Only the creator or an administrator can edit this unused definition. Other instructors can reuse it or copy its version.')
             expect_digest(request.data.get('expected_digest'), digest(category_content(category)))
             if framework.categories.filter(name__iexact=values['name']).exclude(pk=category.id).exists():
                 return Response({'error': 'Another category already uses this name in this version.'}, status=409)
@@ -344,3 +365,57 @@ def framework_categories(request, program_id, framework_id, category_id=None):
             action, code = 'category.update', 200
         record_action(request.user, action, 'skill_category', category.id, program_id=program.id, framework_id=framework.id)
         return Response(category_payload(category, request.user, False), status=code)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@notify_changes('competency')
+def category_revision(request, program_id, framework_id, category_id):
+    """Revise future definitions by copying, never rewriting bound evidence."""
+    fields(request.data, ['operation', 'name', 'description', 'tags', 'expected_digest', 'request_id'],
+           ['operation', 'expected_digest', 'request_id'])
+    operation = request.data['operation']
+    if operation not in ('update', 'remove'):
+        raise ValidationError({'error': 'Choose update or remove.'})
+    if operation == 'remove' and set(request.data) & {'name', 'description', 'tags'}:
+        raise ValidationError({'error': 'Removal does not accept replacement skill details.'})
+    values = definition(request.data) if operation == 'update' else None
+    try:
+        nonce = uuid.UUID(request.data['request_id'])
+    except (ValueError, TypeError, AttributeError):
+        raise ValidationError({'error': 'Provide a valid creation request ID.'})
+    signature = digest({'source': framework_id, 'category': category_id, 'operation': operation,
+                        'values': values, 'expected_digest': request.data['expected_digest']})
+    with transaction.atomic():
+        program = context(request.user, program_id, lock=True)
+        writable_program(program)
+        source = current_framework(request.user, program, framework_id, lock=True)
+        previous = CompetencyFramework.objects.filter(program=program, creation_key=nonce).first()
+        if previous:
+            receipt = ManagementAction.objects.filter(actor=request.user, action='category.revise',
+                target_type='competency_framework', target_id=previous.id,
+                metadata__request_digest=signature).exists()
+            if not receipt:
+                return Response({'error': 'This creation request ID is already in use.'}, status=409)
+            response = Response(framework_payload(current_framework(request.user, program, previous.id), request.user))
+            response.skip_change_event = True
+            return response
+        expect_digest(request.data['expected_digest'], framework_payload(source, request.user)['digest'])
+        category = get_object_or_404(source.categories, pk=category_id)
+        if values and source.categories.exclude(pk=category.id).filter(name__iexact=values['name']).exists():
+            return Response({'error': 'Another skill already uses this name.'}, status=409)
+        version = (program.competency_frameworks.aggregate(latest=Max('version'))['latest'] or 0) + 1
+        updated = CompetencyFramework.objects.create(program=program, version=version, name=source.name,
+            description=source.description, created_by=request.user, source_framework=source, creation_key=nonce)
+        copies = []
+        for original in source.categories.all():
+            if original.id == category.id and operation == 'remove':
+                continue
+            content = values if original.id == category.id else {
+                'name': original.name, 'description': original.description, 'tags': original.tags}
+            copies.append(SkillCategory(framework=updated, source_category=original, created_by=request.user, **content))
+        SkillCategory.objects.bulk_create(copies)
+        record_action(request.user, 'category.revise', 'competency_framework', updated.id,
+            program_id=program.id, framework_id=updated.id, source_framework_id=source.id,
+            category_id=category.id, operation=operation, request_digest=signature)
+        return Response(framework_payload(current_framework(request.user, program, updated.id), request.user), status=201)

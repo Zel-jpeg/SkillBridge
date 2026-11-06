@@ -10,7 +10,7 @@ those integrations remain F07 and F10 in the
 1. Open Program competencies, select an assigned program and open a version.
 2. Write category names, clear descriptions and tags manually. Review definitions
    against the actual curriculum or an applicable published competency standard.
-3. In a category editor, optionally choose **Find saved tags**. An exact saved
+3. In a category editor, open **Reuse saved tags** and choose **Find saved tags**. An exact saved
    category name takes precedence over description similarity. Otherwise a clear
    match can offer that saved category's tags. Empty or uncertain results leave
    manual entry available. The system never invents discipline-specific tags.
@@ -22,7 +22,12 @@ those integrations remain F07 and F10 in the
    version's definitions. It displays a suggested name or ambiguous alternatives;
    it does not save a question, choose a grading category or change evidence.
 
-Suggestions never fill fields automatically or save without form submission.
+Saved-tag suggestions require **Add suggested tags** before they enter the draft.
+The separate visible **Suggest tags** button now adds short phrases from the
+typed description directly to editable draft chips, preserving existing tags.
+It uses no IC dictionary, external search or invented discipline vocabulary.
+See the [skill editor update](PROGRAM_SKILL_EDITOR.md) for its separate endpoint.
+Neither action saves without form submission.
 Cancel/discard preserves saved records. Editing the request text, switching
 program/version or closing the editor invalidates pending/previous responses.
 The view tracks a saved framework digest; a response from changed definitions is

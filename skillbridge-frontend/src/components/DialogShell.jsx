@@ -86,7 +86,7 @@ export default function DialogShell({ title, description, avatar, headerDetails,
       <div className="min-w-0 flex-1">
         {eyebrow && <p className="sb-detail-eyebrow">{eyebrow}</p>}
         <h2 id={`${id}-title`} className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
-        <p id={`${id}-description`} className={size === 'confirm' ? 'mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300' : 'sr-only'}>{description}</p>
+        <p id={`${id}-description`} className={size === 'confirm' || size === 'skill' ? 'mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300' : 'sr-only'}>{description}</p>
         {headerDetails}
       </div>
       {headerBadge && <div className="sb-detail-header-badge">{headerBadge}</div>}

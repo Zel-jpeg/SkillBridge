@@ -66,6 +66,8 @@ try:
             script = 'competencies_playwright.py'
         if '--competency-assistance' in sys.argv:
             script = 'competency_assistance_playwright.py'
+        if '--skill-editor' in sys.argv:
+            script = 'skill_editor_playwright.py'
         if '--framework-authoring' in sys.argv:
             script = 'framework_authoring_playwright.py'
         if '--general-text' in sys.argv:

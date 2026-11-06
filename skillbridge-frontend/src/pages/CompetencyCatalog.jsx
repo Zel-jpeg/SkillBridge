@@ -15,6 +15,9 @@ import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
 import { useScopedAssistance } from '../hooks/useScopedAssistance'
 import { mergeSuggestedTags } from '../utils/competencyAssistance'
+import SkillDefinitionFields from '../components/SkillDefinitionFields'
+import { skillTagValues } from '../utils/skillTagEditor'
+import { PencilIcon, TrashIcon } from '../components/Icons'
 import { organizationField as field, organizationButton as button, organizationPrimary as primary, organizationCard as card } from '../components/admin/organizationUi'
 
 const PROGRAMS = '/api/management/competency-programs/'
@@ -45,11 +48,12 @@ function QuestionCheck({ detail, digest }) {
   </div>
 }
 
-function Editor({ kind, row, source, url, framework, starterName, onClose, onSaved }) {
+function Editor({ kind, row, source, url, framework, programId, revision = false, starterName, onClose, onSaved }) {
   const category = kind === 'category'
   const [name, setName] = useState(row?.name || source?.name || '')
   const [description, setDescription] = useState(row?.description || source?.description || '')
   const [tags, setTags] = useState((row?.tags || []).join(', '))
+  const [tagDraft, setTagDraft] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [discard, setDiscard] = useState(false)
@@ -59,52 +63,66 @@ function Editor({ kind, row, source, url, framework, starterName, onClose, onSav
   const title = category
     ? (row ? 'Edit Skill' : 'Add Skill')
     : (row ? 'Edit framework' : source ? 'Create new version' : 'Create framework')
-  const changed = name !== (row?.name || source?.name || '') || description !== (row?.description || source?.description || '') || tags !== (row?.tags || []).join(', ')
+  const changed = name !== (row?.name || source?.name || '') || description !== (row?.description || source?.description || '') || tags !== (row?.tags || []).join(', ') || Boolean(tagDraft.trim())
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
   async function save(event) {
     event.preventDefault()
     if (pending.current) return
     if (!name.trim() || category && !description.trim()) { setError(category ? 'Enter a name and a clear category description.' : 'Enter a framework name.'); return }
+    let tagValues
+    try { tagValues = category ? skillTagValues(tags, tagDraft) : [] } catch (failure) { setError(failure.message); return }
     pending.current = true; setSaving(true); setError('')
     const content = { name: name.trim(), description: description.trim(),
-      ...(category ? { tags: tags.split(',').map(tag => tag.trim()).filter(Boolean) } : {}),
+      ...(category ? { tags: tagValues } : {}),
       ...(row ? { expected_digest: row.digest } : !category ? { request_id: requestId, ...(source ? { source_framework_id: source.id } : {}) } : {}) }
     try {
       const payload = starterName ? { name: starterName, request_id: requestId, initial_category: content } : content
-      const { data } = await api[row ? 'patch' : 'post'](row ? `${url}${row.id}/` : url, payload)
+      const { data } = revision ? await api.post(`${url}${row.id}/revisions/`, {
+        ...content, operation: 'update', expected_digest: framework.digest, request_id: requestId,
+      }) : await api[row ? 'patch' : 'post'](row ? `${url}${row.id}/` : url, payload)
       onSaved(data)
     } catch (failure) { setError(requestErrorMessage(failure, { mutation: true })) }
     finally { pending.current = false; setSaving(false) }
   }
-  return <DialogShell title={title} description={category ? 'Define the knowledge this category measures. Tags provide vocabulary; they are not separately scored.' : source ? `Copy v${source.version} into a new editable version. Existing batches and categories keep their original definitions.` : 'A framework is a program’s reviewed set of assessment skill categories.'}
-    onClose={close} closeDisabled={saving} size="confirm" footer={<div className="flex gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button><button type="submit" form="competency-editor" className={primary} disabled={saving}>{saving ? 'Saving…' : row ? 'Save changes' : source ? 'Create version' : title}</button></div>}>
+  return <DialogShell title={title} description={category ? 'Update this skill and its related keywords.' : source ? `Copy v${source.version} into a new editable version. Existing batches and categories keep their original definitions.` : 'A framework is a program’s reviewed set of assessment skill categories.'}
+    onClose={close} closeDisabled={saving} size={category ? 'skill' : 'confirm'} fixedHeader footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button><button type="submit" form="competency-editor" className={primary} disabled={saving}>{saving ? 'Saving…' : row ? 'Save changes' : source ? 'Create version' : title}</button></div>}>
     <form id="competency-editor" onSubmit={save} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-xs">
       {error && <p role="alert" className="text-rose-700 dark:text-rose-300">{error}</p>}
       <fieldset disabled={saving} className="space-y-4">
-        <label className="block space-y-2 font-semibold">Name<input className={field} aria-label="Name" maxLength={category ? 100 : 160} value={name} onChange={event => setName(event.target.value)} required /></label>
-        <label className="block space-y-2 font-semibold">Description<textarea className={`${field} min-h-28`} aria-label="Description" maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} required={category} /></label>
-        {category && <label className="block space-y-2 font-semibold">Tags, separated by commas<input className={field} aria-label="Tags" value={tags} onChange={event => setTags(event.target.value)} placeholder="Add your program’s vocabulary" /><span className="block font-normal text-gray-500 dark:text-gray-400">Up to 30 tags, 80 characters each. Manual tags stay under your control.</span></label>}
-        {category && <section className="space-y-3 break-words rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-label="Optional tag assistance">
-          <p>Reuse vocabulary from saved categories in this framework, or enter tags manually. Review definitions against your program’s curriculum or an applicable published standard.</p>
+        {revision && <p className="rounded-lg bg-amber-50 p-3 leading-5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">This skill set is already in use. Saving creates an updated skill set for future work. Existing assessments and results keep their original definitions.</p>}
+        {category ? <SkillDefinitionFields name={name} setName={setName} description={description} setDescription={setDescription}
+          tags={tags} setTags={setTags} draft={tagDraft} setDraft={setTagDraft} disabled={saving}
+          suggestionKey={JSON.stringify([programId, name, description])}
+          onSuggest={async () => (await api.post(`/api/management/programs/${programId}/suggest-tags/`, { name, description })).data.suggested_tags}>
+          {!starterName && <details className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600">Reuse saved tags <span className="ml-2 font-normal text-gray-500">Optional</span></summary>
+          <section className="mt-3 space-y-3 break-words" aria-label="Optional tag assistance">
+          <p className="leading-5 text-gray-500">Find keywords already used in this skill library.</p>
           <button type="button" className={button} disabled={assistance.loading || !name.trim() && !description.trim()} onClick={assistance.run}>{assistance.loading ? 'Finding…' : 'Find saved tags'}</button>
           {assistance.error && <p role="alert">{assistance.error} Manual entry is still available.</p>}
           {assistance.data && <div role="status" className="space-y-2">
-            {assistance.data.suggested_tags.length ? <><p>Saved tags from {assistance.data.source_category.name}: {assistance.data.suggested_tags.join(', ')}</p><button type="button" className={button} onClick={() => setTags(current => mergeSuggestedTags(current, assistance.data.suggested_tags))}>Add suggested tags</button><p className="text-gray-500 dark:text-gray-400">Adds new tags within the 30-tag limit. Your existing tags stay first; nothing is saved until you submit this form.</p></> : <p>{assistanceMessages[assistance.data.status]}</p>}
+            {assistance.data.suggested_tags.length ? <><p>Saved tags from {assistance.data.source_category.name}: {assistance.data.suggested_tags.join(', ')}</p><button type="button" className={button} onClick={() => setTags(current => mergeSuggestedTags(current, assistance.data.suggested_tags))}>Add suggested tags</button><p className="text-gray-500 dark:text-gray-400">Adds tags to your draft. Review them before saving.</p></> : <p>{assistanceMessages[assistance.data.status]}</p>}
           </div>}
-        </section>}
+          </section></details>}
+        </SkillDefinitionFields> : <>
+          <label className="block space-y-2 font-semibold">Name<input className={field} aria-label="Name" maxLength={160} value={name} onChange={event => setName(event.target.value)} required /></label>
+          <label className="block space-y-2 font-semibold">Description<textarea className={`${field} min-h-28`} aria-label="Description" maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} /></label>
+        </>}
       </fieldset>
     </form>
     {discard && <ConfirmModal title="Discard definition changes?" message="Your unsaved definition changes will be discarded." confirmLabel="Discard changes" onCancel={() => setDiscard(false)} onConfirm={onClose} />}
   </DialogShell>
 }
 
-function Categories({ programId, frameworkId, onBack, current = false }) {
+function Categories({ programId, frameworkId, onBack, onRevised, current = false }) {
   const { showToast } = useToast()
   const base = `/api/management/programs/${programId}/frameworks/`
   const detail = `${base}${frameworkId}/`
   const { data: framework } = useApi(detail)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [removal, setRemoval] = useState(null)
+  const [removalId, setRemovalId] = useState(null)
   const url = `${detail}categories/?page=${page}&page_size=8&search=${encodeURIComponent(search)}`
   const { data } = useApi(url)
   const [editor, setEditor] = useState(null)
@@ -112,9 +130,28 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const pending = useRef(false)
-  const available = framework?.is_active && framework.program.is_active
+  const available = framework?.can_update_skills
   function refresh() { invalidateCache(base); invalidateCache(detail); invalidateCache(`${detail}categories/`) }
-  function saved(row) { refresh(); setEditor(null); if (row.framework_id == null) onBack(); showToast('Definition saved.') }
+  function saved(row) {
+    refresh(); setEditor(null)
+    if (row.framework_id == null) { if (editor?.kind === 'category') onRevised(row.id); else onBack() }
+    showToast('Definition saved.')
+  }
+  function removeSkill(row) { setRemoval(row); setRemovalId(crypto.randomUUID()) }
+  async function confirmRemoval() {
+    try {
+      if (removal.remove_requires_revision) {
+        const { data: updated } = await api.post(`${detail}categories/${removal.id}/revisions/`, {
+          operation: 'remove', expected_digest: framework.digest, request_id: removalId,
+        })
+        refresh(); setRemoval(null); onRevised(updated.id)
+        showToast('Updated skill set created without this skill.')
+      } else {
+        await api.delete(`${detail}categories/${removal.id}/`, { data: { expected_digest: removal.digest } })
+        refresh(); setRemoval(null); showToast('Unused skill removed.')
+      }
+    } catch (failure) { return { ok: false, message: requestErrorMessage(failure, { mutation: true }) } }
+  }
   async function changeVersion() {
     if (pending.current) return
     pending.current = true; setBusy(true); setError('')
@@ -129,7 +166,7 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
       <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{current ? `${framework.program.name} skills` : `${framework.name} · v${framework.version}`}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
         {available && !framework.locked && <button type="button" className={primary} onClick={() => setEditor({ kind: 'category' })}>Add Skill</button>}
       </header>
-      {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
+      {framework.locked && <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">This skill set is already in use. Editing or removing a skill creates an updated copy for future work. Existing assessments and results stay unchanged.</p>}
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
       <SkillLibraryOptions>
         <div className="flex flex-wrap gap-2">
@@ -145,10 +182,15 @@ function Categories({ programId, frameworkId, onBack, current = false }) {
         <details className="break-words text-xs"><summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
       </SkillLibraryOptions>
       <SkillLibraryTable url={url} skills={data?.results} total={data?.count ?? null} search={search} onSearch={value => { setSearch(value); setPage(1) }}
-        renderActions={available && !framework.locked ? category => category.can_edit && <button type="button"
-          className={button} aria-label={`Edit ${category.name}`} onClick={() => setEditor({ kind: 'category', row: category })}>Edit</button> : undefined}
+        renderActions={available ? category => <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className={`${button} h-9 w-9 !p-0`} aria-label={`Edit ${category.name}`} title={`Edit ${category.name}`} onClick={() => setEditor({ kind: 'category', row: category })}><PencilIcon size={14} /></button>
+          <button type="button" className={`${button} h-9 w-9 !p-0 text-rose-700 dark:text-rose-300`} aria-label={`Remove ${category.name}`} title={`Remove ${category.name}`} onClick={() => removeSkill(category)}><TrashIcon size={14} /></button>
+        </div> : undefined}
         footer={data && <div className="px-4"><Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} /></div>} />
-      {editor && <Editor {...editor} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
+      {editor && <Editor {...editor} framework={framework} programId={programId} revision={editor.kind === 'category' && framework.locked} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
+      {removal && <ConfirmModal title={`Remove ${removal.name}?`} confirmLabel={removal.remove_requires_revision ? 'Create updated skill set' : 'Remove skill'}
+        message={removal.remove_requires_revision ? 'This skill has retained records. Create an updated skill set without it for future assessments and batches. Existing questions, results and skill definitions remain available in the original set.' : 'Remove this unused skill and its tags from this skill set?'}
+        onCancel={() => setRemoval(null)} onConfirm={confirmRemoval} />}
       {action && <ConfirmModal tone="confirm" title={action === 'freeze' ? 'Freeze this version?' : action === 'retire' ? 'Retire this version?' : 'Restore this version?'} message={action === 'freeze' ? 'Names, descriptions and tags will become read-only. Review every category first. Later revisions need a new version; existing evidence keeps these definitions.' : action === 'retire' ? 'This version remains available for retained records. Its definitions will not accept new edits.' : 'Restore this version for its existing context. Frozen definitions stay frozen.'} confirmLabel={action === 'freeze' ? 'Freeze definitions' : action === 'retire' ? 'Retire version' : 'Restore version'} onCancel={() => { if (!busy) setAction(null) }} onConfirm={changeVersion} />}
     </>}
   </div></DataSection>
@@ -169,10 +211,10 @@ function Versions({ programId }) {
   const [starter, setStarter] = useState(false)
   const url = `${base}?page=${page}&page_size=8&status=${status}&search=${encodeURIComponent(search)}`
   const { data } = useApi(url)
-  if (selected) return <Categories key={selected} programId={programId} frameworkId={selected} onBack={() => setSelected(null)} />
+  if (selected) return <Categories key={selected} programId={programId} frameworkId={selected} onBack={() => setSelected(null)} onRevised={setSelected} />
   if (!program || !data) return <DataSection urls={[programUrl, url]} layout="panel" label="Loading program skills" />
   if (!advanced && !starter && data?.count === 1 && data.results[0]?.is_active) {
-    return <Categories key={data.results[0].id} programId={programId} frameworkId={data.results[0].id} current onBack={() => setAdvanced(true)} />
+    return <Categories key={data.results[0].id} programId={programId} frameworkId={data.results[0].id} current onBack={() => setAdvanced(true)} onRevised={setSelected} />
   }
   if (!advanced && (starter || data?.count === 0)) return <section className="space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-4">
@@ -184,7 +226,7 @@ function Versions({ programId }) {
       <button type="button" className={button} onClick={() => setAdvanced(true)}>Skill set versions</button>
     </SkillLibraryOptions>
     <SkillLibraryTable />
-    {starter && <Editor kind="category" starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
+    {starter && <Editor kind="category" programId={programId} starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
       setStarter(false); invalidateCache(base); showToast('Skill added.')
     }} />}
   </section>

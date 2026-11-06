@@ -17,10 +17,11 @@ category has its own database identity, name, required description and manually
 entered tags. Tags describe vocabulary; they do not establish separately measured
 skills or student mastery. No institute-specific category set is required.
 
-Instructors in the same program share the library. They can reuse existing
-definitions and add their own categories to an editable version. An unused
-category can be edited by its creator or an admin; another instructor cannot
-overwrite it. Framework metadata, freeze and retirement are managed by the
+Instructors in the same program share the library. They can reuse, add, edit and
+remove unused categories regardless of the category's creator. Stale edits still
+require a reload. Used definitions are revised through an updated copy, preserving
+the original IDs and evidence. See the [skill editor update](PROGRAM_SKILL_EDITOR.md).
+Framework metadata, freeze and retirement are managed by the
 framework creator or an admin. These permissions confer no access to a colleague's
 private batches, student records or answer keys.
 
@@ -51,12 +52,15 @@ it never silently replaces an existing definition with different content.
   staff member's readable contexts, including retained archived contexts.
 - `management/programs/{program}/frameworks/` lists/creates versions; framework
   detail reads or updates metadata, freeze and retirement state.
-- Framework `categories/` lists/creates definitions; category detail reads or
-  updates an authorized unused definition. There is no definition DELETE route.
+- Framework `categories/` lists/creates definitions; category detail reads,
+  updates or deletes an authorized unused definition. A retained reference blocks
+  deletion. Category `revisions/` creates a new set with one edited or omitted
+  skill, preserving the original set and its references.
 - Writes serialize against the same institute lock as program/grant mutations,
   then the framework. Version numbers and request identities have database
   uniqueness constraints; category names are case-insensitively unique inside a
-  framework. Input shapes, limits and parent/creator scope are checked server-side.
+  framework. Input shapes, limits and program assignment are checked server-side;
+  framework metadata retains its creator/admin management boundary.
 - Questions, position requirements, assessment-level scores and combined category
   scores protect referenced categories from ORM deletion. Their raw/max/percentage
   values and identity are not reinterpreted by a new framework version.

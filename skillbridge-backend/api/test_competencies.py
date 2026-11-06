@@ -47,15 +47,15 @@ class CompetencyCatalogTests(APITestCase):
     def change(self, **changes):
         return self.client.patch(self.base, {'expected_digest': self.detail()['digest'], **changes}, format='json')
 
-    def test_same_program_catalog_is_reusable_without_editing_another_authors_definition(self):
+    def test_same_program_coordinators_share_unused_skill_editing(self):
         category = self.add().data
         self.client.force_authenticate(self.peer)
         listed = self.client.get(self.base + 'categories/').data
         self.assertEqual(listed['count'], 1)
         self.assertEqual(listed['results'][0]['id'], category['id'])
-        self.assertFalse(listed['results'][0]['can_edit'])
-        data = {'name': category['name'], 'description': 'Unauthorized edit', 'expected_digest': category['digest']}
-        self.assertEqual(self.client.patch(self.base + f'categories/{category["id"]}/', data, format='json').status_code, 403)
+        self.assertTrue(listed['results'][0]['can_edit'])
+        data = {'name': category['name'], 'description': 'Shared program edit', 'expected_digest': category['digest']}
+        self.assertEqual(self.client.patch(self.base + f'categories/{category["id"]}/', data, format='json').status_code, 200)
         self.assertEqual(self.add(name='Peer knowledge category').status_code, 201)
         self.assertEqual(self.change(name='Peer rename').status_code, 403)
 
@@ -255,3 +255,98 @@ class CompetencyCatalogTests(APITestCase):
         for payload in rows.values():
             self.assertEqual(payload['topics'], ['competencies'])
             self.assertEqual(payload['program_ids'], [self.program.id])
+
+    def test_peer_can_remove_unused_skill_but_foreign_and_stale_requests_are_denied(self):
+        row = self.add().data
+        url = self.base + f'categories/{row["id"]}/'
+        self.client.force_authenticate(self.foreign)
+        self.assertEqual(self.client.delete(url, {'expected_digest': row['digest']}, format='json').status_code, 404)
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.delete(url, {'expected_digest': row['digest']}, format='json').status_code, 403)
+        self.client.force_authenticate(self.peer)
+        self.assertEqual(self.client.delete(url, {'expected_digest': 'stale'}, format='json').status_code, 409)
+        self.assertEqual(self.client.delete(url, {'expected_digest': row['digest']}, format='json').status_code, 204)
+        self.assertFalse(SkillCategory.objects.filter(pk=row['id']).exists())
+        self.assertTrue(ManagementAction.objects.filter(action='category.remove', actor=self.peer).exists())
+
+    def test_used_skill_revision_keeps_questions_scores_batch_and_original_definitions(self):
+        row = self.add().data
+        other = self.add(name='Keep this skill').data
+        batch = Batch.objects.create(name='Retained context', instructor=self.owner, program=self.program,
+            institute=self.program.institute, framework_id=self.framework['id'])
+        assessment = Assessment.objects.create(title='Retained assessment', batch=batch, created_by=self.owner)
+        question = Question.objects.create(assessment=assessment, skill_category_id=row['id'], question_text='Retained question')
+        score = SkillScore.objects.create(student=self.student, assessment=assessment, skill_category_id=row['id'],
+            raw_score=7, max_score=10, percentage=70)
+        url = self.base + f'categories/{row["id"]}/'
+        self.client.force_authenticate(self.peer)
+        self.assertEqual(self.client.delete(url, {'expected_digest': row['digest']}, format='json').status_code, 409)
+        payload = {'operation': 'update', 'name': row['name'], 'description': 'New reviewed definition',
+            'tags': ['New vocabulary'], 'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}
+        revised = self.client.post(url + 'revisions/', payload, format='json')
+        self.assertEqual(revised.status_code, 201, revised.data)
+        self.assertEqual(self.client.post(url + 'revisions/', payload, format='json').data['id'], revised.data['id'])
+        self.assertEqual(self.client.post(url + 'revisions/', {**payload, 'description': 'Changed retry'}, format='json').status_code, 409)
+        self.assertEqual(self.create(request_id=payload['request_id'], name=self.framework['name'],
+            description=self.framework['description'], source_framework_id=self.framework['id']).status_code, 409)
+        new = SkillCategory.objects.get(framework_id=revised.data['id'], source_category_id=row['id'])
+        self.assertEqual((new.description, new.tags), ('New reviewed definition', ['New vocabulary']))
+        self.assertNotEqual(new.id, row['id'])
+        self.assertEqual(SkillCategory.objects.get(pk=row['id']).description, row['description'])
+        removal = self.client.post(url + 'revisions/', {'operation': 'remove',
+            'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}, format='json')
+        self.assertEqual(removal.status_code, 201, removal.data)
+        self.assertEqual(list(SkillCategory.objects.filter(framework_id=removal.data['id']).values_list(
+            'source_category_id', flat=True)), [other['id']])
+        batch.refresh_from_db(); question.refresh_from_db(); score.refresh_from_db()
+        self.assertEqual(batch.framework_id, self.framework['id'])
+        self.assertEqual(question.skill_category_id, row['id'])
+        self.assertEqual((score.skill_category_id, score.raw_score, score.max_score, score.percentage), (row['id'], 7, 10, 70))
+
+    def test_revision_rejects_foreign_category_stale_catalog_and_revoked_coordinator(self):
+        row = self.add().data
+        url = self.base + f'categories/{row["id"]}/revisions/'
+        payload = {'operation': 'remove', 'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}
+        self.client.force_authenticate(self.foreign)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 404)
+        self.client.force_authenticate(self.owner)
+        self.add(name='Changed catalog')
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 409)
+        payload['expected_digest'] = self.detail()['digest']
+        wrong = self.base + 'categories/999999/revisions/'
+        self.assertEqual(self.client.post(wrong, payload, format='json').status_code, 404)
+        self.grant.is_active = False; self.grant.save(update_fields=['is_active'])
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 404)
+        self.assertEqual(CompetencyFramework.objects.count(), 1)
+
+    def test_copy_reference_is_preserved_when_an_unused_source_skill_is_removed(self):
+        row = self.add().data
+        self.create(source_framework_id=self.framework['id'])
+        self.assertTrue(self.client.get(self.base + 'categories/').data['results'][0]['remove_requires_revision'])
+        response = self.client.delete(self.base + f'categories/{row["id"]}/', {'expected_digest': row['digest']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(SkillCategory.objects.filter(pk=row['id']).exists())
+
+    def test_generic_suggestions_use_only_description_and_require_program_access(self):
+        url = f'/api/management/programs/{self.program.id}/suggest-tags/'
+        before = (SkillCategory.objects.count(), ManagementAction.objects.count(), ChangeEvent.objects.count())
+        data = {'name': 'Programming', 'description': 'Guest relations, itinerary planning, reservation handling.'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['suggested_tags'], ['Guest relations', 'itinerary planning', 'reservation handling'])
+        self.assertEqual((SkillCategory.objects.count(), ManagementAction.objects.count(), ChangeEvent.objects.count()), before)
+        self.client.force_authenticate(self.foreign)
+        self.assertEqual(self.client.post(url, data, format='json').status_code, 404)
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.post(url, data, format='json').status_code, 403)
+
+    def test_revision_and_removal_roll_back_when_audit_fails(self):
+        row = self.add().data
+        payload = {'operation': 'remove', 'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}
+        with patch('api.competencies.record_action', side_effect=RuntimeError('Synthetic audit failure')):
+            with self.assertRaises(RuntimeError):
+                self.client.post(self.base + f'categories/{row["id"]}/revisions/', payload, format='json')
+            with self.assertRaises(RuntimeError):
+                self.client.delete(self.base + f'categories/{row["id"]}/', {'expected_digest': row['digest']}, format='json')
+        self.assertTrue(SkillCategory.objects.filter(pk=row['id']).exists())
+        self.assertEqual(CompetencyFramework.objects.count(), 1)
