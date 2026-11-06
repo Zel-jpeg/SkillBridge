@@ -8,12 +8,13 @@ import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
 import ProgramSelect from '../components/ProgramSelect'
 import OrganizationScope from '../components/OrganizationScope'
+import CollectionViewToggle from '../components/CollectionViewToggle'
 import { ALL_ORGANIZATIONS } from '../utils/organizationScope'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
 import { useScopedAssistance } from '../hooks/useScopedAssistance'
 import { mergeSuggestedTags } from '../utils/competencyAssistance'
-import { organizationField as field, organizationButton as button, organizationPrimary as primary } from '../components/admin/organizationUi'
+import { organizationField as field, organizationButton as button, organizationPrimary as primary, organizationCard as card } from '../components/admin/organizationUi'
 
 const PROGRAMS = '/api/management/competency-programs/'
 const surface = 'rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900'
@@ -38,7 +39,7 @@ function QuestionCheck({ detail, digest }) {
     {assistance.data && <div role="status" className="space-y-2">
       <p>{assistance.data.status === 'matched' ? `Suggested category: ${assistance.data.suggested_category.name}. Review its definition before use.` : assistanceMessages[assistance.data.status]}</p>
       {assistance.data.candidates.length > 0 && <ul className="list-inside list-disc space-y-1" aria-label="Similar saved categories">{assistance.data.candidates.map(candidate => <li key={candidate.id}>{candidate.name}</li>)}</ul>}
-      <p className="text-gray-500">This check does not save questions or change scores.</p>
+      <p className="text-gray-500 dark:text-gray-400">This check does not save questions or change scores.</p>
     </div>}
   </div>
 }
@@ -78,13 +79,13 @@ function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
       <fieldset disabled={saving} className="space-y-4">
         <label className="block space-y-2 font-semibold">Name<input className={field} aria-label="Name" maxLength={category ? 100 : 160} value={name} onChange={event => setName(event.target.value)} required /></label>
         <label className="block space-y-2 font-semibold">Description<textarea className={`${field} min-h-28`} aria-label="Description" maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} required={category} /></label>
-        {category && <label className="block space-y-2 font-semibold">Tags, separated by commas<input className={field} aria-label="Tags" value={tags} onChange={event => setTags(event.target.value)} placeholder="Add your program’s vocabulary" /><span className="block font-normal text-gray-500">Up to 30 tags, 80 characters each. Manual tags stay under your control.</span></label>}
+        {category && <label className="block space-y-2 font-semibold">Tags, separated by commas<input className={field} aria-label="Tags" value={tags} onChange={event => setTags(event.target.value)} placeholder="Add your program’s vocabulary" /><span className="block font-normal text-gray-500 dark:text-gray-400">Up to 30 tags, 80 characters each. Manual tags stay under your control.</span></label>}
         {category && <section className="space-y-3 break-words rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-label="Optional tag assistance">
           <p>Reuse vocabulary from saved categories in this framework, or enter tags manually. Review definitions against your program’s curriculum or an applicable published standard.</p>
           <button type="button" className={button} disabled={assistance.loading || !name.trim() && !description.trim()} onClick={assistance.run}>{assistance.loading ? 'Finding…' : 'Find saved tags'}</button>
           {assistance.error && <p role="alert">{assistance.error} Manual entry is still available.</p>}
           {assistance.data && <div role="status" className="space-y-2">
-            {assistance.data.suggested_tags.length ? <><p>Saved tags from {assistance.data.source_category.name}: {assistance.data.suggested_tags.join(', ')}</p><button type="button" className={button} onClick={() => setTags(current => mergeSuggestedTags(current, assistance.data.suggested_tags))}>Add suggested tags</button><p className="text-gray-500">Adds new tags within the 30-tag limit. Your existing tags stay first; nothing is saved until you submit this form.</p></> : <p>{assistanceMessages[assistance.data.status]}</p>}
+            {assistance.data.suggested_tags.length ? <><p>Saved tags from {assistance.data.source_category.name}: {assistance.data.suggested_tags.join(', ')}</p><button type="button" className={button} onClick={() => setTags(current => mergeSuggestedTags(current, assistance.data.suggested_tags))}>Add suggested tags</button><p className="text-gray-500 dark:text-gray-400">Adds new tags within the 30-tag limit. Your existing tags stay first; nothing is saved until you submit this form.</p></> : <p>{assistanceMessages[assistance.data.status]}</p>}
           </div>}
         </section>}
       </fieldset>
@@ -94,6 +95,7 @@ function Editor({ kind, row, source, url, framework, onClose, onSaved }) {
 }
 
 function Categories({ programId, frameworkId, onBack }) {
+  const [view, setView] = useState('grid')
   const { showToast } = useToast()
   const base = `/api/management/programs/${programId}/frameworks/`
   const detail = `${base}${frameworkId}/`
@@ -122,7 +124,7 @@ function Categories({ programId, frameworkId, onBack }) {
   return <DataSection url={detail} layout="panel"><div className="space-y-5">
     <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={onBack}>← All versions</button><button type="button" className={button} onClick={refresh}>Refresh catalog</button></div>
     {framework && <>
-      <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{framework.name} · v{framework.version}</h2><p className="mt-2 text-xs text-gray-500">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
+      <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{framework.name} · v{framework.version}</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
         <div className="flex flex-wrap gap-2">
           {available && !framework.locked && <button className={primary} onClick={() => setEditor({ kind: 'category' })}>Add category</button>}
           {framework.can_edit && available && <button className={button} onClick={() => setEditor({ kind: 'framework', row: framework })}>Edit framework</button>}
@@ -133,16 +135,18 @@ function Categories({ programId, frameworkId, onBack }) {
       </header>
       {framework.locked && <p className="text-xs text-gray-600 dark:text-gray-300">These definitions stay with their recorded evidence. Create a new version to revise names, descriptions or tags.</p>}
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
-      <details className={`${surface} break-words text-xs`}><summary className="cursor-pointer font-semibold">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
+      <details className={`${surface} break-words text-xs`}><summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:text-green-300">Check a question against saved categories</summary><QuestionCheck detail={detail} digest={framework.digest} /></details>
       <label className="block space-y-2 text-xs font-semibold">Search categories<input className={field} type="search" aria-label="Search categories" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
       <DataSection url={url} layout="cards" count={4}>
-        <p className="text-xs text-gray-500" role="status">{data?.count ?? 0} {data?.count === 1 ? 'category' : 'categories'}</p>
-        <div className="grid gap-4 md:grid-cols-2">{data?.results?.map(category => <article key={category.id} className={surface}>
-          <h3 className="break-words text-sm font-semibold">{category.name}</h3><p className="mt-3 whitespace-pre-wrap break-words text-xs leading-6">{category.description}</p>
-          <ul className="mt-3 flex flex-wrap gap-2" aria-label={`Tags for ${category.name}`}>{category.tags.map(tag => <li key={tag} className="max-w-full break-words rounded-lg bg-gray-100 px-2 py-1 text-xs dark:bg-gray-800">{tag}</li>)}</ul>
-          {category.can_edit && <button className={`${button} mt-4`} onClick={() => setEditor({ kind: 'category', row: category })}>Edit {category.name}</button>}
+        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" role="status">{data?.count ?? 0} {data?.count === 1 ? 'category' : 'categories'}</p><CollectionViewToggle view={view} onChange={setView} label="Category view" mobile /></div>
+        <div className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>{data?.results?.map(category => <article key={category.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start' : ''}`}>
+          <div className="min-w-0">
+            <h3 className="break-words text-sm font-semibold">{category.name}</h3><p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6">{category.description}</p>
+            <ul className="mt-3 flex flex-wrap gap-2" aria-label={`Tags for ${category.name}`}>{category.tags.map(tag => <li key={tag} className="max-w-full break-words rounded-lg bg-gray-100 px-2 py-1 text-xs dark:bg-gray-800">{tag}</li>)}</ul>
+          </div>
+          {category.can_edit && <button className={`${button} max-w-full justify-self-start break-words sm:max-w-56`} onClick={() => setEditor({ kind: 'category', row: category })}>Edit {category.name}</button>}
         </article>)}</div>
-        {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500">{search ? 'No categories match this search.' : 'No categories yet. Add a defined skill area for this program.'}</p>}
+        {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">{search ? 'No categories match this search.' : 'No categories yet. Add a defined skill area for this program.'}</p>}
         {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
       </DataSection>
       {editor && <Editor {...editor} framework={framework} url={editor.kind === 'category' ? `${detail}categories/` : base} onClose={() => setEditor(null)} onSaved={saved} />}
@@ -152,6 +156,7 @@ function Categories({ programId, frameworkId, onBack }) {
 }
 
 function Versions({ programId }) {
+  const [view, setView] = useState('grid')
   const { showToast } = useToast()
   const { data: program } = useApi(`${PROGRAMS}${programId}/`)
   const base = `/api/management/programs/${programId}/frameworks/`
@@ -164,12 +169,21 @@ function Versions({ programId }) {
   const { data } = useApi(url)
   if (selected) return <Categories key={selected} programId={programId} frameworkId={selected} onBack={() => setSelected(null)} />
   return <DataSection url={`${PROGRAMS}${programId}/`} layout="panel"><section className="space-y-4">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold">{program?.institute_code} · {program?.code}</h2><p className="mt-1 text-xs text-gray-500">{program?.name}</p></div><div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => invalidateCache(base)}>Refresh catalog</button><button className={primary} disabled={!program?.is_active} onClick={() => setCreate(true)}>Create framework</button></div></header>
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold">{program?.institute_code} · {program?.code}</h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{program?.name}</p></div><div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => invalidateCache(base)}>Refresh catalog</button><button className={primary} disabled={!program?.is_active} onClick={() => setCreate(true)}>Create framework</button></div></header>
     <div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="space-y-2 text-xs font-semibold">Search versions<input className={field} type="search" aria-label="Search versions" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><label className="space-y-2 text-xs font-semibold">Version status<select className={field} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="all">All versions</option><option value="active">Active</option><option value="archived">Retired</option></select></label></div>
     <DataSection url={url} layout="cards" count={4}>
-      <p className="text-xs text-gray-500" role="status">{data?.count ?? 0} {data?.count === 1 ? 'version' : 'versions'}</p>
-      <div className="grid gap-4 md:grid-cols-2">{data?.results?.map(framework => <article key={framework.id} className={surface}><h3 className="break-words text-sm font-semibold">{framework.name} · v{framework.version}</h3><p className="mt-2 text-xs text-gray-500">{framework.category_count} categories · {!framework.is_active ? 'Retired' : framework.locked ? 'Frozen or in use' : 'Editable'}</p><p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-xs leading-6">{framework.description}</p><button className={`${button} mt-4`} onClick={() => setSelected(framework.id)}>Open v{framework.version}</button></article>)}</div>
-      {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500">{search ? 'No versions match this search.' : 'No competency framework yet. Create a version and define its categories.'}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" role="status">{data?.count ?? 0} {data?.count === 1 ? 'version' : 'versions'}</p><CollectionViewToggle view={view} onChange={setView} label="Framework view" mobile /></div>
+      <div className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>
+        {data?.results?.map(framework => <article key={framework.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start' : ''}`}>
+          <div className="min-w-0">
+            <h3 className="break-words text-sm font-semibold">{framework.name} · v{framework.version}</h3>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.category_count} {framework.category_count === 1 ? 'category' : 'categories'} · {!framework.is_active ? 'Retired' : framework.locked ? 'Frozen or in use' : 'Editable'}</p>
+            {framework.description && <p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-xs leading-6">{framework.description}</p>}
+          </div>
+          <button className={`${button} justify-self-start`} onClick={() => setSelected(framework.id)}>Open v{framework.version}</button>
+        </article>)}
+      </div>
+      {data?.count === 0 && <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">{search ? 'No versions match this search.' : 'No competency framework yet. Create a version and define its categories.'}</p>}
       {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}
     </DataSection>
     {create && <Editor kind="framework" url={base} onClose={() => setCreate(false)} onSaved={framework => { setCreate(false); invalidateCache(base); setSelected(framework.id); showToast('Framework created.') }} />}
@@ -194,6 +208,6 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
     <div className={surface}>{admin
       ? <OrganizationScope value={scope} onChange={setScope} programPlaceholder="Select a program" />
       : <ProgramSelect value={scope.program} onChange={program => setScope({ ...scope, program })} endpoint={PROGRAMS} status="all" />}</div>
-    {scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500">Select a program to view or create its skill frameworks.</p>}
+    {scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">Select a program to view or create its skill frameworks.</p>}
   </div>
 }

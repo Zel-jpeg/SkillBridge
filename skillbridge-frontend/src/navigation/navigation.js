@@ -6,37 +6,41 @@ export const ROLE_METADATA = {
   admin: { label: 'Administrator', loginPath: '/admin/login', profilePath: null, detail: 'Administrator', avatarClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200' },
 }
 
-export const ROLE_NAVIGATION = {
-  student: [
+function staffNavigation(role) {
+  const admin = role === 'admin'
+  const link = (label, path, icon, aliases = []) => ({ label, path: `/${role}/${path}`, icon, aliases })
+  return [
+    { id: 'dashboard', items: [link('Dashboard', 'dashboard', 'dashboard')] },
+    admin ? { id: 'people', label: 'People & programs', icon: 'batches', items: [
+      link('Institutes & Programs', 'institutes', 'institutes'),
+      link('Batches', 'batches', 'batches'),
+      link('Users', 'users', 'users'),
+    ] } : { id: 'students', items: [link('Students', 'students', 'users')] },
+    { id: 'learning', label: 'Learning & assessment', icon: 'assessments', items: [
+      link(admin ? 'Skill taxonomy' : 'Program competencies', 'competencies', 'skills', admin ? ['/admin/skills'] : []),
+      link('Assessments', 'assessments', 'assessments', [`/${role}/assessment/create`]),
+      link('Retake requests', 'retake-requests', 'retakes'),
+    ] },
+    { id: 'ojt', label: 'OJT', icon: 'placements', items: [
+      link('OJT Partners', 'companies', 'companies'),
+      link('Placements', 'placements', 'placements'),
+    ] },
+    { id: 'reports', items: [link('Reports & Analytics', 'reports', 'reports')] },
+  ]
+}
+
+export const ROLE_NAVIGATION_SECTIONS = {
+  student: [{ id: 'student', items: [
     { label: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
     { label: 'Assessments', path: '/student/assessments', icon: 'assessments' },
     { label: 'Skill Profile and Matches', path: '/student/results', icon: 'skills' },
-  ],
-  instructor: [
-    { label: 'Dashboard', path: '/instructor/dashboard', icon: 'dashboard' },
-    { label: 'Students', path: '/instructor/students', icon: 'users' },
-    { label: 'Program competencies', path: '/instructor/competencies', icon: 'skills' },
-    { label: 'Assessments', path: '/instructor/assessments', icon: 'assessments' },
-    { label: 'Retake requests', path: '/instructor/retake-requests', icon: 'retakes' },
-    { label: 'New Assessment', path: '/instructor/assessment/create', icon: 'create' },
-    { label: 'OJT Partners', path: '/instructor/companies', icon: 'companies' },
-    { label: 'Placements', path: '/instructor/placements', icon: 'placements' },
-    { label: 'Reports & Analytics', path: '/instructor/reports', icon: 'reports' },
-  ],
-  admin: [
-    { label: 'Dashboard', path: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'Skill taxonomy', path: '/admin/competencies', icon: 'skills', aliases: ['/admin/skills'] },
-    { label: 'OJT Partners', path: '/admin/companies', icon: 'companies' },
-    { label: 'Placements', path: '/admin/placements', icon: 'placements' },
-    { label: 'Users', path: '/admin/users', icon: 'users' },
-    { label: 'Assessments', path: '/admin/assessments', icon: 'assessments' },
-    { label: 'Retake requests', path: '/admin/retake-requests', icon: 'retakes' },
-    { label: 'New Assessment', path: '/admin/assessment/create', icon: 'create' },
-    { label: 'Batches', path: '/admin/batches', icon: 'batches' },
-    { label: 'Institutes & Programs', path: '/admin/institutes', icon: 'institutes' },
-    { label: 'Reports & Analytics', path: '/admin/reports', icon: 'reports' },
-  ],
+  ] }],
+  instructor: staffNavigation('instructor'),
+  admin: staffNavigation('admin'),
 }
+
+export const ROLE_NAVIGATION = Object.fromEntries(Object.entries(ROLE_NAVIGATION_SECTIONS)
+  .map(([role, sections]) => [role, sections.flatMap(section => section.items)]))
 
 export function activeNavigationPath(role, pathname) {
   return ROLE_NAVIGATION[role]?.find(item => [item.path, ...(item.aliases || [])]

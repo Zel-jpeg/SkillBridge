@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useSession } from '../../context/SessionContext'
-import { ROLE_METADATA, ROLE_NAVIGATION, activeNavigationPath, readSidebarPreference, persistSidebarPreference } from '../../navigation/navigation'
-import { BriefcaseIcon, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, PlusIcon, RefreshIcon, ReportIcon, SkillIcon, UserIcon, UsersIcon, XIcon } from '../Icons'
+import { ROLE_METADATA, ROLE_NAVIGATION_SECTIONS, activeNavigationPath, readSidebarPreference, persistSidebarPreference } from '../../navigation/navigation'
+import { BriefcaseIcon, ChevronDown, CompanyIcon, GridIcon, ListIcon, MenuIcon, PanelIcon, RefreshIcon, ReportIcon, SkillIcon, UserIcon, UsersIcon, XIcon } from '../Icons'
 import ProfileMenu from './ProfileMenu'
 import NotificationMenu from './NotificationMenu'
 import StudentNotificationMenu from './StudentNotificationMenu'
 import ModalLayer from './ModalLayer'
 import { promoteDestination } from '../../api/prefetch.js'
 
-const NAV_ICONS = { dashboard: GridIcon, assessments: ListIcon, retakes: RefreshIcon, skills: SkillIcon, users: UserIcon, batches: UsersIcon, institutes: CompanyIcon, create: PlusIcon, companies: CompanyIcon, placements: BriefcaseIcon, reports: ReportIcon }
+const NAV_ICONS = { dashboard: GridIcon, assessments: ListIcon, retakes: RefreshIcon, skills: SkillIcon, users: UserIcon, batches: UsersIcon, institutes: CompanyIcon, companies: CompanyIcon, placements: BriefcaseIcon, reports: ReportIcon }
 
 function Brand({ role, compact = false }) {
   return <div className="sb-brand"><img src="/SB-logov1.png" alt="SkillBridge" />{!compact && <div><p>SkillBridge</p><span>{ROLE_METADATA[role].label}</span></div>}</div>
@@ -20,8 +20,34 @@ function Navigation({ role, collapsed = false, onNavigate, id }) {
   const { pathname } = useLocation()
   const active = activeNavigationPath(role, pathname)
   return <nav id={id} aria-label={`${ROLE_METADATA[role].label} navigation`} className={`sb-navigation ${collapsed ? 'is-collapsed' : ''}`}>
-    {ROLE_NAVIGATION[role].map(item => <NavigationItem key={item.path} item={item} active={active === item.path} collapsed={collapsed} onNavigate={onNavigate} tooltipId={`${id}-${item.path.replaceAll('/', '-')}-tooltip`} />)}
+    {ROLE_NAVIGATION_SECTIONS[role].map(section => {
+      const containsActive = section.items.some(item => item.path === active)
+      const links = section.items.map(item => <NavigationItem key={item.path} item={item} active={active === item.path} collapsed={collapsed} onNavigate={onNavigate} tooltipId={`${id}-${item.path.replaceAll('/', '-')}-tooltip`} />)
+      return section.label
+        ? <NavigationGroup key={section.id} section={section} active={containsActive} collapsed={collapsed}>{links}</NavigationGroup>
+        : <div key={section.id} className="sb-nav-links">{links}</div>
+    })}
   </nav>
+}
+
+function NavigationGroup({ section, active, collapsed, children }) {
+  const panel = useId()
+  const [open, setOpen] = useState(active)
+  const [previousActive, setPreviousActive] = useState(active)
+  if (previousActive !== active) {
+    setPreviousActive(active)
+    setOpen(active)
+  }
+  const Icon = NAV_ICONS[section.icon]
+  if (collapsed) return <div className="sb-nav-rail-group sb-nav-links" role="group" aria-label={section.label}>{children}</div>
+  return <div className="sb-nav-group">
+    <button type="button" className={`sb-nav-group-toggle ${active ? 'contains-current' : ''}`} aria-expanded={open} aria-controls={panel} onClick={() => setOpen(current => !current)}>
+      <span aria-hidden="true" className="sb-nav-icon"><Icon size={20} /></span>
+      <span>{section.label}</span>
+      <span aria-hidden="true" className="sb-nav-group-chevron"><ChevronDown size={15} open={open} /></span>
+    </button>
+    <div id={panel} className="sb-nav-group-links" hidden={!open}>{open && children}</div>
+  </div>
 }
 
 function NavigationItem({ item, active, collapsed, onNavigate, tooltipId }) {
@@ -36,10 +62,10 @@ function NavigationItem({ item, active, collapsed, onNavigate, tooltipId }) {
     if (collapsed) showTooltip(event)
   }
   return <div className="sb-nav-item" onMouseLeave={event => { if (!event.currentTarget.contains(document.activeElement)) setTooltip(null) }}>
-        <NavLink to={item.path} end={false} onClick={onNavigate} onMouseEnter={prepare} onFocus={prepare} onBlur={event => { if (!event.currentTarget.matches(':hover')) setTooltip(null) }} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null) }} aria-current={active ? 'page' : undefined} aria-label={item.label} aria-describedby={collapsed && tooltip ? tooltipId : undefined} className={`sb-nav-link ${active ? 'is-active' : ''}`}>
+        <Link to={item.path} onClick={onNavigate} onMouseEnter={prepare} onFocus={prepare} onBlur={event => { if (!event.currentTarget.matches(':hover')) setTooltip(null) }} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null) }} aria-current={active ? 'page' : undefined} aria-label={item.label} aria-describedby={collapsed && tooltip ? tooltipId : undefined} className={`sb-nav-link ${active ? 'is-active' : ''}`}>
           <span aria-hidden="true" className="sb-nav-icon"><Icon size={20} /></span>
           <span className={collapsed ? 'sr-only' : 'sb-nav-label'}>{item.label}</span>
-        </NavLink>
+        </Link>
         {collapsed && tooltip && createPortal(<span id={tooltipId} role="tooltip" className="sb-nav-tooltip" style={tooltip}>{item.label}</span>, document.body)}
       </div>
 }

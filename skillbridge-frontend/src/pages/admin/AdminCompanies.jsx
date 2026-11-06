@@ -747,6 +747,7 @@ export default function AdminCompanies() {
   const displayed = filtered.slice((visiblePage - 1) * 10, visiblePage * 10)
 
   const activeCompanies = scoped.filter(co => !co.archived_at)
+  const positionCount = scoped.reduce((sum, company) => sum + company.positions.length, 0)
   const totalSlots = activeCompanies.reduce((sum, co) => sum + co.positions.filter(p => !p.archived_at).reduce((s, p) => s + p.slots, 0), 0)
   const pinnedCount = activeCompanies.filter(c => c.lat != null && c.lng != null).length
 
@@ -823,7 +824,7 @@ export default function AdminCompanies() {
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">OJT Partners & Positions</h1>
             <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="text" count={1}><p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {scoped.length} partners · {scoped.reduce((s, c) => s + c.positions.length, 0)} positions · {totalSlots} active configured slots
+              {scoped.length} {scoped.length === 1 ? 'partner' : 'partners'} · {positionCount} {positionCount === 1 ? 'position' : 'positions'} · {totalSlots} active configured {totalSlots === 1 ? 'slot' : 'slots'}
             </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
@@ -844,13 +845,13 @@ export default function AdminCompanies() {
 
         <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
         <OrganizationScope value={scope} onChange={next => { setScope(next); setCatalogPage(1) }} />
-        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching partners</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
+        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
         <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Program views show their eligible openings. To see the existing IC openings, select Institute of Computing and leave Program on All programs. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Partner Locations Map ─────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
           <button type="button" onClick={() => setShowMap(value => !value)} aria-expanded={showMap} aria-controls="partner-locations-map"
-            className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-green-600 focus-visible:outline-offset-[-2px]">
+            className="w-full flex cursor-pointer items-center justify-between gap-3 px-5 py-4 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-green-600 focus-visible:outline-offset-[-2px]">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center text-green-600 dark:text-green-400">
                 <MapIcon />
@@ -858,7 +859,7 @@ export default function AdminCompanies() {
               <div className="text-left">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Partner Locations</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {pinnedCount} of {activeCompanies.length} active partners pinned
+                  {pinnedCount} of {activeCompanies.length} active {activeCompanies.length === 1 ? 'partner' : 'partners'} pinned
                 </p>
               </div>
             </div>
@@ -868,7 +869,9 @@ export default function AdminCompanies() {
           </button>
 
           <div id="partner-locations-map" hidden={!showMap} style={{ isolation: 'isolate' }}>
-            <div className="px-4 pb-4"><CompaniesMap companies={activeCompanies.map(c => ({ ...c, positions: c.positions.filter(p => !p.archived_at) }))} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
+            {pinnedCount > 0
+              ? <div className="px-4 pb-4"><CompaniesMap companies={activeCompanies.map(c => ({ ...c, positions: c.positions.filter(p => !p.archived_at) }))} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
+              : <p className="px-5 pb-4 text-xs text-gray-500 dark:text-gray-400">No pinned partners in this view.</p>}
           </div>
         </div>
 
@@ -880,7 +883,7 @@ export default function AdminCompanies() {
         )}
 
         <div className={`grid grid-cols-1 items-start gap-4 ${view === 'grid' ? 'lg:grid-cols-2' : ''}`}>
-          {displayed.map(company => <CompanyCollectionCard key={company.id} company={company}
+          {displayed.map(company => <CompanyCollectionCard key={company.id} company={company} view={view}
             expanded={expandedPositions}
             onTogglePosition={key => setExpandedPositions({ type: 'toggle', key })}
             onEditCompany={setEditCompanyFor} onDeleteCompany={setConfirmDeleteComp}

@@ -1,5 +1,12 @@
 # Responsive navigation implementation and verification
 
+The staff navigation now groups related destinations on desktop and in the
+mobile drawer. The desktop icon rail retains the same links in grouped sets.
+The group containing the current page opens automatically on navigation.
+Assessment creation is linked from Assessments. See the
+[staff workspace scope and navigation plan](STAFF_WORKSPACE_SCOPE_AND_NAVIGATION.md)
+for the current verification record.
+
 Implemented on 2026-09-29. Application changes are frontend-only. Existing
 untracked `.agents/`, `AGENTS.md`, and knowledge files were preserved.
 

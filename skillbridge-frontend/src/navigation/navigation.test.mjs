@@ -1,12 +1,23 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ROLE_NAVIGATION, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPath, parseSidebarPreference, readSidebarPreference, persistSidebarPreference, readCachedUser, profileIdentity } from './navigation.js'
+import { ROLE_NAVIGATION, ROLE_NAVIGATION_SECTIONS, ROLE_METADATA, SIDEBAR_STORAGE_KEY, activeNavigationPath, parseSidebarPreference, readSidebarPreference, persistSidebarPreference, readCachedUser, profileIdentity } from './navigation.js'
 
 const expected = {
   student: ['dashboard', 'assessments', 'results'],
-  instructor: ['dashboard', 'students', 'competencies', 'assessments', 'retake-requests', 'assessment/create', 'companies', 'placements', 'reports'],
-  admin: ['dashboard', 'competencies', 'companies', 'placements', 'users', 'assessments', 'retake-requests', 'assessment/create', 'batches', 'institutes', 'reports'],
+  instructor: ['dashboard', 'students', 'competencies', 'assessments', 'retake-requests', 'companies', 'placements', 'reports'],
+  admin: ['dashboard', 'institutes', 'batches', 'users', 'competencies', 'assessments', 'retake-requests', 'companies', 'placements', 'reports'],
 }
+
+test('staff navigation only groups related destinations and leaves direct links for dashboards and reports', () => {
+  for (const role of ['admin', 'instructor']) {
+    const sections = ROLE_NAVIGATION_SECTIONS[role]
+    assert.deepEqual(sections.find(section => section.id === 'ojt').items.map(item => item.path),
+      [`/${role}/companies`, `/${role}/placements`])
+    assert.deepEqual(sections.find(section => section.id === 'learning').items.map(item => item.path),
+      [`/${role}/competencies`, `/${role}/assessments`, `/${role}/retake-requests`])
+    assert.ok(sections.filter(section => ['dashboard', 'reports'].includes(section.id)).every(section => !section.label))
+  }
+})
 
 test('identity labels follow structured student programs and live instructor assignments', () => {
   assert.equal(profileIdentity('student', { course: 'Old label', program: { code: 'ANY' }, school_id: '2099-00001' }).detail, 'ANY / 2099-00001')
@@ -32,7 +43,9 @@ test('assessment results activate Assessments, while final matches and profile r
   assert.equal(activeNavigationPath('student', '/student/assessments/42/results'), '/student/assessments')
   assert.equal(activeNavigationPath('student', '/student/results'), '/student/results')
   for (const path of ['/student/profile', '/student/setup', '/student/assessment', '/student/assessments-other', '/login']) assert.equal(activeNavigationPath('student', path), null)
-  assert.equal(activeNavigationPath('instructor', '/instructor/assessment/create'), '/instructor/assessment/create')
+  assert.equal(activeNavigationPath('instructor', '/instructor/assessment/create'), '/instructor/assessments')
+  assert.equal(activeNavigationPath('admin', '/admin/assessment/create'), '/admin/assessments')
+  assert.equal(activeNavigationPath('instructor', '/instructor/companies/manage'), '/instructor/companies')
   assert.equal(activeNavigationPath('admin', '/admin/skills'), '/admin/competencies')
   assert.equal(activeNavigationPath('unknown', '/student/dashboard'), null)
 })

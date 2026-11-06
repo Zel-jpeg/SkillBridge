@@ -8,7 +8,8 @@ import EmptyState from '../../components/EmptyState'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { PlusIcon, PencilIcon } from '../../components/Icons'
 import ProgramInstructors from '../../components/admin/ProgramInstructors'
-import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationError as errorText } from '../../components/admin/organizationUi'
+import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationError as errorText, organizationCard as card } from '../../components/admin/organizationUi'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
 
 const ROOT = '/api/admin/institutes/'
 
@@ -65,6 +66,7 @@ function CatalogCollection({ institute: selected, onSelect }) {
   const institute = latestInstitute || selected
   const { showToast } = useToast()
   const [filters, setFilters] = useState({ search: '', status: 'all', page: 1 })
+  const [view, setView] = useState('grid')
   const [form, setForm] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [instructorProgram, setInstructorProgram] = useState(null)
@@ -119,15 +121,20 @@ function CatalogCollection({ institute: selected, onSelect }) {
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-200 p-4 text-xs text-rose-700 dark:border-rose-900 dark:text-rose-300">
       <p>{error}</p><button type="button" className={button} onClick={() => refresh()}>Retry</button></div>}
     {loading && !data ? <ContentSkeleton layout="cards" count={4} label={`Loading ${kind}s`} /> : data && <>
-      <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} {kind}{data.count === 1 ? '' : 's'}{filtered ? ' matching filters' : ''}</p>
-      {rows.length === 0 ? <EmptyState message={filtered ? `No ${kind}s match these filters.` : `No ${kind}s yet. Add one to get started.`} onClear={filtered ? clear : undefined} /> : <ul className="grid gap-4 lg:grid-cols-2">
-        {rows.map(row => <li key={row.id} className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} {kind}{data.count === 1 ? '' : 's'}{filtered ? ' matching filters' : ''}</p>
+        <CollectionViewToggle view={view} onChange={setView} label={institute ? 'Program view' : 'Institute view'} mobile />
+      </div>
+      {rows.length === 0 ? <EmptyState message={filtered ? `No ${kind}s match these filters.` : `No ${kind}s yet. Add one to get started.`} onClear={filtered ? clear : undefined} /> : <ul className={`grid gap-4 ${view === 'grid' ? 'lg:grid-cols-2' : ''}`}>
+        {rows.map(row => <li key={row.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'lg:grid-cols-[minmax(0,1fr)_minmax(240px,auto)] lg:items-start' : 'grid-rows-[1fr_auto]'}`}>
+          <div className="min-w-0 space-y-3">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-gray-900 dark:text-white">{row.name}</h3><p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{row.code}</p></div>
             <span className={`shrink-0 rounded-full px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>{row.is_active ? 'Active' : 'Archived'}</span></div>
           {row.description && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-600 dark:text-gray-300">{row.description}</p>}
           {row.aliases?.length > 0 && <p className="break-words text-xs text-gray-500 dark:text-gray-400">Other names: {row.aliases.join(', ')}</p>}
           {!institute && <p className="text-xs text-gray-500 dark:text-gray-400">{row.program_count} program{row.program_count === 1 ? '' : 's'}</p>}
-          <div className="mt-auto flex flex-wrap gap-2">
+          </div>
+          <div className={`flex flex-wrap gap-2 ${view === 'list' ? 'lg:max-w-xs lg:justify-end' : ''}`}>
             {!institute && <button type="button" className={button} onClick={() => onSelect(row)} aria-label={`Manage programs in ${row.name}`}>Manage programs</button>}
             {institute && <button type="button" className={button} onClick={() => setInstructorProgram(row)} aria-label={`Manage instructors for ${row.name}`}>Manage instructors</button>}
             <button type="button" className={button} onClick={() => setForm(row)} aria-label={`Edit ${row.name}`}><PencilIcon size={13} />Edit</button>

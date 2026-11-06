@@ -3,6 +3,7 @@ import DialogShell from '../../components/DialogShell'
 import DataSection from '../../components/DataSection'
 import PageHeader from '../../components/PageHeader'
 import OrganizationScope from '../../components/OrganizationScope'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { useApi } from '../../hooks/useApi'
 import { ALL_ORGANIZATIONS, ORGANIZATION_OPTIONS, matchesOrganization, scopedPartners } from '../../utils/organizationScope'
 import ScoreLabel from '../../components/ScoreLabel'
@@ -37,6 +38,7 @@ export default function PlacementWorkspace({ role = 'admin' }) {
   const [view, setView] = useState('proposed')
   const [page, setPage] = useState(1)
   const [companyPage, setCompanyPage] = useState(1)
+  const [companyView, setCompanyView] = useState('grid')
   const [historyPage, setHistoryPage] = useState(1)
   const [historyStatus, setHistoryStatus] = useState('')
   const { data: organizationOptions } = useApi(role === 'admin' ? ORGANIZATION_OPTIONS : null)
@@ -188,8 +190,8 @@ export default function PlacementWorkspace({ role = 'admin' }) {
       {(scope.institute || scope.program || search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { changeScope(ALL_ORGANIZATIONS); setSearch(''); setAvailability('all'); setHistoryStatus('') }}>Clear filters</button>}
     </div>
     {tab === 'companies' && <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout={company ? 'position-review' : 'placement-company-cards'} columns={2}>{!company ? <>
-      <div className="pl-section-heading"><p><strong>{companies.length} partners</strong><span className="pl-muted"> · Open a partner to review its positions</span></p><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested slots await approval.</p><button className="pl-button" onClick={() => setManual({})} disabled={!manualStudents.length}><UserIcon size={16} />Manual assignment</button></div>
-      <div className="pl-company-grid">{slice(companies, companyPage).map(co => <CompanyOverviewCard key={co.id} company={co} counts={counts} suggestedInScope={visible.filter(item => item.proposal?.company_id === co.id).length} address={address(co.address)} onOpen={openCompany} />)}</div>
+      <div className="pl-section-heading"><p><strong>{companies.length} {companies.length === 1 ? 'partner' : 'partners'}</strong><span className="pl-muted"> · Open a partner to review its positions</span></p><p className="pl-muted pl-snapshot-note"><WarnIcon size={16} />Suggested slots await approval.</p><button className="pl-button" onClick={() => setManual({})} disabled={!manualStudents.length}><UserIcon size={16} />Manual assignment</button><CollectionViewToggle view={companyView} onChange={setCompanyView} label="Placement partner view" mobile /></div>
+      <div className={`pl-company-grid${companyView === 'list' ? ' pl-company-grid--list' : ''}`}>{slice(companies, companyPage).map(co => <CompanyOverviewCard key={co.id} company={co} counts={counts} suggestedInScope={visible.filter(item => item.proposal?.company_id === co.id).length} address={address(co.address)} onOpen={openCompany} />)}</div>
       {!companies.length && <Empty>No partners match these filters.</Empty>}<Pager rows={companies} page={companyPage} onPage={setCompanyPage} noun="partners" />
     </> : <PositionReviewWorkspace company={company} position={position} counts={counts} proposed={proposed} ranked={ranked} approved={approvedHere}
       candidates={candidates} students={students} rankByRecommendation={rankByRecommendation} view={view} page={page} onPage={setPage}

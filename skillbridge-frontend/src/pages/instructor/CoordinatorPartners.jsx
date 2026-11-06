@@ -11,7 +11,9 @@ import DialogShell from '../../components/DialogShell'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import CompanyImage from '../../components/CompanyImage'
 import { companyRequest } from '../../utils/companyImages'
-import { organizationButton as button, organizationPrimary as primary, organizationField as field } from '../../components/admin/organizationUi'
+import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationCard as card } from '../../components/admin/organizationUi'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
+import { ChevronRightIcon } from '../../components/Icons'
 
 const PartnerForm = lazy(() => import('../../components/CoordinatorPartnerForm'))
 const PositionDialog = lazy(() => import('../../components/admin/PositionDialog'))
@@ -32,7 +34,7 @@ function OpeningDetails({ position, partnerArchived }) {
     </div>
     <p className="break-words">Eligible programs: {eligibility}</p>
     <p className="break-words">Requirements: {requirements || 'No numerical requirements'}{!requirements && !closed && !archived && ' — manual placement only'}</p>
-    <p className="break-words text-gray-500">Tags: {position.tags.join(', ') || 'None'}</p>
+    <p className="break-words text-gray-500 dark:text-gray-400">Tags: {position.tags.join(', ') || 'None'}</p>
   </>
 }
 
@@ -48,7 +50,7 @@ function ExistingPartner({ base, onChoose, onClose }) {
         onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
       <DataSection url={url} layout="control">
         <ul className="space-y-2">{data?.results.map(row => <li key={row.id} className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-          <p className="break-words font-semibold">{row.name}</p><p className="mt-1 break-words text-gray-500">{addressText(row.address) || 'Address not set'}</p>
+          <p className="break-words font-semibold">{row.name}</p><p className="mt-1 break-words text-gray-500 dark:text-gray-400">{addressText(row.address) || 'Address not set'}</p>
           <button type="button" className={`${button} mt-3`} onClick={() => onChoose(row)}>Add opening at {row.name}</button>
         </li>)}</ul>
         {!data?.count && <p>No matching organizations. Close this dialog to create a new partner.</p>}
@@ -59,6 +61,8 @@ function ExistingPartner({ base, onChoose, onClose }) {
 }
 
 function Workspace({ program, scopeVersion, scopeCurrent }) {
+  const [view, setView] = useState('grid')
+  const [openingView, setOpeningView] = useState('list')
   const base = `/api/management/programs/${program.id}/`
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('active')
@@ -164,7 +168,7 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
   return <div className="space-y-5">
     <section className={surface} aria-label="Program partner catalog">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h2 className="break-words text-base font-bold">{program.institute_code} · {program.name}</h2><p className="mt-2 text-gray-500">Shared within this program. Batches and student matches keep their existing ownership.</p></div>
+        <div><h2 className="break-words text-base font-bold">{program.institute_code} · {program.name}</h2><p className="mt-2 text-gray-500 dark:text-gray-400">Shared within this program. Batches and student matches keep their existing ownership.</p></div>
         <div className="flex flex-wrap gap-2"><button type="button" className={primary} onClick={() => { setRecovery(null); setEditor({ kind: 'partner', key: Date.now() }) }}>Add partner</button>
           <button type="button" className={button} onClick={() => setReuse(true)}>Reuse existing partner</button></div>
       </div>
@@ -175,11 +179,16 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
         <label className="font-semibold">Partner status<select className={field} aria-label="Partner status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All</option></select></label>
       </div>
       <DataSection url={url} layout="company-cards">
-        <p className="mb-3 text-gray-500">{data?.count || 0} matching partners</p>
-        <ul className="grid gap-3 sm:grid-cols-2">{data?.results.map(row => <li key={row.id}>
-          <button type="button" aria-pressed={selected === row.id} onClick={() => setSelected(row.id)} className="flex min-h-24 w-full items-center gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-green-600 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-gray-500 dark:text-gray-400">{data?.count || 0} matching {data?.count === 1 ? 'partner' : 'partners'}</p>
+          <CollectionViewToggle view={view} onChange={setView} label="Program partner view" mobile />
+        </div>
+        <ul className={`grid gap-3 ${view === 'grid' ? 'sm:grid-cols-2' : ''}`}>{data?.results.map(row => <li key={row.id}>
+          <button type="button" aria-pressed={selected === row.id} onClick={() => setSelected(row.id)}
+            className={`${card} group flex w-full cursor-pointer items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 aria-pressed:border-green-600 aria-pressed:bg-green-50 dark:aria-pressed:border-green-500 dark:aria-pressed:bg-green-950/30 ${view === 'grid' ? 'min-h-24 p-4' : 'min-h-16 px-4 py-2'}`}>
             <CompanyImage name={row.name} imageUrl={row.image_url} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-            <span className="min-w-0 break-words"><span className="block font-semibold">{row.name}</span><span className="mt-1 block text-gray-500">{row.archived_at ? 'Archived' : 'Active'} · {row.positions.length} program openings</span></span>
+            <span className="min-w-0 flex-1 break-words"><span className="block text-sm font-semibold">{row.name}</span><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.archived_at ? 'Archived' : 'Active'} · {row.positions.length} program {row.positions.length === 1 ? 'opening' : 'openings'}</span></span>
+            <span aria-hidden="true" className="shrink-0 text-gray-400 group-hover:text-green-700 dark:group-hover:text-green-300"><ChevronRightIcon size={16} /></span>
           </button>
         </li>)}</ul>
         {!data?.count && <p className="rounded-xl border border-dashed border-gray-300 p-6">No partners match this view. You can create a partner before creating a batch.</p>}
@@ -188,20 +197,21 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
     </section>
     {selected && <DataSection url={detailUrl} layout="control">{partner && <section className={surface} aria-label="Selected partner">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0"><h2 className="break-words text-base font-bold">{partner.name}</h2><p className="mt-2 break-words text-gray-500">{addressText(partner.address) || 'Address not set'}</p>
-          <p className="mt-2 text-gray-500">{partner.lat != null && partner.lng != null ? `Pin: ${partner.lat}, ${partner.lng}` : 'Location not pinned'} · {partner.archived_at ? 'Archived' : 'Active'}</p></div>
+        <div className="min-w-0"><h2 className="break-words text-base font-bold">{partner.name}</h2><p className="mt-2 break-words text-gray-500 dark:text-gray-400">{addressText(partner.address) || 'Address not set'}</p>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">{partner.lat != null && partner.lng != null ? `Pin: ${partner.lat}, ${partner.lng}` : 'Location not pinned'} · {partner.archived_at ? 'Archived' : 'Active'}</p></div>
         <div className="flex flex-wrap gap-2">{partner.can_edit && <>
           {!partner.archived_at && <button type="button" className={button} disabled={busy} onClick={() => open('partner', partner)}>Edit partner</button>}
           <button type="button" className={button} disabled={busy} onClick={() => open('partner', partner, null, true)}>{partner.archived_at ? 'Restore partner' : 'Archive partner'}</button>
         </>}{!partner.archived_at && <button type="button" className={primary} onClick={() => { setRecovery(null); setEditor({ kind: 'position', company: partner, key: Date.now() }) }}>Add position</button>}</div>
       </div>
-      {!partner.can_edit && <p className="mt-4 text-gray-500">Common organization details are managed by the authorized creator or an administrator. You can add your own program opening at an active partner.</p>}
-      <ul className="mt-5 space-y-4" aria-label="Program openings">{partner.positions.map(position => <li key={position.id} className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+      {!partner.can_edit && <p className="mt-4 text-gray-500 dark:text-gray-400">Common organization details are managed by the authorized creator or an administrator. You can add your own program opening at an active partner.</p>}
+      {partner.positions.length > 0 && <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">Program openings</h3><CollectionViewToggle view={openingView} onChange={setOpeningView} label="Opening view" mobile /></div>}
+      <ul className={`mt-3 grid gap-4 ${openingView === 'grid' ? 'md:grid-cols-2' : ''}`} aria-label="Program openings">{partner.positions.map(position => <li key={position.id} className={`${card} space-y-3 p-4`}>
         <OpeningDetails position={position} partnerArchived={partner.archived_at} />
         {position.can_edit && !partner.archived_at ? <div className="flex flex-wrap gap-2">
           {!position.archived_at && <button type="button" className={button} disabled={busy} onClick={() => open('position', position, partner)}>Edit {position.title}</button>}
           <button type="button" className={button} disabled={busy} onClick={() => open('position', position, partner, true)}>{position.archived_at ? 'Restore' : 'Archive'} {position.title}</button>
-        </div> : <p className="text-gray-500">{partner.archived_at ? 'Restore the partner to manage its openings.' : !position.eligible_programs.length && position.eligibility_configured ? 'An administrator can reopen this position by assigning an eligible program.' : 'The authorized creator or an administrator manages this opening.'}</p>}
+        </div> : <p className="text-gray-500 dark:text-gray-400">{partner.archived_at ? 'Restore the partner to manage its openings.' : !position.eligible_programs.length && position.eligibility_configured ? 'An administrator can reopen this position by assigning an eligible program.' : 'The authorized creator or an administrator manages this opening.'}</p>}
       </li>)}</ul>
       {!partner.positions.length && <p className="mt-5">No openings for this program yet.</p>}
     </section>}</DataSection>}
@@ -222,11 +232,11 @@ export default function CoordinatorPartners() {
   const url = programId ? `/api/management/programs/${programId}/` : null
   const { data: program } = useApi(url)
   const { scopeVersion, scopeCurrent } = useSnapshotFreshness(['catalog', 'assignments', 'organization'])
-  return <main className="mx-auto max-w-6xl space-y-5 px-4 py-6 text-xs text-gray-900 dark:text-gray-100 sm:px-6">
+  return <section className="mx-auto max-w-6xl space-y-5 px-4 py-6 text-xs text-gray-900 dark:text-gray-100 sm:px-6">
     <header className="space-y-3"><Link className="inline-block text-green-800 underline dark:text-green-300" to="/instructor/companies">Back to OJT partners & student matches</Link>
-      <h1 className="text-xl font-bold">Partner & position management</h1><p className="text-gray-500">Instructor / OJT coordinator · Prepare opportunities for your assigned programs.</p></header>
+      <h1 className="text-xl font-bold">Partner & position management</h1><p className="text-gray-500 dark:text-gray-400">Instructor / OJT coordinator · Prepare opportunities for your assigned programs.</p></header>
     <section className={surface}><ProgramSelect value={programId} onChange={value => setParams({ program_id: value })} /></section>
     {programId ? <DataSection url={url} layout="control">{program && <Workspace key={`${programId}:${scopeVersion}`} program={program} scopeVersion={scopeVersion} scopeCurrent={scopeCurrent} />}</DataSection>
       : <p className={surface}>Select an assigned program to manage its partners and positions.</p>}
-  </main>
+  </section>
 }

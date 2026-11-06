@@ -79,6 +79,12 @@
 .pl-filters .pl-search-control > input { width:100%; min-width:0; padding-left:36px; }
 .pl-section-heading { gap:12px; margin:16px 0; }
 .pl-section-heading > p:first-child { flex:1; }
+.pl-company-grid--list { grid-template-columns:minmax(0,1fr); }
+.pl-company-grid--list .pl-company { gap:12px; }
+@media(min-width:768px) {
+  .pl-company-grid--list .pl-company { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; }
+  .pl-company-grid--list .pl-card-action { grid-column:2; grid-row:1 / span 3; align-self:center; }
+}
 .pl-snapshot-note { display:flex; align-items:center; gap:8px; }
 .pl-snapshot-note > svg { flex-shrink:0; }
 .pl-company { min-width:0; padding:20px; gap:10px; border-radius:14px; }

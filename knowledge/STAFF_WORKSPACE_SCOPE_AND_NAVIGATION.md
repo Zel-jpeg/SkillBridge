@@ -12,7 +12,7 @@ branch, focused tests and a local merge before work starts on the next gate.
 - [x] Keep shared positions and their total occupancy intact. Use the saved
   batch for historical decisions and the framework for a program draft.
 - [x] Verify scope and shared capacity with synthetic API and browser fixtures.
-- [ ] Merge the scoped workspace into local main.
+- [x] Merge the scoped workspace into local main (`40709cf`).
 
 The All views show records from every authorized institute. Existing mixed IC
 batches, their assessments and their decisions appear in the IC institute view.
@@ -34,16 +34,31 @@ scoped invalidation. No migration is needed for this follow-up.
 
 ## F21 · Collection and sidebar consistency
 
-- [ ] Group related admin and instructor navigation links.
-- [ ] Add consistent card and list controls to the new collections, with
+- [x] Group related admin and instructor navigation links.
+- [x] Add consistent card and list controls to the new collections, with
   hover and keyboard focus styles.
-- [ ] Check the active page in the sidebar, phone navigation, collection view
+- [x] Check the active page in the sidebar, phone navigation, collection view
   switches, and the institute and program journeys.
-- [ ] Merge the verified UI work into local main.
+- [x] Merge the verified UI work into local main.
 
 ## Current checkpoint
 
-F20 branch `codex/staff-organization-scope` holds the scope changes.
+F21 was verified on `codex/staff-collection-navigation` and merged into local
+main. Staff sidebars use Learning & assessment and OJT groups.
+Admins also have a People & programs group. Assessment creation is available
+from the Assessments workspace. The current group opens automatically.
+
+Frontend lint, production build and **288 unit tests** passed. The final staff
+browser run passed **nine checks** in `work/organization-browser-wiqjd5rg/`,
+including the desktop sidebar and icon rail, keyboard and hover styles, the
+dark phone drawer and catalog, list/card switching, and the scoped XLSX
+download. The retained coordinator catalog suite passed **11 checks** in
+`work/organization-browser-cw11ded0/`. The retained admin partner and map
+suite passed **seven checks** in `work/organization-browser-cx6qfzqc/`.
+The final dark-mode screenshot was visually checked. Both feature gates are
+complete and the commits are local pending the user's push instruction.
+
+F20 was verified and merged locally at `40709cf`.
 The full isolated PostgreSQL run passed **755 tests** in
 `work/organization-postgres-cikx06ep/`. The focused run passed **66 tests** in
 `work/organization-postgres-cow1shud/`. Django checks and migration drift
