@@ -90,7 +90,7 @@ def can_edit_position(user, position, program):
         return False
     return user.role == 'admin' or (
         position.created_by_id == user.pk and position.management_program_id == program.pk
-        and all(item.pk == program.pk for item in position.eligible_programs.all()))
+        and {item.pk for item in position.eligible_programs.all()} == {program.pk})
 
 
 def partner_payload(company, user, program):
@@ -224,7 +224,9 @@ def scoped_requirements(data, program, position=None):
         from .models import SkillCategory
         if SkillCategory.objects.filter(pk__in=ids, framework__program=program).count() != len(set(ids)):
             raise ValidationError({'error': 'Requirements must use this program’s saved framework categories.'})
-    return position_scope({**data, 'eligible_program_ids': [program.pk]}, position)
+    if position is None:
+        data = {**data, 'eligible_program_ids': [program.pk]}
+    return position_scope(data, position)
 
 
 @api_view(['POST'])

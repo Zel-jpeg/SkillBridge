@@ -305,16 +305,17 @@ Branch: `codex/institute-program-admin`. No dependencies beyond P00.
 
 ### F19 — Full system flow audit, coordinator acceptance and handoff
 
-- [ ] Branch `codex/coordinator-catalog-acceptance` after completed F18.
-- [ ] Verify synthetic Tourism/Social Work/arbitrary-program workflows,
+- [x] Branch `codex/coordinator-catalog-acceptance` after completed F18.
+- [x] Verify synthetic Tourism/Social Work/arbitrary-program workflows,
   independent catalogs, IC preservation, recommendations and shared capacity.
-- [ ] Complete the [flow and bug-review matrix](INSTRUCTOR_PARTNER_POSITION_PLAN.md#system-flow-and-bug-review-checklist)
+- [x] Complete the local [flow and bug-review matrix](INSTRUCTOR_PARTNER_POSITION_PLAN.md#system-flow-and-bug-review-checklist)
   across current roles, inputs, assessment/retake flows, recommendations,
   capacity, recovery, access changes, reports, migrations and external checks.
-- [ ] Explore beyond scripted successful flows, record reproducible findings,
+- [x] Explore beyond scripted successful flows, record reproducible findings,
   fix confirmed in-scope bugs and retest affected flows before acceptance.
-- [ ] Update staff guidance and evaluation demo, complete regression and inspect
-  artifacts, then commit and merge locally.
+- [x] Update staff guidance and evaluation demo, complete regression and inspect
+  artifacts. See [F19 acceptance](COORDINATOR_CATALOG_ACCEPTANCE.md).
+- [ ] Commit and merge locally.
 
 ## Receipts and checkpoint
 
@@ -323,7 +324,24 @@ checks/results, migration names/target class, preservation evidence, browser
 artifacts, fixes, remaining limits and next step. Evidence with synthetic data
 may live in ignored `work/`; credentials and personal records must not be logged.
 
-Current checkpoint — F18 verified and merged locally (6 November 2026):
+Current checkpoint — F19 verified on its feature branch (6 November 2026):
+
+- Branch `codex/coordinator-catalog-acceptance` is based on `cbdcde1`.
+- Local acceptance covers synthetic Tourism, Social Work and an arbitrary
+  program, plus retained IC data and the real phone attempt recovery flow.
+- The audit fixed the administrator-closed opening's status and coordinator
+  edit authority. Scoped position updates now validate against saved eligibility.
+- The final regression passed **753 PostgreSQL tests**, **285 frontend tests**,
+  lint, production build, Django checks and schema drift. Chrome passed 11
+  coordinator groups after the fix. Eight integrated and 31 neighboring groups
+  passed during F19. Evidence and limitations are in the
+  [acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md).
+- F19 has no migration. Migration 0039 was verified and applied in F17.
+- Next local gate is commit and fast-forward into local `main`. The separate
+  [evaluator checklist](COORDINATOR_EVALUATOR_CHECKLIST.md) tracks faculty and
+  authorized LMS validation.
+
+Previous checkpoint — F18 verified and merged locally (6 November 2026):
 
 - Branch `codex/coordinator-partner-editor`, based on `1e9ac5a`; implementation
   `337de9d` fast-forwarded into local `main` after verification.

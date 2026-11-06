@@ -18,6 +18,24 @@ const PositionDialog = lazy(() => import('../../components/admin/PositionDialog'
 const surface = 'min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900'
 const addressText = address => ['street', 'barangay', 'city', 'province'].map(key => address?.[key]).filter(Boolean).join(', ')
 
+function OpeningDetails({ position, partnerArchived }) {
+  const programs = position.eligible_programs.filter(program => program.is_active)
+  const archived = Boolean(position.archived_at || partnerArchived)
+  const closed = position.eligibility_configured && !programs.length
+  const status = archived ? 'Archived' : closed ? 'Closed to new placements' : 'Active'
+  const eligibility = position.eligibility_configured ? programs.map(program => program.name).join(', ') || 'None' : 'Legacy eligibility'
+  const requirements = position.category_requirements.map(row => `${row.name} ≥ ${row.percentage}%`).join('; ')
+  return <>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h3 className="min-w-0 break-words font-bold">{position.title}</h3>
+      <span>{status} · {position.slots} shared slots</span>
+    </div>
+    <p className="break-words">Eligible programs: {eligibility}</p>
+    <p className="break-words">Requirements: {requirements || 'No numerical requirements'}{!requirements && !closed && !archived && ' — manual placement only'}</p>
+    <p className="break-words text-gray-500">Tags: {position.tags.join(', ') || 'None'}</p>
+  </>
+}
+
 function ExistingPartner({ base, onChoose, onClose }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -179,14 +197,11 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
       </div>
       {!partner.can_edit && <p className="mt-4 text-gray-500">Common organization details are managed by the authorized creator or an administrator. You can add your own program opening at an active partner.</p>}
       <ul className="mt-5 space-y-4" aria-label="Program openings">{partner.positions.map(position => <li key={position.id} className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="min-w-0 break-words font-bold">{position.title}</h3><span>{position.archived_at ? 'Archived' : 'Active'} · {position.slots} shared slots</span></div>
-        <p className="break-words">Eligible programs: {position.eligible_programs.map(row => row.name).join(', ') || 'Legacy eligibility'}</p>
-        <p className="break-words">Requirements: {position.category_requirements.map(row => `${row.name} ≥ ${row.percentage}%`).join('; ') || 'No numerical requirements — manual placement only'}</p>
-        <p className="break-words text-gray-500">Tags: {position.tags.join(', ') || 'None'}</p>
+        <OpeningDetails position={position} partnerArchived={partner.archived_at} />
         {position.can_edit && !partner.archived_at ? <div className="flex flex-wrap gap-2">
           {!position.archived_at && <button type="button" className={button} disabled={busy} onClick={() => open('position', position, partner)}>Edit {position.title}</button>}
           <button type="button" className={button} disabled={busy} onClick={() => open('position', position, partner, true)}>{position.archived_at ? 'Restore' : 'Archive'} {position.title}</button>
-        </div> : <p className="text-gray-500">{partner.archived_at ? 'Restore the partner to manage its openings.' : 'Shared for reuse. The authorized creator or an administrator manages this opening.'}</p>}
+        </div> : <p className="text-gray-500">{partner.archived_at ? 'Restore the partner to manage its openings.' : !position.eligible_programs.length && position.eligibility_configured ? 'An administrator can reopen this position by assigning an eligible program.' : 'The authorized creator or an administrator manages this opening.'}</p>}
       </li>)}</ul>
       {!partner.positions.length && <p className="mt-5">No openings for this program yet.</p>}
     </section>}</DataSection>}

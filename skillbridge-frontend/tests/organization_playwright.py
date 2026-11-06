@@ -12,8 +12,9 @@ API = 'http://127.0.0.1:' + os.environ['SB_ORGANIZATION_API_PORT']
 checks, errors = [], []
 
 
-def session(browser, role='admin', width=1440, dark=False):
-    context = browser.new_context(viewport={'width': width, 'height': 900 if width > 500 else 844}, color_scheme='dark' if dark else 'light')
+def session(browser, role='admin', width=1440, dark=False, mobile=False):
+    options = dict(is_mobile=True, has_touch=True, user_agent='Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/156 Mobile Safari/537.36') if mobile else {}
+    context = browser.new_context(viewport={'width': width, 'height': 900 if width > 500 else 844}, color_scheme='dark' if dark else 'light', **options)
     context.add_init_script(f"""const identity = {json.dumps(AUTH[role])};
         localStorage.setItem('sb-token', identity.token);
         localStorage.setItem('sb-role', identity.user.role);

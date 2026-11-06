@@ -5,7 +5,7 @@ This extends the completed F01–F16 multi-institute implementation at
 instructor side, where instructors can act as OJT coordinators for their assigned
 programs. This document records the additional work and evaluation context.
 F17's backend authority and F18's coordinator screens are verified and merged
-locally. F19's combined audit is next through the execution tracker.
+locally. F19 records integrated acceptance and the remaining coordinator evaluation.
 
 ## Confirmed scope and access
 
@@ -117,21 +117,21 @@ Branch `codex/coordinator-partner-editor`, after F17 passes its gates.
 
 Branch `codex/coordinator-catalog-acceptance`, after F18 passes.
 
-- [ ] Demonstrate Tourism and Social Work examples using synthetic configuration,
+- [x] Demonstrate Tourism and Social Work examples using synthetic configuration,
   plus an unrelated arbitrary program. Creating an example requires no
   institute-specific code or mandatory seeded categories.
-- [ ] Have a coordinator create a partner and program opening, set requirements,
+- [x] Have a coordinator create a partner and program opening, set requirements,
   obtain a recommendation from valid test evidence and review a placement.
-- [ ] Verify same-program reuse, other-program denial, revoked authority, retained
+- [x] Verify same-program reuse, other-program denial, revoked authority, retained
   IC access, independent ranking freshness and shared slot consumption.
-- [ ] Complete the full workflow and regression matrix below, covering both
+- [x] Complete the full workflow and regression matrix below, covering both
   the coordinator extension and its interactions with F01–F16.
-- [ ] Perform exploratory bug review beyond the scripted successful flows.
+- [x] Perform exploratory bug review beyond the scripted successful flows.
   Record every finding, fix confirmed in-scope defects, and repeat the affected
   flow and neighboring regression checks.
-- [ ] Update the staff role table, workflow guide, ERD/data-flow references,
+- [x] Update the staff role table, workflow guide, ERD/data-flow references,
   deployment/migration receipts and evaluator demonstration checklist.
-- [ ] Run relevant PostgreSQL and frontend regression, lint/build, drift and
+- [x] Run relevant PostgreSQL and frontend regression, lint/build, drift and
   responsive Chrome checks. Inspect generated reports and stop owned helpers.
 - [ ] Commit and merge locally after the checks pass. Publication and deployment
   follow the user's existing separate-instruction requirement.
@@ -141,38 +141,39 @@ Branch `codex/coordinator-catalog-acceptance`, after F18 passes.
 The user requested checking the system for missed steps, overlooked bugs and
 other problems. Apply relevant checks during F17 and F18 before their merges.
 F19 then verifies the combined current system, including existing features.
-The checkboxes below represent future execution and require recorded evidence.
+The local results, findings and verification limits are in the
+[F19 acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md).
 
 ### Complete user journeys
 
-- [ ] **New program setup.** An admin creates an institute and program, assigns
+- [x] **New program setup.** An admin creates an institute and program, assigns
   an approved coordinator, and the coordinator defines categories, descriptions
   and tags in a reviewed framework.
-- [ ] **Catalog preparation before enrollment.** An assigned coordinator creates
+- [x] **Catalog preparation before enrollment.** An assigned coordinator creates
   a partner and opening before any batch exists. Review name/location/image,
   eligibility, category requirements and slots, then find and edit the saved entry.
-- [ ] **Existing partner reuse.** Another authorized coordinator finds the partner
+- [x] **Existing partner reuse.** Another authorized coordinator finds the partner
   and creates or reuses an appropriate opening. Verify common-detail ownership,
   program visibility, independent requirements and the shared capacity rules.
-- [ ] **Assessment creation.** Create a program batch, import and manually add
+- [x] **Assessment creation.** Create a program batch, import and manually add
   MCQ, true/false and identification items, review categories and keys, save
   a draft, then publish after the required checks pass.
-- [ ] **Student access and assessment.** Enroll a synthetic student, sign in,
+- [x] **Student access and assessment.** Enroll a synthetic student, sign in,
   complete the profile, start, save answers, reload/resume and submit. Compare
   recorded answers and raw/max category totals with hand-calculated expectations.
-- [ ] **Required completion and retake.** Complete multiple required assessments,
+- [x] **Required completion and retake.** Complete multiple required assessments,
   verify final competency and recommendation gates, request/review a retake,
   retain the earlier attempt and complete the new attempt.
-- [ ] **Placement review.** Inspect eligible recommendations and numerical
+- [x] **Placement review.** Inspect eligible recommendations and numerical
   requirements, approve or manually assign within existing policy, verify
   occupied capacity and the student-visible decision, then check retained history.
-- [ ] **Reports and exports.** Verify institute/program/batch filters, counts,
+- [x] **Reports and exports.** Verify institute/program/batch filters, counts,
   actual CSV/PDF/XLSX downloads where supported, questionnaire exports and
   re-import. Compare exported values, order and scope with saved evidence.
-- [ ] **Lifecycle and access changes.** Revoke/restore a grant, change batch
+- [x] **Lifecycle and access changes.** Revoke/restore a grant, change batch
   ownership, archive/restore applicable records and switch accounts. Verify
   access, cached data, open dialogs, protected evidence and new writes.
-- [ ] **Existing data.** Repeat applicable flows with synthetic existing IC
+- [x] **Existing data.** Repeat applicable flows with synthetic existing IC
   records and mixed cohorts alongside new programs. Verify original IDs,
   memberships, statuses, scores and placement snapshots.
 
@@ -192,41 +193,41 @@ The checkboxes below represent future execution and require recorded evidence.
 | External integrations | Map/geographic service failure, image storage, email queue/delivery, Google sign-in and LMS exchange as applicable | Identify mocked/local behavior, actual authorized provider results and any outstanding external check |
 | Performance and resource use | Bounded concurrent assessment starts/submits and catalog reads on isolated PostgreSQL, repeated list navigation, larger permitted files and representative pagination | Workload size, response timings, errors, query/resource observations and owned-helper cleanup |
 
-- [ ] Trace affected API callers, validators, serializers, database writes and
+- [x] Trace affected API callers, validators, serializers, database writes and
   invalidation paths against this matrix. Look for hardcoded program assumptions,
   inconsistent role checks, missing ownership on older rows and incomplete routes.
-- [ ] Review routes beyond the visible buttons, including compatibility endpoints,
+- [x] Review routes beyond the visible buttons, including compatibility endpoints,
   nested position IDs, images, archive/recovery and protected downloads.
-- [ ] Compare UI, API, stored data and exported reports for the same scenario.
+- [x] Compare UI, API, stored data and exported reports for the same scenario.
   Investigate contradictions even when an individual test passes.
-- [ ] Use the assessment-review, recommendation-audit, collection-UI and browser
+- [x] Use the assessment-review, recommendation-audit, collection-UI and browser
   testing skills where relevant. Current implementation and its accepted policy
   resolve differences with older notes.
-- [ ] Review existing regression coverage first. Add targeted tests for uncovered
+- [x] Review existing regression coverage first. Add targeted tests for uncovered
   behavior and each confirmed regression, then run the applicable suites.
-- [ ] Use isolated synthetic records for destructive, concurrency and fault
+- [x] Use isolated synthetic records for destructive, concurrency and fault
   injection checks. Record external-service checks that require later authorized
   access alongside the local evidence.
 
 ### Findings, fixes and completion gates
 
-- [ ] Keep a findings register with the affected role/program/flow, reproduction
+- [x] Keep a findings register with the affected role/program/flow, reproduction
   steps, expected versus actual behavior, severity, evidence path, cause,
   repair commit and retest outcome. Keep credentials and student records private.
-- [ ] Mark findings as confirmed, under investigation, fixed and retested, or
+- [x] Mark findings as confirmed, under investigation, fixed and retested, or
   externally unverified. Distinguish a product defect from a test-harness error.
-- [ ] Address confirmed in-scope bugs on the current feature branch, starting
+- [x] Address confirmed in-scope bugs on the current feature branch, starting
   with access leakage, lost/corrupted records, incorrect grading, incorrect
   placement capacity and blocked core workflows.
-- [ ] After each fix, rerun the reproduction and affected neighboring flows.
+- [x] After each fix, rerun the reproduction and affected neighboring flows.
   A later change to the checked behavior invalidates its earlier verification.
-- [ ] Keep acceptance open while required behavior fails. Record any deferred
+- [x] Keep acceptance open while required behavior fails. Record any deferred
   issue or external dependency explicitly in the handoff with its impact and
   next verification step.
-- [ ] Finish with PostgreSQL regression, frontend tests, lint/build, system and
+- [x] Finish with PostgreSQL regression, frontend tests, lint/build, system and
   drift checks as applicable, plus Chrome checks for affected roles and screens.
   Reuse unchanged passing evidence when its source and scope still apply.
-- [ ] Record coverage and remaining limits, inspect artifacts and confirm owned
+- [x] Record coverage and remaining limits, inspect artifacts and confirm owned
   helper cleanup before the local merge. Test results describe the checked
   version, workload and cases.
 
@@ -279,15 +280,9 @@ question formats after the instructor checks their keys and category mappings.
 
 ## Current execution checkpoint
 
-F01–F18 are merged locally. F18's `337de9d` and its
-[receipt](COORDINATOR_CATALOG_SCREENS.md) record the actual tests and fixes.
-F19 is next. The existing branch, verification and no-push rules apply.
-
-The user's follow-up expands F19 to complete system flows, exploratory bug
-discovery and evaluation. The matrix above is the execution checklist. Its
-items are pending, and discovered issues must be tracked through repair and
-verification during the relevant feature work.
-
-Plan commit `4a4d050` was fast-forwarded into local `main`. Documentation
-verification resolved 184 local link targets across five Markdown files.
-Application builds and database tests are outside this documentation-only change.
+F01–F18 are merged locally. F19 completed the local audit, corrected the
+closed-opening issue and passed final regression on its feature branch.
+See the [acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md) and the
+[active tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md). The evaluator
+session and authorized provider checks are listed separately in the
+[evaluator checklist](COORDINATOR_EVALUATOR_CHECKLIST.md).

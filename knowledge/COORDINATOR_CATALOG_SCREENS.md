@@ -87,8 +87,8 @@ responses are synthetic/cached. Live storage, hosted behavior and coordinator
 content validation remain external checks. Owned helpers stopped after each run.
 
 Implementation `337de9d` was committed on its feature branch and fast-forwarded
-into local `main`. F19's full workflow audit is next. No push or deployment
-is authorized.
+into local `main`. F19 extends this receipt with closed-opening behavior and
+integrated regression results. [F19 acceptance](COORDINATOR_CATALOG_ACCEPTANCE.md)
 
 [Backend authority](COORDINATOR_CATALOG_AUTHORITY.md) ·
 [Extension and audit plan](INSTRUCTOR_PARTNER_POSITION_PLAN.md) ·

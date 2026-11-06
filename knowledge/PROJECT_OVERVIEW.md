@@ -2,8 +2,9 @@
 
 SkillBridge is a web-based On-the-Job Training placement decision support system
 for Davao del Norte State College (DNSC). Students complete skill assessments;
-instructors manage assessments and batches; admins manage OJT partners, positions,
-users and placement workflows. Recommendations support placement decisions.
+instructors manage assessments, batches and program catalogs. Administrators
+manage users, program grants and shared catalogs. Recommendations support
+placement decisions.
 
 Scope clarification, 28 October 2026: the user does not want internship-progress
 tracking. An approved coordinator decision does not establish that OJT is ongoing
@@ -21,9 +22,9 @@ synthetic examples for verification. [Workflow guide](MULTI_INSTITUTE_WORKFLOWS.
 
 The instructor/OJT coordinator extension adds program-scoped partner and position
 creation and editing. F17's backend and F18's coordinator screens implement it.
-F19 includes complete role workflows, exploratory bug review and
-reproduction/fix/retest gates across the existing system and the extension.
-[Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md)
+F19 records the verified workflows, findings and remaining field evaluation.
+[Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md) ·
+[Acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md)
 
 ## Architecture
 

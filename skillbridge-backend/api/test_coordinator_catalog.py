@@ -175,6 +175,28 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertEqual(result.status_code, 409)
         self.assertEqual(company.positions.count(), 1)
 
+    def test_administrator_closed_opening_remains_readable_without_coordinator_edit_authority(self):
+        partner = self.create_partner()
+        opening = self.create_position(partner)
+        self.client.force_authenticate(self.admin)
+        closed = self.client.patch(reverse('admin_position_detail', args=[opening['id']]),
+            {'eligible_program_ids': [], 'category_requirements': []}, format='json')
+        self.assertEqual(closed.status_code, 200, closed.data)
+        self.client.force_authenticate(self.owner)
+        detail = reverse('coordinator_position_detail', args=[self.program.pk, opening['id']])
+        view = self.client.get(detail)
+        self.assertEqual(view.status_code, 200)
+        self.assertTrue(view.data['eligibility_configured'])
+        self.assertEqual(view.data['eligible_programs'], [])
+        self.assertFalse(view.data['can_edit'])
+        changed = self.client.patch(detail, {'revision': view.data['revision'], 'slots': 5,
+            'category_requirements': [{'category_id': self.category.pk, 'percentage': 75}]}, format='json')
+        self.assertEqual(changed.status_code, 403)
+        saved = Position.objects.get(pk=opening['id'])
+        self.assertEqual(saved.slots_available, opening['slots'])
+        self.assertFalse(saved.eligible_programs.exists())
+        self.assertFalse(saved.requirements.exists())
+
     def test_archive_restore_and_current_capacity_preserve_decisions(self):
         partner = self.create_partner()
         position = self.create_position(partner)

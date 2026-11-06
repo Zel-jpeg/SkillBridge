@@ -34,6 +34,10 @@ erDiagram
     SkillCategory ||--o{ CombinedCategoryScore : identifies
     Batch ||--o{ CombinedCategoryScore : aggregates
     Company ||--o{ Position : offers
+    User o|--o{ Company : added_by
+    User o|--o{ Position : created_by
+    Program o|--o{ Company : manages
+    Program o|--o{ Position : manages
     Program }o--o{ Position : permits
     Position ||--o{ PositionRequirement : requires
     SkillCategory ||--o{ PositionRequirement : measures
@@ -48,6 +52,11 @@ institute link with no batch program, while their student profiles have program
 links. New scoped assessments use a recorded framework version. Position
 eligibility is many-to-many, while each opening has one shared capacity.
 Placement decisions keep the saved values from the review.
+
+Coordinator management uses the optional creator and management program links.
+Program eligibility separately determines which programs can use an opening.
+The migration preserves the existing records and leaves the three new links
+empty on earlier rows. [Coordinator catalog authority](../knowledge/COORDINATOR_CATALOG_AUTHORITY.md)
 
 ## Earlier ERD baseline
 

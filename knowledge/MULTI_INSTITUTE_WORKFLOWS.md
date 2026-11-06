@@ -11,14 +11,14 @@
   program intends to assess. Review the definitions before freezing the version.
 - [ ] In **Batches & students**, create a batch for one program and choose its
   responsible instructor. Review enrollment rows and confirm the correct roster.
-- [ ] Configure placement openings with eligible programs and numerical
-  requirements from the applicable framework. The slot count is shared by
-  everyone eligible for the same opening.
+- [ ] Prepare the partner catalog and openings for the program. Coordinators
+  can do this before creating a batch. Use numerical requirements from the
+  applicable framework to include an opening in recommendations.
 
 | Role | Typical work | Access boundary |
 | --- | --- | --- |
-| Administrator | Configure institutes, programs, instructor grants, openings and requirements. Manage batches and review placement decisions. | Staff management across programs. Assessment and placement rules still apply. |
-| Assigned instructor | Reuse or add program competency definitions, manage owned batches, enroll students, author assessments, review results and export reports. | The program grant permits access to its shared framework library. Private roster, assessment and key access also requires batch ownership. |
+| Administrator | Configure institutes, programs and grants. Manage shared partner details, cross-program eligibility, batches and placement decisions. | Staff management across programs. Assessment and placement rules still apply. |
+| Assigned instructor / OJT coordinator | Create partners and positions, add or reuse competency definitions, manage owned batches, enroll students, author assessments, review results and export reports. | Assigned programs share their catalogs and frameworks. Editing catalog records depends on creator authority and program eligibility. Private rosters, assessments and answer keys also require batch ownership. |
 | Student | Review the assigned program and batch, take published assessments, and view available results and recommendations. | Own profile, attempts and results. Program changes use the reviewed enrollment process. |
 
 The IC batch remains in the regular institute area with its original status and
@@ -45,6 +45,29 @@ IDs. Category identity comes from the saved framework and ID, even when names
 match.
 [Competency frameworks](PROGRAM_COMPETENCY_FRAMEWORKS.md) ·
 [Starter competency research](DNSC_PROGRAM_AND_COMPETENCY_RESEARCH.md)
+
+## Prepare partners and openings
+
+1. Open **OJT Partners → Manage partners & positions** and select an assigned
+   program. Use **Add partner** for a new organization or **Reuse existing
+   partner** to review an existing organization before adding an opening.
+2. Enter a role, the available slots and relevant tags. Select the program's
+   framework and numerical requirements if the opening should participate in
+   recommendations. With no numerical requirements, an eligible opening is
+   available for manual placement.
+3. Review the listed eligibility and capacity. Ask an administrator to share
+   one opening across programs when they compete for the same actual seats.
+   Separate positions are appropriate when the organizations offer separate
+   roles or seats.
+4. Edit the entries you created within your assigned program. Administrators
+   manage shared organization details and cross-program eligibility. If an
+   administrator removes all eligibility, the opening displays **Closed to
+   new placements** and the administrator can reopen it.
+5. If the save outcome is uncertain, use **Check saved records** before trying
+   again. Archive or restore only after reviewing the affected entry. The
+   system checks current approved placements before archiving.
+
+[Coordinator screens and verification](COORDINATOR_CATALOG_SCREENS.md)
 
 ## Prepare, import and export a questionnaire
 
@@ -100,11 +123,13 @@ Evaluate with independent cases and declared criteria. Check numerical
 requirements, student evidence and placement decisions separately. Claims about
 practical proficiency require independent evidence from program-appropriate
 tasks.
-[NLP evaluation scope](NLP_COLAB_EVALUATION.md)
+[NLP evaluation scope](NLP_COLAB_EVALUATION.md) ·
+[Evaluator demonstration checklist](COORDINATOR_EVALUATOR_CHECKLIST.md)
 
 Use the operator's read-only migration plan and the recorded configured schema
 before applying changes. Rehearse each pending migration and data mapping on a
 verified backup restore. Compare the allowed changes and saved evidence before
 accepting the receipt. Existing IC links use a separate data reconciliation
 command. Keep backups and student records private. [IC reconciliation and recovery](EXISTING_IC_RECONCILIATION.md) ·
-[Feature checklist and receipts](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md)
+[Feature checklist and receipts](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) ·
+[Coordinator migration 0039 receipt](COORDINATOR_CATALOG_AUTHORITY.md)

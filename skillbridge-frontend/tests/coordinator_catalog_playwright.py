@@ -187,7 +187,24 @@ def run(browser):
     expect(page.get_by_text('1 matching partners', exact=True)).to_be_visible()
     selected.get_by_role('button', name='Restore partner', exact=True).click()
     page.get_by_role('dialog', name='Restore partner?', exact=True).get_by_role('button', name='Restore', exact=True).click()
+    expect(page.get_by_role('dialog', name='Restore partner?', exact=True)).to_have_count(0)
     checks.append('real paginated catalog, search resets page, position/partner archive and restore with active/archived filters')
+
+    admin_opening = f'/api/admin/positions/{position["id"]}/'
+    detail = scoped + f'partners/{partner["id"]}/'
+    catalog_change = """url => window.dispatchEvent(new CustomEvent('sse:data_changed',
+        {detail: {topics: ['catalog'], urls: [url], handled: false}}))"""
+    call(context, admin_opening, 'patch', {'eligible_program_ids': [], 'category_requirements': []})
+    page.evaluate(catalog_change, detail)
+    expect(selected.get_by_text('Closed to new placements', exact=False)).to_be_visible()
+    expect(selected.get_by_text('Eligible programs: None', exact=True)).to_be_visible()
+    expect(selected.get_by_text('manual placement only', exact=False)).to_have_count(0)
+    expect(selected.get_by_role('button', name='Edit Service Records Intern', exact=True)).to_have_count(0)
+    call(context, admin_opening, 'patch', {'eligible_program_ids': [program['id']],
+         'category_requirements': [{'category_id': category['id'], 'percentage': 50}]})
+    page.evaluate(catalog_change, detail)
+    expect(selected.get_by_role('button', name='Edit Service Records Intern', exact=True)).to_be_visible()
+    checks.append('administrator closes program eligibility; creator sees closed, read-only position until administrator reopens it')
     context.close()
 
     context, page = session(browser, 'other_instructor', width=390, dark=True)

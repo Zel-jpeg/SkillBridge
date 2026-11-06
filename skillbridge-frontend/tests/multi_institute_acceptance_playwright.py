@@ -1,6 +1,7 @@
 """Accept the whole program flow through normal APIs and production Chrome views."""
 import csv
 import json
+import re
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -10,7 +11,7 @@ from program_batches_playwright import call
 
 def complete_assessment(browser, scenario, foreign, phone):
     role = scenario['auth']
-    context, page = session(browser, role, width=390 if phone else 1440, dark=phone)
+    context, page = session(browser, role, width=390 if phone else 1440, dark=phone, mobile=phone)
     profile = call(context, '/api/students/me/', role=role)
     assert profile['program']['id'] == scenario['program_id']
     foreign_start = f'/api/assessments/{foreign["assessment_id"]}/start/'
@@ -25,7 +26,35 @@ def complete_assessment(browser, scenario, foreign, phone):
         correct = next(choice['id'] for choice in question['choices'] if choice['text'] == 'Reviewed answer')
         answers.append({'question_id': question['id'], 'selected_choice_id': correct})
     submission = {'answers': answers, 'response_id': attempt['response_id'], 'attempt_started_at': attempt['attempt_started_at']}
-    graded = call(context, prefix + 'submit/', 'post', submission, role=role)
+    if scenario['name'] == 'Tourism Management':
+        # The same backend attempt is taken through the real phone UI, including
+        # local draft persistence and the server's interruption recovery path.
+        page.goto(BASE + f'/student/assessments/{scenario["assessment_id"]}/take', wait_until='networkidle')
+        page.get_by_role('checkbox').check()
+        page.get_by_role('button', name='Agree & start', exact=True).click()
+        page.get_by_role('button', name=re.compile('Reviewed answer')).click()
+        expect(page.get_by_role('button', name='Next →', exact=True)).to_be_enabled()
+        page.reload(wait_until='networkidle')
+        page.get_by_role('checkbox').check()
+        page.get_by_role('button', name='Agree & start', exact=True).click()
+        expect(page.get_by_role('heading', name='Assessment interrupted', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Resume assessment', exact=True).click()
+        expect(page.get_by_role('button', name='Next →', exact=True)).to_be_enabled()
+        resumed = call(context, prefix + 'start/', 'post', {}, role=role)
+        assert resumed['attempt_started_at'] == attempt['attempt_started_at'] and resumed['response_id'] == attempt['response_id']
+        for index in range(10):
+            page.get_by_role('button', name=re.compile('Reviewed answer')).click()
+            page.get_by_role('button', name='Review answers' if index == 9 else 'Next →', exact=True).click()
+        expect(page.get_by_role('heading', name='Review your answers', exact=True)).to_be_visible()
+        page.screenshot(path=str(OUT / 'tourism-real-assessment-review-phone.png'), full_page=True, animations='disabled')
+        page.get_by_role('button', name='Submit', exact=True).click()
+        with page.expect_response(lambda response: response.request.method == 'POST' and prefix + 'submit/' in response.url) as response:
+            page.get_by_role('button', name='Yes, submit', exact=True).click()
+        assert response.value.status == 200
+        graded = response.value.json()
+        checks.append('Tourism phone UI: agreement, saved answer, reload, server recovery, same timed attempt, review and real submission.')
+    else:
+        graded = call(context, prefix + 'submit/', 'post', submission, role=role)
     assert len(answers) == 10 and graded['all_required_completed'] and not graded['recommendations_locked']
     call(context, prefix + 'submit/', 'post', submission, role=role, status=409)
     result = call(context, '/api/student/results/combined/', role=role)

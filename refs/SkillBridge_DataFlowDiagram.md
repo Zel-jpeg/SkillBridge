@@ -7,13 +7,16 @@
 
 ```mermaid
 flowchart TD
-    A["Administrator creates institutes, programs and instructor assignments"] --> B["Assigned staff configure framework categories and create a program batch"]
-    B --> C["Staff enroll students and author assessments manually or by importing questions"]
+    A["Administrator creates institutes, programs and instructor assignments"] --> B["Assigned staff configure framework categories"]
+    B --> C["Staff create a program batch, enroll students and author assessments manually or by importing questions"]
     C --> D["Staff map categories, review keys and publish"]
     D --> E["Enrolled student submits an assessment"]
     E --> F["Grading records attempt and assessment-level category scores"]
     F --> G["Eligible evidence combines within the batch after required completion"]
-    A --> H["Administrator configures eligible openings and framework requirements"]
+    A --> H["Assigned coordinator creates or reuses a partner and configures program openings"]
+    B --> H
+    A --> M["Administrator manages shared details and cross-program eligibility"]
+    M --> H
     G --> I["Personal recommendations rank eligible openings"]
     H --> I
     I --> J["Authorized staff review eligibility and shared capacity"]
@@ -26,7 +29,9 @@ The questionnaire import handles AIKEN, SkillBridge text and spreadsheets.
 Questionnaires and their answer keys have a staff-only export path from the
 saved assessment. Individual attempts, final competency and placement decisions
 remain separate records. Coverage and demand alignment lead the recommendation
-order. Text similarity and location supply support. See the
+order. Text similarity and location supply support. The coordinator catalog can
+be prepared before enrollment. Program grants control catalog scope and batch
+ownership controls access to student matches. See the
 [current workflow guide](../knowledge/MULTI_INSTITUTE_WORKFLOWS.md).
 
 ## Earlier DFD baseline
