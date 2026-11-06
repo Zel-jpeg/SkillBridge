@@ -1,6 +1,10 @@
 """Admin institute and program navigation against the real synthetic API."""
 import json
+import re
+from io import BytesIO
+from urllib.parse import urlparse
 
+from PIL import Image
 from playwright.sync_api import expect, sync_playwright
 from organization_playwright import BASE, OUT, errors, session
 
@@ -24,9 +28,22 @@ def switch_to_list(page, name):
     expect(list_button).to_have_attribute('aria-pressed', 'true')
 
 
+def show_stored_images(context):
+    context.route('**/storage/v1/object/public/**', lambda route: route.fulfill(
+        body=(OUT / 'synthetic-images' / urlparse(route.request.url).path.split('/')[-1]).read_bytes(), content_type='image/webp'))
+
+
+def attach_image(editor, name, color):
+    image = BytesIO()
+    Image.new('RGB', (60, 40), color).save(image, format='PNG')
+    file_input = editor.locator('input[type=file]').and_(editor.get_by_label(name, exact=False))
+    file_input.set_input_files({'name': 'synthetic-card.png', 'mimeType': 'image/png', 'buffer': image.getvalue()})
+
+
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(channel='chrome', headless=True)
     context, page = session(browser)
+    show_stored_images(context)
     enterprise, tourism, third = json.loads((OUT / 'general-text.json').read_text(encoding='utf-8'))
     page.goto(BASE + '/admin/institutes', wait_until='networkidle')
     nav = page.get_by_role('navigation', name='Administrator navigation', exact=True)
@@ -65,20 +82,30 @@ with sync_playwright() as playwright:
     page.get_by_role('button', name='Edit Synthetic Institute 05', exact=True).click()
     institute_editor = page.get_by_role('dialog', name='Edit institute', exact=True)
     institute_editor.get_by_label('Name', exact=True).fill('Synthetic Institute 05 renamed')
+    attach_image(institute_editor, 'Institute image', '#227744')
     institute_editor.get_by_role('button', name='Save institute', exact=True).click()
     expect(page.get_by_role('link', name='Synthetic Institute 05 renamed', exact=True)).to_be_visible()
+    institute_image = page.get_by_role('img', name='Synthetic Institute 05 renamed logo', exact=True)
+    expect(institute_image).to_have_attribute('src', re.compile(r'/organization/institutes/.*\.webp$'))
+    expect(institute_image).to_have_js_property('naturalWidth', 60)
     page.get_by_role('searchbox', name='Search institutes').fill('IBPA')
     page.get_by_role('link', name='Institute of Business and Public Affairs', exact=True).click()
     expect(page.get_by_role('link', name=third['name'], exact=True)).to_have_count(0)
     page.get_by_role('button', name='Edit Tourism Management', exact=True).click()
     editor = page.get_by_role('dialog', name='Edit program', exact=True)
     editor.get_by_label('Name', exact=True).fill('Tourism Management revised')
+    attach_image(editor, 'Program image', '#449977')
     editor.get_by_role('button', name='Save program', exact=True).click()
     expect(editor).to_have_count(0)
+    program_image = page.get_by_role('img', name='Tourism Management revised logo', exact=True)
+    expect(program_image).to_have_attribute('src', re.compile(r'/organization/programs/.*\.webp$'))
+    expect(program_image).to_have_js_property('naturalWidth', 60)
     page.get_by_role('button', name='Edit Tourism Management revised', exact=True).click()
     editor.get_by_label('Name', exact=True).fill('Tourism Management')
+    editor.get_by_role('button', name='Remove image', exact=True).click()
     editor.get_by_role('button', name='Save program', exact=True).click()
     page.get_by_role('link', name='Tourism Management', exact=True).click()
+    assert len(list((OUT / 'synthetic-images').iterdir())) == 1
     switch_to_list(page, 'Category view')
     expect(page.get_by_text('Service communication', exact=True)).to_be_visible()
     expect(page.get_by_text('Market analysis', exact=True)).to_have_count(0)
@@ -88,8 +115,14 @@ with sync_playwright() as playwright:
     expect(page.get_by_text('Service communication', exact=True)).to_be_visible()
     page.get_by_role('link', name='All institutes', exact=True).click()
     page.get_by_role('searchbox', name='Search institutes').fill('Computing')
-    page.get_by_role('link', name='Institute of Computing', exact=True).click()
+    page.get_by_role('link', name='Institute of Computing', exact=True).press('Enter')
+    expect(page.get_by_role('heading', name='Skill taxonomy', exact=True)).to_be_focused()
     expect(page.get_by_role('link', name='Bachelor of Science in Information Systems', exact=True)).to_be_visible()
+    page.get_by_role('button', name='Edit Bachelor of Science in Information Technology', exact=True).click()
+    editor = page.get_by_role('dialog', name='Edit program', exact=True)
+    attach_image(editor, 'Program image', '#116655')
+    editor.get_by_role('button', name='Save program', exact=True).click()
+    expect(editor).to_have_count(0)
     page.get_by_role('link', name='Shared IC skills', exact=True).click()
     expect(page.get_by_role('heading', name='IC shared skill taxonomy', exact=True)).to_be_visible()
     expect(page.get_by_text('Synthetic IC shared skill', exact=True)).to_be_visible()
@@ -174,6 +207,7 @@ with sync_playwright() as playwright:
     context.close()
 
     context, page = session(browser, 'instructor', width=390, dark=True, mobile=True)
+    show_stored_images(context)
     page.goto(BASE + '/instructor/companies/manage?program_id=' + str(enterprise['program_id']), wait_until='networkidle')
     open_menu = page.get_by_role('button', name='Open navigation menu', exact=True)
     open_menu.click()
@@ -206,6 +240,8 @@ with sync_playwright() as playwright:
     expect(page.get_by_role('heading', name='Skill taxonomy', exact=True)).to_be_visible()
     expect(page.get_by_role('link', name='Tourism Management', exact=True)).to_have_count(0)
     expect(page.get_by_role('link', name='Bachelor of Science in Information Technology', exact=True)).to_be_visible()
+    instructor_program_image = page.get_by_role('img', name='Bachelor of Science in Information Technology logo', exact=True)
+    expect(instructor_program_image).to_have_js_property('naturalWidth', 60)
     expect(page.get_by_role('searchbox', name='Search institutes')).to_have_count(0)
     page.screenshot(path=str(OUT / 'instructor-taxonomy-phone.png'), animations='disabled')
     page.get_by_role('link', name='Shared IC skills', exact=True).click()

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRightIcon, CompanyIcon, PencilIcon, SkillIcon } from './Icons'
 import Pagination from './Pagination'
+import CompanyImage from './CompanyImage'
 import { organizationButton as button, organizationCard as card, organizationField as field } from './admin/organizationUi'
 
 const PAGE_SIZE = 9
@@ -25,7 +26,9 @@ export default function TaxonomyLibraryCards({ items, label, onEdit }) {
         const Icon = item.institute ? CompanyIcon : SkillIcon
         return <li key={item.to} className={`${card} flex flex-col overflow-hidden`}>
           <Link to={item.to} aria-label={item.name} className="group flex min-h-32 flex-1 items-start gap-4 rounded-t-2xl p-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600">
-            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"><Icon size={22} /></span>
+            {item.image_url
+              ? <CompanyImage name={item.name} imageUrl={item.image_url} className="h-12 w-12 rounded-xl" />
+              : <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"><Icon size={22} /></span>}
             <div className="min-w-0 flex-1">
               {item.code && <p className="text-xs font-semibold text-green-700 dark:text-green-300">{item.code}</p>}
               <h2 className="break-words text-sm font-semibold leading-5 group-hover:text-green-800 dark:group-hover:text-green-300">{item.name}</h2>

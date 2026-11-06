@@ -149,8 +149,8 @@ title, tags and skill requirements.
 - [x] Allow admins to edit institute and program names from the cards.
 - [x] Display the existing IC shared taxonomy for approved instructors with an
   active IC program assignment, with admin-only writes.
-- [ ] Add institute and program images using WebP conversion before upload.
-- [ ] Test image display, replacement, removal, storage failure and the additive
+- [x] Add institute and program images using WebP conversion before upload.
+- [x] Test image display, replacement, removal, storage failure and the additive
   schema migration before applying it to the configured database.
 
 `codex/taxonomy-library-cards` passed 43 isolated PostgreSQL tests
@@ -158,3 +158,17 @@ title, tags and skill requirements.
 Staff navigation and card-name updates, program skills and scoped NLP assistance
 passed browser checks in `work/organization-browser-hr2mi_uk/`,
 `work/organization-browser-es_8pgch/`, and `work/organization-browser-1olmtyd0/`.
+
+On `codex/taxonomy-card-images`, both card types use the existing image
+converter and bucket. The object paths use separate institute and program
+prefixes. Administrators can replace or remove images from the card editor.
+The image feature passed 86 isolated PostgreSQL tests
+(`work/organization-postgres-r1ahjuxh/`), lint, build, 288 frontend tests,
+Django checks and migration drift verification. Browser tests verified WebP
+uploads and instructor visibility using isolated object transport
+(`work/organization-browser-3fsclv0s/`). The existing coordinator uploader
+also passed its regression suite (`work/organization-browser-ebw9atg3/`).
+Configured migration `0040_organization_card_images` passed backup/restore
+rehearsal and applied two nullable fields. The operator verified preserved
+data in 44 existing tables. Its receipt is in
+`work/organization-configured-migration-pynkah9u/`.

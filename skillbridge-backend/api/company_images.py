@@ -1,4 +1,4 @@
-"""Company branding only. Originals never leave Django; provider photos stay remote."""
+"""Image conversion and bucket storage for public catalog branding."""
 from io import BytesIO
 import json
 import logging
@@ -37,15 +37,15 @@ class ImageStorageError(APIException):
     status_code = 503
 
     def __init__(self):
-        super().__init__({'error': 'Partner image storage is unavailable. Your changes were not saved. Please retry.'})
+        super().__init__({'error': 'Image storage is unavailable. Your changes were not saved. Please retry.'})
 
 
 def convert_company_image(upload):
     if upload.size > MAX_INPUT_BYTES:
-        raise ImageValidationError('Partner image must be at most 5 MiB.')
+        raise ImageValidationError('Image must be at most 5 MiB.')
     raw = upload.read(MAX_INPUT_BYTES + 1)
     if len(raw) > MAX_INPUT_BYTES:
-        raise ImageValidationError('Partner image must be at most 5 MiB.')
+        raise ImageValidationError('Image must be at most 5 MiB.')
     if not features.check('webp'):
         raise ImageStorageError()
     try:
@@ -56,9 +56,9 @@ def convert_company_image(upload):
                     raise ImageValidationError('Use a static JPEG, PNG, or WebP image. SVG is not supported.')
                 width, height = source.size
                 if width * height > MAX_PIXELS or max(width, height) > MAX_INPUT_SIDE:
-                    raise ImageValidationError('Partner image must be at most 20 megapixels and 10,000 pixels per side.')
+                    raise ImageValidationError('Image must be at most 20 megapixels and 10,000 pixels per side.')
                 if getattr(source, 'n_frames', 1) != 1 or getattr(source, 'is_animated', False):
-                    raise ImageValidationError('Animated or multiframe partner images are not supported.')
+                    raise ImageValidationError('Animated or multiframe images are not supported.')
                 source.verify()
             with Image.open(BytesIO(raw)) as source:
                 source.load()
@@ -80,20 +80,24 @@ def convert_company_image(upload):
                 return encoded
     except (UnidentifiedImageError, OSError, ValueError, SyntaxError,
             Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ImageValidationError('Partner image is corrupt or cannot be decoded safely.') from exc
-    raise ImageValidationError('Partner image cannot fit within 200 KiB. Please choose a simpler image.')
+        raise ImageValidationError('The image is corrupt or cannot be decoded safely.') from exc
+    raise ImageValidationError('Image cannot fit within 200 KiB. Please choose a simpler image.')
+
+
+def multipart_image_payload(request):
+    if set(request.data) - {'payload', 'image'} or len(request.data.getlist('payload')) != 1:
+        raise ImageValidationError('Send one JSON payload field and an optional image file.')
+    try:
+        return json.loads(request.data['payload'])
+    except (ValueError, TypeError) as exc:
+        raise ImageValidationError('payload must contain valid JSON.') from exc
 
 
 def company_data(request):
     """Multipart uses one JSON envelope, preserving nulls, arrays and objects."""
     if request.content_type.startswith('multipart/'):
         if 'payload' in request.data:
-            if set(request.data) - {'payload', 'image'} or len(request.data.getlist('payload')) != 1:
-                raise ImageValidationError('Send one JSON payload field and an optional image file.')
-            try:
-                data = json.loads(request.data['payload'])
-            except (ValueError, TypeError) as exc:
-                raise ImageValidationError('payload must contain valid JSON.') from exc
+            data = multipart_image_payload(request)
         else:
             # Legacy no-file form callers remain valid. Structured form values
             # are explicitly JSON-decoded rather than stored as opaque strings.
@@ -137,12 +141,12 @@ def company_data(request):
     return data
 
 
-def owned_key(key):
-    return bool(re.fullmatch(re.escape(settings.COMPANY_IMAGE_PREFIX) + r'/[0-9a-f]{32}\.webp', key or ''))
+def owned_key(key, prefix=None):
+    return bool(re.fullmatch(re.escape(prefix or settings.COMPANY_IMAGE_PREFIX) + r'/[0-9a-f]{32}\.webp', key or ''))
 
 
-def company_image_url(key):
-    if not owned_key(key) or not settings.SUPABASE_STORAGE_URL:
+def company_image_url(key, prefix=None):
+    if not owned_key(key, prefix) or not settings.SUPABASE_STORAGE_URL:
         return None
     return (f'{settings.SUPABASE_STORAGE_URL.rstrip("/")}/storage/v1/object/public/'
             f'{quote(settings.COMPANY_IMAGE_BUCKET, safe="")}/{quote(key, safe="/")}')
@@ -153,7 +157,7 @@ def image_fields(company, prefix=''):
             f'{prefix}image_url': company_image_url(company.image_key)}
 
 
-def _storage_request(method, key=None, **kwargs):
+def _storage_request(method, key=None, *, prefix=None, **kwargs):
     base = settings.SUPABASE_STORAGE_URL.rstrip('/')
     credential = settings.SUPABASE_STORAGE_SERVICE_KEY
     parsed = urlsplit(base)
@@ -163,7 +167,7 @@ def _storage_request(method, key=None, **kwargs):
         raise ImageStorageError()
     url = f'{base}/storage/v1/object/{quote(settings.COMPANY_IMAGE_BUCKET, safe="")}'
     if key:
-        if not owned_key(key):
+        if not owned_key(key, prefix):
             raise ImageValidationError('Invalid partner image object key.')
         url += '/' + quote(key, safe='/')
     try:
@@ -179,23 +183,23 @@ def _storage_request(method, key=None, **kwargs):
         raise ImageStorageError() from exc
 
 
-def upload_image(key, content):
+def upload_image(key, content, **scope):
     _storage_request('POST', key, data=content, headers={
         'Content-Type': 'image/webp', 'Cache-Control': 'max-age=31536000', 'x-upsert': 'false',
-    })
+    }, **scope)
 
 
-def cleanup_image(key):
+def cleanup_image(key, *, prefix=None, model=None):
     """Best effort after commit/rollback. Never delete a referenced or foreign key."""
     from .models import Company
-    if not key or not owned_key(key):
+    if not key or not owned_key(key, prefix):
         return
     try:
-        if Company.objects.filter(image_key=key).exists():
+        if (model or Company).objects.filter(image_key=key).exists():
             return
         _storage_request('DELETE', json={'prefixes': [key]})
     except Exception:
-        logger.error('Company image cleanup failed for owned key %s; manual cleanup required.', key)
+        logger.error('Catalog image cleanup failed for owned key %s; manual cleanup required.', key)
 
 
 class CompanyImageChange:
@@ -204,8 +208,12 @@ class CompanyImageChange:
     Call save after ordinary validation inside atomic(), with existing companies
     obtained using select_for_update(). No client may supply old keys.
     """
-    def __init__(self, request, data):
+    def __init__(self, request, data, *, prefix=None, model=None):
         self.new_key = None
+        self.prefix = prefix or settings.COMPANY_IMAGE_PREFIX
+        self.storage = {'prefix': prefix} if prefix else {}
+        self.references = {**self.storage, 'model': model} if model else self.storage
+        self.empty_key = None if model else ''
         self.action = data.get('image_action', 'unchanged')
         files = request.FILES.getlist('image')
         if self.action not in ('unchanged', 'replace', 'remove'):
@@ -219,16 +227,16 @@ class CompanyImageChange:
 
     def __exit__(self, exc_type, exc, tb):
         if exc_type and self.new_key:
-            cleanup_image(self.new_key)
+            cleanup_image(self.new_key, **self.references)
 
-    def save(self, company):
-        old_key = company.image_key
+    def save(self, row):
+        old_key = row.image_key
         if self.action == 'replace':
-            self.new_key = f'{settings.COMPANY_IMAGE_PREFIX}/{uuid4().hex}.webp'
-            upload_image(self.new_key, self.content)
-            company.image_key = self.new_key
+            self.new_key = f'{self.prefix}/{uuid4().hex}.webp'
+            upload_image(self.new_key, self.content, **self.storage)
+            row.image_key = self.new_key
         elif self.action == 'remove':
-            company.image_key = ''
-        company.save()
-        if old_key and old_key != company.image_key:
-            transaction.on_commit(lambda: cleanup_image(old_key), robust=True)
+            row.image_key = self.empty_key
+        row.save()
+        if old_key and old_key != row.image_key:
+            transaction.on_commit(lambda: cleanup_image(old_key, **self.references), robust=True)

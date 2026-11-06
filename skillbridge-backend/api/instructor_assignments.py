@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from .change_events import notify_changes
 from .management_access import record_action
 from .models import Institute, Program, InstructorAssignment, User
-from .organization import StrictBoolean, forbidden, page_payload
+from .organization import StrictBoolean, forbidden, organization_image_url, page_payload
 
 
 def available_programs(user):
@@ -31,6 +31,7 @@ def require_program(user, program_id):
 
 def program_payload(program):
     return {'id': program.id, 'code': program.code, 'name': program.name, 'is_active': program.is_active,
+            'image_url': organization_image_url(program),
             'institute_id': program.institute_id, 'institute_name': program.institute.name,
             'institute_code': program.institute.code}
 

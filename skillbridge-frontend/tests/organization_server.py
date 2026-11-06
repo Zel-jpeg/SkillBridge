@@ -24,7 +24,7 @@ django.setup()
 from django.core.management import call_command
 from rest_framework_simplejwt.tokens import AccessToken
 from api.models import User, Institute, Program, Batch, BatchEnrollment
-if os.environ.get('SB_ORGANIZATION_SCENARIO') == 'coordinator-catalog':
+if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('coordinator-catalog', 'staff-scope'):
     # The image codec and database transaction stay real; object transport is
     # isolated to this owned fixture directory, with no external storage writes.
     from api import company_images

@@ -11,9 +11,26 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .change_events import notify_changes
+from .company_images import CompanyImageChange, company_image_url, multipart_image_payload, ImageValidationError
 from .management_access import record_action
 from .models import Institute, Program
 from .program_scope import label_key
+
+IMAGE_PREFIXES = {Institute: 'organization/institutes', Program: 'organization/programs'}
+
+
+def organization_image_url(row):
+    return company_image_url(row.image_key, IMAGE_PREFIXES[type(row)])
+
+
+def catalog_write_data(request, *, model, partial):
+    data = multipart_image_payload(request) if request.content_type.startswith('multipart/') else request.data
+    if not isinstance(data, dict):
+        raise ImageValidationError('Organization details must be a JSON object.')
+    data = dict(data)
+    action = data.pop('image_action', 'unchanged')
+    values = validated(data, program=model is Program, partial=partial)
+    return values, CompanyImageChange(request, {'image_action': action}, prefix=IMAGE_PREFIXES[model], model=model)
 
 
 class StrictBoolean(serializers.BooleanField):
@@ -67,6 +84,7 @@ class ProgramSerializer(CatalogSerializer):
 
 def payload(row):
     result = {key: getattr(row, key) for key in ('id', 'code', 'name', 'description', 'is_active', 'created_at')}
+    result['image_url'] = organization_image_url(row)
     if isinstance(row, Program):
         result.update(institute_id=row.institute_id, aliases=row.aliases)
     else:
@@ -120,15 +138,15 @@ def check_program_labels(institute, values, current=None):
 
 
 def write_institute(request, object_id=None):
-    values = validated(request.data, partial=object_id is not None)
+    values, image = catalog_write_data(request, model=Institute, partial=object_id is not None)
     try:
-        with transaction.atomic():
+        with image, transaction.atomic():
             row = get_object_or_404(Institute.objects.select_for_update(), pk=object_id) if object_id else Institute()
             if object_id and values.get('is_active') is False and row.programs.filter(is_active=True).exists():
                 return Response({'error': 'Archive active programs before archiving their institute.'}, status=409)
             for field, value in values.items():
                 setattr(row, field, value)
-            row.save()
+            image.save(row)
             record_action(request.user, 'institute.update' if object_id else 'institute.create', 'institute', row.id)
             return Response(payload(row), status=200 if object_id else 201)
     except IntegrityError:
@@ -136,9 +154,9 @@ def write_institute(request, object_id=None):
 
 
 def write_program(request, institute_id, object_id=None):
-    values = validated(request.data, program=True, partial=object_id is not None)
+    values, image = catalog_write_data(request, model=Program, partial=object_id is not None)
     try:
-        with transaction.atomic():
+        with image, transaction.atomic():
             # Serializes alias validation and parent archive/child restore races.
             institute = get_object_or_404(Institute.objects.select_for_update(), pk=institute_id)
             row = get_object_or_404(Program, pk=object_id, institute=institute) if object_id else Program(institute=institute)
@@ -147,7 +165,7 @@ def write_program(request, institute_id, object_id=None):
             check_program_labels(institute, values, row if object_id else None)
             for field, value in values.items():
                 setattr(row, field, value)
-            row.save()
+            image.save(row)
             record_action(request.user, 'program.update' if object_id else 'program.create', 'program', row.id,
                           institute_id=institute.id)
             return Response(payload(row), status=200 if object_id else 201)

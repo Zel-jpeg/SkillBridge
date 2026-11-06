@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
@@ -224,6 +224,15 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
   const { data, request } = useApi(ORGANIZATION_OPTIONS)
   const instituteId = admin ? params.get('institute') : null
   const programId = params.get('program')
+  const heading = useRef(null)
+  const scopeKey = `${instituteId}:${programId}`
+  const previousScope = useRef(scopeKey)
+  useEffect(() => {
+    if (previousScope.current === scopeKey) return
+    previousScope.current = scopeKey
+    heading.current?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+  }, [scopeKey])
   const institute = data?.institutes.find(row => String(row.id) === instituteId)
   const institutePath = institute ? `${root}?institute=${institute.id}` : root
   const libraryPath = id => `${institutePath}${institute ? '&' : '?'}program=${id}`
@@ -254,7 +263,7 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
 
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <header className="space-y-2">
-      <h1 className="text-xl font-bold">Skill taxonomy</h1>
+      <h1 ref={heading} tabIndex={-1} className="text-xl font-bold">Skill taxonomy</h1>
       <p className="text-xs leading-6 text-gray-600 dark:text-gray-300">{choosingInstitute ? 'Open an institute to browse its skill libraries.' : 'Browse the shared and program skill libraries available to you.'}</p>
     </header>
     {(instituteId || programId) && <nav aria-label="Taxonomy path" className="flex flex-wrap gap-2">

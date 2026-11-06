@@ -9,6 +9,7 @@ class Institute(models.Model):
     code = models.CharField(max_length=30)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
+    image_key = models.CharField(max_length=120, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -29,6 +30,7 @@ class Program(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
     aliases = models.JSONField(default=list, blank=True)
+    image_key = models.CharField(max_length=120, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

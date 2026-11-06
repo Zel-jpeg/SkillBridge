@@ -10,6 +10,9 @@ import { PlusIcon, PencilIcon } from '../../components/Icons'
 import ProgramInstructors from '../../components/admin/ProgramInstructors'
 import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationError as errorText, organizationCard as card } from '../../components/admin/organizationUi'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
+import CompanyImage from '../../components/CompanyImage'
+import CompanyImageInput from '../../components/CompanyImageInput'
+import { companyRequest } from '../../utils/companyImages'
 
 const ROOT = '/api/admin/institutes/'
 
@@ -17,20 +20,22 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
   const id = useId()
   const [values, setValues] = useState({ code: item?.code || '', name: item?.name || '', description: item?.description || '', aliases: (item?.aliases || []).join('\n') })
   const [saving, setSaving] = useState(false)
+  const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
   const [error, setError] = useState('')
   const pending = useRef(false)
   const close = () => { if (!pending.current) onClose() }
   async function save(event) {
     event.preventDefault()
-    if (pending.current) return
+    if (pending.current || image.error) return
     pending.current = true
     setSaving(true)
     setError('')
     try {
-      const result = await onSave({ name: values.name.trim(), ...(!brandingOnly && {
+      const details = { name: values.name.trim(), ...(!brandingOnly && {
         code: values.code.trim(), description: values.description.trim(),
         ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
-      }) })
+      }) }
+      const result = await onSave(companyRequest(details, image))
       if (!result.ok) setError(errorText(result))
     } finally {
       pending.current = false
@@ -43,10 +48,10 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
       onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} aria-describedby={hint ? `${id}-${key}-hint` : undefined} />
     {hint && <span id={`${id}-${key}-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">{hint}</span>}
   </div>
-  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
+  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name or image shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
     size="confirm" onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
     footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button>
-      <button type="submit" form={id} className={primary} disabled={saving}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
+      <button type="submit" form={id} className={primary} disabled={saving || Boolean(image.error)}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
     <form id={id} onSubmit={save} className="space-y-4 px-6 pb-6">
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
       {input('name', 'Name', 255)}
@@ -58,6 +63,8 @@ export function CatalogForm({ item, program, onClose, onSave, brandingOnly = fal
         <textarea id={`${id}-aliases`} className={field} rows={3} value={values.aliases} disabled={saving} aria-describedby={`${id}-aliases-hint`}
           onChange={event => setValues(previous => ({ ...previous, aliases: event.target.value }))} />
         <span id={`${id}-aliases-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">Optional. One per line, up to 12. These must be distinct from other programs in this institute.</span></div>}
+      <CompanyImageInput label={program ? 'Program image' : 'Institute image'} name={values.name} imageUrl={item?.image_url}
+        value={image} onChange={setImage} disabled={saving} />
     </form>
   </DialogShell>
 }
@@ -130,7 +137,8 @@ function CatalogCollection({ institute: selected, onSelect }) {
       {rows.length === 0 ? <EmptyState message={filtered ? `No ${kind}s match these filters.` : `No ${kind}s yet. Add one to get started.`} onClear={filtered ? clear : undefined} /> : <ul className={`grid gap-4 ${view === 'grid' ? 'lg:grid-cols-2' : ''}`}>
         {rows.map(row => <li key={row.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'lg:grid-cols-[minmax(0,1fr)_minmax(240px,auto)] lg:items-start' : 'grid-rows-[1fr_auto]'}`}>
           <div className="min-w-0 space-y-3">
-          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-gray-900 dark:text-white">{row.name}</h3><p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{row.code}</p></div>
+          <div className="flex items-start gap-3">{row.image_url && <CompanyImage name={row.name} imageUrl={row.image_url} />}
+            <div className="min-w-0 flex-1"><h3 className="break-words text-sm font-semibold text-gray-900 dark:text-white">{row.name}</h3><p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{row.code}</p></div>
             <span className={`shrink-0 rounded-full px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>{row.is_active ? 'Active' : 'Archived'}</span></div>
           {row.description && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-600 dark:text-gray-300">{row.description}</p>}
           {row.aliases?.length > 0 && <p className="break-words text-xs text-gray-500 dark:text-gray-400">Other names: {row.aliases.join(', ')}</p>}

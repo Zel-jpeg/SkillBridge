@@ -17,7 +17,7 @@ from .instructor_assignments import program_payload
 from .management_access import record_action
 from .models import (Assessment, Batch, CombinedCategoryScore, CompetencyFramework, Institute, Program,
                      PositionRequirement, Question, SkillCategory, SkillScore)
-from .organization import page_payload
+from .organization import organization_image_url, page_payload
 from .program_scope import assigned_program_ids
 
 
@@ -153,7 +153,8 @@ def organization_options(request):
     if request.user.role != 'admin':
         institutes = institutes.filter(pk__in={row['institute_id'] for row in programs})
     return Response({
-        'institutes': list(institutes.values('id', 'name', 'code', 'is_active')),
+        'institutes': [{'id': row.id, 'name': row.name, 'code': row.code, 'is_active': row.is_active,
+                        'image_url': organization_image_url(row)} for row in institutes],
         'programs': programs,
         'shared_skill_institute_id': shared_skill_institute(request.user),
     })
