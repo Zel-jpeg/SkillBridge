@@ -141,3 +141,20 @@ selection during AIKEN and native assessment authoring
 A proposed position description would capture the intern's actual duties in
 both position editors and provide supporting NLP context alongside the current
 title, tags and skill requirements.
+
+## Taxonomy cards and images
+
+- [x] Admin institute cards open a distinct URL listing that institute’s
+  libraries. Instructor cards go directly to assigned libraries.
+- [x] Allow admins to edit institute and program names from the cards.
+- [x] Display the existing IC shared taxonomy for approved instructors with an
+  active IC program assignment, with admin-only writes.
+- [ ] Add institute and program images using WebP conversion before upload.
+- [ ] Test image display, replacement, removal, storage failure and the additive
+  schema migration before applying it to the configured database.
+
+`codex/taxonomy-library-cards` passed 43 isolated PostgreSQL tests
+(`work/organization-postgres-azg0knuo/`), lint, build, and 288 frontend tests.
+Staff navigation and card-name updates, program skills and scoped NLP assistance
+passed browser checks in `work/organization-browser-hr2mi_uk/`,
+`work/organization-browser-es_8pgch/`, and `work/organization-browser-1olmtyd0/`.

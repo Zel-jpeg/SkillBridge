@@ -6,8 +6,8 @@ import { requestErrorMessage } from '../../api/requestErrors'
 
 const SKILLS_URL = '/api/admin/skills/'
 
-export function useAdminSkills() {
-  const { data, loading, error: loadError } = useApi(SKILLS_URL)
+export function useAdminSkills(url = SKILLS_URL) {
+  const { data, loading, error: loadError } = useApi(url)
   const skills = Array.isArray(data) ? data : []
   const error = loadError ? 'Failed to load skills.' : null
 

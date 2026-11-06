@@ -1,14 +1,15 @@
 import { lazy, Suspense, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
 import { invalidateCache, useApi } from '../hooks/useApi'
 import { useToast } from '../context/ToastContext'
 import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
-import ProgramSelect from '../components/ProgramSelect'
-import OrganizationScope from '../components/OrganizationScope'
 import CollectionViewToggle from '../components/CollectionViewToggle'
-import { ALL_ORGANIZATIONS, SHARED_IC_SKILLS } from '../utils/organizationScope'
+import TaxonomyLibraryCards from '../components/TaxonomyLibraryCards'
+import { ORGANIZATION_OPTIONS } from '../utils/organizationScope'
+import { CatalogForm } from './admin/AdminInstitutes'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
 import { useScopedAssistance } from '../hooks/useScopedAssistance'
@@ -215,22 +216,61 @@ function Versions({ programId }) {
 }
 
 export default function CompetencyCatalog({ role = 'instructor' }) {
-  const [scope, setScope] = useState(ALL_ORGANIZATIONS)
+  const [params] = useSearchParams()
+  const [editor, setEditor] = useState(null)
+  const { showToast } = useToast()
   const admin = role === 'admin'
+  const root = `/${role}/competencies`
+  const { data, request } = useApi(ORGANIZATION_OPTIONS)
+  const instituteId = admin ? params.get('institute') : null
+  const programId = params.get('program')
+  const institute = data?.institutes.find(row => String(row.id) === instituteId)
+  const institutePath = institute ? `${root}?institute=${institute.id}` : root
+  const libraryPath = id => `${institutePath}${institute ? '&' : '?'}program=${id}`
+  const programs = (data?.programs || []).filter(row => !instituteId || row.institute_id === institute?.id)
+  const program = programs.find(row => String(row.id) === programId)
+  const sharedInstitute = data?.institutes.find(row => row.id === data.shared_skill_institute_id)
+  const showShared = sharedInstitute && (!admin || institute?.id === sharedInstitute.id)
+  const choosingInstitute = admin && !instituteId && !programId
+  const items = choosingInstitute ? (data?.institutes || []).map(row => ({
+    ...row, institute: true, to: `${root}?institute=${row.id}`, subtitle: 'Browse this institute’s skill libraries',
+  })) : [
+    ...(showShared ? [{ name: 'Shared IC skills', shared: true, to: libraryPath('shared'), subtitle: sharedInstitute.name }] : []),
+    ...programs.map(row => ({ ...row, to: libraryPath(row.id), subtitle: row.institute_name })),
+  ]
+
+  async function saveCard(values) {
+    const base = `/api/admin/institutes/${editor.institute ? editor.id : editor.institute_id}/`
+    const result = await request('patch', editor.institute ? base : `${base}programs/${editor.id}/`, values, { silentError: true })
+    if (result.ok) {
+      invalidateCache('/api/admin/institutes/')
+      invalidateCache(ORGANIZATION_OPTIONS)
+      invalidateCache(PROGRAMS)
+      setEditor(null)
+      showToast('Card updated.')
+    }
+    return result
+  }
+
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-bold">Skill taxonomy</h1>
-        <p className="mt-2 max-w-3xl text-xs leading-6 text-gray-600 dark:text-gray-300">{admin
-          ? 'Choose an institute and program to manage its skills. Select Shared IC skills for the categories and tags used by IC.'
-          : 'This is the skill library for a program. Use its categories to group assessment questions and set the skills an opening requires. Descriptions and tags give those skills context.'}</p>
-      </div>
+    <header className="space-y-2">
+      <h1 className="text-xl font-bold">Skill taxonomy</h1>
+      <p className="text-xs leading-6 text-gray-600 dark:text-gray-300">{choosingInstitute ? 'Open an institute to browse its skill libraries.' : 'Browse the shared and program skill libraries available to you.'}</p>
     </header>
-    <div className={surface}>{admin
-      ? <OrganizationScope value={scope} onChange={setScope} programPlaceholder="Select a program" includeSharedIc />
-      : <ProgramSelect value={scope.program} onChange={program => setScope({ ...scope, program })} endpoint={PROGRAMS} status="all" />}</div>
-    {admin && scope.program === SHARED_IC_SKILLS
-      ? <Suspense fallback={<p role="status">Loading shared IC skills…</p>}><AdminSkills embedded /></Suspense>
-      : scope.program ? <Versions key={scope.program} programId={scope.program} /> : <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">Select a program to view its skills.</p>}
+    {(instituteId || programId) && <nav aria-label="Taxonomy path" className="flex flex-wrap gap-2">
+      {admin && <Link className={button} to={root}>All institutes</Link>}
+      {programId && <Link className={button} to={institutePath}>{institute ? institute.name : 'All skill libraries'}</Link>}
+    </nav>}
+    <DataSection url={ORGANIZATION_OPTIONS} layout="cards">
+      {instituteId && !institute ? <p>This institute is unavailable.</p>
+        : programId ? (programId === 'shared' && showShared
+          ? <Suspense fallback={<p role="status">Loading shared IC skills…</p>}><AdminSkills embedded readOnly={!admin} /></Suspense>
+          : program ? <Versions key={program.id} programId={program.id} /> : <p>This skill library is unavailable.</p>)
+        : <>
+          {institute && <h2 className="text-lg font-semibold">{institute.name}</h2>}
+          <TaxonomyLibraryCards key={instituteId || role} items={items} label={choosingInstitute ? 'Institutes' : 'Skill libraries'} onEdit={admin ? setEditor : null} />
+        </>}
+    </DataSection>
+    {editor && <CatalogForm item={editor} program={!editor.institute} brandingOnly onClose={() => setEditor(null)} onSave={saveCard} />}
   </div>
 }

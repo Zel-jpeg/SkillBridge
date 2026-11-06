@@ -37,6 +37,7 @@ urlpatterns = [
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/assist/tags/', competency_assistance.assist_tags, name='framework_assist_tags'),
     path('management/competency-programs/', competencies.catalog_programs, name='competency_programs'),
     path('management/organization-options/', competencies.organization_options, name='staff_organization_options'),
+    path('management/shared-ic-skills/', competencies.shared_ic_skills, name='staff_shared_ic_skills'),
     path('management/competency-programs/<int:program_id>/', competencies.catalog_programs, name='competency_program_detail'),
     path('management/programs/<int:program_id>/frameworks/', competencies.frameworks, name='program_frameworks'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/', competencies.framework_detail, name='framework_detail'),

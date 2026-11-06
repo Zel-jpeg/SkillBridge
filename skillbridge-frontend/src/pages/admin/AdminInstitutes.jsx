@@ -13,7 +13,7 @@ import CollectionViewToggle from '../../components/CollectionViewToggle'
 
 const ROOT = '/api/admin/institutes/'
 
-function CatalogForm({ item, program, onClose, onSave }) {
+export function CatalogForm({ item, program, onClose, onSave, brandingOnly = false }) {
   const id = useId()
   const [values, setValues] = useState({ code: item?.code || '', name: item?.name || '', description: item?.description || '', aliases: (item?.aliases || []).join('\n') })
   const [saving, setSaving] = useState(false)
@@ -27,8 +27,10 @@ function CatalogForm({ item, program, onClose, onSave }) {
     setSaving(true)
     setError('')
     try {
-      const result = await onSave({ code: values.code.trim(), name: values.name.trim(), description: values.description.trim(),
-        ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}) })
+      const result = await onSave({ name: values.name.trim(), ...(!brandingOnly && {
+        code: values.code.trim(), description: values.description.trim(),
+        ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
+      }) })
       if (!result.ok) setError(errorText(result))
     } finally {
       pending.current = false
@@ -41,18 +43,18 @@ function CatalogForm({ item, program, onClose, onSave }) {
       onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} aria-describedby={hint ? `${id}-${key}-hint` : undefined} />
     {hint && <span id={`${id}-${key}-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">{hint}</span>}
   </div>
-  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={`Configure this ${kind}'s name, code and description.`}
+  return <DialogShell title={`${item?.id ? 'Edit' : 'Add'} ${kind}`} description={brandingOnly ? `Update the name shown on this ${kind} card.` : `Configure this ${kind}'s name, code and description.`}
     size="confirm" onClose={close} closeDisabled={saving} closeLabel={`Close ${kind} form`}
     footer={<div className="flex justify-end gap-2"><button type="button" className={button} disabled={saving} onClick={close}>Cancel</button>
       <button type="submit" form={id} className={primary} disabled={saving}>{saving ? 'Saving…' : `Save ${kind}`}</button></div>}>
     <form id={id} onSubmit={save} className="space-y-4 px-6 pb-6">
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
       {input('name', 'Name', 255)}
-      {input('code', 'Code', 30, 'Use letters, numbers, spaces, hyphens or underscores.')}
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200" htmlFor={`${id}-description`}>Description
+      {!brandingOnly && input('code', 'Code', 30, 'Use letters, numbers, spaces, hyphens or underscores.')}
+      {!brandingOnly && <label className="block text-xs font-medium text-gray-700 dark:text-gray-200" htmlFor={`${id}-description`}>Description
         <textarea id={`${id}-description`} className={field} rows={3} maxLength={2000} value={values.description} disabled={saving}
-          onChange={event => setValues(previous => ({ ...previous, description: event.target.value }))} /></label>
-      {program && <div className="text-xs text-gray-700 dark:text-gray-200"><label className="font-medium" htmlFor={`${id}-aliases`}>Other names or codes</label>
+          onChange={event => setValues(previous => ({ ...previous, description: event.target.value }))} /></label>}
+      {!brandingOnly && program && <div className="text-xs text-gray-700 dark:text-gray-200"><label className="font-medium" htmlFor={`${id}-aliases`}>Other names or codes</label>
         <textarea id={`${id}-aliases`} className={field} rows={3} value={values.aliases} disabled={saving} aria-describedby={`${id}-aliases-hint`}
           onChange={event => setValues(previous => ({ ...previous, aliases: event.target.value }))} />
         <span id={`${id}-aliases-hint`} className="mt-1 block font-normal text-gray-500 dark:text-gray-400">Optional. One per line, up to 12. These must be distinct from other programs in this institute.</span></div>}

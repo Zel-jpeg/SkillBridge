@@ -33,6 +33,23 @@ def readable_programs(user):
     return rows if user.role == 'admin' else rows.filter(pk__in=assigned_program_ids(user))
 
 
+def shared_skill_institute(user):
+    programs = readable_programs(user)
+    institutes = Institute.objects.filter(code__iexact='IC')
+    if user.role != 'admin':
+        institutes = institutes.filter(pk__in=programs.filter(is_active=True, institute__is_active=True).values('institute_id'))
+    return institutes.values_list('id', flat=True).first()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def shared_ic_skills(request):
+    if not shared_skill_institute(request.user):
+        raise PermissionDenied('Access to shared IC skills requires an active IC program assignment.')
+    return Response(list(SkillCategory.objects.filter(framework__isnull=True).order_by('name', 'id')
+                         .values('id', 'name', 'description', 'tags')))
+
+
 def context(user, program_id, *, lock=False):
     if lock:
         parent = get_object_or_404(Program.objects.only('institute_id'), pk=program_id)
@@ -138,6 +155,7 @@ def organization_options(request):
     return Response({
         'institutes': list(institutes.values('id', 'name', 'code', 'is_active')),
         'programs': programs,
+        'shared_skill_institute_id': shared_skill_institute(request.user),
     })
 
 

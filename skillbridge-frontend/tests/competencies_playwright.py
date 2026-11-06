@@ -1,6 +1,5 @@
 """Real API program catalogs, private ownership, immutable versions and recovery."""
 import json
-import re
 import uuid
 from playwright.sync_api import expect, sync_playwright
 
@@ -15,11 +14,11 @@ def open_program(page, role='instructor', name='Synthetic Catalog Degree', advan
     page.goto(BASE + f'/{role}/competencies', wait_until='networkidle')
     expect(page.get_by_role('heading', name='Skill taxonomy', exact=True)).to_be_visible()
     if role == 'admin':
-        page.get_by_label('Institute', exact=True).select_option(label='Arbitrary Catalog Institute')
-        page.get_by_label('Program', exact=True).select_option(label=name)
+        page.get_by_role('searchbox', name='Search institutes').fill('Arbitrary Catalog Institute')
+        page.get_by_role('link', name='Arbitrary Catalog Institute', exact=True).click()
     else:
-        page.get_by_role('searchbox', name='Search assigned programs').fill(name)
-        page.get_by_role('radio', name=re.compile(name)).check()
+        page.get_by_role('searchbox', name='Search skill libraries').fill(name)
+    page.get_by_role('link', name=name, exact=True).click()
     if advanced:
         versions = page.get_by_role('button', name='Skill set versions', exact=True)
         create = page.get_by_role('button', name='Create framework', exact=True)

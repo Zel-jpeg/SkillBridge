@@ -75,7 +75,9 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
     acceptance_owner = User.objects.get(email='candidate-0@example.invalid') if scenario in ('multi-institute-acceptance', 'staff-scope') else None
     seed(OUT, identities, owner, scoped_openings=scenario != 'general-text', acceptance_owner=acceptance_owner)
     if scenario == 'staff-scope':
-        from api.models import Assessment, Company, OJTPlacement, Position, SkillCategory
+        from api.models import Assessment, Company, InstructorAssignment, OJTPlacement, Position, SkillCategory
+        for program in Program.objects.filter(institute__code='IC'):
+            InstructorAssignment.objects.create(instructor=owner, program=program)
         legacy = Company.objects.create(name='Synthetic IC legacy partner')
         Position.objects.create(company=legacy, title='Synthetic IC legacy opening', slots_available=4)
         SkillCategory.objects.create(name='Synthetic IC shared skill', description='Review a synthetic skill definition.')

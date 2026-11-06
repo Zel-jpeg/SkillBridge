@@ -1,6 +1,5 @@
 export const ORGANIZATION_OPTIONS = '/api/management/organization-options/'
 export const ALL_ORGANIZATIONS = { institute: '', program: '' }
-export const SHARED_IC_SKILLS = 'shared-ic'
 
 export function matchesOrganization(record, { institute, program }) {
   return (!institute || String(record?.institute_id) === institute)

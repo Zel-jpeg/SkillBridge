@@ -75,6 +75,25 @@ class CompetencyCatalogTests(APITestCase):
         self.assertEqual(self.create(self.other_program, initial_category=category).status_code, 409)
         self.assertEqual(self.other_program.competency_frameworks.get().categories.get().name, 'Guest records')
 
+    def test_shared_ic_catalog_requires_active_ic_assignment_and_is_read_only(self):
+        institute = Institute.objects.create(code='IC', name='Institute of Computing')
+        program = Program.objects.create(institute=institute, code='BSIT', name='Information Technology')
+        shared = SkillCategory.objects.create(name='Shared networking', description='Check connections.')
+        endpoint = reverse('staff_shared_ic_skills')
+        options = reverse('staff_organization_options')
+        for actor in (self.owner, self.student):
+            self.client.force_authenticate(actor)
+            self.assertEqual(self.client.get(endpoint).status_code, 403)
+        self.client.force_authenticate(self.owner)
+        self.assertIsNone(self.client.get(options).data['shared_skill_institute_id'])
+        grant = InstructorAssignment.objects.create(instructor=self.owner, program=program)
+        self.assertEqual(self.client.get(options).data['shared_skill_institute_id'], institute.id)
+        self.assertEqual([row['id'] for row in self.client.get(endpoint).data], [shared.id])
+        self.assertEqual(self.client.post(endpoint, {'name': 'Write denied'}).status_code, 405)
+        grant.is_active = False
+        grant.save(update_fields=['is_active'])
+        self.assertEqual(self.client.get(endpoint).status_code, 403)
+
     def test_foreign_context_and_student_are_denied_even_when_names_and_codes_match(self):
         original = self.add().data
         for actor, expected in [(self.foreign, 404), (self.student, 403)]:

@@ -142,12 +142,13 @@ function SkillModal({ skill, onClose, onSave, saving }) {
   )
 }
 
-export default function AdminSkills({ embedded = false }) {
+export default function AdminSkills({ embedded = false, readOnly = false }) {
+  const url = readOnly ? '/api/management/shared-ic-skills/' : '/api/admin/skills/'
   const {
     skills, loading, error, search, setSearch,
     showModal, setShowModal, selectedSkill, openAdd, openEdit,
     saving, handleSave, deleteConfirm, setDeleteConfirm, handleDelete
-  } = useAdminSkills()
+  } = useAdminSkills(url)
   const Heading = embedded ? 'h2' : 'h1'
 
   return (
@@ -179,14 +180,14 @@ export default function AdminSkills({ embedded = false }) {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Heading className="text-xl font-semibold text-gray-900 dark:text-white">IC shared skill taxonomy</Heading>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Manage the shared Institute of Computing skill categories and tags used by IC assessments and position requirements.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{readOnly ? 'View the shared skill definitions used by IC assessments and position requirements.' : 'Manage the shared Institute of Computing skill categories and tags used by IC assessments and position requirements.'}</p>
           </div>
-          <button onClick={openAdd}
+          {!readOnly && <button onClick={openAdd}
             className="flex items-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0 shadow-sm shadow-green-600/20">
             <PlusIcon /> Add Skill
-          </button>
+          </button>}
         </header>
-        <TaxonomyQuality />
+        {!readOnly && <TaxonomyQuality />}
 
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-between">
@@ -196,7 +197,7 @@ export default function AdminSkills({ embedded = false }) {
             </div>
           </div>
 
-          <DataSection url="/api/admin/skills/" layout="table" columns={3} label="Loading skill categories">
+          <DataSection url={url} layout="table" columns={readOnly ? 2 : 3} label="Loading skill categories">
           {loading ? (
             <div className="py-12 flex justify-center text-gray-400">
               <Spinner />
@@ -214,7 +215,7 @@ export default function AdminSkills({ embedded = false }) {
                   <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Skill</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Tags</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 w-24">Actions</th>
+                    {!readOnly && <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 w-24">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -232,7 +233,7 @@ export default function AdminSkills({ embedded = false }) {
                           {!skill.tags?.length && <span className="text-xs text-gray-400">Optional</span>}
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      {!readOnly && <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openEdit(skill)} title="Edit skill"
                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
@@ -243,7 +244,7 @@ export default function AdminSkills({ embedded = false }) {
                             <TrashIcon />
                           </button>
                         </div>
-                      </td>
+                      </td>}
                     </tr>
                   ))}
                 </tbody>
