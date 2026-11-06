@@ -37,6 +37,9 @@ if '--staff-scope' in sys.argv:
 if '--admin-navigation' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_ADMIN_SCOPE_NAVIGATION'] = '1'
+if '--partner-map' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+    env['SB_PARTNER_MAP'] = '1'
 if '--management-dialogs' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'management-dialogs'
 frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
@@ -94,6 +97,7 @@ try:
             ('--coordinator-catalog', 'coordinator_catalog_playwright.py'),
             ('--staff-scope', 'staff_scope_playwright.py'),
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
+            ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),
             ('--authoring-draft', 'authoring_draft_playwright.py'),

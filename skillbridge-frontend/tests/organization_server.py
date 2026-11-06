@@ -91,6 +91,19 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
         for item in scenarios[:2]:
             OJTPlacement.objects.create(student_id=item['student_id'], batch_id=item['batch_id'],
                 position=shared, company_id=shared.company_id, status='approved')
+if os.environ.get('SB_PARTNER_MAP'):
+    from django.utils import timezone
+    Company.objects.filter(pk=shared.company_id).update(location_lat=7.2, location_lng=125.5)
+    legacy.location_lat, legacy.location_lng = 7, 125
+    legacy.save(update_fields=['location_lat', 'location_lng'])
+    for item, title, lat, lng in [(scenarios[1], 'Tourism map partner', 7.2, 125.5), (scenarios[0], 'Enterprise map partner', 7.5, 125.6)]:
+        partner = Company.objects.create(name=title, management_program_id=item['program_id'], location_lat=lat, location_lng=lng)
+        role = Position.objects.create(company=partner, title=title + ' opening', slots_available=4, eligibility_configured_at=timezone.now())
+        role.eligible_programs.add(item['program_id'])
+    Company.objects.create(name='Missing pin partner', management_program_id=scenarios[1]['program_id'])
+    Company.objects.create(name='Invalid pin partner', management_program_id=scenarios[0]['program_id'], location_lat=100, location_lng=125)
+    Company.objects.create(name='Unassigned map partner', location_lat=0, location_lng=0)
+    Company.objects.create(name='Archived map partner', management_program_id=scenarios[1]['program_id'], location_lat=7.6, location_lng=125, archived_at=timezone.now())
 if os.environ.get('SB_ADMIN_SCOPE_NAVIGATION'):
     from django.utils import timezone
     from api.models import AssessmentAttemptHistory, StudentResponse

@@ -3824,10 +3824,14 @@ def admin_companies(request):
         companies = Company.objects.prefetch_related(
             'positions__eligible_programs__institute', 'positions__requirements__skill_category__framework'
         )
+        occupied = dict(allocated_approvals().values('position_id').annotate(total=Count('id')).values_list('position_id', 'total'))
 
         data = []
         for co in companies:
-            positions = [catalog_position_payload(position) for position in co.positions.all()]
+            positions = [{**catalog_position_payload(position),
+                          'approved_count': occupied.get(position.pk, 0),
+                          'remaining_slots': max(0, position.slots_available - occupied.get(position.pk, 0))}
+                         for position in co.positions.all()]
             data.append({
                 'id':       co.id,
                 'archived_at': co.archived_at,

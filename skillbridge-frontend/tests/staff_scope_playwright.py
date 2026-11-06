@@ -304,7 +304,7 @@ with sync_playwright() as playwright:
     switch_to_list(page, 'Partner view')
     expect(page.get_by_role('heading', name='Synthetic cross-program partner')).to_be_visible()
     expect(scope(page).get_by_label('Program', exact=True)).to_have_value(str(tourism['program_id']))
-    expect(page.get_by_text('No pinned partners in this view.', exact=True)).to_be_visible()
+    expect(page.get_by_text('No pinned partners in this view.', exact=False)).to_be_visible()
     page.screenshot(path=str(OUT / 'admin-partners-program.png'), animations='disabled')
     print('PASS IC catalog and shared program opening filters preserve scope when switching views')
 

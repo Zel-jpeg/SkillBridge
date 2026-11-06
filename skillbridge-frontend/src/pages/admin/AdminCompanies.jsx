@@ -1,7 +1,5 @@
 import { loadLeaflet, geocodeAddress as lookupAddress } from '../../utils/externalServices'
-import { validPin } from '../../utils/recommendationResults'
 import MapStatus from '../../components/MapStatus'
-import { escapeHtml } from '../../utils/escapeHtml'
 import DataSection from '../../components/DataSection'
 // src/pages/admin/AdminCompanies.jsx
 //
@@ -28,6 +26,7 @@ import { invalidateCache, fetchWithDedup, useApi } from '../../hooks/useApi'
 import Pagination from '../../components/Pagination'
 import CompanyCollectionCard, { CompanyCollectionSkeleton } from '../../components/admin/CompanyCollectionCard'
 import AdminScopeNavigator from '../../components/admin/AdminScopeNavigator'
+import AdminPartnerMap from '../../components/admin/AdminPartnerMap'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { ORGANIZATION_OPTIONS, scopedPartners } from '../../utils/organizationScope'
 import { companyDisclosures } from '../../utils/companyCollection'
@@ -47,33 +46,6 @@ function geocodeAddress(address, options) {
 }
 
 // ── Map icons ─────────────────────────────────────────────────────────────────
-function makeCompanyIcon(L, name) {
-  return L.divIcon({
-    className:   '',
-    iconSize:    [28, 36],
-    iconAnchor:  [14, 36],
-    popupAnchor: [0, -42],
-    html: `
-      <div style="position:relative;z-index:100">
-        <div style="position:absolute;bottom:40px;white-space:nowrap;background:#111827;color:white;
-          font-size:10px;font-weight:700;font-family:system-ui,sans-serif;padding:3px 8px;
-          border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.35);pointer-events:none;
-          transform:translateX(-50%);left:50%;">
-          ${escapeHtml(name)}
-          <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
-            width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
-            border-top:6px solid #111827"></div>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"
-          style="filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));display:block">
-          <path fill="#16a34a" stroke="white" stroke-width="2"
-            d="M14 1C7.4 1 2 6.4 2 13c0 9.5 12 23 12 23S26 22.5 26 13C26 6.4 20.6 1 14 1z"/>
-          <circle fill="white" cx="14" cy="13" r="5"/>
-        </svg>
-      </div>`,
-  })
-}
-
 function makePinIcon(L) {
   return L.divIcon({
     className:   '',
@@ -188,99 +160,8 @@ export function PinMap({ center, pinned, onPin, height = 248 }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// CompaniesMap — overview map showing all partner locations
+// Partner overview is rendered by AdminPartnerMap before program selection.
 // ════════════════════════════════════════════════════════════════════════════
-function CompaniesMap({ companies }) {
-  const elRef  = useRef(null)
-  const mapRef = useRef(null)
-  const mksRef = useRef([])
-  const companiesRef = useRef(companies)
-  const markersStale = useRef(false)
-
-  function buildMarkers(L, map, list) {
-    mksRef.current.forEach(m => m.remove())
-    mksRef.current = []
-    const geo = list.filter(c => validPin(c.lat, c.lng))
-    const markers = geo.map(co =>
-      L.marker([co.lat, co.lng], { icon: makeCompanyIcon(L, co.name) })
-        .addTo(map)
-        .bindPopup(`
-          <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
-            <p style="font-weight:700;font-size:13px;margin:0 0 2px;color:#111827">${escapeHtml(co.name)}</p>
-            <p style="font-size:11px;color:#6b7280;margin:0">${escapeHtml(co.address)}</p>
-            <p style="font-size:11px;font-weight:600;color:#16a34a;margin:5px 0 0">
-              ${co.positions.length} position${co.positions.length !== 1 ? 's' : ''}
-            </p>
-          </div>`)
-    )
-    mksRef.current = markers
-    if (markers.length > 1) {
-      map.fitBounds(L.featureGroup(markers).getBounds().pad(0.28))
-    } else if (markers.length === 1) {
-      map.setView(markers[0].getLatLng(), 13)
-    }
-  }
-
-  const [mapStatus, setMapStatus] = useState('loading')
-  const [mapAttempt, setMapAttempt] = useState(0)
-  function retryMap() { setMapStatus('loading'); setMapAttempt(value => value + 1) }
-
-  useEffect(() => {
-    let alive = true
-    let resizeObserver
-    loadLeaflet().then(L => {
-      if (!alive || !elRef.current || mapRef.current) return
-      const map = L.map(elRef.current).setView([7.3072, 125.6839], 10)
-      mapRef.current = map
-      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-      tiles.on?.('tileerror', () => { if (alive) setMapStatus('tiles') })
-      map.zoomControl.setPosition('bottomright')
-      if (elRef.current.clientWidth) buildMarkers(L, map, companiesRef.current)
-      else markersStale.current = true
-      mapRef.current = map
-      // Keep the same instance while collapsed. Leaflet must measure again
-      // after display:none is removed, and when the responsive width changes.
-      resizeObserver = new ResizeObserver(() => {
-        if (elRef.current?.clientWidth && elRef.current?.clientHeight) {
-          map.invalidateSize({ pan: false })
-          if (markersStale.current) {
-            buildMarkers(L, map, companiesRef.current)
-            markersStale.current = false
-          }
-        }
-      })
-      resizeObserver.observe(elRef.current)
-      setMapStatus('ready')
-    }).catch(() => {
-      if (alive) { mapRef.current?.remove(); mapRef.current = null; setMapStatus('error') }
-    })
-    return () => {
-      alive = false
-      resizeObserver?.disconnect()
-      mapRef.current?.remove()
-      mapRef.current = null
-    }
-  }, [mapAttempt])
-
-  useEffect(() => {
-    companiesRef.current = companies
-    if (!mapRef.current || !window.L) return
-    if (!elRef.current?.clientWidth) { markersStale.current = true; return }
-    buildMarkers(window.L, mapRef.current, companies)
-  }, [companies])
-
-  return (
-    <div className="relative" style={{ isolation: 'isolate' }}>
-      <div ref={elRef} className="h-64 w-full overflow-hidden rounded-xl sm:h-80"
-      style={{ isolation: 'isolate' }} />
-      <MapStatus status={mapStatus} onRetry={retryMap} />
-    </div>
-  )
-}
-
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const TrashIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -299,21 +180,9 @@ const XIcon = ({ size = 14 }) => (
     <path d="M18 6L6 18M6 6l12 12"/>
   </svg>
 )
-const MapIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-    <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
-  </svg>
-)
 const PinIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-  </svg>
-)
-const ChevronDown = ({ open }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-    className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-    <path d="M6 9l6 6 6-6"/>
   </svg>
 )
 const ArrowRight = () => (
@@ -697,7 +566,7 @@ function CompanyModal({ mode = 'add', initialData = null, onClose, onSubmit }) {
 // Main Page
 // ════════════════════════════════════════════════════════════════════════════
 export default function AdminCompanies() {
-  return <AdminScopeNavigator title="OJT Partners & Positions" dropdowns>{(scope, { institute, program }) => <ScopedCompanies scope={scope} canCreate={institute.is_active && program?.is_active} />}</AdminScopeNavigator>
+  return <AdminScopeNavigator title="OJT Partners & Positions" dropdowns overview={scope => <AdminPartnerMap scope={scope} />}>{(scope, { institute, program }) => <ScopedCompanies scope={scope} canCreate={institute.is_active && program?.is_active} />}</AdminScopeNavigator>
 }
 
 function ScopedCompanies({ scope, canCreate }) {
@@ -735,7 +604,6 @@ function ScopedCompanies({ scope, canCreate }) {
       return { ok: true }
     } catch (error) { return { ok: false, message: error.response?.data?.error || 'Could not confirm this change. Refresh the catalog before retrying.' } }
   }
-  const [showMap, setShowMap] = useState(true)
   const [expandedPositions, setExpandedPositions] = useReducer(companyDisclosures, new Set())
   useEffect(() => { setExpandedPositions({ type: 'reconcile', companies }) }, [companies])
 
@@ -752,7 +620,6 @@ function ScopedCompanies({ scope, canCreate }) {
   const activeCompanies = scoped.filter(co => !co.archived_at)
   const positionCount = scoped.reduce((sum, company) => sum + company.positions.length, 0)
   const totalSlots = activeCompanies.reduce((sum, co) => sum + co.positions.filter(p => !p.archived_at).reduce((s, p) => s + p.slots, 0), 0)
-  const pinnedCount = activeCompanies.filter(c => c.lat != null && c.lng != null).length
 
   return (
     <div className="min-w-0">
@@ -851,34 +718,7 @@ function ScopedCompanies({ scope, canCreate }) {
         <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
         <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Choose a program to manage its partners and eligible openings. Original shared IC openings are under Institute of Computing → All IC programs. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
-{/* ── Partner Locations Map ─────────────────────────────────── */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-          <button type="button" onClick={() => setShowMap(value => !value)} aria-expanded={showMap} aria-controls="partner-locations-map"
-            className="w-full flex cursor-pointer items-center justify-between gap-3 px-5 py-4 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-green-600 focus-visible:outline-offset-[-2px]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center text-green-600 dark:text-green-400">
-                <MapIcon />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Partner Locations</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {pinnedCount} of {activeCompanies.length} active {activeCompanies.length === 1 ? 'partner' : 'partners'} pinned
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-green-800 dark:text-green-300">
-              <span>{showMap ? 'Collapse' : 'Expand'}</span><span aria-hidden="true"><ChevronDown open={showMap} /></span>
-            </div>
-          </button>
-
-          <div id="partner-locations-map" hidden={!showMap} style={{ isolation: 'isolate' }}>
-            {pinnedCount > 0
-              ? <div className="px-4 pb-4"><CompaniesMap companies={activeCompanies.map(c => ({ ...c, positions: c.positions.filter(p => !p.archived_at) }))} /><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select a partner marker to view its address and position count.</p></div>
-              : <p className="px-5 pb-4 text-xs text-gray-500 dark:text-gray-400">No pinned partners in this view.</p>}
-          </div>
-        </div>
-
-        {/* ── Company cards grid ────────────────────────────────────── */}
+{/* ── Company cards grid ────────────────────────────────────── */}
         {displayed.length === 0 && (
           <div className="text-center py-20 text-gray-400 dark:text-gray-600 text-sm">
             {companies.length === 0 ? 'No partners yet — click "Add Partner" to get started.' : 'No partners match these filters.'}

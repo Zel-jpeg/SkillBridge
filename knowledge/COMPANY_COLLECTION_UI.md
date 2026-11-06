@@ -1,5 +1,11 @@
 # Admin Companies and Positions presentation
 
+The [admin dashboard, map and reports plan](ADMIN_DASHBOARD_MAP_REPORTS_PROPOSAL.md)
+updates the partner map: it appears before program selection, strictly filters
+pins by institute/program, shows institute colors/text and shared capacity, and
+groups overlapping saved locations. The management collection still requires a
+valid institute/program choice. This supersedes the older map placement below.
+
 31 October position-editor update: the Add/Edit Position dialog now uses the
 approved responsive layout with one searchable, filtered skill list that grows
 or shrinks with the catalog. See [position editor layout](POSITION_EDITOR_LAYOUT.md)
