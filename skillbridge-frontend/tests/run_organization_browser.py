@@ -105,6 +105,7 @@ try:
             ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),
             ('--school-reports', 'admin_scoped_reports_playwright.py'),
+            ('--sidebar-accordion', 'sidebar_accordion_playwright.py'),
             ('--dashboard-highlights', 'dashboard_highlights_playwright.py'),
             ('--dashboard-first', 'dashboard_first_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),

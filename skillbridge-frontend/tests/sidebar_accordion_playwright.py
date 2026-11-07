@@ -1,0 +1,58 @@
+"""One open navigation group on desktop and mobile, using synthetic staff sessions."""
+from playwright.sync_api import expect, sync_playwright
+from organization_playwright import BASE, OUT, errors, session
+
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(channel='chrome', headless=True)
+    for role in ('admin', 'instructor'):
+        context, page = session(browser, role)
+        page.goto(BASE + f'/{role}/assessments', wait_until='networkidle')
+        nav = page.locator('#sb-desktop-navigation')
+        learning = nav.get_by_role('button', name='Learning & assessment', exact=True)
+        ojt = nav.get_by_role('button', name='OJT', exact=True)
+        expect(learning).to_have_attribute('aria-expanded', 'true')
+        ojt.press('Enter')
+        expect(learning).to_have_attribute('aria-expanded', 'false')
+        expect(ojt).to_have_attribute('aria-expanded', 'true')
+        expect(nav.locator('button[aria-expanded="true"]')).to_have_count(1)
+        if role == 'admin':
+            people = nav.get_by_role('button', name='People & programs', exact=True)
+            people.press('Space')
+            expect(ojt).to_have_attribute('aria-expanded', 'false')
+            expect(people).to_have_attribute('aria-expanded', 'true')
+        learning.click()
+        expect(nav.locator('button[aria-expanded="true"]')).to_have_count(1)
+        learning.click()
+        expect(nav.locator('button[aria-expanded="true"]')).to_have_count(0)
+        ojt.click()
+        nav.get_by_role('link', name='OJT Partners', exact=True).click()
+        expect(ojt).to_have_attribute('aria-expanded', 'true')
+        expect(nav.locator('a[aria-current="page"]')).to_have_attribute('href', f'/{role}/companies')
+        page.get_by_role('button', name='Collapse sidebar', exact=True).click()
+        expect(nav.get_by_role('button', name='OJT', exact=True)).to_have_count(0)
+        expect(nav.get_by_role('link', name='OJT Partners', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Expand sidebar', exact=True).click()
+        expect(nav.locator('button[aria-expanded="true"]')).to_have_count(1)
+        page.screenshot(path=str(OUT / f'{role}-accordion-desktop.png'))
+        print(f'PASS {role}: keyboard accordion, collapse-all, active route, and icon rail')
+
+        page.set_viewport_size({'width': 390, 'height': 844})
+        page.get_by_role('button', name='Open navigation menu', exact=True).click()
+        mobile = page.locator('#sb-mobile-navigation')
+        expect(mobile.get_by_role('button', name='OJT', exact=True)).to_have_attribute('aria-expanded', 'true')
+        mobile.get_by_role('button', name='Learning & assessment', exact=True).press('Space')
+        expect(mobile.get_by_role('button', name='OJT', exact=True)).to_have_attribute('aria-expanded', 'false')
+        expect(mobile.locator('button[aria-expanded="true"]')).to_have_count(1)
+        page.screenshot(path=str(OUT / f'{role}-accordion-phone.png'))
+        page.keyboard.press('Escape')
+        expect(page.get_by_role('button', name='Open navigation menu', exact=True)).to_be_focused()
+        context.close()
+        print(f'PASS {role}: phone accordion and drawer Escape/focus restoration')
+    context, page = session(browser, 'student')
+    page.goto(BASE + '/student/dashboard', wait_until='networkidle')
+    expect(page.locator('#sb-desktop-navigation .sb-nav-group-toggle')).to_have_count(0)
+    context.close()
+    browser.close()
+    assert not errors, errors
+    print('PASS student flat navigation retained; zero browser page errors')

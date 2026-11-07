@@ -19,29 +19,30 @@ function Brand({ role, compact = false }) {
 function Navigation({ role, collapsed = false, onNavigate, id }) {
   const { pathname } = useLocation()
   const active = activeNavigationPath(role, pathname)
+  const activeGroup = ROLE_NAVIGATION_SECTIONS[role].find(section => section.label && section.items.some(item => item.path === active))?.id ?? null
+  const [openGroup, setOpenGroup] = useState(activeGroup)
+  const [previousPath, setPreviousPath] = useState(pathname)
+  if (previousPath !== pathname) {
+    setPreviousPath(pathname)
+    setOpenGroup(activeGroup)
+  }
   return <nav id={id} aria-label={`${ROLE_METADATA[role].label} navigation`} className={`sb-navigation ${collapsed ? 'is-collapsed' : ''}`}>
     {ROLE_NAVIGATION_SECTIONS[role].map(section => {
       const containsActive = section.items.some(item => item.path === active)
       const links = section.items.map(item => <NavigationItem key={item.path} item={item} active={active === item.path} collapsed={collapsed} onNavigate={onNavigate} tooltipId={`${id}-${item.path.replaceAll('/', '-')}-tooltip`} />)
       return section.label
-        ? <NavigationGroup key={section.id} section={section} active={containsActive} collapsed={collapsed}>{links}</NavigationGroup>
+        ? <NavigationGroup key={section.id} section={section} active={containsActive} collapsed={collapsed} open={openGroup === section.id} onToggle={() => setOpenGroup(current => current === section.id ? null : section.id)}>{links}</NavigationGroup>
         : <div key={section.id} className="sb-nav-links">{links}</div>
     })}
   </nav>
 }
 
-function NavigationGroup({ section, active, collapsed, children }) {
+function NavigationGroup({ section, active, collapsed, children, open, onToggle }) {
   const panel = useId()
-  const [open, setOpen] = useState(active)
-  const [previousActive, setPreviousActive] = useState(active)
-  if (previousActive !== active) {
-    setPreviousActive(active)
-    setOpen(active)
-  }
   const Icon = NAV_ICONS[section.icon]
   if (collapsed) return <div className="sb-nav-rail-group sb-nav-links" role="group" aria-label={section.label}>{children}</div>
   return <div className="sb-nav-group">
-    <button type="button" className={`sb-nav-group-toggle ${active ? 'contains-current' : ''}`} aria-expanded={open} aria-controls={panel} onClick={() => setOpen(current => !current)}>
+    <button type="button" className={`sb-nav-group-toggle ${active ? 'contains-current' : ''}`} aria-expanded={open} aria-controls={panel} onClick={onToggle}>
       <span aria-hidden="true" className="sb-nav-icon"><Icon size={20} /></span>
       <span>{section.label}</span>
       <span aria-hidden="true" className="sb-nav-group-chevron"><ChevronDown size={15} open={open} /></span>

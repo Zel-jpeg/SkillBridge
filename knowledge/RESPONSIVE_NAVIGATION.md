@@ -3,6 +3,11 @@
 The staff navigation now groups related destinations on desktop and in the
 mobile drawer. The desktop icon rail retains the same links in grouped sets.
 The group containing the current page opens automatically on navigation.
+Only one group is open at a time. Opening another group closes the previous one;
+clicking the open group closes it. This applies to the expanded desktop sidebar
+and phone/tablet drawer. The icon rail retains all destinations. A page-path
+change opens its containing group; changing only scope query parameters preserves
+the user's current group choice.
 Assessment creation is linked from Assessments. See the
 [staff workspace scope and navigation plan](STAFF_WORKSPACE_SCOPE_AND_NAVIGATION.md)
 for the current verification record.
@@ -339,3 +344,11 @@ No backend code, API contract, scoring, competency, NLP, schema, migration,
 Supabase records, Railway deployment or Vercel deployment was changed. There was
 no deployment. Existing tracked/untracked work outside the requested frontend
 changes was preserved.
+
+## Accordion follow-up · 7 November 2026
+
+Implemented on `codex/sidebar-accordion`. Frontend lint/build passed. Five
+synthetic browser groups passed in `work/organization-browser-6wdd9483/`: admin
+and instructor desktop/phone accordion, keyboard activation, current-route
+opening, icon rail, drawer Escape/focus restoration and unchanged student flat
+navigation. No database change or GitHub push.
