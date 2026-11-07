@@ -7,7 +7,9 @@ is described below. Staging acceptance and the private WebSocket pilot remain
 pending. The plan covers browser
 performance, API and database work, assessment and placement operations, external
 providers, hosting and recovery. The screenshot shows the Supabase Realtime
-Inspector for the production project. Use a separate project for the pilot.
+Inspector for the production project. Prefer a separate project for full load
+and failure testing. A bounded, synthetic Broadcast test can use the existing
+project under the current-project pilot limits below.
 
 Updated 7 November 2026 to include UI motion from the user's animation reference.
 The motion work below is planned. Its durations and effect choices are proposed
@@ -245,8 +247,10 @@ evidence is under `work/branch-review-postgres-dcjdy09u/`. The scoped report
 browser rerun passed under `work/organization-browser-h8lq8qv3/`.
 
 The account review found no isolated Supabase Realtime staging project or branch
-for SkillBridge. The pilot requires an isolated environment to verify private
-channel authorization and reconnect behavior before a rollout.
+for SkillBridge. A separate project is not a Supabase technical requirement.
+It provides stronger isolation for load/failure testing. Initial connectivity
+and narrowly scoped authorization checks can use the existing project under
+the current-project pilot limits below; they do not establish rollout readiness.
 
 ### Second local implementation: finalized results and shared motion
 
@@ -457,7 +461,32 @@ into the existing cache invalidation path. Django enforces authorization on ever
 resulting GET. [Existing event publication](../skillbridge-backend/api/change_events.py)
 · [Broadcast from the database](https://supabase.com/docs/guides/realtime/broadcast#broadcasting-from-the-database)
 
-**Identity and privacy.** Keep Django SimpleJWT for API access. Verify in staging
+### Controlled pilot in the existing project
+
+The user asked whether the current Supabase project can be used safely. Start
+with a low-volume private test channel, synthetic messages and one or two test
+clients. Inspect current policies, roles, token trust and Realtime settings first.
+Use a distinct test topic and a topic-specific receive policy. Check the effective
+access from all applicable policies; a narrow new policy does not override an
+existing broad permissive policy. Avoid changing project-wide access settings or
+existing application policies for a connectivity test.
+
+Publish dummy messages from a server-side REST Broadcast call. This initial test
+needs no trigger on student, assessment, score or placement tables and no real
+record changes. Keep privileged credentials on the server. A successful test in
+the Inspector's `postgres` role proves delivery, not application-user isolation.
+Verify the Django-issued limited token separately before connecting an application
+test account. Keep the feature disabled for ordinary sessions and retain SSE.
+After connectivity and access checks pass, integrate one synthetic cohort's
+post-commit invalidation and verify reconnect and fallback. This shares the live
+project's resources and configuration; it has less isolation than separate staging.
+Run destructive/fault-injection and heavy load scenarios in a disposable or
+separate staging environment. No live Realtime settings or policies were changed
+when this alternative was documented.
+[Server Broadcast](https://supabase.com/docs/guides/realtime/broadcast#broadcast-using-the-rest-api)
+· [Channel authorization](https://supabase.com/docs/guides/realtime/authorization)
+
+**Identity and privacy.** Keep Django SimpleJWT for API access. Verify in the pilot
 that Django can exchange a current eligible session for a short-lived JWT signed
 with a dedicated Supabase-trusted signing key. Give it a server-assigned opaque
 recipient topic. Configure private channels and a receive-only RLS policy that
@@ -607,7 +636,13 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
 
 - [x] Review private Broadcast, Postgres Changes, Django Channels and the current
   SSE path. Select private Supabase Broadcast for the staging pilot.
-- [ ] Provide an isolated Supabase staging project and configure a private,
+- [ ] Inspect current project policies, roles, token trust, settings and resource
+  headroom before a controlled same-project test. Prepare the exact additive
+  test-topic policy and cleanup steps without broadening application access.
+- [ ] Verify private Broadcast delivery with dummy messages and one or two test
+  clients in the existing project, or use isolated staging. Keep application-table
+  publications and real records out of this first connectivity check.
+- [ ] In the chosen pilot environment, configure a private,
   receive-only channel for one synthetic cohort. Verify short-lived Django
   session exchange and exact recipient-topic access.
 - [ ] Publish a small invalidation after a successful student submission commits.
