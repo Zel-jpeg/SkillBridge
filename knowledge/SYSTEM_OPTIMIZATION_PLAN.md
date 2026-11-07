@@ -2,8 +2,9 @@
 
 Prepared 6 November 2026 from the current `main` checkout. The source review and
 frontend build baseline are complete. The current review adds a synthetic
-PostgreSQL read profile and production log samples. Staging acceptance,
-application optimization and the private WebSocket pilot are pending. The plan covers browser
+PostgreSQL read profile and production log samples. The first local optimization
+is described below. Staging acceptance and the private WebSocket pilot remain
+pending. The plan covers browser
 performance, API and database work, assessment and placement operations, external
 providers, hosting and recovery. The screenshot shows the Supabase Realtime
 Inspector for the production project. Use a separate project for the pilot.
@@ -11,6 +12,11 @@ Inspector for the production project. Use a separate project for the pilot.
 Updated 7 November 2026 to include UI motion from the user's animation reference.
 The motion work below is planned. Its durations and effect choices are proposed
 starting values to verify against current components and measured performance.
+
+Use the [implementation checklist](#implementation-checklist) to track work in
+order. The first analytics optimization and notification animation have passed
+local checks. Hosted acceptance, the remaining animations and the private
+Supabase WebSocket pilot have separate completion checks.
 
 ## Current performance review · 7 November 2026
 
@@ -119,7 +125,7 @@ private Storage objects or publish client messages. Match SSE freshness on
 reconnect by revalidating affected reads. [Realtime authorization](https://supabase.com/docs/guides/realtime/authorization#updating-rls-policies)
 · [Supabase JWT trust](https://supabase.com/docs/guides/auth/jwts#using-custom-or-third-party-jwts)
 
-## What the current system does
+## Baseline before the first optimization
 
 | Area | Finding | What to verify next |
 | --- | --- | --- |
@@ -200,6 +206,114 @@ increasing concurrency. [Hosted test evidence](HOSTED_TEST_RESULTS_2026_10_30.md
    pass. Track event-to-refresh lag, connections, database workload, mutation time,
    and fallback activations. Use the feature switch to return the cohort to SSE if
    the pilot regresses those measures.
+
+### First implementation on the local checkout
+
+Staff dashboards, sign-in preparation and the bell use the overview variant of
+the analytics endpoint. Reports and exports use the full response. Both variants
+apply the existing authorized cohort selection, completion, ranking visibility,
+placement capacity, and reminder rules. The overview skips report history and
+chart data. It includes saved skill highlights for a selected program. Shared
+cache invalidation covers both variants. A staggered release fallback retries a
+single full GET with the same scope when the older backend rejects the new filter.
+
+Analytics loads assessment, response, score and profile evidence across the
+selected cohorts and partitions it by each student's selected batch before
+applying the existing management rules. Catalog fingerprints are reused within
+the request when batches share a ranking scope. The bell's first motion change
+is a short CSS entrance and press feedback. The menu and keyboard focus are
+driven by existing controls and support reduced motion.
+
+The same synthetic 200-student, 20-batch PostgreSQL fixture returned these results.
+Use statement counts and raw JSON sizes to compare the runs. Local elapsed time
+varied with other checks on the machine.
+
+| School-wide staff read | SQL statements | Raw JSON |
+| --- | ---: | ---: |
+| Previous full analytics | 140 | 320.0 kB |
+| Current full analytics | 24 | 320.0 kB |
+| Current dashboard and notification overview | 20 | 47.8 kB |
+
+The full report used 24 statements at both four and 20 populated batches in
+this fixture. Evidence is under `work/optimization-review-postgres-tntg4nk2/`.
+Local regression verification passed 787 Django tests on PostgreSQL, 306
+frontend tests, lint, the production build and Django's migration drift check.
+Browser checks passed for the shared dashboard request, role-specific sign-in
+and old API fallback, notification reads and reduced motion, scoped report
+CSV/PDF exports, and the three-role assessment-to-placement workflow. PostgreSQL
+evidence is under `work/branch-review-postgres-dcjdy09u/`. The scoped report
+browser rerun passed under `work/organization-browser-h8lq8qv3/`.
+
+The account review found no isolated Supabase Realtime staging project or branch
+for SkillBridge. The pilot requires an isolated environment to verify private
+channel authorization and reconnect behavior before a rollout.
+
+### Second local implementation: finalized results and shared motion
+
+The next synthetic PostgreSQL profile separates locked, finalized, stale and
+missing-profile recovery reads for legacy and program-scoped batches. Staff
+requests explicitly select the same batch as the student. Finalized student
+results fetched position requirements once per recommendation. They now prefetch
+the requirements and categories in one query before serializing the same rows.
+
+| Student combined-result state | Previous SQL | Current SQL |
+| --- | ---: | ---: |
+| Legacy batch, 12 current recommendations | 35 | 24 |
+| Program batch, 12 current recommendations | 37 | 26 |
+| Legacy missing-profile recovery, first request | 78 | 67 |
+| Program missing-profile recovery, first request | 77 | 66 |
+
+The one-recommendation reads remain at 24 and 26 statements. Each stable state
+was sampled ten times; recovery has one first request followed by ten warm reads.
+Instructor reads remained at 19 statements for finalized legacy results and 20
+for finalized program results at both recommendation sizes. Locked/stale result
+visibility and the measured JSON sizes were unchanged. Stable reads did no
+scoring. NLP preprocessing was deterministic test behavior; these are query-work
+measurements, not hosted latency or cold model benchmarks. Baseline evidence is
+`work/optimization-review-postgres-0d9_u3qo/results-profile.json`; the matching
+optimized run is `work/optimization-review-postgres-fkq_bcjn/results-profile.json`.
+The regression first failed at 24 versus 35 statements, then passed with exact
+recommendation payload/order parity. The 43-test PostgreSQL combined, freshness,
+scoped-ranking and management regression passed under
+`work/branch-review-postgres-k4runf1n/`.
+
+Shared CSS motion tokens now drive notification entrances/press feedback, toast
+entrances and native dialog/session-expiry card entrances. Native dialogs use
+160 ms opacity and 4 px translation, with immediate close and existing focus and
+scroll behavior. The session-expiry card's inline animation bypassed reduced
+motion; its entrance now runs only when the user has no reduced-motion preference.
+Toast dismissal still uses its existing independent Web Animation clock.
+The source inventory is recorded under `work/motion-inventory-20261107.txt`.
+No motion dependency was added. Remaining effects and mobile frame-performance
+verification stay on the checklist.
+
+The inventory found existing shell width/margin transitions, native select and
+collection color/border transitions, skeleton/loading pulses, map pin feedback,
+toast timing, and an inline session-expiry entrance. This pass shares the selected
+surface tokens; remaining transitions and specialized map/loading motion keep
+their own review items. No row staggering or animation-driven unmount was added.
+
+The 10-group assignment browser run verified rapid nested reopen, Escape, focus
+return, retained scroll lock, save retry and desktop/phone light/dark layouts.
+The final rebuilt rerun passed under `work/organization-browser-tzuwgyis/`.
+Toast checks passed nine
+groups, including nested modal/fullscreen behavior, reduced motion, touch and
+countdown continuity. Notification checks passed for all three roles. The current
+20-group dashboard-first suite passed, including standard/reduced-motion session
+expiry, slow/failed sign-in, account changes, preparation cancellation and the
+older-backend overview fallback. Its output is in `work/dashboard-motion-check.txt`.
+Reports passed nine development browser groups under
+`work/organization-browser-duxm2fwk/`. Frontend lint, build and 306 Node tests
+passed. This work was verified on the local working tree based on `c3745f9`;
+hosted runtime and mobile frame timings are still pending.
+
+An exploratory run of the older `navigation_states_playwright.py` stopped at its
+obsolete always-visible `Assessments` sidebar-link expectation after the existing
+grouped-navigation redesign. It did not reach its later lifecycle checks. The
+failure is retained in `work/navigation-motion-check.txt`; this suite needs its
+navigation and dashboard fixtures updated before it can count as full coverage.
+Use the current dashboard-first, scoped Reports and actual API dialog suites for
+the checks listed here.
 
 ## System backlog
 
@@ -374,33 +488,151 @@ Supabase documents Free defaults of 200 concurrent connections, 100 messages/s a
 actual project limits before expanding. [Realtime limits](https://supabase.com/docs/guides/realtime/limits)
 · [Production browser policy](PRODUCTION_BROWSER_POLICY.md)
 
-## Checkpoint and next step
+## Implementation checklist
 
-- [x] Integrate the pending staff UI, program assignment and planning changes in
-  local `main` at `4d08501`. Frontend lint/build and 306 Node tests passed.
-  All 785 Django API tests passed on isolated PostgreSQL. Django system and
-  migration drift checks passed. Nine browser scenarios passed after updating
-  two fixtures to use the current admin institute/program navigation. They cover
-  navigation, collection layouts, assignments, enrollment, profile recovery,
-  school dashboards/reports, shared records and a three-role assessment-to-placement
-  workflow. Browser checks used synthetic data and included production bundles.
-  Backend evidence is under `work/branch-review-postgres-qq4l4102/`. The corrected
-  browser evidence is under `work/organization-browser-ciewekkr/`,
-  `work/organization-browser-6_y5mi8x/` and `work/organization-browser-3_joso7f/`.
-- [x] Review current loading, analytics and freshness paths, prior local/hosted
-  evidence and Supabase Realtime requirements. Establish frontend bundle sizes.
-  Review revision `e485935`. The local production build passed with
-  `npm.cmd run build -- --outDir ../work/system-optimization-build-20261106`.
-- [x] Profile the current revision's main reads for all three roles on synthetic
-  PostgreSQL and compare with aggregate production telemetry on the older release.
-- [ ] Capture a matched staging browser baseline, including
-  `/api/management/analytics/` on a staff dashboard and on an unrelated staff
-  route with the bell closed. Reproduce the hosted long tail and measure the
-  effect of the API-to-database region pairing.
-- [ ] Implement the measured first-load improvements, rerun the benchmark and
-  record which remaining workstreams have evidence for a change.
-- [ ] Implement and verify UI motion in component groups against the animation
-  plan, including reduced motion, interrupted transitions and assessment safety.
-- [ ] Run the private WebSocket pilot, verify security and recovery, and document
-  the go/no-go decision with measured capacity and latency.
-- [ ] Verify staged and live read-only smoke checks for each authorized release.
+Check an item when its implementation and listed verification are complete.
+Record the tested revision, environment and evidence before moving to the next
+release. Use the [benchmark and release gates](#benchmark-and-release-gates)
+for comparisons. Local, staging and production each have their own checks.
+
+### 0. Stabilize Reports & Analytics
+
+- [ ] Diagnose the local `/admin/reports` crash that reads `useMemo` from `null`
+  if it recurs. Capture the first browser console error and its stack, plus the
+  Vite terminal output. The isolated checks below did not reproduce it.
+- [x] Preserve the per-port Vite development-cache fix at `c3745f9`. Verify
+  distinct cache paths for development ports 5173 and 5197 and the ordinary
+  production build cache. This prevents parallel development servers from
+  replacing each other's optimized React chunks. The original browser session
+  still needs a retry before closing its incident.
+- [x] Verify local admin and instructor report navigation, table sorting and
+  reload in development using a fresh Vite dependency cache and a copy of the
+  existing cache. Evidence is under `work/organization-browser-1amymk23/` and
+  `work/organization-browser-myd6xtio/`.
+- [x] Verify scoped reports, charts and CSV/PDF exports with synthetic data in
+  the development server and production build. The report suites passed under
+  `work/organization-browser-w6elgmss/` and `work/organization-browser-h8lq8qv3/`.
+- [x] Repeat the nine scoped report browser groups in development using the
+  actual per-port cache configuration, including admin/instructor access,
+  charts, exports and responsive layouts. Evidence:
+  `work/organization-browser-duxm2fwk/`.
+
+For a local retry, stop the Vite server, run `npm run dev -- --force` from
+`skillbridge-frontend/`, then reopen Reports & Analytics. This asks Vite to
+rebuild its optimized development dependencies. [Vite dependency caching](https://vite.dev/guide/dep-pre-bundling.html#caching)
+
+### 1. Establish comparable baselines
+
+- [x] Review the three role entry points, query cache, analytics, event stream,
+  previous hosted failures and Supabase Realtime options.
+- [x] Build the frontend and record bundle sizes. Profile current read paths for
+  all three roles on synthetic PostgreSQL. Record existing deployed proxy
+  timings separately from the current local revision.
+- [ ] Prepare an isolated staging environment with synthetic records and a
+  pinned source revision for frontend, backend and database.
+- [ ] Capture cold and warm sign-in, first actionable content, navigation and
+  background request volume on desktop and a mobile network profile for all
+  three roles. Include a staff page with the notification bell closed.
+- [ ] Refresh the older navigation-state suite's grouped-sidebar and current
+  dashboard fixtures, then rerun its lifecycle checks. Its stale locator failure
+  is recorded above and is not a passing regression result.
+- [ ] Reproduce the historical slow reads and 502s with bounded staging load.
+  Measure request queueing, Django time, database round trips and rendering.
+- [ ] Compare the same fixture and workload with the API in California and an
+  available Asia-Pacific region. Record resource use, connection churn and cost
+  before deciding on a region or pooler change.
+
+### 2. Reduce frontend, API and database work
+
+- [x] Share a compact staff dashboard and notification overview. Verify counts,
+  scope, email reminders, invalidation, sign-in and compatibility with an older
+  backend. Preserve full data for reports and exports.
+- [x] Batch staff analytics evidence reads across authorized cohorts and verify
+  response parity and query counts on the 200-student fixture. See the
+  [local implementation and measurements](#first-implementation-on-the-local-checkout).
+- [ ] Verify the staff overview improvement in staging with the same roles,
+  datasets and network profile as the baseline. Record p50/p95, bytes and SQL
+  counts for dashboard, closed bell and full report reads.
+- [x] Profile instructor dashboard recommendations and student combined results
+  separately for locked, finalized and legacy-recovery cases. Implement the
+  smallest measured change and verify that visibility and ranking match. The
+  [second local implementation](#second-local-implementation-finalized-results-and-shared-motion)
+  also covers stale results and both legacy/program scopes.
+- [ ] Profile remaining hot reads across rosters, assessment and retake lists,
+  partner catalogs, placement history and reports. Bound list payloads and load
+  detail when opened where the measurements justify it.
+- [ ] Profile scripts, charts, maps, images and exports on a mobile network.
+  Defer secondary work where it competes with usable content. Verify that
+  navigation cancels unnecessary work and cached data reconciles correctly.
+- [ ] Inspect slow SQL plans, lock waits, indexes and pooler behavior in staging.
+  Verify any query, caching or index change against role scope and representative
+  sizes before rollout.
+
+### 3. Verify writes, jobs and external providers
+
+- [ ] Profile start, autosave, submit, stop and retake under controlled concurrent
+  load. Verify timers, saved answers, one finalization, scores and result unlock.
+- [ ] Measure recommendation recalculation and cold model startup separately.
+  Verify stale-state behavior, ranking parity and safe retries before changing
+  worker settings or moving a long-running operation to a job.
+- [ ] Profile placement draft reconciliation, approval races and closeout exports.
+  Verify capacity limits, explicit approvals, history and saved snapshots.
+- [ ] Measure provider delays and email queue age. Verify slow or failed login,
+  maps, uploads and email delivery with synthetic inputs, including retries and
+  recovery after a worker restart.
+
+### 4. Add UI animation in verified groups
+
+- [x] Add the notification bell entrance and press feedback. Verify reduced
+  motion, focus return, read state and responsive behavior for all three roles.
+- [x] Inventory existing motion and introduce shared duration, easing, distance
+  and press tokens for notification, toast, native dialog and session-expiry
+  surfaces. Remove the session card's inline reduced-motion exception.
+- [x] Verify native dialog entrances with rapid nested reopen, Escape, focus
+  return, scroll locking, save retry and desktop/phone themes. Verify standard
+  and reduced-motion session expiry in the current sign-in suite; retain toast
+  timer/fullscreen and three-role notification checks. See the second local pass.
+- [ ] Extend shared tokens to remaining buttons/menus where appropriate and
+  verify their reduced-motion behavior, including portaled content.
+- [ ] Apply the [animation guidance](#ui-animation-plan) to selected dialogs,
+  popovers, toasts and tabs. Verify rapid reopen, nested dialogs, Escape,
+  cancellation, loading, errors, focus and keyboard/touch controls.
+- [ ] Trial bounded list motion where it helps. Check large collections and live
+  refreshes for scroll, selection, drafts, pagination and stable interaction.
+- [ ] Verify timed assessments with standard and reduced motion. Compare browser
+  traces for frame pacing, layout shift and interaction delay on mobile before
+  expanding effects. Record the reference ideas that are deferred.
+
+### 5. Pilot WebSockets through Supabase Realtime
+
+- [x] Review private Broadcast, Postgres Changes, Django Channels and the current
+  SSE path. Select private Supabase Broadcast for the staging pilot.
+- [ ] Provide an isolated Supabase staging project and configure a private,
+  receive-only channel for one synthetic cohort. Verify short-lived Django
+  session exchange and exact recipient-topic access.
+- [ ] Publish a small invalidation after a successful student submission commits.
+  Verify the assigned instructor's open roster refreshes through the existing
+  authorized Django GET. Exercise rollback and publication failure.
+- [ ] Verify anonymous, expired, revoked and cross-account denial. Confirm the
+  pilot token cannot read application tables or private Storage, or publish
+  client messages.
+- [ ] Verify reconnect, missed events, duplicate events, sleeping tabs, quota
+  limits and SSE or refresh fallback. Keep one transport per visible pilot tab.
+- [ ] Compare the pilot with SSE under matched load. Aim for p95 under two seconds
+  from commit to visible update and at least 90% fewer idle event-log reads, with
+  stable page loads and writes. Record the go/no-go decision and rollback switch.
+
+### 6. Release and monitor each approved phase
+
+- [x] Verify the first local implementation with the PostgreSQL and frontend
+  suites, lint, build and browser workflows. Retain the earlier integration
+  baseline at `4d08501` and its evidence under `work/branch-review-postgres-qq4l4102/`.
+- [ ] Run staging role, accessibility and regression checks after each change
+  group. Verify migrations if the group changes the schema.
+- [ ] Confirm deployment compatibility, rollback and an isolated restore.
+  Release the read changes and WebSocket pilot independently so each can be
+  measured and reversed.
+- [ ] For each authorized release, record the deployed revision and verify
+  health, role-scoped navigation, assessment/results and placement flows.
+- [ ] Compare production metrics with the baseline and close each workstream
+  when its acceptance gates pass. Record any intentionally deferred changes.

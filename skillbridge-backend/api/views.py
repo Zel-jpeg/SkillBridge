@@ -312,12 +312,29 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
     review_required = set(BatchEnrollment.objects.filter(student_id__in=ids, batch=batch,
                          profile_review_required=True).values_list('student_id', flat=True))
     assessments = list(Assessment.objects.filter(batch=batch).order_by('display_order', 'created_at', 'id'))
-    required_ids = {a.id for a in assessments if a.publication_status == 'published' and a.is_required and a.include_in_competency}
-    assessment_by_id = {a.id: a for a in assessments}
-    response_query = StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id)
+    assessment_ids = [assessment.id for assessment in assessments]
+    response_query = StudentResponse.objects.filter(student_id__in=ids, assessment_id__in=assessment_ids)
+    score_query = SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_ids)
+    profile_query = CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)
     if summary_only:
         response_query = response_query.only('student_id', 'assessment_id', 'status', 'submitted_at', 'is_flagged', 'retake_allowed')
-    responses = list(response_query)
+        score_query = compatible_scores(score_query, batch).only('student_id', 'assessment_id', 'raw_score', 'max_score')
+        profile_query = profile_query.only('student_id', 'is_finalized', 'included_assessment_ids', 'ranking_input_fingerprint')
+    else:
+        score_query = score_query.select_related('skill_category')
+    combined_scores = [] if summary_only else (CombinedCategoryScore.objects.filter(student_id__in=ids, batch=batch)
+        .select_related('skill_category').order_by('skill_category__name', 'skill_category_id'))
+    return assemble_management_states(students, batch, assessments, list(response_query), score_query,
+        profile_query, combined_scores, review_required, include_history=include_history,
+        summary_only=summary_only, include_inactive_history=include_inactive_history, catalog_cache=catalog_cache)
+
+
+def assemble_management_states(students, batch, assessments, responses, scores, profiles, category_scores,
+                               review_required, *, include_history=False, summary_only=False,
+                               include_inactive_history=False, catalog_cache=None, analytics=False):
+    """Apply the same completion and visibility rules to preloaded evidence."""
+    required_ids = {a.id for a in assessments if a.publication_status == 'published' and a.is_required and a.include_in_competency}
+    assessment_by_id = {a.id: a for a in assessments}
     response_map = {(r.student_id, r.assessment_id): r for r in responses}
     responses_by_student = {}
     for response in responses:
@@ -330,14 +347,10 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
             'violation_count': h.violation_count, 'stopped_reason': h.stopped_reason,
             'category_scores': h.category_scores, 'answers': h.answers,
         })
-    score_query = SkillScore.objects.filter(student_id__in=ids, assessment_id__in=assessment_by_id)
-    if summary_only:
-        score_query = compatible_scores(score_query, batch)
-    scores = list(score_query.only('student_id', 'assessment_id', 'raw_score', 'max_score') if summary_only else score_query.select_related('skill_category'))
     score_map = {}
     valid_score_ids = set()
     for score in scores:
-        if not summary_only:
+        if not summary_only and not analytics:
             score_map.setdefault((score.student_id, score.assessment_id), []).append({
                 'category_id': score.skill_category_id, 'category': score.skill_category.name,
                 'raw_score': score.raw_score, 'max_score': score.max_score, 'percentage': score.percentage,
@@ -349,12 +362,9 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
             ):
                 continue
             valid_score_ids.add((score.student_id, score.assessment_id))
-    profile_query = CombinedCompetencyProfile.objects.filter(student_id__in=ids, batch=batch)
-    if summary_only:
-        profile_query = profile_query.only('student_id', 'is_finalized', 'included_assessment_ids', 'ranking_input_fingerprint')
-    profiles = {p.student_id: p for p in profile_query}
+    profiles = {p.student_id: p for p in profiles}
     combined_scores = {}
-    for score in (CombinedCategoryScore.objects.filter(student_id__in=ids, batch=batch).select_related('skill_category').order_by('skill_category__name', 'skill_category_id') if not summary_only else []):
+    for score in category_scores:
         combined_scores.setdefault(score.student_id, []).append({
             'category_id': score.skill_category_id, 'category': score.skill_category.name,
             'raw_score': score.raw_score, 'max_score': score.max_score,
@@ -396,29 +406,34 @@ def bulk_management_states(students, batch, include_history=True, *, summary_onl
         individual = []
         for assessment in assessments:
             response = response_map.get((student.id, assessment.id))
-            individual.append({
-                'id': assessment.id, 'title': assessment.title,
-                'batch_id': assessment.batch_id,
-                'is_archived': assessment.is_archived,
-                'publication_status': assessment.publication_status,
-                'is_required': assessment.is_required,
-                'include_in_competency': assessment.include_in_competency,
+            attempt = {
+                'id': assessment.id,
                 'attempt_status': response.status if response else None,
-                'response_id': response.id if response else None,
-                'started_at': response.started_at if response else None,
-                'attempt_started_at': response.started_at.isoformat() if response and response.started_at else None,
-                'attempt_timing': timing(response) if response and response.started_at and response.expires_at else None,
                 'submitted_at': response.submitted_at if response else None,
                 'retake_allowed': response.retake_allowed if response else False,
                 'is_flagged': response.is_flagged if response else False,
-                'violation_count': response.violation_count if response else 0,
-                'stopped_reason': response.stopped_reason_display if response else '',
-                'category_scores': score_map.get((student.id, assessment.id), []),
-                'prior_attempts': histories.get(response.id, []) if response else [],
-            })
+            }
+            if not analytics:
+                attempt.update({
+                    'title': assessment.title,
+                    'batch_id': assessment.batch_id,
+                    'is_archived': assessment.is_archived,
+                    'publication_status': assessment.publication_status,
+                    'is_required': assessment.is_required,
+                    'include_in_competency': assessment.include_in_competency,
+                    'response_id': response.id if response else None,
+                    'started_at': response.started_at if response else None,
+                    'attempt_started_at': response.started_at.isoformat() if response and response.started_at else None,
+                    'attempt_timing': timing(response) if response and response.started_at and response.expires_at else None,
+                    'violation_count': response.violation_count if response else 0,
+                    'stopped_reason': response.stopped_reason_display if response else '',
+                    'category_scores': score_map.get((student.id, assessment.id), []),
+                    'prior_attempts': histories.get(response.id, []) if response else [],
+                })
+            individual.append(attempt)
         result[student.id] = ({**progress, 'recommendations_locked': not unlocked, 'competency_locked': not evidence_unlocked,
                               'combined_category_scores': combined_scores.get(student.id, []) if evidence_unlocked or historical else [],
-                              'combined_competency_profile': serialize_combined_profile(profile) if evidence_unlocked or historical else None,
+                              'combined_competency_profile': serialize_combined_profile(profile) if not analytics and (evidence_unlocked or historical) else None,
                               'assessment_results': individual}, unlocked)
     return result
 
@@ -3230,7 +3245,9 @@ def student_combined_results(request):
     numbers = assessment_numbers(user, batch)
     recommendations = eligible_recommendations(Recommendation.objects.filter(
         student=user, batch=batch, is_current=True,
-    )).select_related('position', 'position__company').order_by(*order_fields()) if unlocked else []
+    )).select_related('position', 'position__company').prefetch_related(Prefetch(
+        'position__requirements', queryset=PositionRequirement.objects.select_related('skill_category'),
+    )).order_by(*order_fields()) if unlocked else []
     combined_scores = serialize_combined_scores(user, batch) if evidence_unlocked else []
     overall_raw = sum(score['raw_score'] for score in combined_scores)
     overall_max = sum(score['max_score'] for score in combined_scores)

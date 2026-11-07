@@ -225,3 +225,51 @@ class AnalyticsTests(APITestCase):
         self.assertLessEqual(len(second), len(first) + 1)
         self.assertNotIn('answers', str(result))
         self.assertNotIn('ranking_input_fingerprint', str(result))
+
+    def test_overview_matches_full_report_for_each_role_without_loading_report_history(self):
+        self.ready(83)
+        for user in (self.owner, self.admin):
+            self.client.force_authenticate(user)
+            report = self.get()
+            with CaptureQueriesContext(connection) as queries:
+                overview = self.get(view='overview')
+            for field in ('summary', 'dashboard_attention', 'email_notifications', 'email_progress'):
+                self.assertEqual(overview[field], report[field])
+            self.assertEqual(overview['scope']['batch_ids'], report['scope']['batch_ids'])
+            self.assertEqual(overview['options']['batches'], report['options']['batches'])
+            self.assertEqual(overview['students'], [{key: row[key] for key in (
+                'id', 'name', 'batch_id', 'batch', 'required_completed', 'required_total',
+                'required_complete', 'awaiting_review', 'reasons', 'placement_status',
+            )} for row in report['students']])
+            self.assertFalse({'activity', 'placement_students', 'capacity'} & overview.keys())
+            self.assertFalse(any('api_assessmentattempthistory' in query['sql'] or 'api_combinedcategoryscore' in query['sql']
+                                 for query in queries))
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.get(self.url, {'view': 'overview'}).status_code, 403)
+
+    def test_analytics_batches_selected_cohort_evidence_and_keeps_query_count_bounded(self):
+        self.ready()
+        self.client.force_authenticate(self.admin)
+        with CaptureQueriesContext(connection) as before:
+            self.get()
+        for index in range(8):
+            batch = Batch.objects.create(name=f'Batch {index}', instructor=self.owner)
+            assessment = Assessment.objects.create(batch=batch, created_by=self.owner, title=f'Exam {index}',
+                publication_status='published', is_required=True, include_in_competency=True)
+            student = User.objects.create_user(f'cohort-{index}@example.invalid', role='student')
+            BatchEnrollment.objects.create(batch=batch, student=student)
+            StudentResponse.objects.create(student=student, assessment=assessment, started_at=timezone.now(),
+                submitted_at=timezone.now(), status='submitted')
+        # The other active membership is newer and cannot borrow the original
+        # batch's saved result, score or current recommendation.
+        BatchEnrollment.objects.create(batch=batch, student=self.student, profile_review_required=True)
+        with CaptureQueriesContext(connection) as after:
+            result = self.get()
+        self.assertLessEqual(len(after), len(before) + 1)
+        row = next(row for row in result['students'] if row['id'] == self.student.id)
+        self.assertEqual(row['batch_id'], batch.id)
+        self.assertFalse(row['required_complete'])
+        self.assertTrue(row['recommendations_locked'])
+        self.assertFalse(row['scores'])
+        original = self.get(batch_id=self.batch.id)
+        self.assertEqual(original['students'][0]['scores'], {str(self.category.id): 0.0})

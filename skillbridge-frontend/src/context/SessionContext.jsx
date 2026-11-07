@@ -95,19 +95,11 @@ export function useSession() {
 function SessionExpiredModal({ onReLogin }) {
   return (
     <>
-      <style>{`
-        @keyframes sessionModalIn {
-          from { transform: scale(0.95) translateY(10px); opacity: 0; }
-          to   { transform: scale(1)    translateY(0);    opacity: 1; }
-        }
-      `}</style>
-
       {/* Backdrop */}
       <div className="fixed inset-0 z-10000 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
         {/* Card */}
         <div
-          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-5 text-center"
-          style={{ animation: 'sessionModalIn 0.3s cubic-bezier(0.34,1.1,0.64,1) both' }}
+          className="sb-session-card bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-5 text-center"
         >
           {/* Icon */}
           <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">

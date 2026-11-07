@@ -154,12 +154,22 @@ export function validateApiResponse(response) {
   } else if (method === 'get' && path === '/api/placements/reports/') {
     valid = object(data) && Array.isArray(data.records) && object(data.summary)
   } else if (method === 'get' && path === '/api/management/analytics/') {
+    const overview = data?.view === 'overview'
+    const requestedOverview = new URLSearchParams(config.url.split('?')[1]).get('view') === 'overview'
     valid = object(data) && object(data.summary) && object(data.scope) && object(data.options) &&
       typeof data.generated_at === 'string' && ['admin', 'instructor'].includes(data.role) &&
       ['students', 'required_complete', 'approved', 'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining'].every(key => Number.isSafeInteger(data.summary[key]) && data.summary[key] >= 0) &&
-      ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
-      data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons) && object(row.scores) && object(row.attempt_states)) &&
-      ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key])) &&
+      Array.isArray(data.students) && Array.isArray(data.skills) && Array.isArray(data.options.batches) &&
+      data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons)) &&
+      (overview
+        ? requestedOverview && Array.isArray(data.scope.batch_ids) && data.scope.batch_ids.every(id) &&
+          object(data.dashboard_attention) && (data.role !== 'admin' ||
+            Array.isArray(data.dashboard_attention.retake_scopes) && Array.isArray(data.dashboard_attention.batches_without_required)) &&
+          data.students.every(row => typeof row.required_complete === 'boolean' && typeof row.awaiting_review === 'boolean' &&
+            ['approved', 'approved_other_batch', 'unplaced'].includes(row.placement_status))
+        : ['placement_students', 'assessments', 'batches', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
+          data.students.every(row => object(row.scores) && object(row.attempt_states)) &&
+          ['instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key]))) &&
       (data.email_notifications === undefined || (Array.isArray(data.email_notifications) && data.email_notifications.every(row =>
         object(row) && id(row.batch_id) && typeof row.batch_name === 'string' && ['quota', 'attention'].includes(row.kind) && id(row.count) && Array.isArray(row.revision)))) &&
       (data.email_progress === undefined || emailGroups(data.email_progress)) &&

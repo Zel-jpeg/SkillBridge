@@ -1,4 +1,12 @@
 .sb-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .sb-notification-trigger:active > svg { scale: var(--sb-motion-press-scale); }
+  .sb-notification-panel { animation: sb-notification-enter var(--sb-motion-enter-duration) var(--sb-motion-enter-easing); }
+}
+@keyframes sb-notification-enter {
+  from { opacity: .75; translate: 0 calc(-1 * var(--sb-motion-distance)); }
+  to { opacity: 1; translate: 0 0; }
+}
 .sb-notifications { position: relative; }
 .sb-notification-trigger { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #64748b; cursor: pointer; }
 .sb-notification-trigger:hover, .sb-notification-trigger[aria-expanded="true"] { background: #f0fdf4; color: #15803d; }

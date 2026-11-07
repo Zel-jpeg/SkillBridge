@@ -1,6 +1,9 @@
 .sb-detail-dialog { width: min(1000px, calc(100% - 32px)); height: 92dvh; max-height: calc(100dvh - 32px); max-width: none; margin: auto; padding: 0; border: 1px solid #d1d5db; border-radius: 12px; background: #fff; color: #374151; overflow: hidden; }
 .sb-detail-dialog[open] { display: flex; flex-direction: column; }
 .sb-detail-dialog::backdrop { background: #0008; }
+@media (prefers-reduced-motion: no-preference) {
+  .sb-detail-dialog[open] { animation: sb-surface-enter var(--sb-motion-enter-duration) var(--sb-motion-enter-easing); }
+}
 .dark .sb-detail-dialog { background: #111827; border-color: #374151; color: #d1d5db; }
 .sb-detail-dialog--confirm { width: min(460px, calc(100% - 32px)); height: fit-content; }
 .sb-detail-dialog--skill { width: min(560px, calc(100% - 32px)); height: fit-content; }

@@ -119,8 +119,8 @@ export default function AdminDashboard() {
   const programs = (options?.programs || []).filter(row => String(row.institute_id) === scope.institute)
   const program = programs.find(row => String(row.id) === scope.program)
   const invalid = Boolean(options && (scope.institute && !institute || scope.program && !program || !['active', 'archived', 'all'].includes(scope.status)))
-  const analyticsParams = new URLSearchParams({ ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
-  const url = options && !invalid ? `${ANALYTICS_URL}${analyticsParams.size ? `?${analyticsParams}` : ''}` : null
+  const analyticsParams = new URLSearchParams({ view: 'overview', ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
+  const url = options && !invalid ? `${ANALYTICS_URL}?${analyticsParams}` : null
   const { data, error } = useApi(url)
   const [attention, setAttention] = useState(null)
   function change(next) {

@@ -4,9 +4,9 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from .models import (Assessment, Batch, BatchEnrollment, ChangeEvent, Company,
-                     CompetencyFramework, Institute, InstructorAssignment, OJTPlacement,
-                     Position, Program, SkillCategory, StudentResponse, User)
+from .models import (Assessment, Batch, BatchEnrollment, ChangeEvent, CombinedCategoryScore,
+                     CombinedCompetencyProfile, Company, CompetencyFramework, Institute, InstructorAssignment,
+                     OJTPlacement, Position, Program, SkillCategory, SkillScore, StudentResponse, User)
 from .sse import scoped_change
 
 
@@ -108,28 +108,34 @@ class DerivedScopeTests(APITestCase):
 
     def test_analytics_separates_same_name_skills_and_counts_only_matching_framework(self):
         categories = {}
-        for batch, student, _, _ in (self.first, self.second):
+        for batch, student, assessment, _ in (self.first, self.second):
             framework = CompetencyFramework.objects.create(program=batch.program, name='Pilot rubric', version=1)
             batch.framework = framework
             batch.save(update_fields=['framework'])
-            categories[student.id] = SkillCategory.objects.create(framework=framework, name='Shared name')
-
-        def states(students, batch, include_history):
-            return {student.id: ({
-                'all_required_completed': True, 'has_required_assessments': True,
-                'completed_required_count': 1, 'total_required_count': 1, 'assessment_results': [],
-                'combined_category_scores': [{'category_id': categories[student.id].id,
-                    'category': categories[student.id].name, 'percentage': 80}],
-            }, True) for student in students}
+            category = categories[student.id] = SkillCategory.objects.create(framework=framework, name='Shared name')
+            assessment.framework = framework
+            assessment.publication_status = Assessment.PUBLICATION_PUBLISHED
+            assessment.is_required = assessment.include_in_competency = True
+            assessment.save(update_fields=['framework', 'publication_status', 'is_required', 'include_in_competency'])
+            StudentResponse.objects.create(student=student, assessment=assessment, status='submitted', submitted_at=timezone.now())
+            SkillScore.objects.create(student=student, assessment=assessment, skill_category=category,
+                                      raw_score=8, max_score=10, percentage=80)
+            CombinedCompetencyProfile.objects.create(student=student, batch=batch, is_finalized=True,
+                                                     included_assessment_ids=[assessment.id])
+            CombinedCategoryScore.objects.create(student=student, batch=batch, skill_category=category,
+                raw_score=8, max_score=10, percentage=80, source_assessment_ids=[assessment.id])
 
         self.client.force_authenticate(self.admin)
-        with patch('api.views.bulk_management_states', side_effect=states):
-            response = self.client.get(reverse('management_analytics'))
+        url = reverse('management_analytics')
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200, response.data)
         rows = response.data['skills']
         self.assertEqual({row['id'] for row in rows}, {category.id for category in categories.values()})
         self.assertEqual(len({row['framework_label'] for row in rows}), 2)
         self.assertTrue(all(row['sample'] == 1 and row['missing'] == 0 for row in rows))
+        overview = self.client.get(url, {'view': 'overview', 'program_id': self.first[0].program_id})
+        self.assertEqual(overview.status_code, 200)
+        self.assertEqual(overview.data['skills'], [row for row in rows if row['program_id'] == self.first[0].program_id])
 
     def test_admin_scoped_rerun_only_processes_and_notifies_selected_cohort(self):
         url = reverse('admin_rerun_recommendations')

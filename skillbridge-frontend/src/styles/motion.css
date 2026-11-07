@@ -1,0 +1,17 @@
+/* Decorative motion only: focus, visibility and actions never wait for animation. */
+:root {
+  --sb-motion-enter-duration: 160ms;
+  --sb-motion-toast-duration: 200ms;
+  --sb-motion-enter-easing: cubic-bezier(0, 0, .2, 1);
+  --sb-motion-distance: 4px;
+  --sb-motion-press-scale: .97;
+}
+
+@keyframes sb-surface-enter {
+  from { opacity: .75; translate: 0 var(--sb-motion-distance); }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sb-session-card { animation: sb-surface-enter var(--sb-motion-enter-duration) var(--sb-motion-enter-easing); }
+}

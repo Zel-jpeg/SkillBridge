@@ -16,8 +16,9 @@ from .management_access import managed_batches
 from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
 from .organization_visibility import batch_visibility_q
-from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, Institute, OJTPlacement,
-                     Program, Recommendation, StudentResponse, User)
+from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, CombinedCategoryScore,
+                     CombinedCompetencyProfile, Institute, OJTPlacement, Program, Recommendation,
+                     SkillScore, StudentResponse, User)
 
 MANILA = ZoneInfo('Asia/Manila')
 
@@ -42,19 +43,61 @@ def rate(count, total):
     return round(100 * count / total, 1) if total else None
 
 
+def cohort_states(current, batches, assessments, *, include_skills):
+    """Bulk-load evidence for each student's selected enrollment only."""
+    from .views import assemble_management_states
+
+    def group(rows, batch_of):
+        grouped = defaultdict(list)
+        for row in rows:
+            batch_id = batch_of(row)
+            if current[row.student_id].batch_id == batch_id:
+                grouped[batch_id].append(row)
+        return grouped
+
+    students = defaultdict(list)
+    review_required = defaultdict(set)
+    for enrollment in current.values():
+        students[enrollment.batch_id].append(enrollment.student)
+        if enrollment.profile_review_required:
+            review_required[enrollment.batch_id].add(enrollment.student_id)
+    assessment_batches = {row.id: row.batch_id for row in assessments if row.batch_id in students}
+    assessments_by_batch = defaultdict(list)
+    for assessment in assessments:
+        assessments_by_batch[assessment.batch_id].append(assessment)
+    responses = group(StudentResponse.objects.filter(student_id__in=current, assessment_id__in=assessment_batches)
+        .only('student_id', 'assessment_id', 'status', 'submitted_at', 'is_flagged', 'retake_allowed'),
+        lambda row: assessment_batches[row.assessment_id])
+    scores = group(SkillScore.objects.filter(student_id__in=current, assessment_id__in=assessment_batches)
+        .select_related('skill_category').only('student_id', 'assessment_id', 'raw_score', 'max_score', 'skill_category__framework_id'),
+        lambda row: assessment_batches[row.assessment_id])
+    profiles = group(CombinedCompetencyProfile.objects.filter(student_id__in=current, batch_id__in=students)
+        .only('student_id', 'batch_id', 'is_finalized', 'included_assessment_ids', 'ranking_input_fingerprint'), lambda row: row.batch_id)
+    combined = group(CombinedCategoryScore.objects.filter(student_id__in=current, batch_id__in=students)
+        .select_related('skill_category').only('student_id', 'batch_id', 'skill_category__name', 'raw_score',
+            'max_score', 'percentage', 'source_assessment_ids').order_by('skill_category__name', 'skill_category_id'),
+        lambda row: row.batch_id) if include_skills else {}
+    states, catalogs = {}, {}
+    for batch_id, cohort in students.items():
+        states.update(assemble_management_states(cohort, batches[batch_id], assessments_by_batch[batch_id],
+            responses[batch_id], scores[batch_id], profiles[batch_id], combined.get(batch_id, []),
+            review_required[batch_id], catalog_cache=catalogs, analytics=True))
+    return states
+
+
 def analytics_payload(user, params):
-    # Imported at call time to avoid the URL/views import cycle. This helper only
-    # reads saved evidence and runs the same current/finalization gates as rosters.
-    from .views import bulk_management_states
     from .email_outbox import email_storage_ready, reminders
     from .email_progress import progress_groups
 
     if user.role not in ('admin', 'instructor') or not user.is_active or (user.role == 'instructor' and not user.is_approved):
         raise PermissionDenied('Approved staff only.')
     allowed = {'batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id',
-               'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period', '_t'}
+               'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period', 'view', '_t'}
     if set(params) - allowed or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated analytics filter.'})
+    if 'view' in params and params['view'] != 'overview':
+        raise ValidationError({'error': 'Unsupported analytics view.'})
+    full = 'view' not in params
     batch_id = positive_id(params, 'batch_id')
     instructor_id = positive_id(params, 'instructor_id')
     institute_id = positive_id(params, 'institute_id')
@@ -111,7 +154,8 @@ def analytics_payload(user, params):
     if len(course) > 100 or len(params.get('area', '')) > 255:
         raise ValidationError({'error': 'Filter text is too long.'})
     enrollments = list(BatchEnrollment.objects.filter(batch_id__in=selected_ids, student__role='student')
-        .filter(Q(student__is_active=True) | Q(batch__status='archived')).select_related('student', 'batch', 'batch__instructor')
+        .filter(Q(student__is_active=True) | Q(batch__status='archived')).select_related('student')
+        .only('batch_id', 'enrolled_at', 'profile_review_required', 'student__name', 'student__course', 'student__school_id', 'student__address')
         .order_by('student_id', '-enrolled_at', '-id'))
     # One latest selected enrollment per student keeps system totals distinct.
     # Explicit batch selection exposes that batch's full roster, even if another
@@ -120,19 +164,12 @@ def analytics_payload(user, params):
     for enrollment in enrollments:
         if not course or enrollment.student.course == course:
             current.setdefault(enrollment.student_id, enrollment)
-    grouped = defaultdict(list)
-    for enrollment in current.values():
-        grouped[enrollment.batch_id].append(enrollment.student)
-    states = {}
-    for batch in selected:
-        if grouped[batch.id]:
-            for student_id, value in bulk_management_states(grouped[batch.id], batch, include_history=False).items():
-                states[(student_id, batch.id)] = value
-
-    assessments = list(Assessment.objects.filter(batch_id__in=selected_ids).select_related('batch')
+    assessments = list(Assessment.objects.filter(batch_id__in=selected_ids)
+                       .only('batch_id', 'title', 'publication_status', 'archived_at', 'is_required', 'include_in_competency', 'due_at', 'framework_id')
                        .order_by('display_order', 'created_at', 'id'))
     if assessment_id and assessment_id not in {assessment.id for assessment in assessments}:
         raise NotFound('Assessment not found in this scope.')
+    states = cohort_states(current, owned_map, assessments, include_skills=full or bool(program_id))
     assessment_map = {assessment.id: assessment for assessment in assessments}
     analysis_assessments = [assessment for assessment in assessments if not assessment_id or assessment.id == assessment_id]
     analysis_ids = [assessment.id for assessment in analysis_assessments]
@@ -151,18 +188,18 @@ def analytics_payload(user, params):
                          .values_list('student_id', flat=True)) - set(approved)
     students = []
     skill_rows = {}
-    framework_sizes = Counter(enrollment.batch.framework_id for enrollment in current.values())
+    framework_sizes = Counter(owned_map[enrollment.batch_id].framework_id for enrollment in current.values())
     batch_rows = {batch.id: {'id': batch.id, 'name': batch.name, 'instructor': batch.instructor.name,
                    'total': 0, 'completed': 0, 'approved': 0} for batch in selected}
     attempt_rows = {assessment.id: {'id': assessment.id, 'batch_id': assessment.batch_id,
-        'name': assessment.title, 'batch': assessment.batch.name, 'publication_status': assessment.publication_status,
+        'name': assessment.title, 'batch': owned_map[assessment.batch_id].name, 'publication_status': assessment.publication_status,
         'required': assessment.is_required and assessment.include_in_competency, 'assigned': 0,
         'submitted': 0, 'in_progress': 0, 'not_started': 0, 'stopped': 0, 'retake_approved': 0}
-        for assessment in analysis_assessments}
+        for assessment in analysis_assessments} if full else {}
     match_bands = Counter({'Strong': 0, 'Fair': 0, 'Low': 0, 'No current match': 0, 'Locked': 0})
     for student_id, enrollment in current.items():
         student, batch = enrollment.student, owned_map[enrollment.batch_id]
-        state, unlocked = states[(student_id, batch.id)]
+        state, unlocked = states[student_id]
         complete = state['all_required_completed']
         relevant_recs = recs[(student_id, batch.id)] if unlocked else []
         top = relevant_recs[0] if relevant_recs else None
@@ -175,8 +212,9 @@ def analytics_payload(user, params):
             valid = result['attempt_status'] == 'submitted' and result['submitted_at'] is not None and not result['is_flagged']
             integrity = result['is_flagged'] or result['attempt_status'] == 'stopped'
             bucket = 'stopped' if integrity else 'submitted' if valid else 'in_progress' if result['attempt_status'] else 'not_started'
-            attempt_states[str(result['id'])] = bucket
-            retake_count += int(result['retake_allowed'])
+            if full:
+                attempt_states[str(result['id'])] = bucket
+                retake_count += int(result['retake_allowed'])
             if integrity:
                 reasons.append('Stopped / flagged')
             if (batch.status == 'active' and assessment.publication_status == 'published'
@@ -198,8 +236,6 @@ def analytics_payload(user, params):
         if batch.status != 'active':
             reasons = []  # Archived records are history, not a current action queue.
         waiting = bool(top and not placement and student_id not in other_approved)
-        band = 'Locked' if not unlocked else 'No current match' if top is None else assessment_band(top)
-        match_bands[band] += 1
         scores = state['combined_category_scores']
         for score in scores:
             key = score['category_id']
@@ -213,23 +249,30 @@ def analytics_payload(user, params):
         batch_rows[batch.id]['total'] += 1
         batch_rows[batch.id]['completed'] += int(complete)
         batch_rows[batch.id]['approved'] += int(placement is not None)
-        students.append({'id': student_id, 'name': student.name, 'school_id': student.school_id or '',
-            **top_api_fields(top),
-            'course': student.course or '', 'batch_id': batch.id, 'batch': batch.name, 'batch_status': batch.status,
-            'instructor': batch.instructor.name, 'required_completed': state['completed_required_count'],
+        row = {'id': student_id, 'name': student.name,
+            'batch_id': batch.id, 'batch': batch.name, 'required_completed': state['completed_required_count'],
             'required_total': state['total_required_count'], 'required_complete': complete,
-            'recommendations_locked': not unlocked, 'competency_locked': state.get('competency_locked', not unlocked), 'awaiting_review': waiting,
-            'match_band': band, 'top_match': round(top.match_score, 2) if top else None,
-            'top_company': top.position.company.name if top else '',
-            'top_position': top.position.title if top else '',
-            'placement_status': 'approved' if placement else 'approved_other_batch' if student_id in other_approved else 'unplaced',
-            'company_id': placement.company_id if placement else None,
-            'company': placement.company.name if placement else '', 'position_id': placement.position_id if placement else None,
-            'position': placement.position.title if placement else '',
-            'company_area': area_of(placement.company.address) if placement else '',
-            'resident_area': area_of(student.address), 'reasons': reasons,
-            'attempt_states': attempt_states, 'retake_count': retake_count,
-            'scores': {str(score['category_id']): score['percentage'] for score in scores}})
+            'awaiting_review': waiting, 'reasons': reasons,
+            'placement_status': 'approved' if placement else 'approved_other_batch' if student_id in other_approved else 'unplaced'}
+        if full or program_id:
+            row['school_id'] = student.school_id or ''
+        if full:
+            band = 'Locked' if not unlocked else 'No current match' if top is None else assessment_band(top)
+            match_bands[band] += 1
+            row.update({**top_api_fields(top), 'course': student.course or '', 'batch_status': batch.status,
+                'instructor': batch.instructor.name, 'recommendations_locked': not unlocked,
+                'competency_locked': state.get('competency_locked', not unlocked),
+                'match_band': band, 'top_match': round(top.match_score, 2) if top else None,
+                'top_company': top.position.company.name if top else '',
+                'top_position': top.position.title if top else '',
+                'company_id': placement.company_id if placement else None,
+                'company': placement.company.name if placement else '', 'position_id': placement.position_id if placement else None,
+                'position': placement.position.title if placement else '',
+                'company_area': area_of(placement.company.address) if placement else '',
+                'resident_area': area_of(student.address),
+                'attempt_states': attempt_states, 'retake_count': retake_count,
+                'scores': {str(score['category_id']): score['percentage'] for score in scores}})
+        students.append(row)
     students.sort(key=lambda row: (row['name'].casefold(), row['id']))
     for group in skill_rows.values():
         group['average'] = round(group.pop('sum') / group['sample'], 2)
@@ -258,6 +301,43 @@ def analytics_payload(user, params):
         for position in catalog if (not position_id or position.id == position_id)
         and (not company_id or position.company_id == company_id)
         and (not params.get('area') or area_of(position.company.address) == params['area'])]
+    summary = {'students': len(students), 'required_complete': sum(row['required_complete'] for row in students),
+        'approved': len(approved), 'approved_other_batch': len(other_approved),
+        'unplaced': sum(row['placement_status'] == 'unplaced' for row in students),
+        'awaiting_review': sum(row['awaiting_review'] for row in students),
+        'needs_followup': sum(bool(row['reasons']) for row in students),
+        'slots_remaining': sum(row['remaining'] for row in capacity),
+        'slots_total': sum(row['total'] for row in capacity),
+        'pending_instructors': User.objects.filter(role='instructor', is_active=True, is_approved=False).count() if user.role == 'admin' else 0}
+    summary['completion_rate'] = rate(summary['required_complete'], summary['students'])
+    summary['placement_rate'] = rate(summary['approved'], summary['students'])
+    dashboard_attention = {}
+    if user.role == 'admin':
+        enrolled = BatchEnrollment.objects.filter(student_id=OuterRef('student_id'), batch_id=OuterRef('assessment__batch_id'))
+        pending_requests = StudentResponse.objects.filter(assessment__batch_id__in=selected_ids,
+            assessment__batch__status='active', assessment__archived_at__isnull=True, student__is_active=True,
+            retake_request_status='pending').filter(Exists(enrolled))
+        request_scopes = list(pending_requests.values('assessment__batch__institute_id', 'assessment__batch__program_id').annotate(count=Count('id')))
+        required_batches = {item.batch_id for item in assessments if not item.is_archived and item.publication_status == Assessment.PUBLICATION_PUBLISHED and item.is_required and item.include_in_competency}
+        dashboard_attention = {
+            'pending_retakes': sum(item['count'] for item in request_scopes),
+            'retake_scopes': [{'institute_id': item['assessment__batch__institute_id'], 'program_id': item['assessment__batch__program_id'], 'count': item['count']} for item in request_scopes],
+            'batches_without_required': [item.pk for item in selected if item.status == 'active' and item.pk not in required_batches],
+            'unavailable_results': sum('Final results unavailable' in row['reasons'] for row in students),
+        }
+    email_ready = email_storage_ready()
+    batch_options = [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id,
+                      'institute_id': batch.institute_id, 'program_id': batch.program_id} for batch in owned]
+    email_payload = {'email_storage_ready': email_ready,
+        'email_notifications': reminders(selected) if email_ready else [],
+        'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else []}
+    if not full:
+        return {'generated_at': now.isoformat(), 'role': user.role, 'view': 'overview',
+            'scope': {'batch_ids': selected_ids, 'institute_id': institute_id, 'program_id': program_id, 'batch_status': status},
+            'summary': summary, 'dashboard_attention': dashboard_attention, **email_payload,
+            'students': students, 'skills': sorted(skill_rows.values(), key=lambda row: row['name']),
+            'options': {'batches': batch_options}}
+
     placed_filtered = [row for row in students if (not company_id or row['company_id'] == company_id)
         and (not position_id or row['position_id'] == position_id)
         and (not params.get('area') or row['company_area'] == params['area'])]
@@ -294,31 +374,6 @@ def analytics_payload(user, params):
                   history.submitted_at, history.status, history.is_flagged)
     activity_days = Counter(event[3] for event in events)
     start, activity_interval, activity = submission_activity(events, start, end, activity_period)
-    summary = {'students': len(students), 'required_complete': sum(row['required_complete'] for row in students),
-        'approved': len(approved), 'approved_other_batch': len(other_approved),
-        'unplaced': sum(row['placement_status'] == 'unplaced' for row in students),
-        'awaiting_review': sum(row['awaiting_review'] for row in students),
-        'needs_followup': sum(bool(row['reasons']) for row in students),
-        'slots_remaining': sum(row['remaining'] for row in capacity),
-        'slots_total': sum(row['total'] for row in capacity),
-        'pending_instructors': User.objects.filter(role='instructor', is_active=True, is_approved=False).count() if user.role == 'admin' else 0}
-    summary['completion_rate'] = rate(summary['required_complete'], summary['students'])
-    summary['placement_rate'] = rate(summary['approved'], summary['students'])
-    dashboard_attention = {}
-    if user.role == 'admin':
-        enrolled = BatchEnrollment.objects.filter(student_id=OuterRef('student_id'), batch_id=OuterRef('assessment__batch_id'))
-        pending_requests = StudentResponse.objects.filter(assessment__batch_id__in=selected_ids,
-            assessment__batch__status='active', assessment__archived_at__isnull=True, student__is_active=True,
-            retake_request_status='pending').filter(Exists(enrolled))
-        request_scopes = list(pending_requests.values('assessment__batch__institute_id', 'assessment__batch__program_id').annotate(count=Count('id')))
-        required_batches = {item.batch_id for item in assessments if not item.is_archived and item.publication_status == Assessment.PUBLICATION_PUBLISHED and item.is_required and item.include_in_competency}
-        dashboard_attention = {
-            'pending_retakes': sum(item['count'] for item in request_scopes),
-            'retake_scopes': [{'institute_id': item['assessment__batch__institute_id'], 'program_id': item['assessment__batch__program_id'], 'count': item['count']} for item in request_scopes],
-            'batches_without_required': [item.pk for item in selected if item.status == 'active' and item.pk not in required_batches],
-            'unavailable_results': sum('Final results unavailable' in row['reasons'] for row in students),
-        }
-    email_ready = email_storage_ready()
     return {'generated_at': now.isoformat(), 'role': user.role,
         'scope': {'batch_ids': selected_ids, 'batch_status': status, 'course': course, 'instructor_id': instructor_id,
             'institute_id': institute_id, 'program_id': program_id,
@@ -329,9 +384,7 @@ def analytics_payload(user, params):
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
             'capacity_scope': 'Eligible openings; occupancy includes all current approvals' if scoped_catalog else 'Shared system-wide slots; only partner/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},
-        'summary': summary, 'dashboard_attention': dashboard_attention, 'email_storage_ready': email_ready,
-        'email_notifications': reminders(selected) if email_ready else [],
-        'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else [],
+        'summary': summary, 'dashboard_attention': dashboard_attention, **email_payload,
         'students': students, 'placement_students': placed_filtered,
         'assessments': list(attempt_rows.values()), 'batches': list(batch_rows.values()),
         'skills': sorted(skill_rows.values(), key=lambda row: row['name']), 'capacity': capacity,
@@ -339,8 +392,7 @@ def analytics_payload(user, params):
         'companies': [{'id': key[0], 'name': key[1], 'count': count} for key, count in company_counts.most_common()],
         'areas': [{'name': name, 'count': count} for name, count in area_counts.most_common()], 'geography': geography, 'activity': activity,
         'activity_days': [{'date': day.isoformat(), 'submissions': count} for day, count in sorted(activity_days.items())],
-        'options': {'batches': [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id,
-                                'institute_id': batch.institute_id, 'program_id': batch.program_id} for batch in owned],
+        'options': {'batches': batch_options,
             'institutes': institute_options,
             'programs': program_options,
             'instructors': [{'id': owner_id, 'name': name} for owner_id, name in sorted({(batch.instructor_id, batch.instructor.name) for batch in owned})] if user.role == 'admin' else [],

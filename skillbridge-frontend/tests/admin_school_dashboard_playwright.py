@@ -14,6 +14,9 @@ with sync_playwright() as p:
     context, page = session(browser)
     enterprise, tourism, third = json.loads((OUT / 'general-text.json').read_text(encoding='utf-8'))
     writes = []
+    analytics_requests = []
+    page.on('request', lambda request: analytics_requests.append(parse_qs(urlparse(request.url).query))
+            if request.method == 'GET' and urlparse(request.url).path == '/api/management/analytics/' else None)
     page.on('request', lambda request: writes.append(request) if '/api/admin/rerun-recommendations/' in request.url and request.method == 'POST' else None)
     page.goto(BASE + '/admin/dashboard', wait_until='networkidle')
     payload = api(context, '/api/management/analytics/').json()
@@ -25,6 +28,9 @@ with sync_playwright() as p:
     expect(page.get_by_label('Program', exact=True)).to_be_disabled()
     expect(page.get_by_role('region', name='Needs attention', exact=True)).to_be_visible()
     expect(page.get_by_role('button', name='Recommendation maintenance', exact=True)).to_have_count(0)
+    assert [{key: value for key, value in params.items() if key != '_t'} for params in analytics_requests] == [
+        {'view': ['overview']},
+    ], analytics_requests
     print('PASS school-wide source metrics, saved institute cards, empty institute and scoped student disclosure')
 
     page.get_by_role('link', name='Open Institute of Business and Public Affairs dashboard', exact=True).press('Enter')
@@ -46,6 +52,8 @@ with sync_playwright() as p:
     assert query['institute_id'] == [str(tourism['institute_id'])] and query['program_id'] == [str(tourism['program_id'])]
     report.click()
     expect(page.get_by_role('heading', name='Reports & Analytics', exact=True)).to_be_visible()
+    expect(page.get_by_role('region', name='Analytics records')).to_be_visible()
+    assert any('view' not in params and params.get('program_id') == [str(tourism['program_id'])] for params in analytics_requests), analytics_requests
     assert 'program_id=' + str(tourism['program_id']) in page.url
     page.go_back(wait_until='networkidle')
     expect(metric(page, 'Students in active batches')).to_have_text('1')

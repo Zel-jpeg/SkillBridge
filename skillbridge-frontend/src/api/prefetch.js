@@ -3,6 +3,7 @@ import { createPreparationQueue } from './preparationQueue.js'
 import { preloadPage } from '../router/preloadPage.js'
 import { waitForDashboard } from './dashboardReadiness.js'
 import { adminUsersUrl } from '../utils/collectionQueries.js'
+import { ANALYTICS_OVERVIEW_URL } from '../utils/analytics.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
 export const DESTINATION_QUERIES = {
@@ -32,13 +33,13 @@ const PLACEMENT_QUERIES = ['/api/placements/suggestions/?include_history=true&in
 const PAGE_QUERIES = {
   ...DESTINATION_QUERIES,
   '/student/results': ['/api/student/results/combined/', '/api/students/me/'],
-  '/instructor/dashboard': ['/api/instructor/students/recommendations/', '/api/management/analytics/'],
+  '/instructor/dashboard': ['/api/instructor/students/recommendations/', ANALYTICS_OVERVIEW_URL],
   '/instructor/reports': ['/api/management/analytics/'],
   '/instructor/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
-  '/admin/dashboard': ['/api/management/analytics/', '/api/management/organization-options/'],
+  '/admin/dashboard': [ANALYTICS_OVERVIEW_URL, '/api/management/organization-options/'],
   '/admin/users': [adminUsersUrl()],
   '/admin/placements': PLACEMENT_QUERIES,
   '/admin/reports': ['/api/management/analytics/'],

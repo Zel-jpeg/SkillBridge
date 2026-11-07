@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/motion.css";
 @import "./styles/dropdowns.css";
 @import "./styles/collectionToolbar.css";
 
@@ -6,7 +7,7 @@
 .sb-toast-viewport { position: fixed; inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) auto auto; margin: 0; padding: 8px; width: min(396px, calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right))); max-width: none; max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border: 0; background: transparent; overflow: auto; overscroll-behavior: contain; z-index: 2147483647; pointer-events: none; }
 .sb-toast-viewport[data-active=false] { display: none; }
 .sb-toast-viewport[data-active=true] { display: grid; gap: 10px; }
-.sb-toast { --sb-toast-surface: #fff; --sb-toast-accent: #16a34a; position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 14px 10px 17px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: var(--sb-toast-surface); color: #4b5563; box-shadow: 0 4px 16px #0000001f; pointer-events: auto; animation: sb-toast-enter .2s ease-out both; }
+.sb-toast { --sb-toast-surface: #fff; --sb-toast-accent: #16a34a; position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 14px 10px 17px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: var(--sb-toast-surface); color: #4b5563; box-shadow: 0 4px 16px #0000001f; pointer-events: auto; animation: sb-toast-enter var(--sb-motion-toast-duration) var(--sb-motion-enter-easing) both; }
 .sb-toast-error { --sb-toast-accent: #dc2626; }
 .sb-toast-warning { --sb-toast-accent: #b45309; }
 .sb-toast-info { --sb-toast-accent: #2563eb; }

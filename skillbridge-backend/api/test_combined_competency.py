@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -84,6 +86,42 @@ class CombinedCompetencyTests(APITestCase):
     def combined(self):
         self.client.force_authenticate(self.student)
         return self.client.get(reverse('student_combined_results'))
+
+    def test_finalized_result_requirement_reads_do_not_grow_with_recommendations(self):
+        assessment = self.make_assessment('Completed', [self.database])
+        self.saved_score(assessment, self.database, 8, 10)
+        for index in range(11):
+            position = Position.objects.create(company=self.company, title=f'Opening {index}',
+                                               tags=['SQL', 'Synthetic'])
+            PositionRequirement.objects.create(position=position, skill_category=self.database,
+                                               required_percentage=70)
+        recalculate_combined(self.student, self.batch)
+        rows = Recommendation.objects.filter(student=self.student, batch=self.batch)
+        first_id = rows.first().id
+        rows.exclude(id=first_id).update(is_current=False)
+        # Warm any presentation/configuration setup before comparing stable reads.
+        self.combined()
+        calls_before = len(self.model_calls)
+        with CaptureQueriesContext(connection) as one_queries:
+            one = self.combined()
+        rows.update(is_current=True)
+        with CaptureQueriesContext(connection) as many_queries:
+            many = self.combined()
+        self.assertEqual(one.status_code, 200)
+        self.assertEqual(many.status_code, 200)
+        self.assertFalse(many.data['recommendations_locked'])
+        self.assertEqual(len(one.data['recommendations']), 1)
+        self.assertEqual(len(many.data['recommendations']), 12)
+        self.assertEqual(len(one_queries), len(many_queries))
+        self.assertEqual(len(self.model_calls), calls_before)
+        # Include category-derived tags, deduplication, scores and ordering in parity.
+        from .recommendation_policy import order_fields
+        from .views import serialize_recommendation
+        expected = [serialize_recommendation(row) for row in rows.select_related(
+            'position', 'position__company').order_by(*order_fields())]
+        self.assertEqual(many.data['recommendations'], expected)
+        self.assertEqual({key: value for key, value in one.data.items() if key != 'recommendations'},
+                         {key: value for key, value in many.data.items() if key != 'recommendations'})
 
     def test_weighted_same_category_and_cross_batch_isolation(self):
         general = self.make_assessment('General', [self.database, self.network])

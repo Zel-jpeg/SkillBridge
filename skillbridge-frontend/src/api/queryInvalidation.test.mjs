@@ -60,6 +60,8 @@ test('shared analytics refreshes for capacity consumption in another batch and r
   assert.equal(queryAffected('/api/management/analytics/?course=BSIT', { topics: ['configuration'] }), true)
   assert.equal(queryAffected('/api/management/analytics/', { resync: true }), true)
   assert.equal(queryAffected('/api/management/analytics/', { topics: ['unknown'] }), false)
+  assert.equal(queryAffected('/api/management/analytics/?view=overview', { topics: ['email'] }), true)
+  assert.equal(queryAffected('/api/management/analytics/?view=overview&program_id=4', { topics: ['scope'], program_ids: [5] }), true)
 })
 import { queryAffected, invalidateQueries } from './queryInvalidation.js'
 

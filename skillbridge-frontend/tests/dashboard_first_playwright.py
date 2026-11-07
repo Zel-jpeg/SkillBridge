@@ -3,7 +3,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from playwright.async_api import async_playwright, expect
 from loading_playwright import analytics, BASE
 from navigation_playwright import GOOGLE_STUB, payload, user
@@ -28,6 +28,7 @@ class SignIn:
         self.account = user(role, **extra)
         self.events, self.errors, self.failures = [], [], {}
         self.auth_end = None
+        self.legacy_analytics = False
 
     async def context(self, browser, warm_code=True):
         context = await browser.new_context(viewport={'width': 1440, 'height': 1000}, reduced_motion='reduce')
@@ -49,6 +50,10 @@ class SignIn:
             self.events.append(event)
             await asyncio.sleep(self.core_delay if path in CORE[self.role] else self.optional_delay)
             event['end'] = time.perf_counter()
+            if path == '/api/management/analytics/':
+                event['view'] = parse_qs(urlparse(route.request.url).query).get('view', [None])[0]
+                if self.legacy_analytics and event['view'] == 'overview':
+                    return await route.fulfill(status=400, json={'error': 'Unsupported or repeated analytics filter.'})
             data = analytics(self.role) if path == '/api/management/analytics/' else (
                 {**self.account, 'placement': None, 'address': {}} if path == '/api/students/me/' else (
                     {'recommendations_locked': True, 'has_required_assessments': False, 'recommendations': [], 'combined_category_scores': []}
@@ -174,12 +179,28 @@ async def slow_failure_and_cancellation(browser, checks, metrics):
     checks.append('Initial dashboard failure preserves successful sign-in and supports section retry')
     await context.close()
 
+    fixture = SignIn(core_delay=.1)
+    fixture.legacy_analytics = True
+    context, page = await fixture.context(browser)
+    await fixture.click(page)
+    await page.wait_for_url('**/admin/dashboard')
+    await expect(page.get_by_role('region', name='Institute overview', exact=True)).to_be_visible()
+    assert [event['view'] for event in fixture.events if event['path'] == '/api/management/analytics/'] == ['overview', None]
+    assert not fixture.errors, fixture.errors
+    checks.append('Older API fallback keeps the dashboard usable during a staggered release')
+    await context.close()
+
     fixture = SignIn(core_delay=3)
     context, page = await fixture.context(browser)
     await fixture.click(page)
     await expect(page.get_by_text('Preparing your dashboard…', exact=True)).to_be_visible()
     await page.evaluate("window.dispatchEvent(new Event('auth:expired'))")
     await expect(page.get_by_role('heading', name='Session Expired')).to_be_visible()
+    await expect(page.locator('.sb-session-card')).to_have_css('animation-name', 'none')
+    await page.emulate_media(reduced_motion='no-preference')
+    await expect(page.locator('.sb-session-card')).to_have_css('animation-name', 'sb-surface-enter')
+    await page.emulate_media(reduced_motion='reduce')
+    await expect(page.locator('.sb-session-card')).to_have_css('animation-name', 'none')
     await page.wait_for_timeout(1650)
     assert page.url.endswith('/admin/login')
     await expect(page.get_by_role('button', name='Sign in', exact=True)).to_be_enabled()

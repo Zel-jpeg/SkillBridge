@@ -8,10 +8,13 @@ their [existing behavior](NOTIFICATION_TOASTS.md).
 
 ## Current coverage
 
-The menu uses the existing backend-authorized `/api/management/analytics/`
-active-batch scope. Its shared `useApi` subscription deduplicates requests with
-the dashboard and follows existing SSE/visible-page refresh and account-reset
-rules. It introduces no separate polling loop, backend endpoint or database table.
+The menu uses `/api/management/analytics/?view=overview` for the same authorized
+active-batch scope. The compact response provides reminder membership, dashboard
+totals and email progress. The default dashboard and the bell share one `useApi`
+cache key and follow existing SSE, visible-page refresh and account-reset rules.
+Reports and exports read full analytics. The bell uses a 160 ms entrance under
+normal motion preferences. Reduced motion shows the menu immediately, and opening,
+closing and focus use the existing controls.
 
 | Reminder | Destination |
 | --- | --- |

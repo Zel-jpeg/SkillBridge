@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { invalidateCache, useApi } from '../../hooks/useApi'
-import { ANALYTICS_URL } from '../../utils/analytics'
+import { ANALYTICS_OVERVIEW_URL } from '../../utils/analytics'
 import { managementNotifications } from '../../utils/notifications'
 import { NOTIFICATION_LABELS, notificationSeverity, unreadSeverity } from '../../utils/notificationReadState'
 import { useNotificationReads } from '../../hooks/useNotificationReads'
@@ -13,7 +13,7 @@ import { completedEmailGroup, emailProgressText } from '../../utils/emailProgres
 const icons = { assessment: WarnIcon, placement: BriefcaseIcon, approval: UserIcon, deadline: ClockIcon, retake: CheckCircleIcon, results: CheckCircleIcon, email: ClockIcon, email_complete: CheckCircleIcon }
 
 export default function NotificationMenu({ role, ...props }) {
-  const { data, loading, error } = useApi(ANALYTICS_URL)
+  const { data, loading, error } = useApi(ANALYTICS_OVERVIEW_URL)
   const { showToast } = useToast()
   const seen = useRef(new Map())
   const announced = useRef(new Set())
@@ -29,7 +29,7 @@ export default function NotificationMenu({ role, ...props }) {
     }
   }, [data, showToast])
   const entries = managementNotifications(data, role)
-  return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(ANALYTICS_URL)} />
+  return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(ANALYTICS_OVERVIEW_URL)} />
 }
 
 export function NotificationDropdown({ entries, ready, loading, error, onRetry, open, onToggle, onClose,

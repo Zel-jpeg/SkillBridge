@@ -1,6 +1,7 @@
 import { recommendationDisplay, summaryRecommendation } from './recommendationResults.js'
 import { organizationComparison } from './analyticsOrganization.js'
 export const ANALYTICS_URL = '/api/management/analytics/'
+export const ANALYTICS_OVERVIEW_URL = `${ANALYTICS_URL}?view=overview`
 export const FILTER_KEYS = ['batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
 
 export function analyticsUrl(params) {

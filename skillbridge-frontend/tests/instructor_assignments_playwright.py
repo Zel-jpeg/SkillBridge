@@ -25,6 +25,7 @@ def picker(page, panel, name):
 
 def run(browser):
     context, page = support.session(browser)
+    page.emulate_media(reduced_motion='no-preference')
     institute = support.api(context, '/api/admin/institutes/?search=Synthetic+Institute+00').json()['results'][0]
     programs = support.api(context, f"/api/admin/institutes/{institute['id']}/programs/?page_size=50").json()['results']
     program, second = programs[:2]
@@ -34,6 +35,20 @@ def run(browser):
     name = owner['name']
     assert support.api(context, '/api/management/programs/', role='instructor').json()['count'] == 0
     panel = open_program(page)
+    expect(panel).to_have_css('animation-name', 'sb-surface-enter')
+    expect(panel).to_have_css('animation-duration', '0.16s')
+    for motion in ('no-preference', 'reduce'):
+        page.emulate_media(reduced_motion=motion)
+        for _ in range(3):
+            selection = picker(page, panel, '')
+            expect(selection).to_have_css('animation-name', 'none' if motion == 'reduce' else 'sb-surface-enter')
+            selection.get_by_role('button', name='Cancel', exact=True).focus()
+            page.keyboard.press('Escape')
+            expect(selection).to_have_count(0)
+            expect(panel.get_by_role('button', name='Assign instructor', exact=True)).to_be_focused()
+            assert page.evaluate('document.body.style.overflow') == 'hidden'
+    page.emulate_media(reduced_motion='no-preference')
+    checks.append('native dialog entrance and reduced motion preserve rapid nested reopen, Escape, focus and scroll lock')
     expect(panel.get_by_text('No assignments match. Assign an instructor or adjust these filters.', exact=True)).to_be_visible()
     selection = picker(page, panel, name)
     selection.get_by_role('button', name=f'Assign {name}', exact=True).click()
