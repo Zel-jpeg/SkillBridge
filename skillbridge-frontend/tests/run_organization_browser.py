@@ -42,7 +42,7 @@ if '--admin-navigation' in sys.argv:
 if '--partner-map' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_PARTNER_MAP'] = '1'
-if '--school-dashboard' in sys.argv:
+if '--school-dashboard' in sys.argv or '--school-reports' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_SCHOOL_DASHBOARD'] = '1'
 if '--management-dialogs' in sys.argv:
@@ -104,6 +104,7 @@ try:
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),
+            ('--school-reports', 'admin_scoped_reports_playwright.py'),
             ('--dashboard-highlights', 'dashboard_highlights_playwright.py'),
             ('--dashboard-first', 'dashboard_first_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),

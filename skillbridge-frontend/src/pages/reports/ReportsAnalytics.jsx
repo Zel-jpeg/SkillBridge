@@ -15,6 +15,8 @@ import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { useAnalyticsRecords } from '../../hooks/useAnalyticsRecords'
 import { useAnalyticsData } from '../../hooks/useAnalyticsData'
 import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
+import OrganizationComparison from '../../components/analytics/OrganizationComparison'
+import { analyticsScopeText } from '../../utils/analyticsOrganization'
 import ActivityDateFilter from '../../components/analytics/ActivityDateFilter'
 import AssessmentProgressPanels from '../../components/analytics/AssessmentProgressPanels'
 import { BriefcaseIcon, ChevronDown, ReportIcon, SearchIcon, SkillIcon } from '../../components/Icons'
@@ -61,17 +63,19 @@ function ReportSummary({ data, tab }) {
   </div>)}</dl>
 }
 
-function StudentDetails({ row, onClose, restoreFocusRef, role }) {
+function StudentDetails({ row, onClose, restoreFocusRef, role, report }) {
   const url = `/api/instructor/batches/${row.batch_id}/students/`
   const { data } = useApi(url)
   const record = data?.students?.find(student => student.id === row.id)
   if (!record) return <DialogShell title={row.name} description="Loading authorized student details" onClose={onClose} restoreFocusRef={restoreFocusRef}><DataSection url={url} layout="student-detail"><p className="p-5 text-xs">Student is no longer in this roster. Refresh the report.</p></DataSection></DialogShell>
   const student = { ...normalizeStudent(record), batch: { id: row.batch_id, name: row.batch }, instructor: row.instructor }
-  return <StudentModal student={student} readOnly isArchived={row.batch_status === 'archived'} instructorName={row.instructor} onClose={onClose} restoreFocusRef={restoreFocusRef} footer={<Link className={button} to={`/${role}/${role === 'admin' ? 'batches' : 'students'}?batch_id=${row.batch_id}`}>Open batch management</Link>} />
+  const batch = report.options.batches.find(item => item.id === row.batch_id)
+  const query = new URLSearchParams({ batch_id: row.batch_id, ...(role === 'admin' && batch?.institute_id ? { institute: batch.institute_id, program: batch.program_id || 'all' } : {}) })
+  return <StudentModal student={student} readOnly isArchived={row.batch_status === 'archived'} instructorName={row.instructor} onClose={onClose} restoreFocusRef={restoreFocusRef} footer={<Link className={button} to={`/${role}/${role === 'admin' ? 'batches' : 'students'}?${query}`}>Open batch management</Link>} />
 }
 
-function SelectFilter({ label, value, onChange, children }) {
-  return <label className="block min-w-0 text-xs font-medium leading-6 text-gray-700 dark:text-gray-300">{label}<select aria-label={label} className={`${field} mt-2`} value={value} onChange={event => onChange(event.target.value)}>{children}</select></label>
+function SelectFilter({ label, value, onChange, children, disabled = false }) {
+  return <label className="block min-w-0 text-xs font-medium leading-6 text-gray-700 dark:text-gray-300">{label}<select aria-label={label} disabled={disabled} className={`${field} mt-2`} value={value} onChange={event => onChange(event.target.value)}>{children}</select></label>
 }
 
 export default function ReportsAnalytics({ role = 'admin' }) {
@@ -106,7 +110,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   const opener = useRef(null)
   const recordsHeading = useRef(null)
   if ((denied || !source || (student && !source.students.some(row => row.id === student.id && row.batch_id === student.batch_id))) && student) setStudent(null)
-  const institute = params.get('institute_id') || ''
+  const institute = params.get('institute_id') || (role === 'admin' && params.get('program_id') ? String(options.programs?.find(row => String(row.id) === params.get('program_id'))?.institute_id || '') : '')
   const program = params.get('program_id') || ''
   const scopedBatches = options.batches.filter(batch => (!institute || String(batch.institute_id) === institute) && (!program || String(batch.program_id) === program))
   function update(changes, clearGroup = false, preserveRecords = false) {
@@ -128,9 +132,9 @@ export default function ReportsAnalytics({ role = 'admin' }) {
     })
   }
   const rows = useMemo(() => data ? selectAnalyticsStudents(data, tab, group, search) : [], [data, tab, group, search])
-  const table = useMemo(() => data ? analyticsTable(data, tab, group, rows) : null, [data, tab, group, rows])
+  const table = useMemo(() => data ? analyticsTable(data, tab, group, rows, search) : null, [data, tab, group, rows, search])
   const selectionLabel = data ? analyticsSelectionLabel(data, group) : ''
-  const tableGroups = ['capacity', 'assessments', 'skills', 'activity', 'geography']
+  const tableGroups = ['capacity', 'assessments', 'skills', 'activity', 'geography', 'organizations']
   const studentTable = !tableGroups.includes(group)
   const pageSize = studentTable ? 8 : 10
   const visiblePage = Math.min(page, Math.max(1, Math.ceil((table?.rows.length ?? 0) / pageSize)))
@@ -140,7 +144,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
     onSortingChange: next => { setSorting(next); setPage(1) } })
   const orderedRecords = engine.getRowModel().rows.map(row => row.original)
   function openStudent(record, element) { opener.current = element; setStudent(record) }
-  const scopeText = data ? `Batches: ${data.scope.batch_ids.map(id => data.options.batches.find(batch => batch.id === id)?.name || id).join(', ') || 'none'}; ${data.scope.batch_status}; course: ${data.scope.course || 'all'}` : ''
+  const scopeText = data ? analyticsScopeText(data) : ''
   async function download(type) {
     if (!data || !table || pending.current || scopeUpdating || error || previous) return
     pending.current = true; setDownloading(true)
@@ -156,8 +160,8 @@ export default function ReportsAnalytics({ role = 'admin' }) {
       const { data: current } = await api.get(url)
       if (!scopeCurrent(scopeVersion) || url !== analyticsSourceUrl(new URLSearchParams(window.location.search))) return
       const fresh = activityReport(current, params).data
-      const freshTable = fresh && analyticsTable(fresh, tab, group, selectAnalyticsStudents(fresh, tab, group, search))
-      if (!freshTable || JSON.stringify(fresh.scope.batch_ids) !== JSON.stringify(data.scope.batch_ids) || JSON.stringify(freshTable) !== JSON.stringify(table)) {
+      const freshTable = fresh && analyticsTable(fresh, tab, group, selectAnalyticsStudents(fresh, tab, group, search), search)
+      if (!freshTable || analyticsFilterText(fresh) !== analyticsFilterText(data) || JSON.stringify(fresh.scope.batch_ids) !== JSON.stringify(data.scope.batch_ids) || JSON.stringify(freshTable) !== JSON.stringify(table)) {
         retryReport()
         showToast('The report changed. Review the updated records before downloading.', 'warning')
         return
@@ -182,7 +186,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   return <section className="mx-auto min-w-0 max-w-360 space-y-8 px-4 py-8 text-xs sm:px-8 sm:py-10 lg:space-y-10">
     <header className="space-y-3">
       <h1 className="text-xl font-semibold tracking-tight text-gray-950 sm:text-2xl dark:text-white">Reports &amp; Analytics</h1>
-      <p className="max-w-3xl text-xs leading-5 text-gray-600 dark:text-gray-400">{role === 'admin' ? 'Understand assessment progress, student skills and OJT placements across your batches.' : 'Understand assessment progress, student skills and OJT placements in your batches.'}</p>
+      <p className="max-w-3xl text-xs leading-5 text-gray-600 dark:text-gray-400">{role === 'admin' ? 'Understand assessment progress, student skills and OJT placements across institutes and programs.' : 'Understand assessment progress, student skills and OJT placements in your batches.'}</p>
     </header>
 
     <section aria-label="Report scope" className={panel}>
@@ -190,16 +194,18 @@ export default function ReportsAnalytics({ role = 'admin' }) {
         <div><h2 className="text-sm font-semibold text-gray-900 dark:text-white">Report scope</h2><p className="mt-1 text-xs leading-6 text-gray-500 dark:text-gray-400">Choose the students and batches to include. Changes apply to every report section.</p></div>
         <button type="button" className={button} onClick={() => { const next = new URLSearchParams({ tab }); if (analyticsSourceUrl(next) !== url) setRequestedScope(analyticsSourceUrl(next)); setParams(next, { preventScrollReset: true }); setPage(1); setSearch(''); setStudent(null); setSorting([]) }}>Reset analytics filters</button>
       </div>
-      <fieldset disabled={!source} aria-busy={!source} className={`grid gap-5 sm:grid-cols-2 ${role === 'admin' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+      <fieldset disabled={!source} aria-busy={!source} className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {(role === 'admin' || !!options.institutes?.length) && <SelectFilter label="Institute" value={institute} onChange={value => update({ institute_id: value, program_id: '', instructor_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">All accessible institutes</option>{options.institutes?.map(item => <option key={item.id} value={item.id}>{item.name}{item.is_active === false ? ' (archived)' : ''}</option>)}</SelectFilter>}
+        {(role === 'admin' || !!options.programs?.length) && <SelectFilter label="Program" value={program} disabled={role === 'admin' && !institute} onChange={value => update({ program_id: value, instructor_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">{role === 'admin' && !institute ? 'Choose an institute first' : 'All programs in scope'}</option>{options.programs?.filter(item => !institute || String(item.institute_id) === institute).map(item => <option key={item.id} value={item.id}>{item.name}{item.is_active === false ? ' (archived)' : ''}</option>)}</SelectFilter>}
+        <SelectFilter label="Batch" value={params.get('batch_id') || ''} disabled={role === 'admin' && !institute} onChange={value => update({ batch_id: value, assessment_id: '', company_id: '', position_id: '', area: '' }, true)}><option value="">{role === 'admin' && !institute ? 'Choose an institute first' : role === 'admin' || institute || program ? 'All matching batches' : 'Current batch / latest in history'}</option>{scopedBatches.filter(batch => (!params.get('batch_status') ? batch.status === 'active' : params.get('batch_status') === 'all' || batch.status === params.get('batch_status')) && (!params.get('instructor_id') || String(batch.instructor_id) === params.get('instructor_id'))).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</SelectFilter>
         <SelectFilter label="Batch status" value={params.get('batch_status') || 'active'} onChange={value => update({ batch_status: value, batch_id: '', assessment_id: '' }, true)}><option value="active">Active batches</option><option value="archived">Archived history</option><option value="all">Active and archived history</option></SelectFilter>
-        {!!options.institutes?.length && <SelectFilter label="Institute" value={institute} onChange={value => update({ institute_id: value, program_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">All accessible institutes</option>{options.institutes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectFilter>}
-        {!!options.programs?.length && <SelectFilter label="Program" value={program} onChange={value => update({ program_id: value, batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true)}><option value="">All accessible programs</option>{options.programs.filter(item => !institute || String(item.institute_id) === institute).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectFilter>}
-        <SelectFilter label="Batch" value={params.get('batch_id') || ''} onChange={value => update({ batch_id: value, assessment_id: '', company_id: '', position_id: '', area: '' }, true)}><option value="">{role === 'admin' || institute || program ? 'Current batches in scope' : 'Current batch / latest in history'}</option>{scopedBatches.filter(batch => (!params.get('batch_status') ? batch.status === 'active' : params.get('batch_status') === 'all' || batch.status === params.get('batch_status')) && (!params.get('instructor_id') || String(batch.instructor_id) === params.get('instructor_id'))).map(batch => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</SelectFilter>
-        {role === 'admin' && <SelectFilter label="Instructor" value={params.get('instructor_id') || ''} onChange={value => update({ instructor_id: value, batch_id: '', assessment_id: '' }, true)}><option value="">All instructors</option>{options.instructors.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</SelectFilter>}
-        <SelectFilter label="Course" value={params.get('course') || ''} onChange={value => update({ course: value }, true)}><option value="">All courses</option>{options.courses.map(course => <option key={course}>{course}</option>)}</SelectFilter>
       </fieldset>
+      <details className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800"><summary className="min-h-8 cursor-pointer text-xs font-semibold focus-visible:outline-2 focus-visible:outline-green-600">More scope filters</summary><fieldset disabled={!source} className="mt-4 grid gap-5 sm:grid-cols-2">
+        {role === 'admin' && <SelectFilter label="Instructor" value={params.get('instructor_id') || ''} onChange={value => update({ instructor_id: value, batch_id: '', assessment_id: '' }, true)}><option value="">All instructors</option>{options.instructors.filter(owner => scopedBatches.some(batch => batch.instructor_id === owner.id)).map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</SelectFilter>}
+        <SelectFilter label="Course" value={params.get('course') || ''} onChange={value => update({ course: value }, true)}><option value="">All courses</option>{options.courses.map(course => <option key={course}>{course}</option>)}</SelectFilter>
+      </fieldset><p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Instructor and course further narrow the selected cohort.{params.get('instructor_id') || params.get('course') ? ` Applied: ${options.instructors.find(row => String(row.id) === params.get('instructor_id'))?.name || 'All instructors'} · ${params.get('course') || 'All courses'}` : ''}</p></details>
       {!source && !error && <p role="status" className="mt-3 text-xs text-gray-500 dark:text-gray-400">Loading available report filters…</p>}
-      {data && <div className="mt-5 space-y-1 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500 dark:border-gray-800 dark:text-gray-400"><p>{scopeText}</p><p>Each student is counted once, using their latest selected enrollment.{data.scope.batch_status !== 'active' ? ' Archived records are read-only; their final results may be locked.' : ''}</p></div>}
+      {data && <div className="mt-5 space-y-1 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500 dark:border-gray-800 dark:text-gray-400"><p>{analyticsScopeText(data, true)}</p><p>Each student is counted once, using their latest selected enrollment.{data.scope.batch_status !== 'active' ? ' Archived records are read-only; their final results may be locked.' : ''}</p></div>}
     </section>
 
     <nav className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-800" aria-label="Analytics sections">{sections.map(({ key, label, description, icon }) => <button type="button" key={key} aria-label={label} aria-pressed={tab === key} onClick={() => { setExportsOpen(false); setFullColumns(false); update({ tab: key, group: '', assessment_id: key === 'assessments' ? params.get('assessment_id') : '', company_id: key === 'placements' ? params.get('company_id') : '', position_id: key === 'placements' ? params.get('position_id') : '', area: key === 'placements' ? params.get('area') : '' }) }} className={`-mb-px flex min-h-16 items-center justify-center gap-3 border-b-2 px-1 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-green-600 sm:justify-start sm:px-5 ${tab === key ? 'border-green-700 text-green-800 dark:border-green-400 dark:text-green-400' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}>
@@ -216,6 +222,8 @@ export default function ReportsAnalytics({ role = 'admin' }) {
           <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Last updated<br /><time dateTime={data.generated_at} className="font-medium text-gray-700 dark:text-gray-300">{manilaDateTime(data.generated_at)}</time></p>
         </div>
         <ReportSummary data={data} tab={tab} />
+        {role === 'admin' && !data.scope.program_id && <OrganizationComparison key={`${data.scope.institute_id || ''}:${data.scope.batch_status}`} data={data} disabled={previous || scopeUpdating || !!error} onRecords={() => select('organizations')} onOpen={id => { if (!previous && !scopeUpdating && !error) update(data.scope.institute_id ? { program_id: String(id), instructor_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' } : { institute_id: String(id), program_id: '', instructor_id: '', batch_id: '', assessment_id: '', course: '', company_id: '', position_id: '', area: '' }, true) }} />}
+
 
         {tab === 'assessments' && <>
           <div className="max-w-xl"><SelectFilter label="Assessment analysis (does not change student totals)" value={params.get('assessment_id') || ''} onChange={value => update({ assessment_id: value }, true)}><option value="">All assigned assessments</option>{options.assessments.map(assessment => <option key={assessment.id} value={assessment.id}>{assessment.name}</option>)}</SelectFilter></div>
@@ -226,6 +234,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
           </ChartPanel>
         </>}
 
+        {tab === 'skills' && !data.scope.program_id && role === 'admin' && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Skill rows retain their program, skill set and version. Choose a program for a focused review; categories from different skill sets are not one school-wide ranking.</p>}
         {tab === 'skills' && <Suspense fallback={<InsightsSkeleton tab="skills" />}><SkillsInsights key={JSON.stringify([data.scope.batch_ids, data.scope.batch_status, data.scope.course, data.scope.instructor_id])} data={data} selection={group} onSelect={next => { setRecordView('list'); select(next) }} /></Suspense>}
 
         {tab === 'placements' && <>
@@ -252,16 +261,16 @@ export default function ReportsAnalytics({ role = 'admin' }) {
           </div>}
           <div className="space-y-3 border-y border-gray-100 py-5 dark:border-gray-800">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300">View records</p>
-            <div className="flex flex-wrap gap-2">{[['', 'Student records'], ...(tab === 'assessments' ? [['complete', 'Complete'], ['incomplete', 'Incomplete'], ['followup', 'Needs follow-up'], ['assessments', 'Assessment table'], ['activity', 'Activity table']] : tab === 'skills' ? [['skills', 'Category table']] : [['awaiting', 'Awaiting review'], ['approved', 'Approved'], ['unplaced', 'Unplaced'], ['capacity', 'Capacity table'], ['geography', 'Residence / partner areas']])].map(([value, label]) => <button type="button" key={value} className={group === value ? activeButton : button} aria-pressed={group === value} onClick={() => select(value)}>{label}</button>)}</div>
+            <div className="flex flex-wrap gap-2">{[['', 'Student records'], ...(role === 'admin' && !data.scope.program_id ? [['organizations', 'Organization comparison']] : []), ...(tab === 'assessments' ? [['complete', 'Complete'], ['incomplete', 'Incomplete'], ['followup', 'Needs follow-up'], ['assessments', 'Assessment table'], ['activity', 'Activity table']] : tab === 'skills' ? [['skills', 'Category table']] : [['awaiting', 'Awaiting review'], ['approved', 'Approved'], ['unplaced', 'Unplaced'], ['capacity', 'Capacity table'], ['geography', 'Residence / partner areas']])].map(([value, label]) => <button type="button" key={value} className={group === value ? activeButton : button} aria-pressed={group === value} onClick={() => select(value)}>{label}</button>)}</div>
             {group && !studentTable && <button type="button" className="min-h-10 rounded text-xs font-medium text-green-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-400" onClick={() => select('')}>Clear record selection</button>}
           </div>
-          {studentTable && <div className="flex flex-wrap items-end justify-between gap-4">
-            <label className="block w-full max-w-md text-xs font-medium text-gray-700 dark:text-gray-300">Search students<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><SearchIcon size={18} /></span><input className={`${field} pl-10`} type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} placeholder="Search student, ID, batch or instructor…" /></span></label>
-            <div className="flex max-w-full flex-wrap items-end gap-3">
+          {(studentTable || group === 'organizations') && <div className="flex flex-wrap items-end justify-between gap-4">
+            <label className="block w-full max-w-md text-xs font-medium text-gray-700 dark:text-gray-300">{group === 'organizations' ? 'Search organizations' : 'Search students'}<span className="relative mt-2 block"><span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><SearchIcon size={18} /></span><input className={`${field} pl-10`} type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} placeholder={group === 'organizations' ? 'Search institute or program…' : 'Search student, ID, batch or instructor…'} /></span></label>
+            {studentTable && <div className="flex max-w-full flex-wrap items-end gap-3">
               {recordView === 'grid' ? <label className="block min-w-0 text-xs font-medium text-gray-700 dark:text-gray-300">Sort students<select aria-label="Sort students" className={`${field} mt-2 max-w-64`} value={sorting.length ? `${sorting[0].id}:${sorting[0].desc ? 'desc' : 'asc'}` : ''} onChange={event => { const [id, direction] = event.target.value.split(':'); setSorting(id ? [{ id, desc: direction === 'desc' }] : []); setPage(1) }}><option value="">Original record order</option>{table.columns.flatMap((label, index) => ['asc', 'desc'].map(direction => <option key={`${index}:${direction}`} value={`${index}:${direction}`}>{label} · {direction === 'asc' ? 'ascending' : 'descending'}</option>))}</select></label>
                 : <button type="button" aria-pressed={fullColumns} className={button} onClick={() => setFullColumns(value => !value)}>{fullColumns ? 'Show key columns' : 'Show all columns'}</button>}
               <CollectionViewToggle view={recordView} onChange={setRecordView} label="Student records view" mobile />
-            </div>
+            </div>}
           </div>}
           {!table.rows.length ? <div className="rounded-xl bg-gray-50 px-5 py-12 text-center dark:bg-gray-800/50"><p className="text-sm font-medium text-gray-800 dark:text-gray-200">No records match this selection.</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Try another record view or adjust the report scope.</p>{search && <button type="button" className={`${button} mt-4`} onClick={() => { setSearch(''); setPage(1) }}>Clear search</button>}</div> : <>
             {sorting.length > 0 && <p className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400">Sorted by {table.columns[Number(sorting[0].id)]} ({sorting[0].desc ? 'descending' : 'ascending'})<button type="button" className="min-h-10 rounded font-medium text-green-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-400" onClick={() => { setSorting([]); setPage(1) }}>Reset order</button></p>}
@@ -275,10 +284,10 @@ export default function ReportsAnalytics({ role = 'admin' }) {
           {tab === 'assessments' && <div className="border-t border-gray-100 pt-5 dark:border-gray-800"><button type="button" className="flex min-h-11 w-full items-center justify-between gap-4 rounded-lg text-left text-xs font-semibold text-gray-800 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-gray-200" aria-expanded={exportsOpen} aria-controls="assessment-exports" onClick={() => setExportsOpen(value => !value)}>Individual assessment reports<span aria-hidden="true"><ChevronDown size={18} open={exportsOpen} /></span></button>{exportsOpen && <div id="assessment-exports" className="mt-3"><Suspense fallback={<p role="status">Loading assessment exports…</p>}><AssessmentReportPanel embedded /></Suspense></div>}</div>}
         </section>
 
-        {tab === 'placements' && <Link className="inline-flex min-h-11 items-center text-sm font-semibold text-green-700 underline underline-offset-4 dark:text-green-400" to={`/${role}/placements`}>Open placement management and decision-history exports →</Link>}
+        {tab === 'placements' && <Link className="inline-flex min-h-11 items-center text-sm font-semibold text-green-700 underline underline-offset-4 dark:text-green-400" to={`/${role}/placements?${new URLSearchParams({ ...(data.scope.institute_id ? { institute: data.scope.institute_id, program: data.scope.program_id || 'all' } : {}), ...(data.scope.batch_ids.length === 1 ? { batch_id: data.scope.batch_ids[0] } : {}) })}`}>Open placement management and decision-history exports →</Link>}
       </>}
     </section>
     {role === 'admin' && <section className={`${panel} border-dashed`}><button type="button" className="flex min-h-11 w-full items-center justify-between gap-4 rounded-lg text-left text-sm font-semibold text-gray-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-gray-300" aria-expanded={advanced} aria-controls="analytics-advanced" onClick={() => setAdvanced(value => !value)}>Advanced: recommendation model and evaluation<span aria-hidden="true"><ChevronDown size={18} open={advanced} /></span></button><p className="mt-2 text-xs leading-6 text-gray-500 dark:text-gray-400">Administrative model settings and evaluation tools.</p>{advanced && <div id="analytics-advanced" className="mt-6"><Suspense fallback={<p role="status">Loading advanced tools…</p>}><AdminRecommendationTools /></Suspense></div>}</section>}
-    {student && <StudentDetails row={student} role={role} onClose={() => setStudent(null)} restoreFocusRef={opener} />}
+    {student && <StudentDetails row={student} role={role} report={data} onClose={() => setStudent(null)} restoreFocusRef={opener} />}
   </section>
 }

@@ -5,8 +5,25 @@ needs both batch ownership and a current program assignment for configured
 programs. A program grant alone gives access to the shared competency catalog.
 Assessment and placement report requests can filter by institute, program and
 batch. The legacy placement report's batch-only filter returns an empty list for
-an inaccessible batch. Analytics exposes institute and program choices drawn
-from the staff member’s accessible batches.
+an inaccessible batch. Instructor analytics exposes institute and program choices
+drawn from that instructor's accessible batches. Admin analytics includes all
+saved institutes and programs, including empty and archived configuration, so an
+empty selected scope keeps its actual name in the page and downloads. Unknown
+IDs return 404; a program paired with a different institute returns 400.
+
+Admin report controls follow Institute → Program → Batch, with batch status next
+to them. Instructor and course are secondary filters under More scope filters.
+Changing an institute or program clears dependent filters. An admin may review
+school-wide totals before choosing a scope; program and batch controls wait for
+an institute. Existing mixed IC batches remain in the ordinary shared IC scope.
+
+The institute/program comparison partitions the report's distinct-student cohort
+using recorded enrollment, with separate shared/unassigned rows where applicable.
+Each rate uses that row's student count; an empty cohort has no rate. Opening a
+scope recomputes its newest selected enrollment independently, so its count can
+differ from its share of a broader cohort. This is not a historical trend or an
+OJT completion measure. Comparison records support search, sorting, pagination
+and the same snapshot CSV/PDF download flow as other analytics records.
 
 Scoped analytics shows eligible openings. The remaining-seat count for each
 visible opening includes all current approvals against the same position,
@@ -19,7 +36,10 @@ evidence within each framework's selected cohort.
 
 Assessment CSV, placement downloads, questionnaire downloads and retake evidence
 pass through the current API access check. Assessment PDF and analytics exports
-also revalidate their source before writing a local file. A guessed retake
+also revalidate their source before writing a local file. Analytics exports
+include organization names, batch selection, status, cohort unit and generated
+time. A renamed organization also invalidates a pending download and asks the
+admin to review the refreshed snapshot. A guessed retake
 evidence ID outside the accessible set has the same response as a missing ID.
 
 Live updates carry invalidation topics and permitted identifiers. The stream

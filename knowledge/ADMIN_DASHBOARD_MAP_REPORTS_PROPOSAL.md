@@ -1,6 +1,6 @@
 # Admin dashboard, partner map and reports proposal
 
-Status: implementation authorized, 6 November 2026. This proposal follows the completed
+Status: all three implementation gates completed, 7 November 2026. This proposal follows the completed
 [admin scope navigation feature](ADMIN_SCOPE_NAVIGATION_PLAN.md). The partner-map feature was verified on `codex/admin-partner-map`. Preserve unrelated working-tree changes.
 
 The admin needs a clear school overview and a reliable path into institute and
@@ -69,25 +69,25 @@ or automatically share them with another institute.
 
 ## Reports & Analytics
 
-- [ ] Keep one labeled scope bar: Institute → Program → Batch, active/archive
+- [x] Keep one labeled scope bar: Institute → Program → Batch, active/archive
   scope and optional instructor. Retain compatible existing report filters and
   clear dependent selections when the parent changes.
-- [ ] At school level, show institute summaries using counts and completion/
+- [x] At school level, show institute summaries using counts and completion/
   approved-decision rates with consistent cohorts and explicit denominators.
   Selecting an institute exposes its programs; detailed records retain context.
-- [ ] Preserve Assessments, Skills and Placements as the main analysis sections.
+- [x] Preserve Assessments, Skills and Placements as the main analysis sections.
   Keep the dashboard focused on follow-up rather than duplicating all charts.
-- [ ] Assessments: assigned/required completion, incomplete work and actual
+- [x] Assessments: assigned/required completion, incomplete work and actual
   submission activity, with linked supporting batch/assessment records.
-- [ ] Skills: use program/framework/category identity and missing-evidence
+- [x] Skills: use program/framework/category identity and missing-evidence
   labels. Do not merge same-named categories across unrelated programs or use
   incompatible assessments as a school-wide skill ranking.
-- [ ] Placements: suggested, approved and unplaced students remain distinct;
+- [x] Placements: suggested, approved and unplaced students remain distinct;
   partner eligibility and global shared occupancy remain explicit.
-- [ ] Every report/export states institute/program/batch scope, current/archive
+- [x] Every report/export states institute/program/batch scope, current/archive
   selection, cohort unit and generated time. Retain fresh-source checks before
   downloading; displayed records and exports must use the same scope and order.
-- [ ] Preserve existing advanced NLP tools and role access without letting their
+- [x] Preserve existing advanced NLP tools and role access without letting their
   controls dominate the everyday report workflow.
 
 ## Delivery and verification gates
@@ -111,45 +111,66 @@ after the individual gate passes, and never push without the user's instruction.
 
 ## Active checkpoint
 
-Resumed on 7 November 2026. Partner map is merged into local main as `ff43fb6`.
-Its 356 Node tests, twelve PostgreSQL tests and eighteen browser groups passed.
-Original IC relationships and shared capacity remain ordinary current records.
+Resumed on 7 November 2026. Partner map is merged locally as `ff43fb6`; dashboard
+is merged locally as `176875e`. Reports is delivered by `codex/admin-scoped-reports`, based on `176875e`.
+All three gates are complete and merged locally into `main`; their feature
+branches are retained for exact commit references. No GitHub push.
 
-Dashboard gate is complete on `codex/admin-school-dashboard` and ready for its
-local merge. It uses the existing distinct-cohort metrics, institute/program
-banner cards, program-only student/skill highlights, scoped attention links and
-secondary confirmed recommendation maintenance. Confirmation retains the chosen
-IDs through browser navigation. Initial reads use shared summary/card skeletons.
+Map verification: 356 Node tests, twelve isolated PostgreSQL tests and eighteen
+browser groups. Dashboard verification: lint/build, 359 previously recorded Node
+checks, forty-three isolated PostgreSQL tests, six real-API admin browser groups,
+eight instructor browser groups, nineteen sign-in/warming/recovery checks, and
+visual review at 320/390/768/1440px in light/dark mode. The final sign-in receipt
+is `work/organization-browser-pi_fw51q/`.
 
-The admin-only attention payload counts active enrolled pending retakes, batches
-without published required work (including empty batches), and unavailable final
-results. Account approvals are explicitly school-wide. The read-only retake flag
-`active_batches=1` works on current and history queues without expanding access.
+Reports implementation:
 
-Checks completed:
+- Primary Institute → Program → Batch controls with batch status alongside;
+  Instructor/Course under More scope filters. Cascading changes clear dependent
+  IDs. Read-only batch/placement links preserve organization context.
+- Admin analytics options include saved empty and archived institutes/programs.
+  Invalid/mismatched IDs return an explicit error; instructor choices remain
+  restricted to owned accessible batches.
+- Institute/program comparisons partition the same distinct cohort by recorded
+  enrollment, with shared IC/unassigned rows and explicit denominators. Empty
+  rates stay missing. Comparisons support search, pagination and sorted exports.
+- Framework/category identities, assessment activity, shared global occupancy,
+  placement statuses and advanced NLP tools retain their existing meanings.
+- CSV/PDF snapshots carry organization names, full batch selection, status,
+  generation time and cohort units. Renamed scope labels trigger the existing
+  refresh/review gate. Failed scope changes retain a clearly labeled old snapshot
+  and block exports. Large on-screen batch selections use a compact count while
+  downloads retain every batch name.
 
-- Frontend lint and production build passed again after the skeleton adjustment;
-  all 359 Node tests passed in the preceding implementation session.
-- Forty-three isolated PostgreSQL tests passed in
-  `work/organization-postgres-hnequfa1/` (dashboard, analytics, retake recovery
-  and admin navigation scope).
-- Six real-API school-dashboard browser groups passed in
-  `work/organization-browser-p176i_1u/`. All four saved responsive screenshots
-  were visually reviewed on resume (320/390/768/1440px, light/dark).
-- Eight retained instructor-dashboard browser groups passed in
-  `work/organization-browser-t9q3kouv/`.
-- All nineteen sign-in, shared-cache warming, recovery/cancellation and navigation
-  browser checks passed in `work/organization-browser-pi_fw51q/`. This replaces
-  the interrupted pause-time run and an initial rerun with an obsolete collapsed
-  sidebar test assumption. The test now opens OJT before selecting its child link.
+Checks completed for reports:
 
-No dashboard schema migration or configured database write was needed. Test
-servers were task-owned and stopped by their harness. No GitHub push.
+- Frontend lint/build passed; all 305 current source Node tests passed in
+  `work/admin-scoped-reports-node.txt`.
+- Twenty isolated PostgreSQL tests passed in
+  `work/organization-postgres-o1mv2qd6/`; seven framework-aware derived-scope tests
+  passed in `work/organization-postgres-llkhnnuy/`.
+- Nine real-API browser groups passed again against the final production bundle
+  in `work/organization-browser-lsv0k1aq/`,
+  including sorted CSV, empty-scope CSV/PDF, invalid scopes, ordinary shared IC
+  records, renamed labels, failure/retry, all three sections at four widths,
+  dark mode and instructor privacy.
+- Two existing report-revocation/protected-export browser checks passed in
+  `work/organization-browser-ggevf7rr/`.
+- Report header screenshots were reviewed at all four widths; final compact-scope,
+  comparison and placement screenshots were also visually reviewed. No schema
+  migration or configured school data write. Task-owned test servers stopped
+  through their harnesses.
 
-Next: locally merge this dashboard feature, then create the Reports & Analytics
-branch. Its gate must include empty saved institutes/programs in admin choices,
-consistent institute/program cohort comparisons, clearer primary/secondary scope
-controls and explicit institute/program names in downloads. Preserve unrelated
-breadcrumb, instructor-picker, profile, user-page and collection-toolbar edits.
-Current `ReportsAnalytics.jsx` toolbar edits are unrelated to this reports gate.
-Stage only this task's changes; preserve other working-tree changes.
+Earlier test attempts are retained as evidence: an obsolete toast selector and
+incorrect synthetic owner were corrected; a concurrent temporary server startup
+missed its readiness window. Neither is counted as a final passing run. The
+unsupported helper --help invocation was stopped; a subsequent process check
+found no remaining child from that invocation.
+
+Next: user review in the local application, with the configured school data.
+No known failure remains in this feature's verified synthetic workflows. Actual
+hosted behavior and evaluator acceptance are not established by these local
+checks. Unrelated breadcrumb, instructor-picker, profile, user-page and collection
+toolbar edits remain in the working tree. The pre-existing report-toolbar class
+and collection-layout runner registrations are excluded from this feature commit.
+No further feature or push has been started.

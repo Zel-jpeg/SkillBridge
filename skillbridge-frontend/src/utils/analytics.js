@@ -1,4 +1,5 @@
 import { recommendationDisplay, summaryRecommendation } from './recommendationResults.js'
+import { organizationComparison } from './analyticsOrganization.js'
 export const ANALYTICS_URL = '/api/management/analytics/'
 export const FILTER_KEYS = ['batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
 
@@ -63,7 +64,8 @@ export function analyticsSkillName(skill) {
   return skill.framework_label ? `${skill.name} (${skill.framework_label})` : skill.name
 }
 
-export function analyticsTable(data, tab, group, students) {
+export function analyticsTable(data, tab, group, students, search = '') {
+  if (group === 'organizations') return { title: data.scope.institute_id ? 'Program comparison' : 'Institute comparison', columns: [data.scope.institute_id ? 'Program' : 'Institute', 'Students', 'Required complete', 'Completion rate %', 'Approved placements', 'Approval rate %'], rows: organizationComparison(data, search).map(row => [row.name, row.students, row.complete, row.completionRate, row.approved, row.placementRate]) }
   if (group === 'geography') return { title: 'Residence and partner-area comparison', columns: ['Area', 'Selected student residents', 'Unplaced selected student residents', 'Approved deployments to partners', 'Partners with configured positions', 'Shared configured slots', 'Shared remaining slots'], rows: data.geography.map(row => [row.name, row.residents, row.unplaced_residents, row.approved_deployments, row.companies, row.total_slots, row.remaining_slots]) }
   if (group === 'capacity') return { title: 'Shared position capacity', columns: ['Partner', 'Position', 'Partner area', 'Configured slots', 'Approved assignments', 'Remaining slots'],
     rows: data.capacity.map(row => [row.company, row.name, row.area, row.total, row.occupied, row.remaining]) }
@@ -77,6 +79,7 @@ export function analyticsTable(data, tab, group, students) {
 }
 
 export function analyticsSelectionLabel(data, group) {
+  if (group === 'organizations') return 'Organization comparison · distinct students by recorded enrollment'
   if (!group) return 'All records in scope'
   const [kind, id, state] = group.split(':')
   const states = { submitted: 'Valid submitted', in_progress: 'In progress', not_started: 'Not started', stopped: 'Stopped / flagged', strong: 'Strong', fair: 'Fair', needs_work: 'Needs work' }
@@ -96,7 +99,7 @@ export function analyticsSelectionLabel(data, group) {
 
 export function analyticsFilterText(data) {
   const scope = data.scope
-  const lookup = (collection, id) => data.options[collection]?.find(row => row.id === id)?.name || 'All'
+  const lookup = (collection, id) => id ? data.options[collection]?.find(row => String(row.id) === String(id))?.name || `Unavailable (${id})` : 'All'
   return [`Batch status: ${scope.batch_status}`, `Course: ${scope.course || 'All'}`,
     ...(scope.institute_id ? [`Institute: ${lookup('institutes', scope.institute_id)}`] : []),
     ...(scope.program_id ? [`Program: ${lookup('programs', scope.program_id)}`] : []),

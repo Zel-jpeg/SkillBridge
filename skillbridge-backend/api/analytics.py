@@ -15,8 +15,8 @@ from .placement_scope import current_approvals
 from .management_access import managed_batches
 from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
-from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, OJTPlacement,
-                     Recommendation, StudentResponse, User)
+from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, Institute, OJTPlacement,
+                     Program, Recommendation, StudentResponse, User)
 
 MANILA = ZoneInfo('Asia/Manila')
 
@@ -72,6 +72,20 @@ def analytics_payload(user, params):
 
     owned_query = managed_batches(user).select_related('instructor', 'institute', 'program', 'framework__program').order_by('-created_at', '-id')
     owned = list(owned_query)
+    if user.role == 'admin':
+        institute_options = list(Institute.objects.order_by('name', 'id').values('id', 'name', 'code', 'is_active'))
+        program_options = list(Program.objects.order_by('name', 'id').values('id', 'name', 'code', 'institute_id', 'is_active'))
+        if institute_id and not any(row['id'] == institute_id for row in institute_options):
+            raise NotFound('Institute not found.')
+        chosen_program = next((row for row in program_options if row['id'] == program_id), None)
+        if program_id and not chosen_program:
+            raise NotFound('Program not found.')
+        if institute_id and chosen_program and chosen_program['institute_id'] != institute_id:
+            raise ValidationError({'error': 'Selected program does not belong to this institute.'})
+    else:
+        institute_options = [{'id': key, 'name': name} for key, name in sorted({(batch.institute_id, batch.institute.name) for batch in owned if batch.institute_id})]
+        program_options = [{'id': key, 'name': name, 'institute_id': parent} for key, name, parent in sorted({
+            (batch.program_id, batch.program.name, batch.program.institute_id) for batch in owned if batch.program_id})]
     owned_map = {batch.id: batch for batch in owned}
     if batch_id and batch_id not in owned_map:
         raise NotFound('Batch not found.')
@@ -326,9 +340,8 @@ def analytics_payload(user, params):
         'activity_days': [{'date': day.isoformat(), 'submissions': count} for day, count in sorted(activity_days.items())],
         'options': {'batches': [{'id': batch.id, 'name': batch.name, 'status': batch.status, 'instructor_id': batch.instructor_id,
                                 'institute_id': batch.institute_id, 'program_id': batch.program_id} for batch in owned],
-            'institutes': [{'id': key, 'name': name} for key, name in sorted({(batch.institute_id, batch.institute.name) for batch in owned if batch.institute_id})],
-            'programs': [{'id': key, 'name': name, 'institute_id': parent} for key, name, parent in sorted({
-                (batch.program_id, batch.program.name, batch.program.institute_id) for batch in owned if batch.program_id})],
+            'institutes': institute_options,
+            'programs': program_options,
             'instructors': [{'id': owner_id, 'name': name} for owner_id, name in sorted({(batch.instructor_id, batch.instructor.name) for batch in owned})] if user.role == 'admin' else [],
             'courses': sorted(set(BatchEnrollment.objects.filter(batch_id__in=owned_map, student__role='student')
                                   .exclude(student__course='').values_list('student__course', flat=True))),
