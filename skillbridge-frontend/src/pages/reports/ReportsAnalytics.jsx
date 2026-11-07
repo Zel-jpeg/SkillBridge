@@ -15,6 +15,7 @@ import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { useAnalyticsRecords } from '../../hooks/useAnalyticsRecords'
 import { useAnalyticsData } from '../../hooks/useAnalyticsData'
 import { useSnapshotFreshness } from '../../hooks/useSnapshotFreshness'
+import { matchesOrganization } from '../../utils/organizationScope'
 import OrganizationComparison from '../../components/analytics/OrganizationComparison'
 import { analyticsScopeText } from '../../utils/analyticsOrganization'
 import ActivityDateFilter from '../../components/analytics/ActivityDateFilter'
@@ -112,7 +113,8 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   if ((denied || !source || (student && !source.students.some(row => row.id === student.id && row.batch_id === student.batch_id))) && student) setStudent(null)
   const institute = params.get('institute_id') || (role === 'admin' && params.get('program_id') ? String(options.programs?.find(row => String(row.id) === params.get('program_id'))?.institute_id || '') : '')
   const program = params.get('program_id') || ''
-  const scopedBatches = options.batches.filter(batch => (!institute || String(batch.institute_id) === institute) && (!program || String(batch.program_id) === program))
+  const programInstitute = institute || String(options.programs?.find(row => String(row.id) === program)?.institute_id || '')
+  const scopedBatches = options.batches.filter(batch => matchesOrganization(batch, { institute: programInstitute, program }))
   function update(changes, clearGroup = false, preserveRecords = false) {
     // Browser history updates before Router's transition commits. Read its latest
     // query so a rapid second action cannot restore filters just cleared by Reset.

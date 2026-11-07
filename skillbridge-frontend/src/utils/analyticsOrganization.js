@@ -20,6 +20,7 @@ export function organizationComparison(data, search = '') {
 export function analyticsScopeText(data, compact = false) {
   const lookup = (key, id, fallback) => id ? data.options[key]?.find(row => String(row.id) === String(id))?.name || `Unavailable ${key === 'institutes' ? 'institute' : 'program'} (${id})` : fallback
   const batches = compact && data.scope.batch_ids.length > 3 ? `${data.scope.batch_ids.length} selected batches` : data.scope.batch_ids.map(id => data.options.batches.find(row => row.id === id)?.name || id).join(', ') || 'none'
+  const shared = data.scope.program_id && data.scope.shared_batch_ids?.length ? `; includes ${data.scope.shared_batch_ids.length} shared institute batches with full rosters; program views can overlap` : ''
   const instructor = data.scope.instructor_id ? `; instructor: ${data.options.instructors?.find(row => row.id === data.scope.instructor_id)?.name || data.scope.instructor_id}` : ''
-  return `Institute: ${lookup('institutes', data.scope.institute_id, 'All institutes')}; Program: ${lookup('programs', data.scope.program_id, 'All programs')}; Batches: ${batches}; ${data.scope.batch_status}; course: ${data.scope.course || 'all'}${instructor}`
+  return `Institute: ${lookup('institutes', data.scope.institute_id, 'All institutes')}; Program: ${lookup('programs', data.scope.program_id, 'All programs')}; Batches: ${batches}; ${data.scope.batch_status}; course: ${data.scope.course || 'all'}${instructor}${shared}`
 }

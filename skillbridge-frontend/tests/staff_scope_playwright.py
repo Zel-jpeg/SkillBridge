@@ -71,7 +71,7 @@ with sync_playwright() as playwright:
         assert icon.bounding_box()['width'] >= 44 and icon.bounding_box()['height'] >= 44
         icon.press('Enter')
         page.get_by_role('dialog', name=dialog_name, exact=True).get_by_role('button', name='Cancel', exact=True).click()
-        expect(page.get_by_role('heading', name='Institutes', exact=True)).to_be_visible()
+        expect(page.get_by_role('heading', name='Institutes & Programs', exact=True)).to_be_visible()
     for width, columns in ((320, 1), (768, 2), (1024, 2), (1440, 3)):
         page.set_viewport_size({'width': width, 'height': 900})
         assert institute_cards.evaluate('(node) => getComputedStyle(node).gridTemplateColumns.split(" ").length') == columns

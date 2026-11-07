@@ -58,6 +58,7 @@ export default function AdminScopeNavigator({ title, children, dropdowns = false
       {loading && !data && <p role="status" className="text-xs">Loading institutes and programs…</p>}
       {invalid ? <p role="alert" className="text-xs">This institute or program is unavailable. Choose a valid institute and program.</p>
         : !ready && data && !dropdowns && <TaxonomyLibraryCards key={instituteId} items={items} label={institute ? 'Programs' : 'Institutes'} emptyMessage="No institutes or programs are available here." />}
+      {ready && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{program ? `${program.code} records and shared ${institute.code} records are shown together. Shared records open their full batch, including students from other programs.` : `All ${institute.code} programs includes program-specific and shared institute records. Shared records keep one full batch.`}</p>}
       {overview && overview({ institute: instituteId, program: programId === 'all' ? '' : programId })}
     </section>
     {ready && <div key={`${instituteId}:${programId}`}>{children({ institute: instituteId, program: program ? programId : '' }, { institute, program })}</div>}

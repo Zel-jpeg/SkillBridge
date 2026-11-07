@@ -81,6 +81,7 @@ export function buildAssessmentReportPdf(payload, filters, jsPDF, autoTable) {
     y += 4
   }
 
+  if (payload.scope_note) paragraph(payload.scope_note)
   if (!payload.rows?.length) {
     doc.setFontSize(11); doc.text('No records match the selected filters.', 12, y)
   } else if (payload.report_type === 'student_competency') {

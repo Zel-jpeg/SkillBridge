@@ -15,6 +15,7 @@ from .placement_scope import current_approvals
 from .management_access import managed_batches
 from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
+from .organization_visibility import batch_visibility_q
 from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, Institute, OJTPlacement,
                      Program, Recommendation, StudentResponse, User)
 
@@ -90,11 +91,10 @@ def analytics_payload(user, params):
     if batch_id and batch_id not in owned_map:
         raise NotFound('Batch not found.')
     selected = [batch for batch in owned if (status == 'all' or batch.status == status)]
-    organization_batches = [batch for batch in owned if (not institute_id or batch.institute_id == institute_id)
-                            and (not program_id or batch.program_id == program_id)]
+    organization_ids = set(owned_query.filter(batch_visibility_q(institute_id, program_id)).values_list('pk', flat=True)) if institute_id or program_id else set(owned_map)
+    organization_batches = [batch for batch in owned if batch.pk in organization_ids]
     if (institute_id or program_id) and not organization_batches and user.role == 'instructor':
         raise NotFound('No accessible batches in this scope.')
-    organization_ids = {batch.pk for batch in organization_batches}
     selected = [batch for batch in selected if batch.pk in organization_ids]
     if instructor_id:
         if instructor_id not in {batch.instructor_id for batch in owned}:
@@ -325,6 +325,7 @@ def analytics_payload(user, params):
             'assessment_id': assessment_id, 'company_id': company_id, 'position_id': position_id, 'area': params.get('area', ''),
             'date_from': start.isoformat(), 'date_to': end.isoformat(),
             'activity_period': activity_period, 'activity_interval': activity_interval,
+            'shared_batch_ids': [batch.pk for batch in selected if batch.institute_id and not batch.program_id],
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
             'capacity_scope': 'Eligible openings; occupancy includes all current approvals' if scoped_catalog else 'Shared system-wide slots; only partner/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},

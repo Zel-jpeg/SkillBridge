@@ -38,3 +38,8 @@ test('large visible scopes stay compact while exports retain every batch name an
   assert.match(analyticsScopeText(scoped), /Program batch, Shared batch, 30, 40/)
   assert.match(analyticsScopeText(scoped, true), /instructor: Assigned coordinator/)
 })
+test('program snapshots disclose full shared rosters and overlapping views without changing rows', () => {
+  const scoped = { ...data, scope: { ...data.scope, program_id: 11, shared_batch_ids: [20] } }
+  assert.match(analyticsScopeText(scoped), /shared institute batches with full rosters; program views can overlap/)
+  assert.equal(scoped.students.length, 2)
+})

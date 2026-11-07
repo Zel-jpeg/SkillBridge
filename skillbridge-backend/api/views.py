@@ -35,6 +35,7 @@ from .models import (
     RecommendationConfiguration,
 )
 from .change_events import category_created, notify_changes
+from .organization_visibility import batch_visibility_q
 from .management_access import managed_batches, managed_assessments, selected_instructor, batch_payload, record_action, assessment_state
 from .recommendation_freshness import cached_catalog_fingerprint, catalog_fingerprint, recommendations_stale
 from .serializers import UserSerializer
@@ -1484,10 +1485,7 @@ def management_assessment_reports(request):
     batches = managed_batches(request.user).select_related('instructor')
     if batch_id:
         batches = batches.filter(id=batch_id)
-    if institute_id:
-        batches = batches.filter(institute_id=institute_id)
-    if program_id:
-        batches = batches.filter(program_id=program_id)
+    batches = batches.filter(batch_visibility_q(institute_id, program_id))
     if assessment_id:
         batches = batches.filter(assessment__id=assessment_id)
     batch_ids = list(batches.values_list('id', flat=True))
@@ -1600,7 +1598,8 @@ def management_assessment_reports(request):
                          'placement': _serialize_placement_visibility(placements.get((enrollment.student_id, enrollment.batch_id)), include_unplaced=True)})
     else:
         rows = student_rows
-    payload = {'report_type': report_type, 'generated_at': timezone.now(),
+    scope_note = 'Includes institute-shared batches with full rosters; program selection does not split their students.' if batches.filter(program__isnull=True, institute__isnull=False).exists() else ''
+    payload = {'report_type': report_type, 'generated_at': timezone.now(), 'scope_note': scope_note,
                'filters': {'batch_id': batch_id, 'student_id': student_id, 'assessment_id': assessment_id,
                            'institute_id': institute_id, 'program_id': program_id},
                'rows': rows}
@@ -1612,7 +1611,7 @@ def management_assessment_reports(request):
     output.write('\ufeff')
     writer = SafeCSVWriter(output)
     writer.writerow(['SkillBridge Assessment Report', report_type, generated_local.strftime('%Y-%m-%d %H:%M %Z')])
-    writer.writerow(['Filters', f'Batch: {batch_id or "all"}', f'Student: {student_id or "all"}', f'Assessment: {assessment_id or "all"}'])
+    writer.writerow(['Filters', f'Batch: {batch_id or "all"}', f'Student: {student_id or "all"}', f'Assessment: {assessment_id or "all"}', f'Institute: {institute_id or "all"}', f'Program: {program_id or "all"}', scope_note])
     if not rows:
         writer.writerow(['No records match the selected filters.'])
     elif report_type == 'assessment_completion':
@@ -4994,6 +4993,7 @@ def placement_history(request):
             return Response({'error': 'Invalid status.'}, status=400)
         placements = placements.filter(status=status_filter)
 
+    organization_filters = {}
     for query_name, field_name in (
         ('student_id', 'student_id'),
         ('company_id', 'company_id'),
@@ -5005,8 +5005,12 @@ def placement_history(request):
         value, error = _positive_int(request.query_params.get(query_name), query_name)
         if error:
             return Response({'error': error}, status=400)
-        if value:
+        if query_name in ('institute_id', 'program_id'):
+            organization_filters[query_name] = value
+        elif value:
             placements = placements.filter(**{field_name: value})
+
+    placements = placements.filter(batch_visibility_q(**organization_filters, prefix='batch__'))
 
     search = str(request.query_params.get('q', '')).strip()
     if search:
@@ -5232,11 +5236,12 @@ def placement_reports(request):
         if error:
             return Response({'error': error}, status=400)
         applied_filters[query_name] = value
-        if value:
+        if value and query_name not in ('institute_id', 'program_id'):
             placements = placements.filter(**{field_name: value})
 
     batch_scope = {key: applied_filters[key] for key in ('institute_id', 'program_id') if applied_filters[key]}
-    if batch_scope and request.user.role == 'instructor' and not managed_batches(request.user).filter(**batch_scope).exists():
+    placements = placements.filter(batch_visibility_q(**batch_scope, prefix='batch__'))
+    if batch_scope and request.user.role == 'instructor' and not managed_batches(request.user).filter(batch_visibility_q(**batch_scope)).exists():
         return Response({'error': 'No accessible batches in this scope.'}, status=404)
 
     if applied_filters['course']:
@@ -5348,6 +5353,7 @@ def placement_reports(request):
         'report_type': report_type,
         'timezone': str(PROJECT_TIMEZONE),
         'capacity_scope': 'Positions appearing in this report; occupancy includes all current approvals.',
+        'scope_note': 'Includes institute-shared batch records with full rosters; program views can overlap.' if placements.filter(batch__program__isnull=True, batch__institute__isnull=False).exists() else '',
         'generated_at': timezone.now(),
         'generated_by': {
             'id': request.user.id,

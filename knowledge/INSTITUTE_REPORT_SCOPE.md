@@ -16,6 +16,11 @@ to them. Instructor and course are secondary filters under More scope filters.
 Changing an institute or program clears dependent filters. An admin may review
 school-wide totals before choosing a scope; program and batch controls wait for
 an institute. Existing mixed IC batches remain in the ordinary shared IC scope.
+They also appear when selecting IT or IS. More generally, selecting a program
+includes institute-linked batches without a single program, with their complete
+rosters. Page and export notes identify shared batches and overlapping program
+views. Missing institute context is never inferred to belong to every institute.
+See the [shared-visibility review](INSTITUTE_SHARED_VISIBILITY_REVIEW.md).
 
 The institute/program comparison partitions the report's distinct-student cohort
 using recorded enrollment, with separate shared/unassigned rows where applicable.

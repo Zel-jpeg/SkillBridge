@@ -12,8 +12,11 @@ Existing batches retain ownership and their active or archived status. Their
 batch program and framework remain unset so prior assessments, category IDs,
 recommendations, approved placements and capacity follow the rules under which
 they were recorded. A mixed batch remains a single batch. Administrators can
-find it by institute in Batches & students, and authorized staff can select IC
-in Reports & Analytics. Student profiles show their linked program.
+find it by institute and from either IC program in Batches & students. Authorized
+staff can select IC or an IC program in Reports & Analytics. The shared batch
+remains clearly labeled and opens its full mixed-program roster. Student profiles
+show their linked program; those profile links do not split or relabel the batch.
+See the [shared-visibility follow-up](INSTITUTE_SHARED_VISIBILITY_REVIEW.md).
 
 The reconciliation creates the confirmed IC, BSIT and BSIS catalog entries only
 when there are confirmed records to link and the corresponding entries are

@@ -7,7 +7,7 @@ export function organizationSearch(scope) {
 
 export function matchesOrganization(record, { institute, program }) {
   return (!institute || String(record?.institute_id) === institute)
-    && (!program || String(record?.program_id) === program)
+    && (!program || String(record?.program_id) === program || Boolean(institute && record?.institute_id && record?.program_id == null))
 }
 
 export function scopedPartners(companies, scope, options, { includeEmpty = true } = {}) {
@@ -21,7 +21,7 @@ export function scopedPartners(companies, scope, options, { includeEmpty = true 
       const eligible = position.eligible_programs || []
       if (eligible.length) return eligible.some(matchesProgram)
       if (position.management_program_id) return matchesProgram(programs.get(position.management_program_id))
-      return !position.eligibility_configured && !scope.program && String(legacyInstitute?.id) === scope.institute
+      return !position.eligibility_configured && String(legacyInstitute?.id) === scope.institute
     })
     const ownPartner = includeEmpty && matchesProgram(programs.get(company.management_program_id))
     return positions.length || ownPartner ? [{ ...company, positions }] : []

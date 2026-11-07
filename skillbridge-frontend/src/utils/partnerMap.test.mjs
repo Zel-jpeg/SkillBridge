@@ -34,7 +34,7 @@ test('institute and program selection strictly removes unrelated partners and op
 })
 test('original shared IC openings stay with IC, without assigning them to another program', () => {
   assert.equal(partnerMapData(companies, options, { institute: '1', program: '' }).rows.some(row => row.id === 1), true)
-  assert.equal(partnerMapData(companies, options, { institute: '1', program: '11' }).rows.some(row => row.id === 1), false)
+  assert.equal(partnerMapData(companies, options, { institute: '1', program: '11' }).rows.some(row => row.id === 1), true)
   assert.equal(partnerMapData(companies, options, { institute: '2', program: '21' }).rows.some(row => row.id === 1), false)
   assert.equal(partnerMembership(companies[0], options).icShared, true)
 })

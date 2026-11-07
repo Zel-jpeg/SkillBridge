@@ -12,7 +12,10 @@ const options = {
 test('a recorded mixed batch belongs to its institute and keeps its unset program', () => {
   const mixed = { institute_id: 10, program_id: null }
   assert.equal(matchesOrganization(mixed, { institute: '10', program: '' }), true)
-  assert.equal(matchesOrganization(mixed, { institute: '10', program: '1' }), false)
+  assert.equal(matchesOrganization(mixed, { institute: '10', program: '1' }), true)
+  assert.equal(matchesOrganization(mixed, { institute: '20', program: '2' }), false)
+  assert.equal(matchesOrganization({ institute_id: null, program_id: null }, { institute: '10', program: '1' }), false)
+  assert.equal(matchesOrganization({ institute_id: 10, program_id: 3 }, { institute: '10', program: '1' }), false)
   assert.equal(matchesOrganization(null, ALL_ORGANIZATIONS), true)
 })
 
@@ -23,6 +26,6 @@ test('scoped catalogs keep one shared opening, display legacy openings at instit
   const companies = [{ id: 1, positions: [shared, legacy, closed] }, { id: 2, positions: [] }]
   assert.equal(scopedPartners(companies, ALL_ORGANIZATIONS, options), companies)
   assert.deepEqual(scopedPartners(companies, { institute: '10', program: '' }, options)[0].positions, [shared, legacy])
-  assert.deepEqual(scopedPartners(companies, { institute: '10', program: '1' }, options)[0].positions, [shared])
+  assert.deepEqual(scopedPartners(companies, { institute: '10', program: '1' }, options)[0].positions, [shared, legacy])
   assert.deepEqual(scopedPartners(companies, { institute: '20', program: '2' }, options)[0].positions, [shared, closed])
 })

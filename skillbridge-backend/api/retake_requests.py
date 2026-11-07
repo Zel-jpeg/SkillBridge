@@ -1,5 +1,6 @@
 """One reviewed retake request per current attempt; history stays on existing rows."""
 from .management_access import managed_batches
+from .organization_visibility import batch_visibility_q
 import json
 from uuid import UUID
 from django.db import transaction
@@ -183,7 +184,7 @@ def request_queue(request):
             context[field] = number
     relations = ('assessment__batch__institute', 'assessment__batch__program__institute', 'student')
     rows = StudentResponse.objects.select_related(*relations).exclude(retake_request_status='')
-    rows = rows.filter(**{f'assessment__batch__{key}': value for key, value in context.items()})
+    rows = rows.filter(batch_visibility_q(**context, prefix='assessment__batch__'))
     active_batches = request.query_params.get('active_batches', '')
     if active_batches not in ('', '1'):
         raise ValidationError({'error': 'Invalid active_batches filter.'})
@@ -207,7 +208,7 @@ def request_queue(request):
         raise ValidationError({'error': 'Invalid page.'}) from None
     if status == 'history':
         histories = AssessmentAttemptHistory.objects.select_related(*(f'response__{path}' for path in relations)).exclude(retake_request={})
-        histories = histories.filter(**{f'response__assessment__batch__{key}': value for key, value in context.items()})
+        histories = histories.filter(batch_visibility_q(**context, prefix='response__assessment__batch__'))
         if active_batches:
             histories = histories.filter(response__assessment__batch__status='active', response__assessment__archived_at__isnull=True,
                 response__student__is_active=True).filter(Exists(BatchEnrollment.objects.filter(

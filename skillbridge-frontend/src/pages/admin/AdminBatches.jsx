@@ -38,7 +38,7 @@ function BatchEditor({ batch, defaultProgram, owners, onClose, onSaved }) {
   const { showToast } = useToast()
   const [name, setName] = useState(batch?.name || '')
   const [owner, setOwner] = useState(String(batch?.instructor_id || ''))
-  const [programId, setProgramId] = useState(String(batch?.program_id || defaultProgram || ''))
+  const [programId, setProgramId] = useState(String(batch ? batch.program_id || '' : defaultProgram || ''))
   const ownerUrl = programId ? `${OWNERS}?program_id=${programId}` : OWNERS
   const { data: scopedOwners } = useApi(programId ? ownerUrl : null)
   owners = programId ? scopedOwners || [] : owners
@@ -47,7 +47,7 @@ function BatchEditor({ batch, defaultProgram, owners, onClose, onSaved }) {
   const [review, setReview] = useState(false)
   const [discard, setDiscard] = useState(false)
   const pending = useRef(false)
-  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '') || programId !== String(batch?.program_id || defaultProgram || '')
+  const changed = name !== (batch?.name || '') || owner !== String(batch?.instructor_id || '') || programId !== String(batch ? batch.program_id || '' : defaultProgram || '')
   function close() { if (!pending.current) { if (changed) setDiscard(true); else onClose() } }
   function prepare(event) {
     event.preventDefault()
@@ -70,6 +70,7 @@ function BatchEditor({ batch, defaultProgram, owners, onClose, onSaved }) {
       <fieldset disabled={saving} className="space-y-4"><label className="block text-xs font-semibold">Batch name<input aria-label="Batch name" className={field} maxLength={100} value={name} onChange={event => setName(event.target.value)} /></label>
         {!batch && <ProgramSelect value={programId} onChange={value => { setProgramId(value); setOwner('') }} disabled={saving || Boolean(defaultProgram)} />}
         {batch?.program && <p className="text-xs">{batch.program.institute_code} · {batch.program.code} — {batch.program.name}</p>}
+        {batch?.institute_id && !batch.program_id && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Shared institute batch · No single program. Editing its name or instructor keeps the full mixed-program roster.</p>}
         <label className="block text-xs font-semibold">Responsible instructor<DataSection url={ownerUrl} layout="control" count={1}><select aria-label="Responsible instructor" className={field} value={owner} onChange={event => setOwner(event.target.value)}><option value="">Select an instructor</option>{batch && !owners.some(person => person.id === batch.instructor_id) && <option value={batch.instructor_id} disabled>{batch.instructor_name} (current owner unavailable for new assignments)</option>}{owners.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></DataSection></label>
         {batch && <p className="text-xs text-gray-500">Reassignment transfers access to this batch, including its assessments and student history. Scores and placement snapshots are preserved.</p>}
       </fieldset>{error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
@@ -202,6 +203,7 @@ function ScopedBatches({ scope, canCreate }) {
         <div className="mt-4"><BatchEmailProgress key={selected.id} batchId={selected.id} onView={() => setShowEmails(true)} paused={showEmails || emailRouteOpen} /></div>
         {selected.status === 'archived' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">This batch is archived. Student assessment availability and final recommendations are locked. Reactivate it before enrolling students or starting assessments.</p>}
       </section>
+      {selected.institute_id && !selected.program_id && <p className="rounded-xl bg-green-50 p-4 text-xs leading-5 text-green-900 dark:bg-green-950 dark:text-green-200">Shared institute batch · This is the full mixed-program roster. Its assessment and placement records remain together.</p>}
       <BatchCyclePanel key={`cycle-${selected.id}`} batchId={selected.id} role="admin" />
       <section className={`${surface} space-y-5 p-4 sm:p-6`} aria-label="Batch students">
         {feedback && <p role={feedback.error ? 'alert' : 'status'} className={`rounded-lg p-3 text-xs ${feedback.error ? 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300'}`}>{feedback.text}</p>}

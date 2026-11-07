@@ -65,7 +65,7 @@ function AssessmentCards({ records, view, onOpen, oversight }) {
       </div>
       <Metadata assessment={a} />
       <div className="ac-context">
-        {oversight && a.institute_code && <p className="text-xs text-gray-500 dark:text-gray-400">{a.institute_code}{a.program_code && ` · ${a.program_code}`}</p>}
+        {oversight && a.institute_code && <p className="text-xs text-gray-500 dark:text-gray-400">{a.institute_code}{a.program_code ? ` · ${a.program_code}` : ' · Shared across institute programs · Full batch'}</p>}
         {oversight && <p className="inline-flex min-w-0 items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"><span className="mt-0.5 shrink-0" aria-hidden="true"><UserIcon size={13} /></span><span className="min-w-0 break-words">{a.instructor_name || 'Instructor not provided'}</span></p>}
         <CategoryPills categories={a.categories} />
       </div>
@@ -86,7 +86,7 @@ function AssessmentList({ records, total, pageSize, onOpen, oversight }) {
           <td className="py-5 pl-5 pr-4">
             <button type="button" aria-label={`${oversight ? 'View details for' : 'Open assessment'} ${a.title}`} aria-haspopup="dialog" onClick={event => { event.currentTarget.focus(); onOpen(a) }} className="cursor-pointer break-words rounded text-left text-sm font-semibold leading-5 text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:text-white">{a.title}</button>
             {oversight && <p className="mt-1 break-words text-xs text-gray-600 dark:text-gray-300">{a.instructor_name || 'Instructor not provided'}</p>}
-            {oversight && a.institute_code && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{a.institute_code}{a.program_code && ` · ${a.program_code}`}</p>}
+            {oversight && a.institute_code && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{a.institute_code}{a.program_code ? ` · ${a.program_code}` : ' · Shared across institute programs · Full batch'}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"><span className="break-words">{a.batch_name || 'No batch'}</span><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1.5"><ClockIcon size={13} />{a.duration_minutes} min</span></div>
           </td>
           <td className="px-4 py-5"><AssessmentStatus status={a.publication_status} /></td>

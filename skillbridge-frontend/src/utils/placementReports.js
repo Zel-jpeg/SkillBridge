@@ -58,6 +58,7 @@ function reportDate(payload) {
 
 function filterDescription(payload, labels = {}) {
   const values = []
+  if (payload.scope_note) values.push(payload.scope_note)
   Object.entries(payload.filters || {}).forEach(([key, value]) => {
     if (!FILTER_LABELS[key] || value == null || value === '' || value === 'all') return
     let display = labels[key]?.[value] || value
@@ -391,6 +392,7 @@ export async function downloadPlacementXlsx(payload, filterLabels = {}) {
     ...Object.entries(payload.filters || {}).filter(([key, value]) => FILTER_LABELS[key] && value != null && value !== '' && value !== 'all')
       .map(([key, value]) => [`Filter: ${FILTER_LABELS[key]}`, clean(filterLabels[key]?.[value] || value)]),
     ['Capacity scope', payload.capacity_scope || 'Positions appearing in this report; occupancy includes all current approvals.'],
+    ...(payload.scope_note ? [['Roster scope', payload.scope_note]] : []),
     ...Object.entries(payload.summary).filter(([, value]) => typeof value === 'number').map(([key, value]) => [summaryLabels[key] || key, value]),
     ...Object.entries(payload.summary.status_counts).map(([key, value]) => [`${STATUS_LABELS[key] || key} records`, value]),
   ]

@@ -100,6 +100,26 @@ if os.environ.get('SB_SCHOOL_DASHBOARD'):
     item = scenarios[0]
     StudentResponse.objects.create(student_id=item['student_id'], assessment_id=item['assessment_id'], status='stopped', started_at=timezone.now(),
         retake_request_status='pending', retake_requested_at=timezone.now(), retake_explanation='Synthetic interruption for dashboard review.')
+if os.environ.get('SB_SHARED_VISIBILITY'):
+    from django.utils import timezone
+    from api.models import AssessmentAttemptHistory, StudentResponse
+    from api.retake_requests import request_snapshot
+    for shared_batch in (batch, Batch.objects.create(name='Shared IBPA cohort', institute_id=scenarios[0]['institute_id'], instructor=acceptance_owner)):
+        assessment = Assessment.objects.filter(batch=shared_batch).first() or Assessment.objects.create(title='Shared IBPA assessment', batch=shared_batch, created_by=acceptance_owner)
+        if shared_batch == batch:
+            learners = list(User.objects.filter(enrollments__batch=batch))
+            Assessment.objects.create(title='Shared IC archived assessment', batch=batch, created_by=owner, publication_status='draft', is_active=False, archived_at=timezone.now(), archived_by=User.objects.get(role='admin'))
+        else:
+            learners = []
+            for number, item in enumerate(scenarios[:2]):
+                learner = User.objects.create_user(email=f'shared-ibpa-{number}@example.invalid', name=f'Shared IBPA learner {number}', role='student', program_id=item['program_id'], is_approved=True)
+                BatchEnrollment.objects.create(batch=shared_batch, student=learner)
+                learners.append(learner)
+        for learner in learners:
+            attempt, _ = StudentResponse.objects.get_or_create(student=learner, assessment=assessment, defaults={'status': 'stopped', 'started_at': timezone.now(), 'retake_request_status': 'pending', 'retake_requested_at': timezone.now()})
+            AssessmentAttemptHistory.objects.create(response=attempt, attempt_number=1, started_at=attempt.started_at, status='stopped', retake_request=request_snapshot(attempt))
+    original_position = Position.objects.get(title='Synthetic IC legacy opening')
+    OJTPlacement.objects.create(student=User.objects.filter(enrollments__batch=batch).first(), batch=batch, company=original_position.company, position=original_position, status='approved')
 if os.environ.get('SB_PARTNER_MAP'):
     from django.utils import timezone
     Company.objects.filter(pk=shared.company_id).update(location_lat=7.2, location_lng=125.5)

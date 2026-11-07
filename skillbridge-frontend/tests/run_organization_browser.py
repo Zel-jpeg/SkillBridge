@@ -42,9 +42,11 @@ if '--admin-navigation' in sys.argv:
 if '--partner-map' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_PARTNER_MAP'] = '1'
-if '--school-dashboard' in sys.argv or '--school-reports' in sys.argv:
+if '--school-dashboard' in sys.argv or '--school-reports' in sys.argv or '--shared-visibility' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_SCHOOL_DASHBOARD'] = '1'
+if '--shared-visibility' in sys.argv:
+    env['SB_SHARED_VISIBILITY'] = '1'
 if '--management-dialogs' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'management-dialogs'
 frontend_mode = [] if '--external-recovery' in sys.argv or '--dashboard-first' in sys.argv else ['preview']
@@ -106,6 +108,7 @@ try:
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),
             ('--school-reports', 'admin_scoped_reports_playwright.py'),
             ('--sidebar-accordion', 'sidebar_accordion_playwright.py'),
+            ('--shared-visibility', 'shared_visibility_playwright.py'),
             ('--dashboard-highlights', 'dashboard_highlights_playwright.py'),
             ('--dashboard-first', 'dashboard_first_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),
