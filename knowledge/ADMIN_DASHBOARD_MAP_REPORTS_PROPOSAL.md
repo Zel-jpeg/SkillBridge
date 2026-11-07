@@ -10,22 +10,22 @@ the institute/program selection implemented in the previous feature.
 
 ## Dashboard
 
-- [ ] Default to School-wide overview / active batches, with institute and
+- [x] Default to School-wide overview / active batches, with institute and
   program scope shown beside the title. Disable program selection until an
   institute is selected. Preserve scope in links to records and reports.
-- [ ] Keep five distinct operational metrics: students in active batches,
+- [x] Keep five distinct operational metrics: students in active batches,
   required assessments complete, awaiting coordinator review, approved placements,
   and remaining shared slots. Show units and denominators. Approval does not
   establish OJT completion. Shared slots remain globally occupied per position.
-- [ ] Show institute banner cards with program count, scoped student count,
+- [x] Show institute banner cards with program count, scoped student count,
   required completion and approved-placement counts. Open the institute's program
   overview, then its records. Programs and institutes come from saved configuration.
-- [ ] Add concise actionable Needs attention rows for pending retakes, pending
+- [x] Add concise actionable Needs attention rows for pending retakes, pending
   instructor approval, batches without required assessments, and unavailable/stale
   final results. Counts and links must agree with their destination scope.
-- [ ] Move detailed student and skill highlights behind program selection so
+- [x] Move detailed student and skill highlights behind program selection so
   unrelated program definitions are not presented as one competitive leaderboard.
-- [ ] Keep global recommendation reruns in a secondary maintenance area with
+- [x] Keep global recommendation reruns in a secondary maintenance area with
   their existing explicit scope, authorization and confirmation behavior.
 
 An Imagegen dashboard concept was produced using illustrative counts and
@@ -111,24 +111,45 @@ after the individual gate passes, and never push without the user's instruction.
 
 ## Active checkpoint
 
-Partner map verified on `codex/admin-partner-map`, based on local main `6268da9`.
-Dashboard and reports gates remain pending. The map is rendered before the
-management selection gate, retains a single Leaflet instance, strictly filters
-pins, labels shared/unassigned partners, groups overlapping coordinates, and
-shows current shared remaining slots. No schema or configured data writes.
+Resumed on 7 November 2026. Partner map is merged into local main as `ff43fb6`.
+Its 356 Node tests, twelve PostgreSQL tests and eighteen browser groups passed.
+Original IC relationships and shared capacity remain ordinary current records.
 
-Map checks passed frontend lint/build, all 356 Node tests (including eight new
-map-scope tests), and twelve isolated PostgreSQL scope/capacity tests in
-`work/organization-postgres-2nuln4nu/`. Six real-Leaflet browser groups passed in
-`work/organization-browser-j57dc7y4/`, including strict filtering, shared/overlapping
-partners, original IC retention, missing coordinates, active/archive status,
-keyboard popups, collapse/fit, four widths and failed-library retry. Phone and
-desktop screenshots were inspected. The retained staff regression passed twelve
-more browser groups in `work/organization-browser-9ayonaxx/`, covering shared
-capacity, scoped exports, catalogs and instructor phone access. Total: 18 browser groups.
+Dashboard gate is complete on `codex/admin-school-dashboard` and ready for its
+local merge. It uses the existing distinct-cohort metrics, institute/program
+banner cards, program-only student/skill highlights, scoped attention links and
+secondary confirmed recommendation maintenance. Confirmation retains the chosen
+IDs through browser navigation. Initial reads use shared summary/card skeletons.
 
-Map delivery uses a local feature commit and fast-forward merge. Next: start the
-dashboard on its own branch after the map merge. Preserve unrelated breadcrumb,
-instructor-picker, profile and user-page edits. `AdminScopeNavigator.jsx` has
-unrelated breadcrumb edits; stage only this feature's overview-prop changes there.
-No GitHub push is authorized.
+The admin-only attention payload counts active enrolled pending retakes, batches
+without published required work (including empty batches), and unavailable final
+results. Account approvals are explicitly school-wide. The read-only retake flag
+`active_batches=1` works on current and history queues without expanding access.
+
+Checks completed:
+
+- Frontend lint and production build passed again after the skeleton adjustment;
+  all 359 Node tests passed in the preceding implementation session.
+- Forty-three isolated PostgreSQL tests passed in
+  `work/organization-postgres-hnequfa1/` (dashboard, analytics, retake recovery
+  and admin navigation scope).
+- Six real-API school-dashboard browser groups passed in
+  `work/organization-browser-p176i_1u/`. All four saved responsive screenshots
+  were visually reviewed on resume (320/390/768/1440px, light/dark).
+- Eight retained instructor-dashboard browser groups passed in
+  `work/organization-browser-t9q3kouv/`.
+- All nineteen sign-in, shared-cache warming, recovery/cancellation and navigation
+  browser checks passed in `work/organization-browser-pi_fw51q/`. This replaces
+  the interrupted pause-time run and an initial rerun with an obsolete collapsed
+  sidebar test assumption. The test now opens OJT before selecting its child link.
+
+No dashboard schema migration or configured database write was needed. Test
+servers were task-owned and stopped by their harness. No GitHub push.
+
+Next: locally merge this dashboard feature, then create the Reports & Analytics
+branch. Its gate must include empty saved institutes/programs in admin choices,
+consistent institute/program cohort comparisons, clearer primary/secondary scope
+controls and explicit institute/program names in downloads. Preserve unrelated
+breadcrumb, instructor-picker, profile, user-page and collection-toolbar edits.
+Current `ReportsAnalytics.jsx` toolbar edits are unrelated to this reports gate.
+Stage only this task's changes; preserve other working-tree changes.

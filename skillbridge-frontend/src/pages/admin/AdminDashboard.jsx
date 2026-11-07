@@ -1,256 +1,144 @@
-import { CollectionSkeleton } from '../../components/loading/Skeletons'
-import { useToast } from '../../context/ToastContext'
-import DataSection from '../../components/DataSection'
-// src/pages/admin/AdminDashboard.jsx  (SLIMMED — 588 → ~170 lines)
-// All data + logic now in useAdminDashboard.js
-
-import { lazy, Suspense, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useApi, invalidateCache } from '../../hooks/useApi'
 import api from '../../api/axios'
 import { readBrowserSession } from '../../api/sessionRenewal'
 import { rerunRecommendations, RECOMMENDATION_REFRESH_URLS } from '../../api/recommendationRerun'
-import { invalidateCache } from '../../hooks/useApi'
-import Pagination  from '../../components/Pagination'
-import StatusBadge from '../../components/StatusBadge'
-import PageHeader  from '../../components/PageHeader'
-import SearchBar   from '../../components/SearchBar'
-import EmptyState  from '../../components/EmptyState'
-import { useAdminDashboard } from '../../hooks/admin/useAdminDashboard'
-import { matchColor } from '../../utils/formatters'
-import Avatar from '../../components/Avatar'
-import DashboardHighlights from '../../components/dashboard/DashboardHighlights'
-import DashboardOverview from '../../components/dashboard/DashboardOverview'
+import { useSSE } from '../../hooks/useSSE'
+import { ANALYTICS_URL } from '../../utils/analytics'
+import { ORGANIZATION_OPTIONS } from '../../utils/organizationScope'
+import { schoolDashboardCards, schoolOrganizationRows, schoolReportLink } from '../../utils/schoolOverview'
+import TaxonomyCardBanner from '../../components/TaxonomyCardBanner'
+import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
+import CollectionViewToggle from '../../components/CollectionViewToggle'
+import Pagination from '../../components/Pagination'
+import DialogShell from '../../components/DialogShell'
+import ConfirmModal from '../../components/admin/ConfirmModal'
+import { ContentSkeleton } from '../../components/loading/Skeletons'
+import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationCard } from '../../components/admin/organizationUi'
+import { BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, RefreshIcon, ReportIcon, UsersIcon, WarnIcon } from '../../components/Icons'
 
-const StudentModal = lazy(() => import('../../components/instructor/StudentModal'))
+const icons = { students: UsersIcon, complete: CheckCircleIcon, review: WarnIcon, approved: BriefcaseIcon, capacity: BriefcaseIcon }
+const surface = 'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
+const scopeQuery = scope => new URLSearchParams({ ...(scope.institute ? { institute: scope.institute, program: scope.program || 'all' } : {}) })
+const dashboardPath = (scope, changes = {}) => `/admin/dashboard?${new URLSearchParams({ ...(scope.institute ? { institute: scope.institute } : {}), ...(scope.program ? { program: scope.program } : {}), batch_status: scope.status, ...changes })}`
 
-// ── Local icons (small, page-scoped) ─────────────────────────────
-const GridIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-const ListIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-const IconStudents = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-const IconCompany  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-
-
-
-
-function matchBarColor(pct) {
-  if (!pct) return 'bg-gray-200 dark:bg-gray-700'
-  if (pct >= 80) return 'bg-green-500'
-  if (pct >= 60) return 'bg-amber-500'
-  return 'bg-rose-500'
+function Summary({ data, scope }) {
+  return <dl aria-label="Dashboard summary" className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5">
+    {schoolDashboardCards(data, scope).map(card => { const Icon = icons[card.kind]; return <div key={card.kind} className={`${organizationCard} relative min-w-0 p-4`}>
+      <dt className="mb-4 flex items-start gap-2 text-xs font-semibold"><span aria-hidden="true" className="rounded-lg bg-green-50 p-2 text-green-700 dark:bg-green-950 dark:text-green-300"><Icon size={18} /></span><Link className="break-words before:absolute before:inset-0 before:rounded-2xl focus-visible:before:outline-2 focus-visible:before:outline-green-600" to={card.to}>{card.label}</Link></dt>
+      <dd className="text-2xl font-bold tabular-nums">{card.value}</dd><dd className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{card.description}</dd>
+    </div> })}
+  </dl>
 }
-function matchBg(pct) {
-  if (pct == null) return ''
-  if (pct >= 80) return 'bg-green-50 dark:bg-green-950'
-  if (pct >= 60) return 'bg-amber-50 dark:bg-amber-950'
-  return 'bg-rose-50 dark:bg-rose-950'
+
+function OrganizationCards({ data, options, scope }) {
+  const [search, setSearch] = useState(''), [page, setPage] = useState(1), [view, setView] = useState('grid')
+  const { rows, sharedStudents } = useMemo(() => schoolOrganizationRows(data, options, scope.institute), [data, options, scope.institute])
+  const program = Boolean(scope.institute)
+  const term = search.trim().toLowerCase()
+  const filtered = rows.filter(row => `${row.name} ${row.code}`.toLowerCase().includes(term))
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 9)))
+  return <section aria-label={program ? 'Program overview' : 'Institute overview'} className="space-y-4">
+    <header><h2 className="text-lg font-bold">{program ? 'Programs' : 'Institutes'}</h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{program ? 'Open a program for its records and skill highlights.' : 'Open an institute to see its programs and records.'}</p></header>
+    <div className="flex flex-wrap items-end justify-between gap-3"><label className="w-full text-xs font-medium sm:max-w-sm">Search {program ? 'programs' : 'institutes'}<input type="search" className={field} value={search} maxLength={255} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><CollectionViewToggle view={view} onChange={setView} label="Organization overview view" mobile /></div>
+    {sharedStudents > 0 && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{sharedStudents} students are included in the totals through {program ? 'shared institute batches without a single program assignment' : 'batches awaiting an institute assignment'}. {program && <Link className="text-green-700 underline dark:text-green-300" to={`/admin/batches?${scopeQuery(scope)}`}>View shared institute batches</Link>}</p>}
+    <p className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} {program ? 'programs' : 'institutes'}</p>
+    {filtered.length ? <ul className={`grid gap-4 ${view === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`}>
+      {filtered.slice((currentPage - 1) * 9, currentPage * 9).map(row => <li key={row.id} className={`${organizationCard} overflow-hidden`}>
+        <Link aria-label={`Open ${row.name} dashboard`} to={dashboardPath(scope, program ? { program: String(row.id) } : { institute: String(row.id), program: '' })} className={`group flex h-full cursor-pointer flex-col rounded-2xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600 ${view === 'list' ? 'sm:grid sm:grid-cols-[200px_minmax(0,1fr)]' : ''}`}>
+          <div className={`relative aspect-[3/1] min-h-24 overflow-hidden ${view === 'list' ? 'sm:aspect-auto sm:h-full' : ''}`}><TaxonomyCardBanner imageUrl={row.image_url} name={row.name} color={taxonomyBannerColor(row.banner_color, row.id)} /><span className="absolute left-3 top-3 max-w-[calc(100%-24px)] truncate rounded-full bg-emerald-950/90 px-2.5 py-1 text-xs font-semibold text-white">{row.code}</span></div>
+          <div className="min-w-0 space-y-4 p-4"><div className="flex items-start justify-between gap-2"><h3 className="break-words text-sm font-semibold group-hover:text-green-700 dark:group-hover:text-green-300">{row.name}</h3><ChevronRightIcon size={16} /></div>{!row.is_active && <p className="text-xs text-gray-500">Archived</p>}
+            <dl className="grid grid-cols-2 gap-3 text-xs min-[480px]:grid-cols-4">{[[program ? row.batches : row.programs, program ? 'batches' : 'programs'], [row.students, 'students'], [row.complete, 'required complete'], [row.approved, 'approved placements']].map(([value, label]) => <div key={label}><dd className="font-bold tabular-nums">{value}</dd><dt className="mt-1 text-gray-500 dark:text-gray-400">{label}</dt></div>)}</dl>
+          </div>
+        </Link></li>)}
+    </ul> : <p className={`${surface} p-6 text-xs text-gray-500`}>No {program ? 'programs' : 'institutes'} match this view.</p>}
+    <Pagination total={filtered.length} page={currentPage} pageSize={9} onPage={setPage} />
+  </section>
+}
+
+function AttentionDialog({ kind, data, options, scope, onClose }) {
+  const [search, setSearch] = useState(''), [page, setPage] = useState(1)
+  const attention = data.dashboard_attention
+  const rows = kind === 'retakes' ? attention.retake_scopes.map((row, index) => {
+    const institute = options.institutes.find(item => item.id === row.institute_id)
+    const program = options.programs.find(item => item.id === row.program_id)
+    return { id: index, name: program?.name || (institute ? `${institute.code} shared batches` : 'Institute not assigned'), detail: `${row.count} pending requests`,
+      to: row.institute_id ? `/admin/retake-requests?${new URLSearchParams({ institute: row.institute_id, program: row.program_id || 'all', active_batches: '1' })}` : '/admin/retake-requests' }
+  }) : attention.batches_without_required.map(id => {
+    const batch = data.options.batches.find(row => row.id === id)
+    return { id, name: batch?.name || `Batch ${id}`, detail: 'No published required assessments', to: `/admin/batches?${new URLSearchParams({ ...(batch?.institute_id ? { institute: batch.institute_id, program: batch.program_id || 'all' } : {}), batch_id: id })}` }
+  })
+  const filtered = rows.filter(row => row.name.toLowerCase().includes(search.trim().toLowerCase()))
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 8)))
+  return <DialogShell title={kind === 'retakes' ? 'Pending retake requests' : 'Batches without required assessments'} description="Open the relevant program or batch to review its records." onClose={onClose} size="collection" footer={<button type="button" className={button} onClick={onClose}>Done</button>}>
+    <div className="min-h-0 space-y-4 overflow-y-auto p-5"><label className="block text-xs">Search attention records<input type="search" className={field} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
+      <ul className="space-y-2">{filtered.slice((currentPage - 1) * 8, currentPage * 8).map(row => <li key={row.id}><Link className={`${organizationCard} flex items-center justify-between gap-3 p-4 text-xs focus-visible:outline-2 focus-visible:outline-green-600`} to={row.to}><span className="min-w-0"><strong className="block break-words">{row.name}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.detail}</span></span><ChevronRightIcon /></Link></li>)}</ul>
+      {!filtered.length && <p className="text-xs">No attention records match.</p>}<Pagination total={filtered.length} page={currentPage} pageSize={8} onPage={setPage} />
+      <p className="text-xs text-gray-500">Scope: {scope.program ? 'Selected program' : scope.institute ? 'Selected institute' : 'School-wide'}</p>
+    </div>
+  </DialogShell>
+}
+
+function ProgramHighlights({ data, scope }) {
+  return <section aria-label="Program skill highlights" className="space-y-4"><h2 className="text-lg font-bold">Program skill highlights</h2><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Each saved category keeps its own skill set and version. Missing or locked evidence is excluded from skill results.</p>
+    {data.skills.length ? <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{data.skills.slice(0, 6).map(skill => <li key={skill.id}><Link className={`${organizationCard} block h-full p-4 focus-visible:outline-2 focus-visible:outline-green-600`} to={schoolReportLink(scope, 'skills', `skill:${skill.id}`)}><h3 className="text-sm font-semibold">{skill.name}</h3><p className="mt-2 break-words text-xs text-gray-500 dark:text-gray-400">{skill.framework_label || 'Shared institute skills'}</p><p className="mt-3 text-xs">{skill.sample} with evidence · {skill.missing} missing / locked</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Strong {skill.strong} · Fair {skill.fair} · Needs work {skill.needs_work}</p></Link></li>)}</ul> : <p className={`${surface} p-5 text-xs`}>No final skill evidence is available for this program yet.</p>}
+    <Link className={button} to={schoolReportLink(scope, 'skills')}>Open program skill report</Link>
+    <h2 className="pt-3 text-lg font-bold">Students in this program</h2><ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{data.students.slice(0, 6).map(student => <li key={student.id}><Link className={`${organizationCard} block p-4 focus-visible:outline-2 focus-visible:outline-green-600`} to={schoolReportLink(scope, 'assessments', `batch:${student.batch_id}`)}><h3 className="break-words text-sm font-semibold">{student.name}</h3><p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{student.school_id || 'No student ID'} · {student.batch}</p><p className="mt-3 text-xs">{student.required_completed} / {student.required_total} required complete</p><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{student.reasons.join(' · ') || (student.placement_status === 'approved' ? 'Approved placement decision' : 'No current follow-up issue')}</p></Link></li>)}</ul>
+    {!data.students.length && <p className="text-xs text-gray-500">No students in the selected program cohort.</p>}
+    <Link className={button} to={schoolReportLink(scope)}>View all program records</Link>
+  </section>
 }
 
 export default function AdminDashboard() {
-  const { showToast } = useToast()
-  const navigate = useNavigate()
-  const {
-    students, loading,
-    search, setSearch, filterStatus, setFilter,
-    view, setView, page, setPage,
-    filtered, paginated, PAGE_SIZE,
-  } = useAdminDashboard()
-
-  const [selectedStudentId, setSelectedStudentId] = useState(null)
-  const studentTrigger = useRef(null)
-  const selectedStudent = students.find(student => student.id === selectedStudentId)
-  function selectStudent(student, trigger = document.activeElement) { studentTrigger.current = trigger; setSelectedStudentId(student.id) }
-  function openStudent(event, student) { event.currentTarget.focus(); selectStudent(student) }
-  function studentKeyDown(event) {
-    if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() }
-  }
-
-  const [rerunning,  setRerunning]  = useState(false)
-  const [rerunResult, setRerunResult] = useState(null)
-  const rerunMsg = rerunResult?.message || ''
-
-  async function handleRerun() {
-    setRerunning(true)
-    setRerunResult(null)
+  useSSE('/api/admin/events/')
+  const [params, setParams] = useSearchParams()
+  const { data: options, error: optionsError } = useApi(ORGANIZATION_OPTIONS)
+  const scope = { institute: params.get('institute') || '', program: params.get('program') || '', status: params.get('batch_status') || 'active' }
+  const institute = options?.institutes.find(row => String(row.id) === scope.institute)
+  const programs = (options?.programs || []).filter(row => String(row.institute_id) === scope.institute)
+  const program = programs.find(row => String(row.id) === scope.program)
+  const invalid = Boolean(options && (scope.institute && !institute || scope.program && !program || !['active', 'archived', 'all'].includes(scope.status)))
+  const analyticsParams = new URLSearchParams({ ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
+  const url = options && !invalid ? `${ANALYTICS_URL}${analyticsParams.size ? `?${analyticsParams}` : ''}` : null
+  const { data, loading, error } = useApi(url)
+  const [attention, setAttention] = useState(null), [confirm, setConfirm] = useState(false), [result, setResult] = useState(null)
+  const pending = useRef(false)
+  function change(next) { setAttention(null); setResult(null); setParams({ batch_status: scope.status, ...scope.institute && { institute: scope.institute }, ...scope.program && { program: scope.program }, ...next }) }
+  async function refreshRecommendations() {
+    if (pending.current) return { ok: false, message: 'A refresh is already in progress.' }
+    pending.current = true
     try {
-      const result = await rerunRecommendations(api, readBrowserSession().id)
-      if (result.state === 'cancelled') return
-      if (result.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
-      setRerunResult(result)
-      showToast(result.message, result.type)
-      if (result.type === 'success') setTimeout(() => setRerunResult(current => current === result ? null : current), 4000)
-    } finally {
-      setRerunning(false)
-    }
+      const outcome = await rerunRecommendations(api, readBrowserSession().id, { ...(confirm.institute ? { institute_id: Number(confirm.institute) } : {}), ...(confirm.program ? { program_id: Number(confirm.program) } : {}) })
+      if (outcome.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
+      setResult(outcome)
+      if (outcome.type !== 'error') setConfirm(false)
+      return { ok: outcome.type !== 'error', message: outcome.message }
+    } finally { pending.current = false }
   }
-
-
-
-  return (
-    <div className="min-w-0">
-      {selectedStudent && <Suspense fallback={<p role="status">Loading student details…</p>}><StudentModal student={selectedStudent} instructorName={selectedStudent.instructor} restoreFocusRef={studentTrigger} readOnly onClose={() => setSelectedStudentId(null)} /></Suspense>}
-
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-
-        <PageHeader
-          title="Admin Dashboard"
-          subtitle="System-wide overview of students, partners, and recommendations."
-          action={<>
-            <button onClick={handleRerun} disabled={rerunning}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-            >
-              {rerunning
-                ? <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeDasharray="42" strokeDashoffset="12"/></svg>
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-              }
-              {rerunning ? 'Running…' : 'Re-run Recommendations'}
-            </button>
-            <button onClick={() => navigate('/admin/companies')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <IconCompany /> Manage Partners
-            </button>
-            <button onClick={() => navigate('/admin/users')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <IconStudents /> Manage Users
-            </button>
-          </>}
-        />
-
-        {/* Re-run status message */}
-        {rerunMsg && (
-          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium ${
-            rerunResult.type === 'error' ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' : rerunResult.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' : 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
-          }`}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              {rerunResult.type !== 'success' ? <><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></> : <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
-            </svg>
-            {rerunMsg}
-          </div>
-        )}
-
-        <DashboardOverview role="admin" />
-
-        <DashboardHighlights loadingUrl="/api/admin/students/recommendations/" students={students} onSelectStudent={selectStudent} />
-
-        {/* All Students */}
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between flex-wrap">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">All Students</h2>
-            <div className="flex items-center gap-2 flex-wrap flex-1 sm:justify-end">
-              <SearchBar value={search} onChange={setSearch} placeholder="Search students…" className="flex-1 sm:w-44 sm:flex-none" />
-              <div className="flex items-center gap-1">
-                {[{ value: 'all', label: 'All' }, { value: 'completed', label: 'Done' }, { value: 'pending', label: 'Pending' }].map(f => (
-                  <button key={f.value} onClick={() => setFilter(f.value)}
-                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${filterStatus === f.value ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-                {[{ val: 'grid', Icon: GridIcon }, { val: 'list', Icon: ListIcon }].map(v => (
-                  <button key={v.val} aria-label={v.val === 'grid' ? 'Show student cards' : 'Show student list'} onClick={() => setView(v.val)}
-                    className={`p-1.5 rounded-lg transition-colors ${view === v.val ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
-                    <v.Icon />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{loading ? 'Loading students…' : `${filtered.length} students`}</p>
-          </div>
-
-          <DataSection url="/api/admin/students/recommendations/" skeleton={<CollectionSkeleton view={view} />}>
-          {filtered.length === 0 && <EmptyState message="No students match your search." onClear={() => { setSearch(''); setFilter('all') }} />}
-
-          {/* Grid view */}
-          {filtered.length > 0 && (
-            <div className={`${view === 'grid' ? 'grid' : 'grid sm:hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4`}>
-              {paginated.map(s => (
-                <div key={s.id} role="button" tabIndex={0} aria-label={`View student ${s.name}`} aria-haspopup="dialog" onKeyDown={studentKeyDown} onClick={event => openStudent(event, s)} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-all">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar name={s.name} photoUrl={s.photoUrl} className="w-10 h-10 rounded-full text-sm" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{s.name}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{s.studentId} · {s.course}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{s.email}</p>
-                      </div>
-                    </div>
-                    <StatusBadge status={s.status} />
-                  </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500"><span className="text-gray-500 dark:text-gray-400 font-medium">Instructor:</span> {s.instructor}</p>
-                  {s.position ? (
-                    <div className="pt-2 border-t border-gray-50 dark:border-gray-800 space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{s.position}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{s.company}</p>
-                        </div>
-                        <span className={`text-base font-bold shrink-0 ${matchColor(s.match)}`}>{s.match}%</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${matchBarColor(s.match)}`} style={{ width: `${s.match}%` }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="pt-2 border-t border-gray-50 dark:border-gray-800">
-                      <p className="text-xs text-gray-300 dark:text-gray-700 italic">{s.recommendationsLocked ? 'Recommendations not available yet' : 'No current match available'}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* List view */}
-          {filtered.length > 0 && view === 'list' && (
-            <div className="hidden sm:block bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                      {['Student','Instructor','Status','Top Recommendation','Match'].map((h, i) => (
-                        <th key={h} className={`${i === 4 ? 'text-center px-5' : i === 0 ? 'text-left px-5' : 'text-left px-3'} py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.map((s, i) => (
-                      <tr key={s.id} tabIndex={0} aria-label={`View student ${s.name}`} aria-haspopup="dialog" onKeyDown={studentKeyDown} onClick={event => openStudent(event, s)} className={`cursor-pointer focus-visible:outline-2 focus-visible:outline-green-600 focus-visible:-outline-offset-2 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors ${i % 2 !== 0 ? 'bg-gray-50/30 dark:bg-gray-800/20' : ''}`}>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar name={s.name} photoUrl={s.photoUrl} className="w-7 h-7 rounded-full text-xs" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{s.name}</p>
-                              <p className="text-xs text-gray-400 dark:text-gray-500">{s.studentId} · {s.course}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 text-xs text-gray-500 dark:text-gray-400">{s.instructor}</td>
-                        <td className="px-3 py-4"><StatusBadge status={s.status} size="md" /></td>
-                        <td className="px-3 py-4">{s.position ? <div><p className="text-xs font-medium text-gray-700 dark:text-gray-300">{s.position}</p><p className="text-xs text-gray-400 dark:text-gray-500">{s.company}</p></div> : <span className="text-xs text-gray-300 dark:text-gray-700">—</span>}</td>
-                        <td className={`px-5 py-4 text-center ${matchBg(s.match)}`}>
-                          <span className={`text-sm font-bold ${matchColor(s.match)}`}>{s.match !== null ? `${s.match}%` : '—'}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <Pagination total={filtered.length} page={page} onPage={setPage} pageSize={PAGE_SIZE} />
-          </DataSection>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 px-1 pb-4">
-          <p className="text-xs text-gray-400 dark:text-gray-600">Match key:</p>
-          {[
-            { label: '≥ 80% Strong',    cls: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' },
-            { label: '60–79% Fair',     cls: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300' },
-            { label: '< 60% Low match', cls: 'bg-rose-100  dark:bg-rose-900  text-rose-700  dark:text-rose-300'  },
-          ].map(l => <span key={l.label} className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.cls}`}>{l.label}</span>)}
-        </div>
-
-      </section>
-    </div>
-  )
+  const attentionRows = data?.dashboard_attention ? [
+    { label: 'Pending retake requests', count: data.dashboard_attention.pending_retakes, action: () => setAttention('retakes'), note: 'Active enrolled batches' },
+    { label: 'Instructor accounts awaiting approval', count: data.summary.pending_instructors, to: '/admin/users?tab=pending', note: 'School-wide account approvals' },
+    { label: 'Batches without required assessments', count: data.dashboard_attention.batches_without_required.length, action: () => setAttention('setup'), note: 'Active batches without published required work' },
+    { label: 'Students whose results need updating', count: data.dashboard_attention.unavailable_results, to: schoolReportLink(scope, 'assessments', 'reason:Final results unavailable'), note: 'Required work complete; final results unavailable' },
+  ].filter(row => row.count > 0) : []
+  return <section className="mx-auto min-w-0 max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-xl font-bold">Admin dashboard</h1><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">School overview across institutes and programs.</p></div><div className="flex flex-wrap gap-2"><Link className={button} to="/admin/institutes">Manage institutes</Link><Link className={primary} to={schoolReportLink(scope)}><ReportIcon size={16} />Open reports</Link></div></header>
+    <section aria-label="Dashboard scope" className={`${surface} space-y-4 p-4`}><p className="text-xs font-semibold text-green-800 dark:text-green-300">{program ? `${institute.code} · ${program.name}` : institute ? `${institute.name} · All programs` : 'School-wide overview'}</p><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-medium">Institute<select aria-label="Institute" className={field} value={scope.institute} disabled={!options} onChange={event => change({ institute: event.target.value, program: '' })}><option value="">All institutes</option>{options?.institutes.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label><label className="text-xs font-medium">Program<select aria-label="Program" className={field} value={scope.program} disabled={!institute} onChange={event => change({ program: event.target.value })}><option value="">{institute ? 'All programs' : 'Choose an institute first'}</option>{programs.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label><label className="text-xs font-medium">Batch scope<select aria-label="Batch scope" className={field} value={scope.status} onChange={event => change({ batch_status: event.target.value })}><option value="active">Active batches</option><option value="archived">Archived batches</option><option value="all">All batches</option></select></label></div>
+      {(scope.institute || scope.program || scope.status !== 'active') && <Link className={button} to="/admin/dashboard">School-wide overview</Link>}
+    </section>
+    {invalid && <p role="alert" className="text-xs">This dashboard institute, program or batch scope is unavailable.</p>}
+    {(error || optionsError) && <div role="alert" className={`${surface} space-y-3 p-4 text-xs`}><p>Could not refresh this dashboard.{data ? ' Showing the last loaded data.' : ''}</p><button className={button} onClick={() => { invalidateCache(ORGANIZATION_OPTIONS); if (url) invalidateCache(url) }}>Retry dashboard</button></div>}
+    {!invalid && !error && !optionsError && (!options || !data) && <div className="space-y-6"><ContentSkeleton layout="stats" count={5} label="Loading dashboard overview" /><ContentSkeleton layout="cards" count={3} label="Loading institute overview" /></div>}
+    {!invalid && options && data && <>
+      <Summary data={data} scope={scope} />
+      <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{scope.institute ? programs.length : options.institutes.length} {scope.institute ? 'programs in this institute' : 'institutes'} · {data.scope.batch_ids.length} selected batches. Each student is counted once using their newest selected enrollment. Approved decisions do not establish OJT completion.</p>
+      {!scope.program ? <OrganizationCards key={`${scope.institute}:${scope.status}`} data={data} options={options} scope={scope} /> : <><nav aria-label="Program workspaces" className="flex flex-wrap gap-2">{[['batches', 'Batches'], ['assessments', 'Assessments'], ['companies', 'OJT Partners'], ['placements', 'Placements']].map(([path, label]) => <Link key={path} className={button} to={`/admin/${path}?${scopeQuery(scope)}`}>{label}</Link>)}</nav><ProgramHighlights data={data} scope={scope} /></>}
+      <section aria-label="Needs attention" className="space-y-4"><h2 className="text-lg font-bold">Needs attention</h2><div className={`${surface} divide-y divide-gray-100 dark:divide-gray-800`}>{attentionRows.map(row => <div key={row.label}>{row.to ? <Link className="flex min-h-16 items-center justify-between gap-3 rounded-lg px-4 py-3 text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950" to={row.to}><span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span><span className="flex items-center gap-3 font-semibold">{row.count}<ChevronRightIcon /></span></Link> : <button type="button" className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950" onClick={row.action}><span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span><span className="flex items-center gap-3 font-semibold">{row.count}<ChevronRightIcon /></span></button>}</div>)}{!attentionRows.length && <p className="p-5 text-xs text-gray-500 dark:text-gray-400">{data.dashboard_attention ? 'No current attention items in this scope.' : 'Attention details are unavailable. Refresh the dashboard to load them.'}</p>}</div></section>
+      {!scope.program && <p className="text-xs text-gray-500 dark:text-gray-400">Choose a program to view its student and skill highlights.</p>}
+      <details className={`${surface} p-4`}><summary className="cursor-pointer text-xs font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600">Recommendation maintenance</summary><div className="mt-4 space-y-3"><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Refresh recommendations for active batches in {program ? program.name : institute ? institute.name : 'all institutes'}. Existing approved decisions and assessment evidence are retained.</p><button type="button" className={button} disabled={loading || scope.status !== 'active' || !data.scope.batch_ids.length} onClick={() => setConfirm({ institute: scope.institute, program: scope.program, label: program?.name || institute?.name || 'all institutes' })}><RefreshIcon />Refresh recommendations for this scope</button>{scope.status !== 'active' && <p className="text-xs text-gray-500">Choose Active batches to use this maintenance action.</p>}{result && <p role="status" className="text-xs">{result.message}</p>}</div></details>
+      {attention && <AttentionDialog key={attention} kind={attention} data={data} options={options} scope={scope} onClose={() => setAttention(null)} />}
+      {confirm && <ConfirmModal title="Refresh recommendations for this scope?" message={`Refresh recommendations for ${confirm.label}? This uses the current active batches; approved placements and assessment evidence are retained.`} confirmLabel="Refresh recommendations" tone="neutral" onCancel={() => setConfirm(false)} onConfirm={refreshRecommendations} />}
+    </>}
+  </section>
 }

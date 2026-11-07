@@ -21,11 +21,13 @@ single-slot optional queue described in historical navigation measurements.
 
 | Role | Essential dashboard reads |
 | --- | --- |
-| Admin | `/api/management/analytics/`, `/api/admin/students/recommendations/` |
+| Admin | `/api/management/analytics/`, `/api/management/organization-options/` |
 | Instructor | `/api/management/analytics/`, `/api/instructor/students/recommendations/` |
 | Student | `/api/students/me/`, `/api/assessments/`, `/api/student/results/combined/` |
 
 Pending approval and student setup destinations bypass dashboard preparation.
+The school-wide admin dashboard uses institute/program configuration and the
+analytics cohort; it no longer warms a global detailed-student collection.
 Backend authorization remains authoritative. No private reads start before the
 new authentication succeeds. The handoff checks session/account identity; leaving
 the login screen, session expiry during preparation or a newer account prevents

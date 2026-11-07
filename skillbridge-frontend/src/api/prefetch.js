@@ -38,7 +38,7 @@ const PAGE_QUERIES = {
   '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
-  '/admin/dashboard': ['/api/management/analytics/', '/api/admin/students/recommendations/'],
+  '/admin/dashboard': ['/api/management/analytics/', '/api/management/organization-options/'],
   '/admin/users': [adminUsersUrl()],
   '/admin/placements': PLACEMENT_QUERIES,
   '/admin/reports': ['/api/management/analytics/'],

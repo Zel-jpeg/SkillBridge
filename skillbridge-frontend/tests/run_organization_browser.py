@@ -19,6 +19,8 @@ api_port, frontend_port = port(), port()
 env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'PYTHONIOENCODING': 'utf-8', 'SB_ORGANIZATION_RUN': str(OUT),
        'SB_ORGANIZATION_API_PORT': str(api_port), 'SB_ORGANIZATION_FRONTEND_PORT': str(frontend_port),
        'SKILLBRIDGE_TEST_BASE': f'http://127.0.0.1:{frontend_port}',
+       'DASHBOARD_TEST_URL': f'http://127.0.0.1:{frontend_port}',
+       'SKELETON_BASE': f'http://127.0.0.1:{frontend_port}',
        'TOAST_TEST_BASE': f'http://127.0.0.1:{frontend_port}'}
 if '--program-batches' in sys.argv or '--dynamic-profiles' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'program-batches'
@@ -40,9 +42,12 @@ if '--admin-navigation' in sys.argv:
 if '--partner-map' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_PARTNER_MAP'] = '1'
+if '--school-dashboard' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+    env['SB_SCHOOL_DASHBOARD'] = '1'
 if '--management-dialogs' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'management-dialogs'
-frontend_mode = [] if '--external-recovery' in sys.argv else ['preview']
+frontend_mode = [] if '--external-recovery' in sys.argv or '--dashboard-first' in sys.argv else ['preview']
 if frontend_mode:
     # A concurrent workspace build must not replace this run's hashed assets.
     shutil.copytree(ROOT / 'skillbridge-frontend/dist', OUT / 'bundle')
@@ -98,6 +103,9 @@ try:
             ('--staff-scope', 'staff_scope_playwright.py'),
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--partner-map', 'admin_partner_map_playwright.py'),
+            ('--school-dashboard', 'admin_school_dashboard_playwright.py'),
+            ('--dashboard-highlights', 'dashboard_highlights_playwright.py'),
+            ('--dashboard-first', 'dashboard_first_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),
             ('--authoring-draft', 'authoring_draft_playwright.py'),

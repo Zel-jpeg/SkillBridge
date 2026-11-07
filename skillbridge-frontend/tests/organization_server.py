@@ -91,6 +91,15 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
         for item in scenarios[:2]:
             OJTPlacement.objects.create(student_id=item['student_id'], batch_id=item['batch_id'],
                 position=shared, company_id=shared.company_id, status='approved')
+if os.environ.get('SB_SCHOOL_DASHBOARD'):
+    from django.utils import timezone
+    from api.models import StudentResponse
+    Assessment.objects.filter(batch=batch).update(publication_status='draft', is_active=False)
+    empty_institute = Institute.objects.create(code='EMPTY', name='Synthetic Empty Institute')
+    Program.objects.create(institute_id=scenarios[0]['institute_id'], code='EMPTY', name='Empty program')
+    item = scenarios[0]
+    StudentResponse.objects.create(student_id=item['student_id'], assessment_id=item['assessment_id'], status='stopped', started_at=timezone.now(),
+        retake_request_status='pending', retake_requested_at=timezone.now(), retake_explanation='Synthetic interruption for dashboard review.')
 if os.environ.get('SB_PARTNER_MAP'):
     from django.utils import timezone
     Company.objects.filter(pk=shared.company_id).update(location_lat=7.2, location_lng=125.5)

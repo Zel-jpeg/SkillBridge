@@ -11,7 +11,7 @@ from navigation_playwright import GOOGLE_STUB, payload, user
 OUT = Path(__file__).parent / 'artifacts/dashboard-first'
 OUT.mkdir(parents=True, exist_ok=True)
 CORE = {
-    'admin': ['/api/management/analytics/', '/api/admin/students/recommendations/'],
+    'admin': ['/api/management/analytics/', '/api/management/organization-options/'],
     'instructor': ['/api/management/analytics/', '/api/instructor/students/recommendations/'],
     'student': ['/api/students/me/', '/api/assessments/', '/api/student/results/combined/'],
 }
@@ -53,6 +53,8 @@ class SignIn:
                 {**self.account, 'placement': None, 'address': {}} if path == '/api/students/me/' else (
                     {'recommendations_locked': True, 'has_required_assessments': False, 'recommendations': [], 'combined_category_scores': []}
                     if path == '/api/student/results/combined/' else payload(path, self.role)))
+            if path == '/api/management/organization-options/':
+                data = {'institutes': [], 'programs': []}
             try:
                 await route.fulfill(status=self.failures.get(path, 200), json={'error': 'Synthetic unavailable'} if path in self.failures else data)
             except Exception:
@@ -153,7 +155,7 @@ async def slow_failure_and_cancellation(browser, checks, metrics):
     await fixture.click(page)
     await page.wait_for_url('**/admin/dashboard')
     await expect(page.locator('.sk-route-page')).to_be_visible()
-    await expect(page.get_by_role('heading', name='Admin Dashboard', exact=True)).to_be_visible()
+    await expect(page.get_by_role('heading', name='Admin dashboard', exact=True)).to_be_visible()
     await expect(page.locator('.sb-skeleton')).to_have_count(0)
     assert len([event for event in fixture.events if event['path'] in CORE['admin']]) == 2
     checks.append('A slow dashboard module also respects the deadline and hands off to its matching route skeleton')
@@ -164,10 +166,10 @@ async def slow_failure_and_cancellation(browser, checks, metrics):
     context, page = await fixture.context(browser)
     await fixture.click(page)
     await page.wait_for_url('**/admin/dashboard')
-    await expect(page.get_by_text('Could not load this section. Please try again.', exact=True).first).to_be_visible()
+    await expect(page.get_by_text('Could not refresh this dashboard.', exact=True).first).to_be_visible()
     fixture.failures.clear()
-    await page.get_by_role('button', name='Retry', exact=True).first.click()
-    await expect(page.get_by_text('Could not load this section. Please try again.', exact=True)).to_have_count(0)
+    await page.get_by_role('button', name='Retry dashboard', exact=True).first.click()
+    await expect(page.get_by_text('Could not refresh this dashboard.', exact=True)).to_have_count(0)
     assert not fixture.errors, fixture.errors
     checks.append('Initial dashboard failure preserves successful sign-in and supports section retry')
     await context.close()
@@ -251,6 +253,7 @@ async def priority_and_visibility(browser, checks):
     await fixture.click(page)
     await page.wait_for_url('**/instructor/dashboard')
     await fixture.wait_started(OPTIONAL['instructor'], 2)
+    await page.get_by_role('button', name='OJT', exact=True).click()
     await page.get_by_role('link', name='OJT Partners', exact=True).click()
     await fixture.wait_started(['/api/instructor/companies/'], 1)
     company = next(event for event in fixture.events if event['path'] == '/api/instructor/companies/')

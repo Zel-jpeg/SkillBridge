@@ -3,7 +3,7 @@ from .management_access import managed_batches
 import json
 from uuid import UUID
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -184,6 +184,12 @@ def request_queue(request):
     relations = ('assessment__batch__institute', 'assessment__batch__program__institute', 'student')
     rows = StudentResponse.objects.select_related(*relations).exclude(retake_request_status='')
     rows = rows.filter(**{f'assessment__batch__{key}': value for key, value in context.items()})
+    active_batches = request.query_params.get('active_batches', '')
+    if active_batches not in ('', '1'):
+        raise ValidationError({'error': 'Invalid active_batches filter.'})
+    if active_batches:
+        rows = rows.filter(assessment__batch__status='active', assessment__archived_at__isnull=True, student__is_active=True).filter(
+            Exists(BatchEnrollment.objects.filter(student_id=OuterRef('student_id'), batch_id=OuterRef('assessment__batch_id'))))
     if request.user.role == 'instructor':
         rows = rows.filter(assessment__batch__in=managed_batches(request.user))
     status = request.query_params.get('status', 'pending')
@@ -202,6 +208,10 @@ def request_queue(request):
     if status == 'history':
         histories = AssessmentAttemptHistory.objects.select_related(*(f'response__{path}' for path in relations)).exclude(retake_request={})
         histories = histories.filter(**{f'response__assessment__batch__{key}': value for key, value in context.items()})
+        if active_batches:
+            histories = histories.filter(response__assessment__batch__status='active', response__assessment__archived_at__isnull=True,
+                response__student__is_active=True).filter(Exists(BatchEnrollment.objects.filter(
+                    student_id=OuterRef('response__student_id'), batch_id=OuterRef('response__assessment__batch_id'))))
         if request.user.role == 'instructor':
             histories = histories.filter(response__assessment__batch__in=managed_batches(request.user))
         if query:

@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import AdminScopeNavigator from '../components/admin/AdminScopeNavigator'
 import { useState } from 'react'
 import { useApi, invalidateCache, fetchWithDedup } from '../hooks/useApi'
@@ -39,9 +39,13 @@ function RequestProgram({ row }) {
 }
 
 function ScopedRetakeRequests({ scope }) {
+  const location = useLocation()
+  const activeBatches = new URLSearchParams(location.search).get('active_batches') === '1'
+  const allParams = new URLSearchParams(location.search)
+  allParams.delete('active_batches')
   const [search, setSearch] = useState(''), [status, setStatus] = useState('pending'), [page, setPage] = useState(1)
   const [view, setView] = useState('list'), [selected, setSelected] = useState(null), [message, setMessage] = useState('')
-  const url = `/api/retake-requests/?${new URLSearchParams({ search: search.trim(), status, page: String(page), ...(scope?.institute ? { institute_id: scope.institute } : {}), ...(scope?.program ? { program_id: scope.program } : {}) })}`
+  const url = `/api/retake-requests/?${new URLSearchParams({ search: search.trim(), status, page: String(page), ...(scope?.institute ? { institute_id: scope.institute } : {}), ...(scope?.program ? { program_id: scope.program } : {}), ...(activeBatches ? { active_batches: '1' } : {}) })}`
   const { data, loading, error } = useApi(url)
   const rows = data?.results || []
   // Resolve the selected identity against refreshed data, rather than reviewing a stale row.
@@ -56,6 +60,7 @@ function ScopedRetakeRequests({ scope }) {
 
   return <section className="mx-auto min-w-0 max-w-7xl space-y-6 px-4 py-6 text-gray-900 dark:text-gray-100 sm:px-6 sm:py-8">
     <header><h1 className="text-2xl font-bold">Retake requests</h1><p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300">Review student explanations and supporting evidence.</p></header>
+    {activeBatches && <p className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-300">Active enrolled batches · Archived assessments and accounts excluded.<Link className="text-green-700 underline dark:text-green-300" to={`${location.pathname}?${allParams}`} onClick={reset}>Show all requests in this scope</Link></p>}
     <div className="retake-toolbar space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <p className="shrink-0 text-sm font-semibold">All requests</p>

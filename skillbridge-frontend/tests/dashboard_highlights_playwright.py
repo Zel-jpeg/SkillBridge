@@ -144,7 +144,10 @@ def geometry(page):
 with sync_playwright() as p:
     print('Launching synthetic dashboard browser checks', flush=True)
     browser = p.chromium.launch(channel='chrome', headless=True)
-    for role in ['admin', 'instructor']:
+    # Admin's new school/cohort contract has its real-API matrix in
+    # admin_school_dashboard_playwright.py. Retain this leaderboard regression
+    # for the unchanged instructor dashboard.
+    for role in ['instructor']:
         print(f'Checking {role} dashboard', flush=True)
         fixture = Fixture(browser, role)
         page = fixture.open()

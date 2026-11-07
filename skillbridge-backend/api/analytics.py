@@ -3,7 +3,7 @@ from .recommendation_policy import order_fields, api_fields, assessment_band, to
 from collections import Counter, defaultdict
 from zoneinfo import ZoneInfo
 
-from django.db.models import Count, Q
+from django.db.models import Count, Exists, OuterRef, Q
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view, permission_classes
@@ -290,6 +290,20 @@ def analytics_payload(user, params):
         'pending_instructors': User.objects.filter(role='instructor', is_active=True, is_approved=False).count() if user.role == 'admin' else 0}
     summary['completion_rate'] = rate(summary['required_complete'], summary['students'])
     summary['placement_rate'] = rate(summary['approved'], summary['students'])
+    dashboard_attention = {}
+    if user.role == 'admin':
+        enrolled = BatchEnrollment.objects.filter(student_id=OuterRef('student_id'), batch_id=OuterRef('assessment__batch_id'))
+        pending_requests = StudentResponse.objects.filter(assessment__batch_id__in=selected_ids,
+            assessment__batch__status='active', assessment__archived_at__isnull=True, student__is_active=True,
+            retake_request_status='pending').filter(Exists(enrolled))
+        request_scopes = list(pending_requests.values('assessment__batch__institute_id', 'assessment__batch__program_id').annotate(count=Count('id')))
+        required_batches = {item.batch_id for item in assessments if not item.is_archived and item.publication_status == Assessment.PUBLICATION_PUBLISHED and item.is_required and item.include_in_competency}
+        dashboard_attention = {
+            'pending_retakes': sum(item['count'] for item in request_scopes),
+            'retake_scopes': [{'institute_id': item['assessment__batch__institute_id'], 'program_id': item['assessment__batch__program_id'], 'count': item['count']} for item in request_scopes],
+            'batches_without_required': [item.pk for item in selected if item.status == 'active' and item.pk not in required_batches],
+            'unavailable_results': sum('Final results unavailable' in row['reasons'] for row in students),
+        }
     email_ready = email_storage_ready()
     return {'generated_at': now.isoformat(), 'role': user.role,
         'scope': {'batch_ids': selected_ids, 'batch_status': status, 'course': course, 'instructor_id': instructor_id,
@@ -300,7 +314,7 @@ def analytics_payload(user, params):
             'cohort_unit': 'Distinct students; newest selected enrollment. Active batches exclude archived accounts; archived batches retain historical enrollments.',
             'capacity_scope': 'Eligible openings; occupancy includes all current approvals' if scoped_catalog else 'Shared system-wide slots; only partner/position/area filters apply',
             'activity_note': 'Recorded valid submitted attempts, including saved prior retakes. Not a historical completion rate. Deleted records and unsaved historical states cannot be reconstructed.'},
-        'summary': summary, 'email_storage_ready': email_ready,
+        'summary': summary, 'dashboard_attention': dashboard_attention, 'email_storage_ready': email_ready,
         'email_notifications': reminders(selected) if email_ready else [],
         'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else [],
         'students': students, 'placement_students': placed_filtered,
