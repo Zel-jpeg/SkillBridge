@@ -25,8 +25,10 @@ the institute/program selection implemented in the previous feature.
   final results. Counts and links must agree with their destination scope.
 - [x] Move detailed student and skill highlights behind program selection so
   unrelated program definitions are not presented as one competitive leaderboard.
-- [x] Keep global recommendation reruns in a secondary maintenance area with
-  their existing explicit scope, authorization and confirmation behavior.
+- [x] Put Needs attention beside the overview metrics in a separate card. Stack
+  it below the metrics on narrower screens.
+- [x] Put recommendation maintenance in OJT Placements with explicit program or
+  institute-wide selection, active-batch counts and confirmation.
 
 An Imagegen dashboard concept was produced using illustrative counts and
 institute cards. It is a preview, not evidence of configured school data. The
@@ -174,3 +176,24 @@ checks. Unrelated breadcrumb, instructor-picker, profile, user-page and collecti
 toolbar edits remain in the working tree. The pre-existing report-toolbar class
 and collection-layout runner registrations are excluded from this feature commit.
 No further feature or push has been started.
+
+## Bento overview and placement maintenance · 7 November 2026
+
+The Needs attention card sits next to the five summary metrics on wide screens
+and stacks below them on smaller screens. Its follow-up links and counts use
+existing dashboard data.
+
+OJT Placements offers Recommendation maintenance before or after choosing the
+placement workspace scope. Opening the dialog can prefill the current institute.
+The admin chooses one program per run or explicitly chooses all programs and
+shared batches in the institute. The picker shows the active-batch count and
+asks for confirmation before calling the existing rerun endpoint. Completion or
+uncertain completion appears beside the action with its selected scope.
+
+Feature branch `codex/dashboard-attention-placement-maintenance`. Lint and build
+passed. Eleven focused Node tests passed. Eight dashboard and maintenance browser
+checks passed in `work/organization-browser-p26y15wi/`. Seven shared-record browser
+checks passed in `work/organization-browser-tvkoi_2o/`. The dashboard and mobile
+picker screenshots were visually reviewed. Rerun responses were intercepted in
+the browser tests, and the requested scope was checked for program and institute
+runs. Local delivery preserves unrelated work in the checkout.

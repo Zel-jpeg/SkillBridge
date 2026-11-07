@@ -6,7 +6,7 @@ import TaxonomyLibraryCards from '../TaxonomyLibraryCards'
 import { organizationButton as button, organizationField as field } from './organizationUi'
 
 // Collections mount only after the administrator chooses a valid context.
-export default function AdminScopeNavigator({ title, children, dropdowns = false, overview }) {
+export default function AdminScopeNavigator({ title, children, dropdowns = false, overview, action }) {
   const { pathname } = useLocation()
   const [params, setParams] = useSearchParams()
   const { data, error, loading } = useApi(ORGANIZATION_OPTIONS)
@@ -34,15 +34,20 @@ export default function AdminScopeNavigator({ title, children, dropdowns = false
     ...programs.map(row => ({ ...row, to: path(row.id), subtitle: institute.name })),
   ] : []
   const invalid = data && (instituteId && !institute || programId && (!institute || !program && programId !== 'all'))
+  const headingContent = <>
+    {!ready && <header><h1 ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">{title}</h1>
+      <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{overview ? 'View partner locations across the school, or choose an institute and program to manage its records.' : 'Choose an institute, then a program to view its records.'}</p></header>}
+    {(instituteId || programId) && <nav aria-label="Institute and program path" className="flex flex-wrap items-center gap-2 text-xs">
+      <Link className={button} to={root}>All institutes</Link>
+      {institute && <Link className={button} to={institutePath}>{institute.name}</Link>}
+      {ready && <p ref={heading} tabIndex={-1} className="break-words font-semibold outline-none" aria-current="page">{program ? `${program.code} · ${program.name}` : `All ${institute.code} programs`}</p>}
+    </nav>}
+  </>
   return <>
     <section aria-label="Admin institute and program navigation" className="mx-auto max-w-7xl space-y-4 px-4 pt-6 sm:px-6">
-      {!ready && <header><h1 ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">{title}</h1>
-        <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{overview ? 'View partner locations across the school, or choose an institute and program to manage its records.' : 'Choose an institute, then a program to view its records.'}</p></header>}
-      {(instituteId || programId) && <nav aria-label="Institute and program path" className="flex flex-wrap items-center gap-2 text-xs">
-        <Link className={button} to={root}>All institutes</Link>
-        {institute && <Link className={button} to={institutePath}>{institute.name}</Link>}
-        {ready && <p ref={heading} tabIndex={-1} className="break-words font-semibold outline-none" aria-current="page">{program ? `${program.code} · ${program.name}` : `All ${institute.code} programs`}</p>}
-      </nav>}
+      {action ? <div className="flex flex-wrap items-start justify-between gap-3">
+        {headingContent}<div className="ml-auto">{action}</div>
+      </div> : headingContent}
       {dropdowns && <fieldset className="grid gap-3 sm:grid-cols-2" aria-label="Institute and program scope">
         <label className="text-xs font-medium">Institute<select aria-label="Institute" className={field} value={instituteId} disabled={!data}
           onChange={event => setParams(event.target.value ? { institute: event.target.value } : {})}>

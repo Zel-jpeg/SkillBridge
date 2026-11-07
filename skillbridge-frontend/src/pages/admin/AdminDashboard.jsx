@@ -1,9 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApi, invalidateCache } from '../../hooks/useApi'
-import api from '../../api/axios'
-import { readBrowserSession } from '../../api/sessionRenewal'
-import { rerunRecommendations, RECOMMENDATION_REFRESH_URLS } from '../../api/recommendationRerun'
 import { useSSE } from '../../hooks/useSSE'
 import { ANALYTICS_URL } from '../../utils/analytics'
 import { ORGANIZATION_OPTIONS } from '../../utils/organizationScope'
@@ -13,10 +10,9 @@ import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import Pagination from '../../components/Pagination'
 import DialogShell from '../../components/DialogShell'
-import ConfirmModal from '../../components/admin/ConfirmModal'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationCard } from '../../components/admin/organizationUi'
-import { BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, RefreshIcon, ReportIcon, UsersIcon, WarnIcon } from '../../components/Icons'
+import { BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, ReportIcon, UsersIcon, WarnIcon } from '../../components/Icons'
 
 const icons = { students: UsersIcon, complete: CheckCircleIcon, review: WarnIcon, approved: BriefcaseIcon, capacity: BriefcaseIcon }
 const surface = 'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
@@ -24,7 +20,7 @@ const scopeQuery = scope => new URLSearchParams({ ...(scope.institute ? { instit
 const dashboardPath = (scope, changes = {}) => `/admin/dashboard?${new URLSearchParams({ ...(scope.institute ? { institute: scope.institute } : {}), ...(scope.program ? { program: scope.program } : {}), batch_status: scope.status, ...changes })}`
 
 function Summary({ data, scope }) {
-  return <dl aria-label="Dashboard summary" className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5">
+  return <dl aria-label="Dashboard summary" className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-6 xl:[&>div]:col-span-2 xl:[&>div:nth-child(n+4)]:col-span-3">
     {schoolDashboardCards(data, scope).map(card => { const Icon = icons[card.kind]; return <div key={card.kind} className={`${organizationCard} relative min-w-0 p-4`}>
       <dt className="mb-4 flex items-start gap-2 text-xs font-semibold"><span aria-hidden="true" className="rounded-lg bg-green-50 p-2 text-green-700 dark:bg-green-950 dark:text-green-300"><Icon size={18} /></span><Link className="break-words before:absolute before:inset-0 before:rounded-2xl focus-visible:before:outline-2 focus-visible:before:outline-green-600" to={card.to}>{card.label}</Link></dt>
       <dd className="text-2xl font-bold tabular-nums">{card.value}</dd><dd className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{card.description}</dd>
@@ -54,6 +50,30 @@ function OrganizationCards({ data, options, scope }) {
         </Link></li>)}
     </ul> : <p className={`${surface} p-6 text-xs text-gray-500`}>No {program ? 'programs' : 'institutes'} match this view.</p>}
     <Pagination total={filtered.length} page={currentPage} pageSize={9} onPage={setPage} />
+  </section>
+}
+
+function AttentionCard({ rows, available }) {
+  const rowClass = 'flex min-h-14 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950'
+  return <section aria-label="Needs attention" className={`${surface} min-w-0 p-4`}>
+    <header className="mb-3 flex items-center gap-2">
+      <span aria-hidden="true" className="rounded-lg bg-amber-50 p-2 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><WarnIcon size={18} /></span>
+      <h2 className="text-base font-bold">Needs attention</h2>
+    </header>
+    {rows.length ? <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+      {rows.map(row => {
+        const content = <>
+          <span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span>
+          <span className="flex shrink-0 items-center gap-2 font-semibold tabular-nums">{row.count}<ChevronRightIcon size={16} /></span>
+        </>
+        return <li key={row.label}>{row.to
+          ? <Link className={rowClass} to={row.to}>{content}</Link>
+          : <button type="button" className={`${rowClass} cursor-pointer`} onClick={row.action}>{content}</button>}
+        </li>
+      })}
+    </ul> : <p className="px-2 py-3 text-xs text-gray-500 dark:text-gray-400">
+      {available ? 'No current attention items in this scope.' : 'Attention details are unavailable. Refresh the dashboard to load them.'}
+    </p>}
   </section>
 }
 
@@ -101,20 +121,11 @@ export default function AdminDashboard() {
   const invalid = Boolean(options && (scope.institute && !institute || scope.program && !program || !['active', 'archived', 'all'].includes(scope.status)))
   const analyticsParams = new URLSearchParams({ ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
   const url = options && !invalid ? `${ANALYTICS_URL}${analyticsParams.size ? `?${analyticsParams}` : ''}` : null
-  const { data, loading, error } = useApi(url)
-  const [attention, setAttention] = useState(null), [confirm, setConfirm] = useState(false), [result, setResult] = useState(null)
-  const pending = useRef(false)
-  function change(next) { setAttention(null); setResult(null); setParams({ batch_status: scope.status, ...scope.institute && { institute: scope.institute }, ...scope.program && { program: scope.program }, ...next }) }
-  async function refreshRecommendations() {
-    if (pending.current) return { ok: false, message: 'A refresh is already in progress.' }
-    pending.current = true
-    try {
-      const outcome = await rerunRecommendations(api, readBrowserSession().id, { ...(confirm.institute ? { institute_id: Number(confirm.institute) } : {}), ...(confirm.program ? { program_id: Number(confirm.program) } : {}) })
-      if (outcome.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
-      setResult(outcome)
-      if (outcome.type !== 'error') setConfirm(false)
-      return { ok: outcome.type !== 'error', message: outcome.message }
-    } finally { pending.current = false }
+  const { data, error } = useApi(url)
+  const [attention, setAttention] = useState(null)
+  function change(next) {
+    setAttention(null)
+    setParams({ batch_status: scope.status, ...scope.institute && { institute: scope.institute }, ...scope.program && { program: scope.program }, ...next })
   }
   const attentionRows = data?.dashboard_attention ? [
     { label: 'Pending retake requests', count: data.dashboard_attention.pending_retakes, action: () => setAttention('retakes'), note: 'Active enrolled batches' },
@@ -132,14 +143,14 @@ export default function AdminDashboard() {
     {!invalid && !error && !optionsError && (!options || !data) && <div className="space-y-6"><ContentSkeleton layout="stats" count={5} label="Loading dashboard overview" /><ContentSkeleton layout="cards" count={3} label="Loading institute overview" /></div>}
     {!invalid && options && data && <>
       {scope.program && data.scope.shared_batch_ids?.length > 0 && <p className="rounded-xl bg-green-50 p-4 text-xs leading-5 text-green-900 dark:bg-green-950 dark:text-green-200">Includes {data.scope.shared_batch_ids.length} shared {institute.code} batches with their full mixed-program rosters. Program views can overlap; school and institute totals still count each student once.</p>}
-      <Summary data={data} scope={scope} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Summary data={data} scope={scope} />
+        <AttentionCard rows={attentionRows} available={Boolean(data.dashboard_attention)} />
+      </div>
       <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{scope.institute ? programs.length : options.institutes.length} {scope.institute ? 'programs in this institute' : 'institutes'} · {data.scope.batch_ids.length} selected batches. Each student is counted once using their newest selected enrollment. Approved decisions do not establish OJT completion.</p>
       {!scope.program ? <OrganizationCards key={`${scope.institute}:${scope.status}`} data={data} options={options} scope={scope} /> : <><nav aria-label="Program workspaces" className="flex flex-wrap gap-2">{[['batches', 'Batches'], ['assessments', 'Assessments'], ['companies', 'OJT Partners'], ['placements', 'Placements']].map(([path, label]) => <Link key={path} className={button} to={`/admin/${path}?${scopeQuery(scope)}`}>{label}</Link>)}</nav><ProgramHighlights data={data} scope={scope} /></>}
-      <section aria-label="Needs attention" className="space-y-4"><h2 className="text-lg font-bold">Needs attention</h2><div className={`${surface} divide-y divide-gray-100 dark:divide-gray-800`}>{attentionRows.map(row => <div key={row.label}>{row.to ? <Link className="flex min-h-16 items-center justify-between gap-3 rounded-lg px-4 py-3 text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950" to={row.to}><span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span><span className="flex items-center gap-3 font-semibold">{row.count}<ChevronRightIcon /></span></Link> : <button type="button" className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950" onClick={row.action}><span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span><span className="flex items-center gap-3 font-semibold">{row.count}<ChevronRightIcon /></span></button>}</div>)}{!attentionRows.length && <p className="p-5 text-xs text-gray-500 dark:text-gray-400">{data.dashboard_attention ? 'No current attention items in this scope.' : 'Attention details are unavailable. Refresh the dashboard to load them.'}</p>}</div></section>
       {!scope.program && <p className="text-xs text-gray-500 dark:text-gray-400">Choose a program to view its student and skill highlights.</p>}
-      <details className={`${surface} p-4`}><summary className="cursor-pointer text-xs font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600">Recommendation maintenance</summary><div className="mt-4 space-y-3"><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Refresh recommendations for {scope.program ? 'program-owned active batches' : 'active batches'} in {program ? program.name : institute ? institute.name : 'all institutes'}. Existing approved decisions and assessment evidence are retained. Shared institute batches use the institute-wide maintenance scope.</p><button type="button" className={button} disabled={loading || scope.status !== 'active' || !data.options.batches.some(row => data.scope.batch_ids.includes(row.id) && (!scope.program || String(row.program_id) === scope.program))} onClick={() => setConfirm({ institute: scope.institute, program: scope.program, label: program?.name || institute?.name || 'all institutes' })}><RefreshIcon />Refresh recommendations for this scope</button>{scope.status !== 'active' && <p className="text-xs text-gray-500">Choose Active batches to use this maintenance action.</p>}{result && <p role="status" className="text-xs">{result.message}</p>}</div></details>
       {attention && <AttentionDialog key={attention} kind={attention} data={data} options={options} scope={scope} onClose={() => setAttention(null)} />}
-      {confirm && <ConfirmModal title="Refresh recommendations for this scope?" message={`Refresh recommendations for ${confirm.label}? This uses the current active batches; approved placements and assessment evidence are retained.`} confirmLabel="Refresh recommendations" tone="neutral" onCancel={() => setConfirm(false)} onConfirm={refreshRecommendations} />}
     </>}
   </section>
 }

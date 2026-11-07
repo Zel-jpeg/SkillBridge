@@ -30,8 +30,10 @@ signature per operation instead of rebuilding it per student; no cross-request
 fingerprint cache can conceal an edit.
 
 Reads do not automatically rerun a finalized stale ranking. Students see refresh
-guidance. **Admin Dashboard → Re-run Recommendations** deliberately regenerates
-results and stores current provenance. Existing automatic generation after
+guidance. **OJT → Placements → Recommendation maintenance** asks an admin to
+choose an institute and a program, then confirm the refresh. The institute-wide
+choice includes shared batches. The action regenerates results and stores current
+provenance. Existing automatic generation after
 assessment completion/new-position creation and refresh after editing a previously
 current student's profile remain. Catalog changes during generation leave that
 result unavailable as current.
