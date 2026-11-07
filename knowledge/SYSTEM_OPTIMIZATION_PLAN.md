@@ -1,8 +1,9 @@
 # SkillBridge system optimization and Realtime plan
 
 Prepared 6 November 2026 from the current `main` checkout. The source review and
-frontend build baseline are complete. The current-version benchmark, application
-optimization and private WebSocket pilot are pending. This plan covers browser
+frontend build baseline are complete. The current review adds a synthetic
+PostgreSQL read profile and production log samples. Staging acceptance,
+application optimization and the private WebSocket pilot are pending. The plan covers browser
 performance, API and database work, assessment and placement operations, external
 providers, hosting and recovery. The screenshot shows the Supabase Realtime
 Inspector for the production project. Use a separate project for the pilot.
@@ -10,6 +11,113 @@ Inspector for the production project. Use a separate project for the pilot.
 Updated 7 November 2026 to include UI motion from the user's animation reference.
 The motion work below is planned. Its durations and effect choices are proposed
 starting values to verify against current components and measured performance.
+
+## Current performance review · 7 November 2026
+
+The integrated application source is at `4d08501`. Railway reports its active
+web deployment at `181b4d6`, with the web service and email worker online. The
+deployed API runs in California (`us-west2`). The connected Supabase project
+runs PostgreSQL 17.6 in Tokyo (`ap-northeast-1`). The separation makes the number
+of sequential SQL round trips and connection handshakes especially relevant.
+Measure their contribution with a matched staging run before moving a service.
+[Railway region mapping](https://docs.railway.com/networking/edge-networking)
+· [Supabase region mapping](https://supabase.com/docs/guides/platform/regions)
+
+Read-only Railway proxy log samples from the active deployment confirm that some
+API reads take several seconds. These are successful GETs on each exact path.
+The sample is capped by the connector, combines scopes and cache states, and
+does not include client rendering or isolate application and network time.
+
+| GET | HTTP 200 samples | p50 | p95 | Other observed statuses |
+| --- | ---: | ---: | ---: | --- |
+| `/api/management/analytics/` | 148 | 3.99 s | 4.25 s | 3 × 499 |
+| `/api/instructor/students/recommendations/` | 64 | 3.13 s | 3.39 s | 2 × 499 |
+| `/api/student/results/combined/` | 83 | 4.30 s | 5.57 s | 4 × 499, 1 × 401 |
+
+These proxy samples describe the deployed revision. The local branch includes
+subsequent organization, dashboard, placement and navigation changes. Use a
+staging trace to establish timings for that revision. [Railway timing fields](https://docs.railway.com/deployments/troubleshooting/slow-deployments)
+
+The current admin dashboard prepares analytics and organization options at
+sign-in. Its own analytics query waits for the options to validate scope. The
+staff bell keeps the default full analytics query mounted even when closed.
+An unfiltered dashboard can share that response. A scoped dashboard or report
+can keep both the default and filtered analytics requests active. The instructor
+dashboard also prepares student recommendations, and student sign-in prepares
+profile, assessments and combined results. Keep the useful initial content fast
+by measuring which data each view needs before rendering. [Dashboard preparation](../skillbridge-frontend/src/api/prefetch.js)
+· [Admin dashboard](../skillbridge-frontend/src/pages/admin/AdminDashboard.jsx)
+· [Staff notifications](../skillbridge-frontend/src/components/layout/NotificationMenu.jsx)
+
+### Current source profile on isolated PostgreSQL
+
+Measured the actual Django endpoints with JWT-authenticated synthetic users on
+disposable localhost PostgreSQL 17.11. Each row uses ten warm, serial in-process
+requests after three warmups, with no browser, proxy or remote database. The
+cohorts have two assessments per batch, partial/stopped attempts and no finalized
+recommendations. The profile measures reads for this fixture. Request time
+includes query execution and response rendering, and response sizes are raw JSON.
+
+| Admin analytics workload | SQL statements per request | Raw JSON | Local p50 | Local p95 |
+| --- | ---: | ---: | ---: | ---: |
+| School-wide, 20 students in four batches | 44 | 35.9 kB | 143 ms | 169 ms |
+| School-wide, 200 students in four batches | 44 | 305.7 kB | 173 ms | 204 ms |
+| School-wide, 200 students in 20 batches | 140 | 320.0 kB | 416 ms | 607 ms |
+| One program within the 200-student, 20-batch fixture | 52 | 83.4 kB | 179 ms | 230 ms |
+
+At a fixed 200 students, adding 16 populated batches added 96 SQL statements.
+At four batches, the tenfold increase in students mainly grew the payload.
+Other reads for the 200-student, four-batch fixture used 22 statements for
+instructor analytics, 15 for instructor dashboard recommendations, and 18, 15
+and 15 for student profile, assessments and locked combined results respectively.
+The latest Vite build reports 121.32 kB gzipped for the main JS chunk and
+132.35 kB for the reports route chunk. Use a browser trace to decide how much
+bundle work is worth doing. Local read evidence is stored under ignored
+`work/optimization-review-postgres-q5hbsxr0/read-profile.json`.
+
+Start with a small dashboard/reminders read and benchmark it alongside the
+existing full report. Keep badge counts, email progress toasts, admin attention
+items and report totals sourced from the same authorized calculations. Measure
+school-wide analytics by populated batches as well as students. The current API
+runs management-state queries separately for each populated batch. Batch those
+reads across authorized batches where the evidence rules permit it. Trace student
+combined results separately for locked, finalized and legacy recovery cases.
+A legacy recovery request may trigger scoring/ranking work. Compare the same
+staging revision and fixture from California and an available Asia-Pacific
+Railway region to isolate the cost of the network path. [Analytics implementation](../skillbridge-backend/api/analytics.py)
+· [Combined competency recovery](../skillbridge-backend/api/combined_competency.py)
+
+### Realtime decision after inspecting the connected project
+
+The connected project exposes `realtime.send(jsonb,text,text,boolean)`. The
+database catalog shows zero Django `api_` tables in the `supabase_realtime`
+publication, zero policies on `realtime.messages`, and an existing
+`(recipient_id, id)` event cursor index. Aggregate PostgreSQL statement statistics
+show 59,450 matching cursor polls and 0.781 s of accumulated database execution
+time for those statements. This is a cumulative sample with a global stats reset
+in August. It measures database execution and excludes network, connection
+setup and worker overhead. The evidence supports reducing round trips and
+profiling fresh loads before choosing a new index or transport.
+
+Keep private Supabase Broadcast as the staging WebSocket candidate. Compare its
+commit-to-visible delay, event volume, GET volume, proxy latency and database
+connections against a matched SSE baseline. Send only a recipient-specific
+invalidation hint and use normal Django GETs to retrieve data. Keep the relay on
+the application event table or in a separate publisher, since Supabase protects
+the `realtime` schema from custom objects while allowing policies on its messages
+table. A relay through `realtime.send` also needs an active daily message partition.
+Test a missing partition, quota limits and provider outage with successful writes
+and working refresh fallback. [Protected schema changelog](https://supabase.com/changelog/realtime-schema-locked-down-against-modification)
+· [Database Broadcast and partitions](https://supabase.com/docs/guides/realtime/broadcast)
+
+Gate the pilot on an isolated, short-lived token exchange that grants receive
+access to exactly one opaque topic. Supabase caches authorization on open channels.
+Verify revocation while connected and block further deliveries to ineligible
+recipients at publish time. Use the publishable key in the browser, keep privileged
+credentials server-side, and prove the token cannot read application tables or
+private Storage objects or publish client messages. Match SSE freshness on
+reconnect by revalidating affected reads. [Realtime authorization](https://supabase.com/docs/guides/realtime/authorization#updating-rls-policies)
+· [Supabase JWT trust](https://supabase.com/docs/guides/auth/jwts#using-custom-or-third-party-jwts)
 
 ## What the current system does
 
@@ -268,13 +376,27 @@ actual project limits before expanding. [Realtime limits](https://supabase.com/d
 
 ## Checkpoint and next step
 
+- [x] Integrate the pending staff UI, program assignment and planning changes in
+  local `main` at `4d08501`. Frontend lint/build and 306 Node tests passed.
+  All 785 Django API tests passed on isolated PostgreSQL. Django system and
+  migration drift checks passed. Nine browser scenarios passed after updating
+  two fixtures to use the current admin institute/program navigation. They cover
+  navigation, collection layouts, assignments, enrollment, profile recovery,
+  school dashboards/reports, shared records and a three-role assessment-to-placement
+  workflow. Browser checks used synthetic data and included production bundles.
+  Backend evidence is under `work/branch-review-postgres-qq4l4102/`. The corrected
+  browser evidence is under `work/organization-browser-ciewekkr/`,
+  `work/organization-browser-6_y5mi8x/` and `work/organization-browser-3_joso7f/`.
 - [x] Review current loading, analytics and freshness paths, prior local/hosted
   evidence and Supabase Realtime requirements. Establish frontend bundle sizes.
   Review revision `e485935`. The local production build passed with
   `npm.cmd run build -- --outDir ../work/system-optimization-build-20261106`.
-- [ ] Capture a current-version baseline for all three roles. First profile
-  `/api/management/analytics/` on a staff dashboard and an unrelated staff route
-  with the bell closed. Reproduce the hosted long-tail reads with matched runs.
+- [x] Profile the current revision's main reads for all three roles on synthetic
+  PostgreSQL and compare with aggregate production telemetry on the older release.
+- [ ] Capture a matched staging browser baseline, including
+  `/api/management/analytics/` on a staff dashboard and on an unrelated staff
+  route with the bell closed. Reproduce the hosted long tail and measure the
+  effect of the API-to-database region pairing.
 - [ ] Implement the measured first-load improvements, rerun the benchmark and
   record which remaining workstreams have evidence for a change.
 - [ ] Implement and verify UI motion in component groups against the animation
