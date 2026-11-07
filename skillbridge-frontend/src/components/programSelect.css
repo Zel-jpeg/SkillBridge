@@ -1,0 +1,63 @@
+.sb-program-select { min-width: 0; font-size: 12px; }
+.sb-program-legend { margin-bottom: 8px; font-weight: 600; }
+.sb-program-search { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; color: #64748b; }
+.sb-program-search > svg { flex-shrink: 0; }
+.sb-program-search input { width: 100%; min-width: 0; min-height: 42px; border: 0; background: transparent; color: #111827; font: inherit; }
+.sb-program-search input::placeholder { color: #6b7280; }
+.sb-program-search:focus-within { outline: 2px solid #15803d; outline-offset: 2px; }
+.sb-program-search input:focus-visible, .sb-detail-dialog .sb-program-search input:focus-visible { outline: none; }
+.sb-program-results { min-width: 0; margin-top: 12px; }
+.sb-program-count { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: #64748b; line-height: 1.5; }
+.sb-program-count-selected { color: #15803d; font-weight: 600; }
+.sb-program-options { display: grid; align-content: start; gap: 8px; max-height: 272px; padding: 3px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.sb-program-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; min-height: 76px; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 11px; background: #fff; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.sb-program-option:hover { border-color: #86b99a; background: #f7fcf8; }
+.sb-program-option[data-selected="true"] { border-color: #16a34a; background: #f0fdf4; box-shadow: inset 0 0 0 1px #16a34a; }
+.sb-program-option:has(input:focus-visible) { outline: 2px solid #15803d; outline-offset: 2px; }
+.sb-program-identity { display: grid; gap: 6px; min-width: 0; }
+.sb-program-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; line-height: 1.4; }
+.sb-program-code { max-width: 100%; padding: 2px 7px; border-radius: 5px; background: #edf0f4; color: #374151; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.sb-program-institute { max-width: 100%; padding-left: 8px; border-left: 1px solid #d1d5db; color: #64748b; font-size: 11px; overflow-wrap: anywhere; }
+.sb-program-name { color: #111827; font-size: 12px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.sb-program-archived { color: #9a3412; font-size: 11px; }
+.sb-program-indicator { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; flex-shrink: 0; max-width: 70px; }
+.sb-program-indicator input { width: 18px; height: 18px; margin: 0; accent-color: #15803d; cursor: pointer; }
+.sb-program-selected-label { color: #15803d; font-size: 11px; font-weight: 600; }
+.sb-program-selection { margin-top: 12px; padding: 12px; border: 1px solid #a7d8b6; border-radius: 10px; background: #f0fdf4; }
+.sb-program-selection > p { margin-bottom: 8px; color: #166534; font-size: 11px; font-weight: 600; }
+.sb-program-empty { padding: 18px 12px; border: 1px dashed #d1d5db; border-radius: 10px; text-align: center; line-height: 1.6; }
+.sb-program-empty > p:first-child { color: #374151; font-weight: 600; }
+.sb-program-empty > p + p { margin-top: 4px; color: #64748b; }
+.sb-program-empty button, .sb-program-clear button { min-height: 44px; padding: 10px 0; color: #15803d; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sb-program-clear { display: flex; justify-content: flex-end; margin-top: 4px; }
+.sb-program-select:disabled .sb-program-option, .sb-program-select:disabled button { cursor: not-allowed; }
+.sb-program-select:disabled .sb-program-option { opacity: .65; }
+.sb-program-select:disabled .sb-program-option:hover { background: #fff; border-color: #d1d5db; }
+.sb-program-select:disabled .sb-program-option[data-selected="true"] { background: #f0fdf4; border-color: #16a34a; }
+.sb-program-select:disabled .sb-program-search, .sb-program-select:disabled .sb-program-clear { opacity: .6; }
+.sb-program-select button:focus-visible { outline: 2px solid #15803d; outline-offset: 2px; border-radius: 4px; }
+.dark .sb-program-search, .dark .sb-program-option { border-color: #4b5563; background: #111827; color: #9ca3af; }
+.dark .sb-program-search input, .dark .sb-program-name { color: #f9fafb; }
+.dark .sb-program-search input::placeholder, .dark .sb-program-count, .dark .sb-program-institute { color: #a8b5c7; }
+.dark .sb-program-code { background: #293548; color: #e5e7eb; }
+.dark .sb-program-institute { border-color: #4b5563; }
+.dark .sb-program-option:hover { border-color: #4b8d62; background: #16362a; }
+.dark .sb-program-option[data-selected="true"], .dark .sb-program-selection { border-color: #4ade80; background: #052e16; }
+.dark .sb-program-option[data-selected="true"] { box-shadow: inset 0 0 0 1px #4ade80; }
+.dark .sb-program-count-selected, .dark .sb-program-selected-label, .dark .sb-program-selection > p, .dark .sb-program-empty button, .dark .sb-program-clear button { color: #86efac; }
+.dark .sb-program-archived { color: #fdba74; }
+.dark .sb-program-empty { border-color: #4b5563; }
+.dark .sb-program-empty > p:first-child { color: #e5e7eb; }
+.dark .sb-program-empty > p + p { color: #a8b5c7; }
+.dark .sb-program-select:disabled .sb-program-option:hover { background: #111827; border-color: #4b5563; }
+.dark .sb-program-select:disabled .sb-program-option[data-selected="true"] { background: #052e16; border-color: #4ade80; }
+.dark .sb-program-option:has(input:focus-visible), .dark .sb-program-search:focus-within, .dark .sb-program-select button:focus-visible { outline-color: #4ade80; }
+@media (max-width: 400px) {
+  .sb-program-option { padding: 12px 10px; gap: 10px; }
+  .sb-program-indicator { flex-direction: column-reverse; gap: 5px; max-width: 48px; }
+}
+@media (prefers-reduced-motion: reduce) { .sb-program-option { transition: none; } }
+@media (forced-colors: active) {
+  .sb-program-option[data-selected="true"] { border: 2px solid Highlight; }
+  .sb-program-option:has(input:focus-visible), .sb-program-option:focus-visible, .sb-program-search:focus-within { outline-color: Highlight; }
+}

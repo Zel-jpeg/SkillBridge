@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import { ORGANIZATION_OPTIONS } from '../../utils/organizationScope'
 import TaxonomyLibraryCards from '../TaxonomyLibraryCards'
+import OrganizationBreadcrumbs from '../OrganizationBreadcrumbs'
 import { organizationButton as button, organizationField as field } from './organizationUi'
 
 // Collections mount only after the administrator chooses a valid context.
@@ -37,11 +38,11 @@ export default function AdminScopeNavigator({ title, children, dropdowns = false
   const headingContent = <>
     {!ready && <header><h1 ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">{title}</h1>
       <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{overview ? 'View partner locations across the school, or choose an institute and program to manage its records.' : 'Choose an institute, then a program to view its records.'}</p></header>}
-    {(instituteId || programId) && <nav aria-label="Institute and program path" className="flex flex-wrap items-center gap-2 text-xs">
-      <Link className={button} to={root}>All institutes</Link>
-      {institute && <Link className={button} to={institutePath}>{institute.name}</Link>}
-      {ready && <p ref={heading} tabIndex={-1} className="break-words font-semibold outline-none" aria-current="page">{program ? `${program.code} · ${program.name}` : `All ${institute.code} programs`}</p>}
-    </nav>}
+    {(instituteId || programId) && <OrganizationBreadcrumbs currentRef={ready ? heading : undefined} items={[
+      { label: 'All institutes', to: root },
+      ...(institute ? [{ label: institute.name, ...(programId ? { to: institutePath } : {}) }] : []),
+      ...(ready ? [{ label: program ? `${program.code} · ${program.name}` : `All ${institute.code} programs` }] : []),
+    ]} />}
   </>
   return <>
     <section aria-label="Admin institute and program navigation" className="mx-auto max-w-7xl space-y-4 px-4 pt-6 sm:px-6">

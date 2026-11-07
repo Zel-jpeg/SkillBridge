@@ -174,14 +174,14 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
       </div>
       {notice && <p role="status" className="mt-4 text-green-800 dark:text-green-300">{notice}</p>}
       {error && <p role="alert" className="mt-4 text-rose-700 dark:text-rose-300">{error}</p>}
-      <div className="my-5 flex flex-col gap-3 sm:flex-row">
+      <div className="sb-collection-toolbar my-5">
         <label className="min-w-0 flex-1 font-semibold">Search partners<input className={field} aria-label="Search partners" type="search" maxLength={255} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
         <label className="font-semibold">Partner status<select className={field} aria-label="Partner status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All</option></select></label>
+        <CollectionViewToggle view={view} onChange={setView} label="Program partner view" mobile />
       </div>
       <DataSection url={url} layout="company-cards">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <p role="status" className="text-gray-500 dark:text-gray-400">{data?.count || 0} matching {data?.count === 1 ? 'partner' : 'partners'}</p>
-          <CollectionViewToggle view={view} onChange={setView} label="Program partner view" mobile />
         </div>
         <ul className={`grid gap-3 ${view === 'grid' ? 'sm:grid-cols-2' : ''}`}>{data?.results.map(row => <li key={row.id}>
           <button type="button" aria-pressed={selected === row.id} onClick={() => setSelected(row.id)}

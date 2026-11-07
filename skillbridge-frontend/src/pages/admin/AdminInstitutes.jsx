@@ -11,6 +11,7 @@ import ProgramInstructors from '../../components/admin/ProgramInstructors'
 import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationError as errorText } from '../../components/admin/organizationUi'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import OrganizationCatalogCard from '../../components/admin/OrganizationCatalogCard'
+import OrganizationBreadcrumbs from '../../components/OrganizationBreadcrumbs'
 import CatalogBannerEditor from '../../components/CatalogBannerEditor'
 import { companyRequest } from '../../utils/companyImages'
 import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
@@ -82,7 +83,7 @@ export function CatalogForm({ item, program, institute, onClose, onSave, brandin
   </DialogShell>
 }
 
-function CatalogCollection({ institute: selected, onSelect }) {
+function CatalogCollection({ institute: selected, onSelect, onBack }) {
   const statusId = useId()
   const { data: latestInstitute } = useApi(selected ? `${ROOT}${selected.id}/` : null)
   const institute = latestInstitute || selected
@@ -122,24 +123,28 @@ function CatalogCollection({ institute: selected, onSelect }) {
   const clear = () => setFilters({ search: '', status: 'all', page: 1 })
   return <section aria-label={institute ? `Programs in ${institute.name}` : 'Institutes'} className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-base font-semibold text-gray-900 dark:text-white">{institute ? institute.name : 'Institutes'}</h2>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{institute ? `Manage the programs belonging to ${institute.code}.` : 'Choose an institute to manage its programs.'}</p></div>
+      <div><h1 className="text-xl font-bold text-gray-900 dark:text-white">Institutes & Programs</h1>
+        {!institute && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Choose an institute to manage its programs.</p>}</div>
       <button type="button" className={primary} onClick={() => setForm({})} disabled={Boolean(institute && !institute.is_active)}><PlusIcon size={14} />Add {kind}</button>
     </div>
+    {institute && <OrganizationBreadcrumbs items={[
+      { label: 'All institutes', onClick: onBack },
+      { label: institute.name },
+    ]} />}
     {institute && !institute.is_active && <p className="text-xs text-amber-700 dark:text-amber-300">This institute is archived. Restore it before adding or restoring active programs.</p>}
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="sb-collection-toolbar" role="group" aria-label="Institute and program filters">
       <label className="min-w-48 flex-1 text-xs font-medium text-gray-600 dark:text-gray-300">Search by name or code
         <input type="search" value={filters.search} maxLength={255} className={field} onChange={event => change('search', event.target.value)} /></label>
-      <div className="text-xs font-medium text-gray-600 dark:text-gray-300"><label htmlFor={statusId}>Status</label>
-        <select id={statusId} value={filters.status} className={field} onChange={event => change('status', event.target.value)}><option value="all">All statuses</option><option value="active">Active</option><option value="archived">Archived</option></select></div>
+      <label className="text-xs font-medium text-gray-600 dark:text-gray-300" htmlFor={statusId}>Status
+        <select id={statusId} aria-label="Status" value={filters.status} className={field} onChange={event => change('status', event.target.value)}><option value="all">All statuses</option><option value="active">Active</option><option value="archived">Archived</option></select></label>
       {filtered && <button type="button" className={button} onClick={clear}>Clear filters</button>}
+      <CollectionViewToggle view={view} onChange={setView} label={institute ? 'Program view' : 'Institute view'} mobile />
     </div>
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-200 p-4 text-xs text-rose-700 dark:border-rose-900 dark:text-rose-300">
       <p>{error}</p><button type="button" className={button} onClick={() => refresh()}>Retry</button></div>}
     {loading && !data ? <ContentSkeleton layout="cards" count={4} label={`Loading ${kind}s`} /> : data && <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} {kind}{data.count === 1 ? '' : 's'}{filtered ? ' matching filters' : ''}</p>
-        <CollectionViewToggle view={view} onChange={setView} label={institute ? 'Program view' : 'Institute view'} mobile />
       </div>
       {rows.length === 0 ? <EmptyState message={filtered ? `No ${kind}s match these filters.` : `No ${kind}s yet. Add one to get started.`} onClear={filtered ? clear : undefined} /> : <ul className={`grid gap-4 ${view === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`}>
         {rows.map(row => <OrganizationCatalogCard key={row.id} row={row} program={Boolean(institute)} view={view}
@@ -158,8 +163,6 @@ function CatalogCollection({ institute: selected, onSelect }) {
 export default function AdminInstitutes() {
   const [institute, setInstitute] = useState(null)
   return <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-    <header><h1 className="text-xl font-bold text-gray-900 dark:text-white">Institutes & Programs</h1><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Configure the academic structure used by SkillBridge.</p></header>
-    {institute && <button type="button" className={button} onClick={() => setInstitute(null)}>← All institutes</button>}
-    <CatalogCollection key={institute?.id || 'institutes'} institute={institute} onSelect={setInstitute} />
+    <CatalogCollection key={institute?.id || 'institutes'} institute={institute} onSelect={setInstitute} onBack={() => setInstitute(null)} />
   </section>
 }

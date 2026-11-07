@@ -14,7 +14,7 @@ export default function CollectionFilterToolbar({ filters, defaults, groups, onA
     setOpen(next)
   }
   return <section className="sb-roster-toolbar" aria-label={label}>
-    <div className="sb-roster-primary">
+    <div className="sb-roster-primary sb-collection-toolbar">
       <label className="sb-roster-field"><span className="sr-only">{searchLabel}</span><span className="relative block">
         <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><SearchIcon size={14} /></span>
         <input type="search" value={filters.search} onChange={event => onSearch(event.target.value)} placeholder={placeholder} className="h-[38px] w-full rounded-xl border border-gray-200 bg-white py-2 pr-4 pl-9 text-xs text-gray-900 outline-none focus:border-green-500 focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />

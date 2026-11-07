@@ -20,6 +20,7 @@ import { useAdminUsers } from '../../hooks/admin/useAdminUsers'
 import { matchColor } from '../../utils/formatters'
 import Avatar from '../../components/Avatar'
 import StudentPerformanceCard from '../../components/StudentPerformanceCard'
+import './userManagement.css'
 
 // ── Small page-scoped icons ───────────────────────────────────────
 const PlusIcon     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -142,7 +143,7 @@ export default function AdminUsers() {
         />
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      <section className="sb-user-management max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
 
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -234,7 +235,7 @@ export default function AdminUsers() {
                   if (role === 'student') return <StudentPerformanceCard key={u.id} student={u} onOpen={selected => openUser(selected, 'student')} />
                   return (
                     <div key={u.id} tabIndex={0} role="button" aria-haspopup="dialog" onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.currentTarget.click() } }} onClick={event => { event.currentTarget.focus(); openUser(u, role) }}
-                      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md cursor-pointer transition-shadow">
+                      className="sb-user-card bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md cursor-pointer transition-shadow">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar name={u.name} photoUrl={u.photoUrl} className="w-9 h-9 rounded-xl text-xs" />

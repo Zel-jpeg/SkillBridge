@@ -333,6 +333,9 @@ and fallback when explaining results.
 
 - [Local performance verification](PERFORMANCE_VERIFICATION.md): Accepted synthetic
   workload, measured bottlenecks, preserved ranking and local timing limits.
+- [System optimization and Realtime plan](SYSTEM_OPTIMIZATION_PLAN.md): System-wide
+  performance backlog, UI animation and interaction safety, hosted benchmark and
+  release gates, and a private Supabase Broadcast pilot.
 
 - [Browser matrix verification](BROWSER_MATRIX_VERIFICATION.md): Accepted local
   Chrome/Edge and tablet/phone emulation, fullscreen and failure recovery.

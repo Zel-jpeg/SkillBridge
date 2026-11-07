@@ -1,5 +1,35 @@
 # Admin institute and program navigation
 
+The later [heading and toolbar refinement](COLLECTION_NAVIGATION_AND_TOOLBARS.md)
+removes repeated institute heading blocks and retains breadcrumb parent links.
+
+## Breadcrumb presentation update · 6 November 2026
+
+The approved navigation-only redesign replaces matching outlined button rows
+with the shared [OrganizationBreadcrumbs](../skillbridge-frontend/src/components/OrganizationBreadcrumbs.jsx)
+component. Parent locations use green underlined links, the first with a grid
+icon; muted chevrons separate levels. The current institute, program, All programs
+scope or shared skill library is bold plain text with `aria-current="page"`.
+An institute becomes a parent link only after opening one of its program scopes.
+
+Coverage: Batches & students, Assessment oversight, Assessment archives, Retake
+requests, OJT Partners & Positions, Placements, admin/instructor Skill taxonomy,
+and Institutes & Programs. The last page retains its existing local-state return
+action as a native button styled like the parent links. Instructor taxonomy
+returns to its authorized skill libraries. Report dropdowns remain labeled
+filters; the Add Instructor assignment picker retains its separate form flow.
+
+The update preserves scope URL construction, batch/email parameters, collection
+filters and cards, history/refresh behavior, validation, role boundaries and
+record-selection gates. It adds no requests, dependencies, backend changes or
+database changes. Breadcrumb links have 44px minimum targets, visible keyboard
+focus, light/dark colors and wrapping labels for narrow screens.
+
+Verification receipts for this presentation update are recorded below after the
+existing navigation implementation history.
+
+## Original navigation implementation
+
 Branch: `codex/admin-scope-navigation`. Preserve unrelated instructor-assignment
 and optimization edits. Merge locally only after verification; do not push.
 
@@ -138,3 +168,23 @@ Unrelated ongoing edits observed at pause must stay outside this feature commit:
 `tests/program_batches_playwright.py`, and
 `tests/program_assignment_cards_playwright.py`. Source/test paths in this list are
 relative to `skillbridge-frontend/`.
+
+## Breadcrumb verification receipt · 6 November 2026
+
+- `npm run lint` and `npm run build` passed for the breadcrumb implementation.
+- `run_organization_browser.py --admin-navigation`: **14** real-API browser
+  groups passed, with zero page errors. Checks cover all six shared workspaces,
+  current-location semantics, keyboard parent links, retained batch/email
+  parameters, Institutes & Programs return navigation, admin program/shared
+  skill libraries, instructor library scope, refresh/history, invalid and
+  archived contexts, retry, dark mode and 320/390/768/1440px layouts. Evidence:
+  `work/organization-browser-aw1ndnps/`.
+- `run_organization_browser.py`: the existing institute/program CRUD and
+  responsive regression passed **11** groups with zero page errors. Evidence:
+  `work/organization-browser-13507565/`.
+- Reviewed the light desktop and dark 320px breadcrumb screenshots. Labels wrap
+  without horizontal overflow and keyboard focus has one visible outline.
+- The first navigation run reached the new institute-admin check but used an
+  incorrect search label in the test. The corrected locator passed on rerun.
+  Test servers used owned synthetic SQLite fixtures and were stopped by their
+  runners. No configured database or live service was changed by these checks.

@@ -49,12 +49,13 @@ function InstructorPicker({ base, program, institute, onClose, onAssigned }) {
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
       <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Choose an existing instructor. Create accounts in Users.</p>
       {saveError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{saveError}</p>}
-      <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">Search instructors by name, email or ID
+      <div className="sb-collection-toolbar"><label className="block text-xs font-medium text-gray-600 dark:text-gray-300">Search instructors by name, email or ID
         <input type="search" maxLength={255} className={field} value={search} disabled={Boolean(saving)} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
+        <CollectionViewToggle view={view} onChange={setView} label="Eligible instructor view" mobile /></div>
       {error && <div role="alert" className="space-y-2 text-xs text-rose-700 dark:text-rose-300"><p>{error}</p><button className={button} onClick={() => invalidateCache(options)}>Retry instructor search</button></div>}
       {loading && !data ? <ContentSkeleton layout="cards" count={2} label="Loading instructor options" /> : data && <>
         <div className="flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} eligible instructor{data.count === 1 ? '' : 's'}</p>
-          <CollectionViewToggle view={view} onChange={setView} label="Eligible instructor view" mobile /></div>
+        </div>
         {data.results.length ? <ul className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>{data.results.map(instructor =>
           <ProgramInstructorCard key={instructor.id} instructor={instructor} status={instructor.assigned ? 'Already assigned' : null} available={instructor.assigned}
             action={<button type="button" className={instructor.assigned ? button : primary} disabled={Boolean(saving) || instructor.assigned} onClick={() => assign(instructor)} aria-label={`Assign ${instructor.name || instructor.email}`}>
@@ -112,13 +113,14 @@ export default function ProgramInstructors({ program: selected, institute: selec
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="max-w-lg text-xs leading-relaxed text-gray-500 dark:text-gray-400">Assign program access here. Each instructor still manages their own batches.</p>
         <button type="button" className={primary} disabled={!available} onClick={() => setPicker(true)}>Assign instructor</button></div>
       {!available && <p className="text-xs text-amber-700 dark:text-amber-300">Restore this institute and program before assigning or restoring instructors.</p>}
-      <div className="flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-xs font-medium text-gray-600 dark:text-gray-300">Search assigned instructors
+      <div className="sb-collection-toolbar"><label className="min-w-48 flex-1 text-xs font-medium text-gray-600 dark:text-gray-300">Search assigned instructors
         <input type="search" maxLength={255} className={field} value={filters.search} onChange={event => change('search', event.target.value)} /></label>
-        <div className="text-xs font-medium text-gray-600 dark:text-gray-300"><label htmlFor={statusId}>Assignment status</label><select id={statusId} className={field} value={filters.status} onChange={event => change('status', event.target.value)}><option value="all">All assignments</option><option value="active">Active</option><option value="revoked">Revoked</option></select></div></div>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-300" htmlFor={statusId}>Assignment status<select id={statusId} aria-label="Assignment status" className={field} value={filters.status} onChange={event => change('status', event.target.value)}><option value="all">All assignments</option><option value="active">Active</option><option value="revoked">Revoked</option></select></label>
+        <CollectionViewToggle view={view} onChange={setView} label="Assigned instructor view" mobile /></div>
       {error && <div role="alert" className="space-y-2 text-xs text-rose-700 dark:text-rose-300"><p>{error}</p><button className={button} onClick={refresh}>Retry assignments</button></div>}
       {loading && !data ? <ContentSkeleton layout="cards" count={2} label="Loading program instructors" /> : data && <>
         <div className="flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} assignment{data.count === 1 ? '' : 's'}</p>
-          <CollectionViewToggle view={view} onChange={setView} label="Assigned instructor view" mobile /></div>
+        </div>
         {data.results.length ? <ul className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>{data.results.map(row =>
           <ProgramInstructorCard key={row.id} instructor={row} available={row.is_active && row.effective}
             status={row.is_active ? row.effective ? 'Active assignment' : 'Unavailable: check program and account status' : 'Revoked assignment'}

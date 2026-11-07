@@ -699,14 +699,6 @@ function ScopedCompanies({ scope, canCreate }) {
             </p></DataSection>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-              </svg>
-              <input aria-label="Search partners" value={search} onChange={e => { setSearch(e.target.value); setCatalogPage(1) }}
-                placeholder="Search partners…"
-                className="pl-8 pr-3 py-1.5 text-sm rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 w-44"/>
-            </div>
             <button disabled={!canCreate} title={!canCreate ? "Choose an active program to add a partner" : undefined} onClick={() => setShowAddCompany(true)}
               className="flex cursor-pointer items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <span className="text-base leading-none">+</span> Add Partner
@@ -715,7 +707,13 @@ function ScopedCompanies({ scope, canCreate }) {
         </div>
 
         <DataSection pending={initialCompaniesPending} url="/api/admin/companies/" layout="cards" skeleton={<CompanyCollectionSkeleton />}>
-        <div className="flex flex-wrap items-center gap-4 text-xs"><label>Partner status <select aria-label="Partner status" className="ml-2 min-h-11 rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label><p role="status" className="mr-auto">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p><CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile /></div>
+        <div className="sb-collection-toolbar text-xs">
+          <label>Search partners<input aria-label="Search partners" type="search" value={search} onChange={e => { setSearch(e.target.value); setCatalogPage(1) }} placeholder="Search partners…"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+          <label>Partner status<select aria-label="Partner status" className="rounded-xl border border-gray-300 bg-transparent px-3 dark:border-gray-700" value={catalogStatus} onChange={e => { setCatalogStatus(e.target.value); setCatalogPage(1) }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All partners</option></select></label>
+          <CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile />
+        </div>
+        <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p>
         <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Choose a program to manage its partners and eligible openings. Original shared IC openings are under Institute of Computing → All IC programs. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Company cards grid ────────────────────────────────────── */}

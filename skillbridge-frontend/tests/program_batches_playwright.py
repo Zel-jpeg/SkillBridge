@@ -50,7 +50,7 @@ def run(browser):
         call(context, f'{base}{item["id"]}/instructors/', 'post', {'instructor_id': owner['id']}, status=201)
     call(context, f'{base}{program["id"]}/instructors/', 'post', {'instructor_id': AUTH['other_instructor']['user']['id']}, status=201)
 
-    page.goto(BASE + '/admin/batches', wait_until='networkidle')
+    page.goto(BASE + f'/admin/batches?institute={institute["id"]}&program=all', wait_until='networkidle')
     page.get_by_role('button', name='Create batch', exact=True).click()
     dialog = page.get_by_role('dialog', name='Create batch', exact=True)
     dialog.get_by_label('Batch name', exact=True).fill('Admin arbitrary cohort')
@@ -140,7 +140,7 @@ def run(browser):
     expect(dialog.get_by_role('searchbox')).to_be_visible()
     assert dialog.evaluate('(node) => node.getBoundingClientRect().left >= 0 && node.getBoundingClientRect().right <= innerWidth')
     dialog.get_by_role('searchbox').fill('No matching degree')
-    expect(dialog.get_by_text('No available programs.', exact=False)).to_be_visible()
+    expect(dialog.get_by_text('No programs match your search.', exact=True)).to_be_visible()
     dialog.get_by_role('button', name='Cancel', exact=True).focus()
     page.keyboard.press('Escape')
     expect(dialog).to_have_count(0)

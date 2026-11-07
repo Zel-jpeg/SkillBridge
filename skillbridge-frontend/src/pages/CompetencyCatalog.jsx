@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
 import { applyDataChange, invalidateCache, useApi } from '../hooks/useApi'
@@ -8,6 +8,7 @@ import DataSection from '../components/DataSection'
 import DialogShell from '../components/DialogShell'
 import CollectionViewToggle from '../components/CollectionViewToggle'
 import TaxonomyLibraryCards from '../components/TaxonomyLibraryCards'
+import OrganizationBreadcrumbs from '../components/OrganizationBreadcrumbs'
 import SkillLibraryTable, { SkillLibraryOptions } from '../components/SkillLibraryTable'
 import { ORGANIZATION_OPTIONS } from '../utils/organizationScope'
 import { CatalogForm } from './admin/AdminInstitutes'
@@ -235,9 +236,9 @@ function Versions({ programId }) {
       setAdvanced(false); setSearch(''); setPage(1); setStatus('all')
     }}>Back to skills</button>}
     <header className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold">{program?.institute_code} · {program?.code}</h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{program?.name}</p></div><div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => invalidateCache(base)}>Refresh catalog</button><button className={primary} disabled={!program?.is_active} onClick={() => setCreate(true)}>Create framework</button></div></header>
-    <div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="space-y-2 text-xs font-semibold">Search versions<input className={field} type="search" aria-label="Search versions" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><label className="space-y-2 text-xs font-semibold">Version status<select className={field} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="all">All versions</option><option value="active">Active</option><option value="archived">Retired</option></select></label></div>
+    <div className="sb-collection-toolbar" role="group" aria-label="Framework filters"><label className="text-xs font-semibold">Search versions<input className={field} type="search" aria-label="Search versions" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><label className="text-xs font-semibold">Version status<select className={field} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="all">All versions</option><option value="active">Active</option><option value="archived">Retired</option></select></label><CollectionViewToggle view={view} onChange={setView} label="Framework view" mobile /></div>
     <DataSection url={url} layout="cards" count={4}>
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-gray-500 dark:text-gray-400" role="status">{data?.count ?? 0} {data?.count === 1 ? 'version' : 'versions'}</p><CollectionViewToggle view={view} onChange={setView} label="Framework view" mobile /></div>
+      <p className="text-xs text-gray-500 dark:text-gray-400" role="status">{data?.count ?? 0} {data?.count === 1 ? 'version' : 'versions'}</p>
       <div className={`grid gap-4 ${view === 'grid' ? 'md:grid-cols-2' : ''}`}>
         {data?.results?.map(framework => <article key={framework.id} className={`${card} grid gap-4 p-4 sm:p-5 ${view === 'list' ? 'sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start' : ''}`}>
           <div className="min-w-0">
@@ -302,19 +303,20 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <header className="space-y-2">
       <h1 ref={heading} tabIndex={-1} className="text-xl font-bold">Skill taxonomy</h1>
-      <p className="text-xs leading-6 text-gray-600 dark:text-gray-300">{choosingInstitute ? 'Open an institute to browse its skill libraries.' : 'Browse the shared and program skill libraries available to you.'}</p>
+      {!instituteId && !programId && <p className="text-xs leading-6 text-gray-600 dark:text-gray-300">{choosingInstitute ? 'Open an institute to browse its skill libraries.' : 'Browse the shared and program skill libraries available to you.'}</p>}
     </header>
-    {(instituteId || programId) && <nav aria-label="Taxonomy path" className="flex flex-wrap gap-2">
-      {admin && <Link className={button} to={root}>All institutes</Link>}
-      {programId && <Link className={button} to={institutePath}>{institute ? institute.name : 'All skill libraries'}</Link>}
-    </nav>}
+    {(instituteId || programId) && <OrganizationBreadcrumbs label="Taxonomy path" items={[
+      { label: admin ? 'All institutes' : 'All skill libraries', to: root },
+      ...(institute ? [{ label: institute.name, ...(programId ? { to: institutePath } : {}) }] : []),
+      ...(programId === 'shared' && showShared ? [{ label: 'Shared IC skills' }]
+        : program ? [{ label: `${program.code} · ${program.name}` }] : []),
+    ]} />}
     <DataSection url={ORGANIZATION_OPTIONS} layout="cards">
       {instituteId && !institute ? <p>This institute is unavailable.</p>
         : programId ? (programId === 'shared' && showShared
           ? <Suspense fallback={<p role="status">Loading shared IC skills…</p>}><AdminSkills embedded readOnly={!admin} /></Suspense>
           : program ? <Versions key={program.id} programId={program.id} /> : <p>This skill library is unavailable.</p>)
         : <>
-          {institute && <h2 className="text-lg font-semibold">{institute.name}</h2>}
           <TaxonomyLibraryCards key={instituteId || role} items={items} label={choosingInstitute ? 'Institutes' : 'Skill libraries'} onEdit={admin ? setEditor : null} />
         </>}
     </DataSection>

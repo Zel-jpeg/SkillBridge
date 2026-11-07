@@ -1,0 +1,9 @@
+/* Mouse interaction keeps one card border; keyboard focus is indicated separately. */
+.sb-user-management .sp-card:is(:hover, :focus-within) { border-color: #16a34a; box-shadow: 0 4px 12px #0f172a08; }
+.dark .sb-user-management .sp-card:is(:hover, :focus-within) { border-color: #4ade80; box-shadow: 0 4px 12px #0002; }
+.sb-user-management .sb-user-card:focus { outline: none; }
+.sb-user-management .sb-user-card:focus-visible { outline: 2px solid #15803d; outline-offset: 2px; }
+.dark .sb-user-management .sb-user-card:focus-visible { outline-color: #4ade80; }
+@media (forced-colors: active) {
+  .sb-user-management .sb-user-card:focus-visible { outline-color: Highlight; }
+}

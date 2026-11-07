@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import DialogShell from '../DialogShell'
-import ProgramSelect from '../ProgramSelect'
+import InstituteProgramSelect from './InstituteProgramSelect'
 import { nameFromEmail } from '../../utils/formatters'
+import { ChevronRightIcon } from '../Icons'
+import './addInstructor.css'
 
 export default function AddInstructorModal({ existingInstructors = [], onClose, onAdd }) {
   const [name, setName] = useState('')
@@ -56,7 +58,8 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
   const error = key => errors[key] && <p id={`${id}-${key}-error`} className="mt-1 text-xs text-rose-700 dark:text-rose-300">{errors[key]}</p>
 
   return <DialogShell title="Add Instructor" description="Create approved access with DNSC Google sign-in."
-    size="confirm" onClose={close} closeLabel="Close add instructor" closeDisabled={submitting}
+    size="instructor-create" onClose={close} closeLabel="Close add instructor" closeDisabled={submitting}
+    headerDetails={<p className="mt-2 text-xs text-gray-600 dark:text-gray-300">Create approved access with DNSC Google sign-in.</p>}
     footer={<div className="flex gap-2">
       <button type="button" disabled={submitting} onClick={close} className="min-h-11 flex-1 rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-800">Cancel</button>
       <button type="submit" form={`${id}-form`} disabled={submitting} className="min-h-11 flex-1 rounded-xl bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Adding...' : 'Add Instructor'}</button>
@@ -83,11 +86,14 @@ export default function AddInstructorModal({ existingInstructors = [], onClose, 
             onChange={event => { setInstructorId(event.target.value); setErrors(current => ({ ...current, instructorId: '' })) }}
             placeholder="e.g. 2018-00042" />{error('instructorId')}
         </div>
-        <details className="space-y-3 text-xs"><summary className="min-h-11 cursor-pointer py-3 font-semibold">Assign a program now (optional)</summary>
-          <ProgramSelect value={programId} onChange={setProgramId} disabled={submitting} />
-          {programId && <button type="button" className="min-h-11 font-semibold text-green-700" onClick={() => setProgramId('')}>Clear program selection</button>}
+        <details className="sb-instructor-program">
+          <summary><span>Program assignment <span className="sb-instructor-program-optional">Optional</span>{programId && <span className="sb-instructor-program-chosen">1 selected</span>}</span><ChevronRightIcon size={16} /></summary>
+          <div className="sb-instructor-program-body">
+            <p className="sb-instructor-program-intro">Choose an institute, then select a program. You can also assign it later.</p>
+            <InstituteProgramSelect value={programId} onChange={setProgramId} disabled={submitting} />
+            <p className="sb-instructor-program-note">More assignments can be managed in Institutes &amp; Programs.<br />A program assignment is needed before creating a program batch.</p>
+          </div>
         </details>
-        <p className="text-xs text-gray-500">Manage additional program assignments in Institutes &amp; Programs. An assignment is required before creating a program batch.</p>
       </fieldset>
     </form>
   </DialogShell>

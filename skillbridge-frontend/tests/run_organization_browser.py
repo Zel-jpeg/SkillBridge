@@ -36,6 +36,8 @@ if '--coordinator-catalog' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'coordinator-catalog'
 if '--staff-scope' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
+if '--collection-layout' in sys.argv:
+    env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
 if '--admin-navigation' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_ADMIN_SCOPE_NAVIGATION'] = '1'
@@ -103,6 +105,7 @@ try:
             ('--multi-institute-acceptance', 'multi_institute_acceptance_playwright.py'),
             ('--coordinator-catalog', 'coordinator_catalog_playwright.py'),
             ('--staff-scope', 'staff_scope_playwright.py'),
+            ('--collection-layout', 'collection_layout_playwright.py'),
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),

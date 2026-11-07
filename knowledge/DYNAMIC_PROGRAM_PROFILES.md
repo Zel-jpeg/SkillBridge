@@ -1,5 +1,9 @@
 # Dynamic program profiles and onboarding — F04
 
+6 November presentation follow-up: the [program assignment picker](PROGRAM_ASSIGNMENT_PICKER.md)
+now uses the approved card hierarchy and optional assignment section. This is a
+frontend-only update; the account/grant contracts below remain authoritative.
+
 Feature branch: `codex/dynamic-program-profiles`, based on F03 receipt `e1afb99`.
 See the [active tracker](MULTI_INSTITUTE_IMPLEMENTATION_TRACKER.md) for final
 migration and local merge status.
