@@ -122,7 +122,9 @@ def staff_checks(browser, enterprise, tourism, third):
     checks.append('Coordinator approval rejects a sibling program opening and consumes a slot in the eligible opening.')
 
     page.goto(BASE + '/admin/batches', wait_until='networkidle')
-    page.get_by_role('textbox', name='Search batches').fill('Institute of Computing')
+    page.get_by_role('region', name='Institutes', exact=True).get_by_role('link', name='Institute of Computing', exact=True).click()
+    page.get_by_role('region', name='Programs', exact=True).get_by_role('link', name='All IC programs', exact=True).click()
+    page.get_by_role('textbox', name='Search batches').fill('Existing IC mixed batch')
     card = page.get_by_role('region', name='Batch collection').get_by_role('button').filter(has_text='Existing IC mixed batch')
     expect(card.locator('.batch-status')).to_contain_text('Active')
     expect(card.get_by_text('2 students', exact=True)).to_be_visible()
