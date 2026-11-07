@@ -10,6 +10,16 @@ historical trends limited to evidence actually retained by the application.
 
 ## Delivered
 
+### Local Reports startup crash
+
+Concurrent Vite development servers with different ports shared one dependency
+cache. A browser navigating to Reports could load the date picker's React
+runtime from one optimization run and the app renderer from another. React
+then threw an invalid hook call in the date picker's locale provider.
+
+Vite now keeps a separate optimization cache for each configured development
+port. Use distinct `--port` values when starting servers in parallel.
+
 ### Local activity filtering and quiet refresh — 26 October 2026
 
 Activity dates/periods now filter an authorized loaded snapshot in the browser.
