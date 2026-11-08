@@ -8,7 +8,7 @@ from unittest import skipUnless
 from unittest.mock import patch
 
 from django.db import connection, transaction
-from django.test import RequestFactory, TestCase, TransactionTestCase
+from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
@@ -42,6 +42,56 @@ class ChangeEventTests(TestCase):
     def request(self, user):
         from types import SimpleNamespace
         return SimpleNamespace(user=user, data={})
+
+    @override_settings(REALTIME_PILOT_PUBLISH_ENABLED=False)
+    def test_default_publication_does_not_call_realtime(self):
+        with patch('api.realtime.publish_invalidations') as broadcast:
+            publish_changes({self.teacher.id: {'topics': ['students']}})
+        broadcast.assert_not_called()
+        self.assertEqual(ChangeEvent.objects.get().payload, {'topics': ['students']})
+
+    @override_settings(REALTIME_PILOT_PUBLISH_ENABLED=True)
+    def test_realtime_waits_for_operation_commit_and_persisted_event(self):
+        published_state = []
+
+        def broadcast(recipients):
+            published_state.append(set(ChangeEvent.objects.values_list('recipient_id', flat=True)) == set(recipients))
+        with patch('api.realtime.publish_invalidations', side_effect=broadcast) as published:
+            with patch('api.views.recalculate_enrolled_students'):
+                with self.captureOnCommitCallbacks(execute=True):
+                    response = self.client.post(f'/api/instructor/batches/{self.batch.id}/archive/')
+                    self.assertEqual(response.status_code, 200)
+                    published.assert_not_called()
+                    self.assertFalse(ChangeEvent.objects.exists())
+            published.assert_called_once()
+        self.assertEqual(published_state, [True])
+
+    @override_settings(REALTIME_PILOT_PUBLISH_ENABLED=True)
+    def test_realtime_failure_keeps_committed_event_and_successful_operation(self):
+        with patch('api.realtime.publish_invalidations', side_effect=RuntimeError('Synthetic provider failure')):
+            with patch('api.views.recalculate_enrolled_students'):
+                with self.captureOnCommitCallbacks(execute=True):
+                    response = self.client.post(f'/api/instructor/batches/{self.batch.id}/archive/')
+        self.assertEqual(response.status_code, 200)
+        self.batch.refresh_from_db()
+        self.assertEqual(self.batch.status, 'archived')
+        self.assertTrue(ChangeEvent.objects.filter(recipient=self.teacher).exists())
+
+    @override_settings(REALTIME_PILOT_PUBLISH_ENABLED=True)
+    def test_realtime_never_publishes_after_rollback_or_event_storage_failure(self):
+        with patch('api.realtime.publish_invalidations') as broadcast:
+            with self.captureOnCommitCallbacks(execute=True):
+                try:
+                    with transaction.atomic():
+                        transaction.on_commit(lambda: publish_changes({self.teacher.id: {'topics': ['students']}}))
+                        raise ValueError('Synthetic rollback')
+                except ValueError:
+                    pass
+            broadcast.assert_not_called()
+            with patch('api.change_events.ChangeEvent.objects.bulk_create', side_effect=RuntimeError('Synthetic storage failure')):
+                publish_changes({self.teacher.id: {'topics': ['students']}})
+            broadcast.assert_not_called()
+        self.assertFalse(ChangeEvent.objects.exists())
 
     def test_publication_waits_for_commit_and_full_recalculation(self):
         # Archive calls recalculation after batch.save(), outside its inner work.

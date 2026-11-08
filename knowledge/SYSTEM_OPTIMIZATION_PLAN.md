@@ -3,8 +3,8 @@
 Prepared 6 November 2026 from the current `main` checkout. The source review and
 frontend build baseline are complete. The current review adds a synthetic
 PostgreSQL read profile and production log samples. The first local optimization
-is described below. Staging acceptance and the private WebSocket pilot remain
-pending. The plan covers browser
+is described below. The private WebSocket pilot is implemented locally and
+disabled by default. Hosted application-user acceptance remains pending. The plan covers browser
 performance, API and database work, assessment and placement operations, external
 providers, hosting and recovery. The screenshot shows the Supabase Realtime
 Inspector for the production project. Prefer a separate project for full load
@@ -448,18 +448,15 @@ counts need their own measurements. [Browser animation performance guidance](htt
 | Supabase Postgres Changes | Keep application tables out of the pilot. Row changes do not represent the end of multi-step grading or placement operations. This transport also checks access per subscriber for each change. [Postgres Changes scaling](https://supabase.com/docs/guides/realtime/postgres-changes#scaling-postgres-changes) |
 | Django Channels WebSocket | Revisit if measured demand exceeds Supabase capacity or SkillBridge needs server-controlled connection policy or bidirectional messages. The checked-in Railway service uses Gunicorn/WSGI. A Channels deployment would need an ASGI WebSocket service and a shared channel layer, typically Redis, for multiple workers. [Railway service configuration](../railway.toml) · [Channels deployment](https://channels.readthedocs.io/en/stable/deploying.html) |
 
-**Pilot flow.** Django completes the existing business operation and writes the
-recipient-scoped `ChangeEvent` through its current post-commit hook. In staging,
-attach a guarded `AFTER INSERT` relay to that event table for opted-in recipients.
-Use private `realtime.send()` with an allowlisted invalidation topic and an opaque
-deduplication key.
-Keep the SSE log row if Broadcast fails and test that the relay adds little time to
-the publication callback. If isolation or callback cost fails, disable the relay and
-evaluate a separate bounded publisher before retrying the pilot. Send no application
-records, entity IDs, answers, scores or tokens in messages. React feeds those hints
-into the existing cache invalidation path. Django enforces authorization on every
-resulting GET. [Existing event publication](../skillbridge-backend/api/change_events.py)
-· [Broadcast from the database](https://supabase.com/docs/guides/realtime/broadcast#broadcasting-from-the-database)
+**Pilot flow.** Django completes the operation and writes its recipient-scoped
+`ChangeEvent` through the existing post-commit hook. The independently enabled
+publisher then uses private REST Broadcast for up to two allowlisted accounts.
+The message contains allowlisted invalidation topics and an opaque deduplication
+key. The client routes the hint through the existing cache and Django authorizes
+each resulting GET. The SSE event remains available if the provider fails. Measure
+the cost of the bounded HTTP call before expansion. A separate worker remains an
+option if synchronous publication increases write latency. See the [pilot runbook](SUPABASE_REALTIME_PILOT.md)
+and [event publication](../skillbridge-backend/api/change_events.py).
 
 ### Controlled pilot in the existing project
 
@@ -562,9 +559,9 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
 - [ ] Capture cold and warm sign-in, first actionable content, navigation and
   background request volume on desktop and a mobile network profile for all
   three roles. Include a staff page with the notification bell closed.
-- [ ] Refresh the older navigation-state suite's grouped-sidebar and current
-  dashboard fixtures, then rerun its lifecycle checks. Its stale locator failure
-  is recorded above and is not a passing regression result.
+- [x] Refresh the older navigation-state suite's grouped-sidebar and current
+  dashboard fixtures and rerun its lifecycle checks. All 37 groups passed with
+  the pilot disabled on 8 November. Evidence is in `work/navigation-states-agent-20261108.txt`.
 - [ ] Reproduce the historical slow reads and 502s with bounded staging load.
   Measure request queueing, Django time, database round trips and rendering.
 - [ ] Compare the same fixture and workload with the API in California and an
@@ -636,12 +633,18 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
 
 - [x] Review private Broadcast, Postgres Changes, Django Channels and the current
   SSE path. Select private Supabase Broadcast for the staging pilot.
-- [ ] Inspect current project policies, roles, token trust, settings and resource
-  headroom before a controlled same-project test. Prepare the exact additive
-  test-topic policy and cleanup steps without broadening application access.
-- [ ] Verify private Broadcast delivery with dummy messages and one or two test
-  clients in the existing project, or use isolated staging. Keep application-table
-  publications and real records out of this first connectivity check.
+- [x] Inspect current project policies, roles, public signing metadata and
+  advisories before the bounded connectivity test. Prepare the additive receiver
+  policy and teardown and verify both on disposable PostgreSQL.
+- [x] Verify private Broadcast delivery with dummy messages and at most two test
+  clients in the existing project. Two successful single-message probes returned
+  HTTP 202 and delivered over WebSocket. A public-key-only client was denied.
+- [x] Implement the opt-in token exchange, post-commit REST publisher and browser
+  transport with SSE fallback. Verify synthetic submission, failure and rollback,
+  exact-topic SQL access, and all three browser roles locally. See the [pilot runbook](SUPABASE_REALTIME_PILOT.md).
+- [ ] Verify an approved hosted signing arrangement and measure resource headroom
+  before enabling the app pilot. A dedicated private signer trusted by Supabase
+  is not configured in this checkout.
 - [ ] In the chosen pilot environment, configure a private,
   receive-only channel for one synthetic cohort. Verify short-lived Django
   session exchange and exact recipient-topic access.

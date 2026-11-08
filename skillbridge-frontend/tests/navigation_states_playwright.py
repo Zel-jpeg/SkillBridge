@@ -69,7 +69,30 @@ class Fixture:
 
 async def settled(page):
     await page.wait_for_function('document.querySelector("h1") && !document.querySelector(".sb-skeleton")')
-    assert not await page.get_by_text('Something went wrong', exact=True).count()
+    assert not await page.get_by_text('Something went wrong', exact=True).count(), await page.locator('#sb-main').inner_text()
+
+
+async def navigation_link(page, label, group=None):
+    nav = page.get_by_role('navigation', name='Administrator navigation' if '/admin/' in page.url else
+                           'Instructor navigation' if '/instructor/' in page.url else 'Student navigation')
+    if group:
+        toggle = nav.get_by_role('button', name=group, exact=True)
+        if await toggle.get_attribute('aria-expanded') != 'true':
+            await toggle.click()
+        await expect(toggle).to_have_attribute('aria-expanded', 'true')
+    link = nav.get_by_role('link', name=label, exact=True)
+    try:
+        await expect(link).to_be_visible()
+    except AssertionError as error:
+        raise AssertionError({'url': page.url, 'navigation': await nav.aria_snapshot()}) from error
+    return link
+
+
+async def shared_skills(page):
+    await (await navigation_link(page, 'Skill taxonomy', 'Learning & assessment')).click()
+    await page.wait_for_url('**/admin/competencies')
+    await page.get_by_role('link', name='Synthetic Institute', exact=True).click()
+    await page.get_by_role('link', name='Shared IC skills', exact=True).click()
 
 
 async def route_coverage(browser, checks):
@@ -89,11 +112,13 @@ async def route_coverage(browser, checks):
             else:
                 await settled(page)
             assert not fixture.errors, (path, fixture.errors)
+            await page.wait_for_load_state('networkidle')
             checks.append('Direct route: ' + path)
         # Ordinary warm navigation still works after preparation failures or no preparation.
         await page.goto(BASE + f'/{role}/dashboard')
         await settled(page)
-        await page.get_by_role('link', name='Assessments', exact=True).click()
+        await page.wait_for_load_state('networkidle')
+        await (await navigation_link(page, 'Assessments', None if role == 'student' else 'Learning & assessment')).click()
         await settled(page)
         assert page.url.endswith(f'/{role}/assessments')
         await page.go_back()
@@ -104,30 +129,33 @@ async def route_coverage(browser, checks):
 
 async def loading_lifecycle(browser, checks, metrics):
     fixture = Fixture('admin')
-    fixture.delays['/api/admin/students/recommendations/'] = .8
-    fixture.delays['/api/admin/companies/'] = 1.2
+    fixture.delays['/api/management/analytics/'] = .8
+    fixture.delays['/api/admin/companies/'] = 3
     context, page = await fixture.context(browser)
     await page.goto(BASE + '/admin/dashboard')
-    await page.get_by_text('Total Students', exact=True).wait_for()
-    assert await page.locator('.sb-skeleton-table').count() == 1
-    assert await page.get_by_role('link', name='Users', exact=True).is_enabled()
+    await expect(page.get_by_role('heading', name='Admin dashboard', exact=True)).to_be_visible()
+    await expect(page.get_by_role('status', name='Loading dashboard overview')).to_be_visible()
+    assert await (await navigation_link(page, 'Users', 'People & programs')).is_enabled()
     await page.screenshot(path=str(ARTIFACTS / 'independent-dashboard.png'), full_page=True)
     await settled(page)
     await fixture.started('/api/admin/companies/')
     essential_end = max(e['end'] for e in fixture.events if e['path'] in
-        ['/api/admin/stats/', '/api/admin/students/recommendations/'])
+        ['/api/management/analytics/', '/api/management/organization-options/'])
     optional = [e for e in fixture.events if e['path'] in ['/api/instructor/assessments/', '/api/admin/skills/', '/api/admin/companies/']]
     assert all(e['start'] >= essential_end for e in optional)
-    checks.append('Independent dashboard sections render; preparation starts after essential data')
+    checks.append('Dashboard heading/navigation remain usable while overview loads; preparation starts after essential data')
     # A mounted consumer adopts an in-flight prepared GET without a duplicate.
     start = time.perf_counter()
-    await page.get_by_role('link', name='OJT Partners', exact=True).click()
+    assert next(e for e in fixture.events if e['path'] == '/api/admin/companies/')['end'] is None
+    await (await navigation_link(page, 'OJT Partners', 'OJT')).click()
+    await page.get_by_role('combobox', name='Institute', exact=True).select_option('1')
+    await page.get_by_role('combobox', name='Program', exact=True).select_option('all')
     await settled(page)
     assert sum(e['path'] == '/api/admin/companies/' for e in fixture.events) == 1
     checks.append('Navigation adopts an in-flight prepared request')
     metrics['prepared_inflight_navigation_ms'] = round((time.perf_counter() - start) * 1000)
 
-    await page.get_by_role('link', name='Skills', exact=True).click()
+    await shared_skills(page)
     await page.get_by_text('Synthetic skill', exact=True).wait_for()
     fixture.failures['/api/admin/skills/'] = 503
     await page.evaluate("async () => { const { fetchWithDedup } = await import('/src/hooks/useApi.js'); await fetchWithDedup('/api/admin/skills/').catch(()=>{}); }")
@@ -145,9 +173,11 @@ async def loading_lifecycle(browser, checks, metrics):
     await page.goto(BASE + '/admin/skills')
     await page.get_by_text('Synthetic skill', exact=True).wait_for()
     metrics['cold_skills_navigation_ms'] = round((time.perf_counter() - start) * 1000)
-    await page.get_by_role('link', name='Dashboard', exact=True).click(); await settled(page)
+    await page.get_by_role('link', name='Dashboard', exact=True).click()
+    await page.wait_for_url('**/admin/dashboard')
+    await settled(page)
     start = time.perf_counter()
-    await page.get_by_role('link', name='Skills', exact=True).click()
+    await shared_skills(page)
     await page.get_by_text('Synthetic skill', exact=True).wait_for()
     metrics['warm_skills_navigation_ms'] = round((time.perf_counter() - start) * 1000)
     fixture.values['/api/admin/skills/'] = []
@@ -171,7 +201,7 @@ async def loading_lifecycle(browser, checks, metrics):
 
 
 async def hidden_logout(browser, checks):
-    fixture = Fixture('admin'); fixture.delays['/api/admin/stats/'] = .6
+    fixture = Fixture('admin'); fixture.delays['/api/management/analytics/'] = .6
     fixture.delays['/api/instructor/assessments/'] = .8
     context, page = await fixture.context(browser)
     await page.goto(BASE + '/admin/dashboard')
@@ -198,8 +228,8 @@ async def positive_initial_lists(browser, checks):
         ('admin', '/admin/users', '/api/admin/users/',
          {'students': [{'id': 101, 'name': 'Synthetic populated user', 'student_id': 'SYNTH-101', 'course': 'BSIT'}], 'instructors': [], 'pending_instructors': []},
          'Synthetic populated user', ['No users match your filters.']),
-        ('admin', '/admin/companies', '/api/admin/companies/',
-         [{'id': 1, 'name': 'Synthetic populated company', 'positions': [], 'address': {}}],
+        ('admin', '/admin/companies?institute=1&program=all', '/api/admin/companies/',
+         [{'id': 1, 'name': 'Synthetic populated company', 'positions': [], 'address': {}, 'management_program_id': 1}],
          'Synthetic populated company', ['No partners yet', 'No partners match your search.']),
         ('instructor', '/instructor/students', '/api/instructor/batches/',
          [{'id': 1, 'name': 'Synthetic populated cohort', 'status': 'active'}],
@@ -253,15 +283,16 @@ async def forms_and_account_switch(browser, checks):
     context, page = await fixture.context(browser)
     await page.goto(BASE + '/instructor/assessments'); await settled(page)
     assert not any(e['path'] == question_url for e in fixture.events)
-    await page.get_by_role('heading', name='Synthetic editable assessment', exact=True).click()
+    await page.get_by_role('button', name='Open assessment Synthetic editable assessment', exact=True).click()
     await page.get_by_text('Could not load questions and categories. Please try again.', exact=True).wait_for()
     # This editor has a title input separate from the list search field.
-    title = page.locator('input[value="Synthetic editable assessment"]')
+    await page.get_by_role('button', name='Edit assessment name', exact=True).click()
+    title = page.get_by_role('textbox', name='Assessment title', exact=True)
     await title.fill('Unsaved retry metadata')
     del fixture.failures[question_url]
     await page.get_by_role('button', name='Retry', exact=True).click()
     await page.get_by_text('Synthetic editable question', exact=True).wait_for()
-    assert await page.locator('input[value="Unsaved retry metadata"]').count() == 1
+    await expect(title).to_have_value('Unsaved retry metadata')
     checks.append('Authorized question read is on demand; failure retry preserves metadata draft')
     await context.close()
 
@@ -279,6 +310,7 @@ async def forms_and_account_switch(browser, checks):
     context, page = await fixture.context(browser)
     await page.goto(BASE + '/admin/dashboard'); await settled(page)
     await fixture.started('/api/admin/companies/')
+    assert await page.evaluate("async () => { const { getCachedData } = await import('/src/hooks/useApi.js'); return getCachedData('/api/admin/skills/') !== null }")
     other = await context.new_page()
     await other.goto(BASE + '/login')
     fixture.role = 'instructor'
@@ -287,7 +319,7 @@ async def forms_and_account_switch(browser, checks):
     await page.wait_for_url('**/instructor/dashboard'); await settled(page)
     assert await page.get_by_role('link', name='Students', exact=True).is_visible()
     assert not await page.get_by_role('link', name='Users', exact=True).count()
-    assert await page.evaluate("async () => { const { getCachedData } = await import('/src/hooks/useApi.js'); return getCachedData('/api/admin/stats/') === null }")
+    assert await page.evaluate("async () => { const { getCachedData } = await import('/src/hooks/useApi.js'); return getCachedData('/api/admin/skills/') === null && getCachedData('/api/management/analytics/?view=overview')?.role === 'instructor' }")
     checks.append('Cross-tab account switch cancels old work, clears cache and replaces role navigation')
     await context.close()
 
@@ -308,14 +340,20 @@ async def main():
     checks, metrics = [], {}
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel='chrome', headless=True)
-        await route_coverage(browser, checks)
-        await loading_lifecycle(browser, checks, metrics)
-        await hidden_logout(browser, checks)
-        await positive_initial_lists(browser, checks)
-        await forms_and_account_switch(browser, checks)
-        await browser.close()
-    result = {'environment': 'Synthetic local browser; no deployment timing', 'checks': checks, 'metrics': metrics}
-    (ARTIFACTS / 'states.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+        try:
+            await route_coverage(browser, checks)
+            print('Checking loading, preparation, cache and retry lifecycle', flush=True)
+            await loading_lifecycle(browser, checks, metrics)
+            print('Checking hidden tab and logout lifecycle', flush=True)
+            await hidden_logout(browser, checks)
+            print('Checking populated list loading', flush=True)
+            await positive_initial_lists(browser, checks)
+            print('Checking drafts, account switch and session expiry', flush=True)
+            await forms_and_account_switch(browser, checks)
+        finally:
+            await browser.close()
+            result = {'environment': 'Synthetic local browser; no deployment timing', 'checks': checks, 'metrics': metrics}
+            (ARTIFACTS / 'states.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result))
 
 

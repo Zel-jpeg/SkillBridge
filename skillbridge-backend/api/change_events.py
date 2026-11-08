@@ -7,6 +7,7 @@ import logging
 from contextvars import ContextVar
 from functools import wraps
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 
@@ -192,6 +193,15 @@ def publish_changes(recipients):
         ], batch_size=500)
     except Exception:
         logger.exception('Change notification publication failed; clients will revalidate')
+        return
+    if getattr(settings, 'REALTIME_PILOT_PUBLISH_ENABLED', False) is True:
+        try:
+            from .realtime import publish_invalidations
+            publish_invalidations(recipients)
+        except Exception:
+            # The operation and its SSE log already committed. Never include
+            # provider exception text, headers, tokens or payloads in this log.
+            logger.warning('Realtime publication unavailable; clients will revalidate')
 
 
 def _safe_audience(*args):

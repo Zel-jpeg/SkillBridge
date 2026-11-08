@@ -5,13 +5,15 @@ Artifacts are ignored. Delays are fixture timings, never deployment claims.
 """
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 
-BASE = 'http://127.0.0.1:' + ('5174' if 'baseline' in sys.argv and 'snapshot' in sys.argv else '5173')
+BASE = os.environ.get('NAVIGATION_TEST_URL', 'http://127.0.0.1:' +
+                      ('5174' if 'baseline' in sys.argv and 'snapshot' in sys.argv else '5173')).rstrip('/')
 ARTIFACTS = Path(__file__).parent / 'artifacts/navigation'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 BASELINE = 'baseline' in sys.argv
@@ -20,6 +22,19 @@ requestAccessToken(){options.callback({access_token:'synthetic-google'});}};}}}}
 
 
 def payload(path, role):
+    if path == '/api/management/organization-options/':
+        return {'institutes': [{'id': 1, 'code': 'IC', 'name': 'Synthetic Institute', 'is_active': True}],
+                'programs': [{'id': 1, 'institute_id': 1, 'code': 'SYN', 'name': 'Synthetic Program',
+                              'institute_name': 'Synthetic Institute', 'is_active': True}],
+                'shared_skill_institute_id': 1}
+    if path == '/api/management/analytics/':
+        return {'role': role, 'generated_at': '2026-11-07T03:00:00Z',
+            'summary': {key: 0 for key in ['students', 'required_complete', 'approved', 'approved_other_batch',
+                'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining', 'slots_total', 'pending_instructors']},
+            'scope': {'batch_ids': [], 'batch_status': 'active'},
+            'options': {key: [] for key in ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas']},
+            **{key: [] for key in ['students', 'placement_students', 'assessments', 'batches', 'skills', 'capacity',
+                'match_bands', 'companies', 'areas', 'geography', 'activity', 'activity_days']}}
     if path == '/api/auth/me/':
         return user(role)
     if path == '/api/students/me/':
@@ -27,7 +42,9 @@ def payload(path, role):
     if path == '/api/assessments/':
         return {'assessments': [], 'completed_required_count': 0, 'total_required_count': 0}
     if path == '/api/student/results/combined/':
-        return {'recommendations_locked': True, 'has_required_assessments': False}
+        return {'recommendations_locked': True, 'has_required_assessments': False, 'recommendations': [], 'combined_category_scores': []}
+    if path == '/api/placements/draft/':
+        return {'revision': 0, 'generated': True, 'stale': False, 'proposed_counts': {}, 'students': []}
     if path == '/api/admin/users/':
         return {'students': [], 'instructors': [], 'pending_instructors': []}
     if path == '/api/placements/suggestions/':

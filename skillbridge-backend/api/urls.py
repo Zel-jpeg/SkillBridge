@@ -15,6 +15,7 @@ from .assessment_lifecycle import assessment_duplicate, assessment_attempt_timin
 from .assessment_interruptions import assessment_interruption
 from .retake_requests import student_request, request_queue, review_request, evidence
 from .sse import admin_events, instructor_events, student_events
+from .realtime import realtime_session
 from .health import health
 from . import organization
 from . import instructor_assignments
@@ -25,6 +26,7 @@ from .authoring_scope import authoring_catalog
 from .email_views import enrollment_emails, email_progress, brevo_event
 
 urlpatterns = [
+    path('realtime/session/', realtime_session, name='realtime_session'),
     path('management/programs/<int:program_id>/partner-options/', coordinator_catalog.partner_options, name='coordinator_partner_options'),
     path('management/programs/<int:program_id>/partners/', coordinator_catalog.partners, name='coordinator_partners'),
     path('management/programs/<int:program_id>/partners/<int:company_id>/', coordinator_catalog.partner_detail, name='coordinator_partner_detail'),

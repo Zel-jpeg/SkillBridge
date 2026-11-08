@@ -336,6 +336,9 @@ and fallback when explaining results.
 - [System optimization and Realtime plan](SYSTEM_OPTIMIZATION_PLAN.md): System-wide
   performance backlog, UI animation and interaction safety, hosted benchmark and
   release gates, and a private Supabase Broadcast pilot.
+- [Supabase Realtime pilot](SUPABASE_REALTIME_PILOT.md): Disabled-by-default token
+  exchange and client transport, same-project dummy-message evidence, receiver
+  role restrictions, signing trust and rollout/rollback checks.
 
 - [Browser matrix verification](BROWSER_MATRIX_VERIFICATION.md): Accepted local
   Chrome/Edge and tablet/phone emulation, fullscreen and failure recovery.
