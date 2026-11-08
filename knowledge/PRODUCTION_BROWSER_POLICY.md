@@ -4,6 +4,13 @@ A04 is verified locally on the production build with the exact headers from
 `skillbridge-frontend/vercel.json`. No deployment or provider setting was changed.
 The user manages the existing Vercel/Railway release and subscription.
 
+Realtime deployment preparation adds the exact SkillBridge Supabase HTTPS and
+WebSocket origins to `connect-src`. The browser policy grants connection access
+to that host. The [Realtime pilot](SUPABASE_REALTIME_PILOT.md) separately requires
+a valid private channel ticket, receiver policy and explicit build flag.
+The local Chromium fixture confirmed that the revised policy permits the project
+WebSocket and still blocks an unrelated WebSocket. DNS was blocked during the test.
+
 26 October dashboard road-route preparation adds only
 `https://router.project-osrm.org` to `connect-src`. Route reads use anonymous,
 origin-only-referrer, no-redirect fetches; they never use the authenticated Axios client.

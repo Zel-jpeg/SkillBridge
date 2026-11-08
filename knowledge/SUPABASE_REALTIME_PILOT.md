@@ -94,6 +94,36 @@ it does not establish instantaneous revocation of an already-open channel.
 
 ## Configuration and signing trust
 
+In the SkillBridge Supabase dashboard, open **Connect** for the project URL and
+publishable key. In **Settings → API Keys**, obtain a backend secret key for
+the REST publisher. Put these values in the local backend `.env` or the hosted
+Railway backend service variables. Keep the secret out of chat and Git.
+[Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys#find-your-keys)
+
+```dotenv
+SUPABASE_REALTIME_URL=https://xlkyxnljcvpkdwnqaskc.supabase.co
+SUPABASE_REALTIME_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_REALTIME_PUBLISH_KEY=sb_secret_...
+SUPABASE_REALTIME_SIGNING_KEY=
+SUPABASE_REALTIME_SIGNING_KID=
+SUPABASE_REALTIME_TOPIC_SECRET=
+REALTIME_PILOT_USER_IDS=
+REALTIME_PILOT_ENABLED=False
+REALTIME_PILOT_PUBLISH_ENABLED=False
+```
+
+The blank fields require a trusted dedicated ES256 signer, its key ID, an
+independent random secret generated locally, and the Django IDs of one or two
+synthetic pilot accounts. Supabase does not export a managed private key. Leave
+both backend switches off until the signer and exact-topic receiver permissions
+have been verified. Confirm the impact on the existing Auth configuration before
+activating any imported signing key.
+
+The frontend's local `.env` or Vercel environment uses only the build flag
+`VITE_SUPABASE_REALTIME_PILOT=false`. Django provides the public URL and key in
+the exchange response. Change the flag in the intended frontend build after the
+backend and Supabase checks pass.
+
 Backend settings are documented in [.env.example](../skillbridge-backend/.env.example):
 
 | Setting | Purpose |
@@ -142,8 +172,10 @@ still require the pilot checks below.
   successful post-commit change causes an authorized roster GET. Compare with
   SSE using the same fixture, including write latency, disconnect recovery,
   expired/changed access, event duplication and idle event-log reads.
-- Add only the exact project's HTTPS/WSS origins to a pilot deployment's CSP.
-  Existing production CSP remains unchanged while the pilot is disabled.
+- The checked-in [Vercel policy](../skillbridge-frontend/vercel.json) permits
+  the exact SkillBridge HTTPS and WSS origins in `connect-src`. Confirm those
+  directives on the hosted pilot frontend. For a different Supabase test project,
+  use that project's exact origins in the test build's policy.
 - Set the frontend flag and both backend switches back to false to return to
   ordinary SSE. Active pilot tabs close on their next renewal or reload; reload
   affected tabs for an immediate return. Existing persisted events and ordinary
