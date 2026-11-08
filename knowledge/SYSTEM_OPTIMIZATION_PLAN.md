@@ -746,13 +746,13 @@ that review must be verified again before proposing infrastructure changes.
   the server value while retaining the attempted input for correction. On an
   uncertain transport failure, check the saved record before offering a retry.
   A late GET or Realtime event must not duplicate or overwrite the pending edit.
-- [ ] N05. Broaden only after the pilot passes. Evaluate simple display edits
+- [x] N05. Broaden only after the pilot passes. Evaluate simple display edits
   individually. Skill descriptions, eligibility, permissions and role requirements
   can change recommendations or access and need confirmed-save handling.
   A background job is appropriate only for identified slow work with durable
   status, retry and failure recovery. Returning before database durability would
   require a separate durable operation receipt.
-- [ ] N06. Verify and merge each completed phase locally. Compare before/after
+- [x] N06. Verify and merge each completed phase locally. Compare before/after
   timings on the same build mode and fixtures. Test delayed success, validation
   failure, lost success response, offline failure, duplicate clicks, competing
   edits, newer edits arriving before older responses, two tabs, logout during a
@@ -936,3 +936,32 @@ Frontend lint, production build, and 326 unit tests passed. Receipts:
 `work/organization-browser-llgvc_hs/`, `work/organization-browser-fgp233q6/`,
 `work/organization-browser-ir48_e6s/`. These tests use synthetic records
 and controlled network failures; they do not estimate deployment response time.
+
+### N05 scope decision and N06 verification checkpoint
+
+Keep optimistic feedback limited to the preset banner pilot. Names, codes and
+aliases are used in search, identity or reporting, and uploaded images involve a
+separate storage operation. Those changes stay on the confirmed save path, as do
+publishing, scores, enrollment, permissions and placement decisions. The local
+measurements did not justify a general optimistic layer, a change to server
+rendering or a queue for saves. Revisit slow read paths with matching deployment
+traces if users still see waits. The disposable profiles did not measure
+delivery time through a live change provider.
+
+The final integrated browser bundle passed admin scope navigation (14 groups),
+shared institute/program visibility (7 groups), and the multi-institute
+acceptance walkthrough (8 groups). Synthetic students in Entrepreneurship,
+Tourism and Field Documentation submitted actual answers and received their
+own program's score and eligible recommendation. The admin report counted the
+right submissions, a sibling opening could not be approved, the eligible opening
+consumed its slot, and the existing mixed IC batch stayed active. The full 831
+backend checks were run at N03; N04 changed frontend and browser test files
+only. Receipts: `work/organization-browser-kjllc_v_/`,
+`work/organization-browser-1cnwc9op/`, `work/organization-browser-1meizp50/`.
+
+This concludes the local navigation and save performance pass. Feature branches
+were tested and fast-forwarded into local main. No GitHub push, deployment,
+configured database write, or live migration was performed. The next
+performance checkpoint is a matched timing comparison on the eventual deployment
+if requested, with particular attention to the remaining roster and analytics
+reads measured in N01.
