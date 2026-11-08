@@ -57,6 +57,10 @@ def check_dismissal(page, payload, width, role):
     page.clock.run_for(12_000)
     expect(card).to_be_visible()
     expect(dismiss).to_have_count(0)
+    card.get_by_role('button', name='Dismiss submitted email confirmation', exact=True).click()
+    expect(card).to_have_count(0)
+    page.reload(wait_until='networkidle')
+    expect(card).to_have_count(0)
     payload['groups'][0].update(state='delivered', delivered=15)
     refresh()
     expect(card.get_by_role('heading', name='Enrollment emails delivered', exact=True)).to_be_visible()
@@ -157,7 +161,10 @@ with sync_playwright() as p:
                 return route.fulfill(json=user)
             if path == '/api/instructor/batches/':
                 return route.fulfill(json=[dict(id=1, name='Synthetic Email Batch', status='active', instructor_id=50,
-                    instructor_name='Synthetic Staff', student_count=15, created_at='2026-10-28T00:00:00Z')])
+                    instructor_name='Synthetic Staff', student_count=15, created_at='2026-10-28T00:00:00Z', institute_id=2, program_id=3)])
+            if path == '/api/management/organization-options/':
+                return route.fulfill(json={'institutes': [dict(id=2, code='SYN', name='Synthetic Institute', is_active=True)],
+                    'programs': [dict(id=3, institute_id=2, code='EMAIL', name='Synthetic Email Program', is_active=True)]})
             if path == '/api/instructor/batches/1/students/':
                 return route.fulfill(json={'batch': {'id': 1, 'name': 'Synthetic Email Batch', 'status': 'active'}, 'students': []})
             if path == '/api/admin/batch-instructors/':
@@ -173,6 +180,7 @@ with sync_playwright() as p:
                     options={key: [] for key in ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas']},
                     email_notifications=[dict(batch_id=1, batch_name='Synthetic Email Batch', kind='quota', count=1, revision=['opaque'])],
                     email_progress=copy.deepcopy(payload['groups']))
+                value['options']['batches'] = [dict(id=1, institute_id=2, program_id=3)]
                 return route.fulfill(json=value)
             if path in ['/api/instructor/batches/1/enroll/preview/', '/api/instructor/batches/1/enroll/']:
                 body = route.request.post_data_json
@@ -210,7 +218,7 @@ with sync_playwright() as p:
         context.route('**/*', route_request)
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
-        path = '/instructor/students' if role == 'instructor' else '/admin/batches?batch_id=1'
+        path = '/instructor/students' if role == 'instructor' else '/admin/batches?batch_id=1&institute=2&program=3'
         page.goto(BASE + path)
         page.wait_for_load_state('networkidle')
         if os.environ.get('EMAIL_DISMISSAL_ONLY') == '1':
@@ -345,7 +353,10 @@ with sync_playwright() as p:
         expect(completed).to_be_visible()
         completed.click()
         expect(page.get_by_role('dialog', name='Enrollment emails', exact=True)).to_be_visible()
+        if role == 'admin':
+            assert 'institute=2' in page.url and 'program=3' in page.url
         page.get_by_role('dialog', name='Enrollment emails', exact=True).get_by_role('button', name='Close', exact=True).click()
+        expect(page).not_to_have_url(re.compile(r'[?&](emails|email_group)='))
         page.get_by_role('button', name='Enroll students', exact=True).click()
         enrollment = page.get_by_role('dialog', name='Enroll students', exact=True)
         enrollment.get_by_role('button', name='Manual entry', exact=True).click()
@@ -425,8 +436,10 @@ with sync_playwright() as p:
             page.evaluate('sessionStorage.clear()')
             page.reload()
             page.wait_for_load_state('networkidle')
-            # The notification URL reopens its email dialog after reload.
+            # Closing a notification link removes the reopen flag from the URL.
             dialog = page.get_by_role('dialog', name='Enrollment emails', exact=True)
+            expect(dialog).to_have_count(0)
+            page.get_by_role('button', name='Enrollment emails', exact=True).click()
             expect(dialog.get_by_text('Could not load this section.', exact=False)).to_be_visible()
             expect(dialog.get_by_text('No enrolled students yet', exact=True)).to_have_count(0)
             payload.pop('_error')

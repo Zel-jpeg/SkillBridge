@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { queryStore } from '../../api/queryStore'
-import { emailProgressText } from '../../utils/emailProgress'
-import { dismissedEmailGroups, emailProgressDismissalKey, rememberDismissedEmailGroup } from '../../utils/emailProgressDismissal'
+import { completedEmailGroup, emailProgressText } from '../../utils/emailProgress'
+import { dismissedEmailGroups, emailProgressDismissalKey, emailProgressStateKey, rememberDismissedEmailGroup } from '../../utils/emailProgressDismissal'
 import { MailIcon, XIcon } from '../Icons'
 
 export function BatchEmailProgress({ batchId, onView, paused = false }) {
@@ -16,20 +16,24 @@ export function BatchEmailProgress({ batchId, onView, paused = false }) {
   const owner = emailProgressDismissalKey(storage)
   if (!data?.groups?.length) return stale ? <p role="status" className="text-xs text-gray-600 dark:text-gray-400">Email progress could not refresh. Open Enrollment emails to check.</p> : null
   const group = data.groups[0]
-  return <CompactEmailProgress key={`${owner}:${group.id}`} group={group} onView={onView} stale={stale} paused={paused} storage={storage} owner={owner} />
+  return <CompactEmailProgress key={`${owner}:${emailProgressStateKey(group)}`} group={group} onView={onView} stale={stale} paused={paused} storage={storage} owner={owner} />
 }
 
 function CompactEmailProgress({ group, onView, stale, paused, storage, owner }) {
-  const [dismissed, setDismissed] = useState(() => dismissedEmailGroups(storage, owner).includes(group.id))
+  const stateKey = emailProgressStateKey(group)
+  const [dismissed, setDismissed] = useState(() => {
+    const saved = dismissedEmailGroups(storage, owner)
+    return saved.includes(stateKey) || (group.state === 'delivered' && saved.includes(group.id))
+  })
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const [hidden, setHidden] = useState(document.hidden)
   const delivered = group.state === 'delivered'
-  const canDismiss = delivered && !stale
+  const canDismiss = completedEmailGroup(group) && !stale
   const dismiss = useCallback(() => {
-    rememberDismissedEmailGroup(storage, owner, group.id)
+    rememberDismissedEmailGroup(storage, owner, stateKey)
     setDismissed(true)
-  }, [group.id, owner, storage])
+  }, [stateKey, owner, storage])
 
   useEffect(() => {
     const visibility = () => setHidden(document.hidden)
@@ -38,10 +42,10 @@ function CompactEmailProgress({ group, onView, stale, paused, storage, owner }) 
   }, [])
 
   useEffect(() => {
-    if (!canDismiss || dismissed || paused || hovered || focused || hidden) return
+    if (!delivered || !canDismiss || dismissed || paused || hovered || focused || hidden) return
     const timeout = window.setTimeout(dismiss, 10_000)
     return () => window.clearTimeout(timeout)
-  }, [canDismiss, dismiss, dismissed, paused, hovered, focused, hidden])
+  }, [delivered, canDismiss, dismiss, dismissed, paused, hovered, focused, hidden])
 
   // A later failed/uncertain refresh must remain visible even after success was dismissed.
   if (canDismiss && dismissed) return null
@@ -67,7 +71,7 @@ export default function EmailProgress({ groups = [], compact = false, onView, on
         <p className="mt-1 text-gray-600 dark:text-gray-300">{group.source === 'enrollment' ? 'Enrollment' : 'Email request'} · {group.total} recipients · {new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(group.created_at))}</p>
       </div>
       {compact && <button className="ml-auto min-h-11 shrink-0 font-semibold text-green-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300" onClick={() => onView?.(group.id)}>View progress</button>}
-      {compact && onDismiss && <button type="button" aria-label="Dismiss delivered email confirmation" onClick={onDismiss}
+      {compact && onDismiss && <button type="button" aria-label={group.state === 'delivered' ? 'Dismiss delivered email confirmation' : 'Dismiss submitted email confirmation'} onClick={onDismiss}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-green-800 transition-colors hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:text-green-300 dark:hover:bg-green-900/50 dark:focus-visible:outline-green-400">
         <span aria-hidden="true"><XIcon size={16} /></span>
       </button>}

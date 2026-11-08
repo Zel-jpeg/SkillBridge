@@ -8,6 +8,7 @@ export function resetSessionData() {
   clearAllCache()
   closeSSE()
   try { sessionStorage.removeItem('sb_instructor_students_cache') } catch { /* Storage may be unavailable. */ }
+  window.dispatchEvent(new Event('auth:reset'))
 }
 
 export function logoutSession(navigate, role = localStorage.getItem('sb-role')) {

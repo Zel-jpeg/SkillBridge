@@ -7,6 +7,11 @@ const TYPES = { success: 'Success', error: 'Error', warning: 'Warning', info: 'I
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
   const idRef = useRef(0)
+  useEffect(() => {
+    const clear = () => setToasts([])
+    window.addEventListener('auth:reset', clear)
+    return () => window.removeEventListener('auth:reset', clear)
+  }, [])
 
   // Call after a confirmed action. Keep recovery guidance inline where needed.
   const showToast = useCallback((message, type = 'success', duration) => {

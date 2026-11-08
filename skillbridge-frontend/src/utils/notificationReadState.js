@@ -13,9 +13,11 @@ export function unreadSeverity(entries) {
 }
 
 // Store only opaque presentation fingerprints, never notification text or records.
-export function notificationFingerprint(entry) {
-  const text = JSON.stringify([entry.id, entry.title, entry.description, entry.count ?? null, entry.to,
-    notificationSeverity(entry), entry.revision ?? null])
+export function notificationFingerprint(entry, legacy = false) {
+  const text = JSON.stringify(!legacy && entry.revision != null
+    ? [entry.id, entry.count ?? null, notificationSeverity(entry), entry.revision]
+    : [entry.id, entry.title, entry.description, entry.count ?? null, entry.to,
+        notificationSeverity(entry), entry.revision ?? null])
   let a = 2166136261, b = 5381
   for (let i = 0; i < text.length; i++) {
     a = Math.imul(a ^ text.charCodeAt(i), 16777619)

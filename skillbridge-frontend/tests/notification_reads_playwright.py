@@ -20,6 +20,65 @@ def fixture_class(filename):
 StudentFixture = fixture_class('student_notifications_playwright.py')
 StaffFixture = fixture_class('dashboard_highlights_playwright.py')
 
+def restart_session(page, expired=False):
+    destination = page.url
+    if expired:
+        page.evaluate("window.dispatchEvent(new Event('auth:expired'))")
+        page.get_by_role('button', name='Sign in again', exact=True).click()
+    else:
+        page.get_by_role('button', name='Open profile menu', exact=True).click()
+        page.get_by_role('button', name='Log out', exact=True).click()
+        page.get_by_role('dialog', name='Log out of SkillBridge?').get_by_role('button', name='Log out', exact=True).click()
+    expect(page).to_have_url(re.compile('/(?:admin/)?login$'))
+    assert page.evaluate("localStorage.getItem('sb-token')") is None
+    expect(page.locator('.sb-toast')).to_have_count(0)
+    # The role fixture restores the same synthetic sign-in on the next page load.
+    page.goto(destination, wait_until='networkidle')
+
+
+def refresh(page, url):
+    with page.expect_response(lambda response: response.request.method == 'GET' and url in response.url):
+        page.evaluate('async url => { const {invalidateCache}=await import("/src/hooks/useApi.js"); invalidateCache(url) }', url)
+    page.wait_for_load_state('networkidle')
+
+
+def email_replay(page, fixture, bell):
+    url = '/api/management/analytics/?view=overview'
+    group = {'id': 'saved-synthetic-email-group', 'batch_id': 1, 'batch_name': 'Original batch',
+        'source': 'enrollment', 'created_at': '2026-10-20T07:00:00Z', 'total': 1, 'submitted': 0,
+        'delivered': 0, 'waiting': 1, 'held': 0, 'failed': 0, 'uncertain': 0, 'cancelled': 0, 'state': 'sending'}
+    fixture.email_progress = [group]
+    refresh(page, url)
+    delivered = {**group, 'state': 'delivered', 'waiting': 0, 'submitted': 1, 'delivered': 1}
+    fixture.email_progress = [delivered]
+    refresh(page, url)
+    toast = page.locator('.sb-toast').filter(has_text='Enrollment emails delivered to all 1 students')
+    expect(toast).to_be_visible()
+    toast.get_by_role('button', name='Dismiss notification').click()
+    # A lagging initial progress snapshot must not replay the completed toast.
+    fixture.email_progress = [group]
+    restart_session(page)
+    fixture.email_progress = [delivered]
+    refresh(page, url)
+    expect(toast).to_have_count(0)
+    expect(page.locator('.sb-notification-badge')).to_have_text('1')
+    bell.click()
+    page.get_by_role('button', name='Mark all as read').click()
+    page.keyboard.press('Escape')
+    fixture.email_progress = [{**delivered, 'batch_name': 'Renamed batch'}]
+    restart_session(page, expired=True)
+    expect(page.locator('.sb-notification-badge')).to_have_count(0)
+    expect(toast).to_have_count(0)
+    # A different completed group still gets a live popup. Session expiry clears it.
+    other = {**group, 'id': 'another-synthetic-email-group'}
+    fixture.email_progress = [other]
+    refresh(page, url)
+    fixture.email_progress = [{**delivered, 'id': other['id']}]
+    refresh(page, url)
+    expect(toast).to_be_visible()
+    restart_session(page, expired=True)
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     for role in ['student', 'instructor', 'admin']:
@@ -60,8 +119,16 @@ with sync_playwright() as p:
         bell.click()
         # Unchanged authorized data must not bring back a badge.
         url = '/api/students/me/' if role == 'student' else '/api/management/analytics/'
-        page.evaluate('async url => { const {invalidateCache}=await import("/src/hooks/useApi.js"); invalidateCache(url) }', url)
+        refresh(page, url)
         expect(page.locator('.sb-notification-badge')).to_have_count(0)
+        page.keyboard.press('Escape')
+        for expired in [False, True]:
+            restart_session(page, expired=expired)
+            expect(bell).to_have_attribute('aria-label', re.compile(r'0 unread'))
+            expect(page.locator('.sb-notification-badge')).to_have_count(0)
+        if role != 'student':
+            email_replay(page, fixture, bell)
+        bell.click()
         if role == 'student':
             fixture.profile['placement'] = {**fixture.profile['placement'], 'id': 6, 'company': {'name': 'New Example Company'}}
             fixture.refresh('/api/students/me/')
@@ -114,5 +181,5 @@ with sync_playwright() as p:
             expect(profile_menu).to_have_count(0)
             expect(profile).to_be_focused()
         fixture.close()
-        print(f'PASS {role}: read persistence, refresh, severity, responsive layouts, reduced motion and focus', flush=True)
+        print(f'PASS {role}: logout/expiry read persistence, refresh, severity, responsive layouts, reduced motion and focus', flush=True)
     browser.close()

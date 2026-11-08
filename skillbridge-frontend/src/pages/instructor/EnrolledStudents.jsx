@@ -11,7 +11,7 @@ import { lazy, Suspense, useState } from 'react'
 const EnrollmentEmails = lazy(() => import('../../components/enrollment/EnrollmentEmails'))
 import PreviouslyUnenrolled from '../../components/enrollment/EnrollmentRecovery'
 import StudentRosterToolbar from '../../components/instructor/StudentRosterToolbar'
-import { useLocation, useNavigate }         from 'react-router-dom'
+import { useNavigate, useSearchParams }     from 'react-router-dom'
 import StudentModal            from '../../components/instructor/StudentModal'
 import StudentPerformanceCard from '../../components/StudentPerformanceCard'
 import EnrollModal             from '../../components/instructor/EnrollModal'
@@ -53,17 +53,15 @@ function avg(scores) {
 
 export default function EnrolledStudents() {
   const navigate = useNavigate()
-  const emailLocation = useLocation()
+  const [emailParams, setEmailParams] = useSearchParams()
   const [enrollment, setEnrollment] = useState('enrolled')
   const [showEmails, setShowEmails] = useState(false)
   const [showReactivate, setShowReactivate] = useState(false)
   const [showReportReview, setShowReportReview] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
   const [section, setSection] = useState('students')
-  const [closedEmailKey, setClosedEmailKey] = useState(null)
-  const emailParams = new URLSearchParams(emailLocation.search)
   const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
-  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0 && closedEmailKey !== emailLocation.key
+  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0
   const {
     instructor,
     batches, activeBatchId, setActiveBatchId, initialBatchPending, initialRosterPending,
@@ -100,7 +98,15 @@ export default function EnrolledStudents() {
           onCancel={() => setConfirmRemove(null)}
         />
       )}
-      {(showEmails || emailRouteOpen) && (emailRouteOpen || activeBatchId) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : activeBatchId} batchId={emailRouteOpen ? routeEmailId : activeBatchId} onClose={() => { setShowEmails(false); setClosedEmailKey(emailLocation.key) }} /></Suspense>}
+      {(showEmails || emailRouteOpen) && (emailRouteOpen || activeBatchId) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : activeBatchId} batchId={emailRouteOpen ? routeEmailId : activeBatchId} onClose={() => {
+        setShowEmails(false)
+        if (emailRouteOpen) {
+          const next = new URLSearchParams(emailParams)
+          next.delete('emails')
+          next.delete('email_group')
+          setEmailParams(next, { replace: true })
+        }
+      }} /></Suspense>}
       {showModal && <EnrollModal batchId={activeBatchId} onClose={() => setShowModal(false)} onEnrolled={handleEnroll} />}
       {selectedStudent && <StudentModal student={selectedStudent} instructorName={instructor.name} isArchived={isArchived} onClose={() => setSelectedStudent(null)} onToggleRetake={handleToggleRetake} />}
 

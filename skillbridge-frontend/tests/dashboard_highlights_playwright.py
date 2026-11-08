@@ -44,6 +44,7 @@ class Fixture:
             self.rows = self.rows[:2]
         self.errors, self.mutations = [], []
         self.analytics_calls = 0
+        self.email_progress = []
         self.context = browser.new_context(viewport={'width': 1366, 'height': 1000}, reduced_motion='reduce')
         user = {'id': 99, 'role': role, 'name': 'Synthetic Staff', 'is_approved': True}
         self.context.add_init_script('''localStorage.setItem('sb-token','synthetic-only');
@@ -87,6 +88,7 @@ class Fixture:
                 'reasons': ['Stopped / flagged'] if row['id'] == 2 and self.mode != 'two_students' else [], 'scores': {}, 'attempt_states': {}}
                 for row in self.rows]
             return route.fulfill(json={'role': self.role, 'generated_at': '2026-10-20T08:00:00Z',
+                'email_progress': self.email_progress,
                 'summary': summary, 'scope': {'batch_ids': [1], 'batch_status': 'active'}, 'students': rows, 'placement_students': [],
                 **{key: [] for key in ['assessments', 'batches', 'skills', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity']},
                 'options': {key: [] for key in ['batches', 'instructors', 'courses', 'assessments', 'companies', 'positions', 'areas']}})

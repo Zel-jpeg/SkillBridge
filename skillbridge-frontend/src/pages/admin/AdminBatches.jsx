@@ -1,7 +1,7 @@
 import { CollectionSkeleton } from '../../components/loading/Skeletons'
 import { useToast } from '../../context/ToastContext'
 import { lazy, Suspense, useMemo, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api/axios'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DataSection from '../../components/DataSection'
@@ -85,7 +85,7 @@ export default function AdminBatches() {
 }
 
 function ScopedBatches({ scope, canCreate }) {
-  const emailLocation = useLocation()
+  const [emailParams, setEmailParams] = useSearchParams()
   const { showToast } = useToast()
   const { data: batchData } = useApi(BATCHES)
   const { data: ownerData } = useApi(OWNERS)
@@ -111,10 +111,8 @@ function ScopedBatches({ scope, canCreate }) {
   const [editor, setEditor] = useState(null)
   const [enrolling, setEnrolling] = useState(false)
   const [showEmails, setShowEmails] = useState(false)
-  const [closedEmailKey, setClosedEmailKey] = useState(null)
-  const emailParams = new URLSearchParams(emailLocation.search)
   const routeEmailId = emailParams.get('emails') === '1' ? Number(emailParams.get('batch_id')) : null
-  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0 && closedEmailKey !== emailLocation.key
+  const emailRouteOpen = Number.isSafeInteger(routeEmailId) && routeEmailId > 0
     && batches.some(batch => batch.id === routeEmailId && matchesOrganization(batch, scope))
   const [confirm, setConfirm] = useState(null)
   const [studentId, setStudentId] = useState(null)
@@ -223,7 +221,15 @@ function ScopedBatches({ scope, canCreate }) {
       </section>
     </>}
     {editor && <BatchEditor batch={editor.batch} defaultProgram={scope.program} owners={owners} onClose={() => setEditor(null)} onSaved={batch => { refresh(); setSelectedId(batch.id); setEditor(null); setFeedback({ text: 'Batch saved.' }) }} />}
-    {(showEmails || emailRouteOpen) && (emailRouteOpen || selected) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : selected.id} batchId={emailRouteOpen ? routeEmailId : selected.id} onClose={() => { setShowEmails(false); setClosedEmailKey(emailLocation.key) }} /></Suspense>}
+    {(showEmails || emailRouteOpen) && (emailRouteOpen || selected) && <Suspense fallback={<p role="status">Loading enrollment emails…</p>}><EnrollmentEmails initialGroupId={emailRouteOpen ? emailParams.get('email_group') : undefined} key={emailRouteOpen ? routeEmailId : selected.id} batchId={emailRouteOpen ? routeEmailId : selected.id} onClose={() => {
+      setShowEmails(false)
+      if (emailRouteOpen) {
+        const next = new URLSearchParams(emailParams)
+        next.delete('emails')
+        next.delete('email_group')
+        setEmailParams(next, { replace: true })
+      }
+    }} /></Suspense>}
     {selected && enrolling && <StudentEnrollmentModal requireConfirmation batchId={selected.id} onClose={() => setEnrolling(false)} onEnrolled={refresh} />}
     {selected && currentStudent && <StudentModal student={{ ...currentStudent, batchLabel: selected.name }} instructorName={selected.instructor_name} isArchived={selected.status === 'archived'} onClose={() => setStudentId(null)} onToggleRetake={retake} />}
     {selected && leaderCategory && <Suspense fallback={<p role="status">Loading skill leaderboard…</p>}><SkillLeaderboardModal skill={{ category: leaderCategory }} allStudents={leaderboardStudents} onClose={() => setLeaderCategory('')} onSelectStudent={student => { setLeaderCategory(''); setStudentId(student.id) }} /></Suspense>}

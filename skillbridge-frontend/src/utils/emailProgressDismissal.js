@@ -1,14 +1,15 @@
-const PREFIX = 'sb-email-progress-dismissed:v1:'
 const MAX_GROUPS = 100
 
 // Only opaque group IDs are stored, separately for each signed-in staff account.
-export function emailProgressDismissalKey(storage) {
+export function emailProgressDismissalKey(storage, purpose = 'dismissed') {
   try {
     const user = JSON.parse(storage?.getItem('sb-user'))
     return ['instructor', 'admin'].includes(user?.role) && /^\d+$/.test(String(user.id))
-      ? `${PREFIX}${user.role}:${user.id}` : null
+      ? `sb-email-progress-${purpose}:v1:${user.role}:${user.id}` : null
   } catch { return null }
 }
+
+export const emailProgressStateKey = group => `${group.id}:${group.state}`
 
 export function dismissedEmailGroups(storage, key) {
   if (!key) return []

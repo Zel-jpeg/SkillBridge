@@ -183,6 +183,13 @@ keeps the same authenticated session mounted, while logout/new sign-in changes
 its session ID. This supersedes the earlier assumption that access expiry always
 immediately requires signing in again. Revoked refresh/permissions remain terminal.
 
+The notification bell stores read markers per account in the current browser.
+Sign-out and session expiry clear displayed popups and retain those markers.
+Completed enrollment email popups use the saved group and status to avoid a
+repeat after sign-in. Submitted and delivered confirmations can be dismissed
+independently. Closing email history from a notification link clears the
+dialog-open flag and keeps the selected batch and scope.
+
 - Every protected entry point starts the shared managed stream, including setup,
   assessment-taking and direct navigation to reports/placements.
 - A connection is keyed to role/user/token. Duplicate ensures share one stream

@@ -11,6 +11,17 @@ const reasonDescriptions = {
 // Current authorized reminder groups; a changed membership is a new update.
 export function managementNotifications(data, role) {
   if (!data?.summary || !['admin', 'instructor'].includes(role)) return []
+  const batches = new Map((data.options?.batches ?? []).map(batch => [batch.id, batch]))
+  function emailLink(group, groupId) {
+    const params = new URLSearchParams({ batch_id: group.batch_id, emails: '1' })
+    if (groupId) params.set('email_group', groupId)
+    const batch = batches.get(group.batch_id)
+    if (role === 'admin' && batch?.institute_id) {
+      params.set('institute', batch.institute_id)
+      params.set('program', batch.program_id || 'all')
+    }
+    return `/${role === 'admin' ? 'admin/batches' : 'instructor/students'}?${params}`
+  }
   const reasons = new Map()
   for (const row of data.students ?? []) for (const reason of new Set(row.reasons ?? [])) {
     reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
@@ -38,7 +49,7 @@ export function managementNotifications(data, role) {
     count: group.count, description: group.kind === 'quota'
       ? `${group.batch_name}: daily email allowance reached. Students are enrolled; emails resume automatically when allowance is available.`
       : `${group.batch_name}: review saved email problems. Enrollment stays unchanged.`,
-    to: role === 'admin' ? `/admin/batches?batch_id=${group.batch_id}&emails=1` : `/instructor/students?batch_id=${group.batch_id}&emails=1`,
+    to: emailLink(group),
     kind: 'email', severity: 'warning', revision: group.revision,
   })
   for (const group of data.email_progress ?? []) {
@@ -46,7 +57,7 @@ export function managementNotifications(data, role) {
     const text = emailProgressText(group)
     notifications.push({ id: `email-group:${group.id}`, title: text.title, count: group.total,
       description: `${group.batch_name}: ${text.detail}`,
-      to: `/${role === 'admin' ? 'admin/batches' : 'instructor/students'}?${new URLSearchParams({ batch_id: group.batch_id, emails: '1', email_group: group.id })}`,
+      to: emailLink(group, group.id),
       kind: 'email_complete', severity: 'success', revision: [group.id, group.state] })
   }
   return notifications

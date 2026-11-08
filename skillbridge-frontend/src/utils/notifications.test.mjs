@@ -24,7 +24,8 @@ test('approvals stay admin-only and current reminders use role-scoped destinatio
 })
 
 test('quota reminders explain saved enrollment and link each staff role to its reviewed batch', () => {
-  const payload = { ...data, email_notifications: [{ batch_id: 7, batch_name: 'Synthetic Batch', kind: 'quota', count: 80, revision: ['opaque'] }] }
+  const payload = { ...data, options: { batches: [{ id: 7, institute_id: 4, program_id: 5 }] },
+    email_notifications: [{ batch_id: 7, batch_name: 'Synthetic Batch', kind: 'quota', count: 80, revision: ['opaque'] }] }
   for (const role of ['admin', 'instructor']) {
     const item = managementNotifications(payload, role).find(entry => entry.kind === 'email')
     assert.equal(item.count, 80)
@@ -34,6 +35,8 @@ test('quota reminders explain saved enrollment and link each staff role to its r
     assert.equal(url.searchParams.get('batch_id'), '7')
     assert.equal(url.searchParams.get('emails'), '1')
     assert.ok(url.pathname.startsWith(`/${role}/`))
+    assert.equal(url.searchParams.get('institute'), role === 'admin' ? '4' : null)
+    assert.equal(url.searchParams.get('program'), role === 'admin' ? '5' : null)
   }
 })
 

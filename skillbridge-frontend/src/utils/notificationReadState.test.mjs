@@ -81,3 +81,11 @@ test('same-count staff group membership changes produce unread updates and sever
   assert.equal(unreadSeverity([item]), 'success')
   assert.equal(unreadSeverity([{ severity: 'info' }, item]), 'info')
 })
+
+test('an unchanged saved revision stays read when its display text changes', () => {
+  const source = storage(), store = createNotificationReadStore(() => source, () => NOW)
+  const email = { ...item, id: 'email-group:example', revision: ['example', 'submitted'] }
+  store.markRead([email], store.getSnapshot().owner)
+  assert.equal(isRead(store, { ...email, description: 'Renamed batch', to: '/instructor/students' }), true)
+  assert.equal(isRead(store, { ...email, revision: ['example', 'delivered'] }), false)
+})

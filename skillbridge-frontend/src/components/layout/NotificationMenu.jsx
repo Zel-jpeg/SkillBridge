@@ -1,14 +1,15 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import { ANALYTICS_OVERVIEW_URL } from '../../utils/analytics'
 import { managementNotifications } from '../../utils/notifications'
 import { NOTIFICATION_LABELS, notificationSeverity, unreadSeverity } from '../../utils/notificationReadState'
-import { useNotificationReads } from '../../hooks/useNotificationReads'
+import { notificationWasRead, useNotificationReads } from '../../hooks/useNotificationReads'
 import { BellIcon, BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, ClockIcon, UserIcon, WarnIcon, XIcon } from '../Icons'
 import './notificationMenu.css'
 import { useToast } from '../../context/ToastContext'
-import { completedEmailGroup, emailProgressText } from '../../utils/emailProgress'
+import { emailProgressText } from '../../utils/emailProgress'
+import { dismissedEmailGroups, emailProgressDismissalKey, emailProgressStateKey, rememberDismissedEmailGroup } from '../../utils/emailProgressDismissal'
 
 const icons = { assessment: WarnIcon, placement: BriefcaseIcon, approval: UserIcon, deadline: ClockIcon, retake: CheckCircleIcon, results: CheckCircleIcon, email: ClockIcon, email_complete: CheckCircleIcon }
 
@@ -17,18 +18,27 @@ export default function NotificationMenu({ role, ...props }) {
   const { showToast } = useToast()
   const seen = useRef(new Map())
   const announced = useRef(new Set())
+  const entries = useMemo(() => managementNotifications(data, role), [data, role])
   useEffect(() => {
+    let storage
+    try { storage = window.localStorage } catch { /* The in-memory guard still applies. */ }
+    const announcementKey = emailProgressDismissalKey(storage, 'announced')
+    const announcedBefore = new Set(dismissedEmailGroups(storage, announcementKey))
+    const dismissals = new Set(dismissedEmailGroups(storage, emailProgressDismissalKey(storage)))
+    const emailEntries = new Map(entries.filter(entry => entry.kind === 'email_complete').map(entry => [entry.id, entry]))
     for (const group of data?.email_progress ?? []) {
       const prior = seen.current.get(group.id)
-      const key = `${group.id}:${group.state}`
-      if (prior && prior !== group.state && completedEmailGroup(group) && !announced.current.has(key)) {
+      const key = emailProgressStateKey(group)
+      const entry = emailEntries.get(`email-group:${group.id}`)
+      if (prior && prior !== group.state && entry && !announced.current.has(key) && !announcedBefore.has(key)
+        && !dismissals.has(key) && !(group.state === 'delivered' && dismissals.has(group.id)) && !notificationWasRead(entry)) {
         announced.current.add(key)
+        rememberDismissedEmailGroup(storage, announcementKey, key)
         showToast(`${group.batch_name}: ${emailProgressText(group).detail}`)
       }
       seen.current.set(group.id, group.state)
     }
-  }, [data, showToast])
-  const entries = managementNotifications(data, role)
+  }, [data, entries, showToast])
   return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(ANALYTICS_OVERVIEW_URL)} />
 }
 
