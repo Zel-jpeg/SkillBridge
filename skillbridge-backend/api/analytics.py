@@ -333,7 +333,8 @@ def analytics_payload(user, params):
         'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else []}
     if not full:
         return {'generated_at': now.isoformat(), 'role': user.role, 'view': 'overview',
-            'scope': {'batch_ids': selected_ids, 'institute_id': institute_id, 'program_id': program_id, 'batch_status': status},
+            'scope': {'batch_ids': selected_ids, 'institute_id': institute_id, 'program_id': program_id, 'batch_status': status,
+                      'shared_batch_ids': [batch.pk for batch in selected if batch.institute_id and not batch.program_id]},
             'summary': summary, 'dashboard_attention': dashboard_attention, **email_payload,
             'students': students, 'skills': sorted(skill_rows.values(), key=lambda row: row['name']),
             'options': {'batches': batch_options}}

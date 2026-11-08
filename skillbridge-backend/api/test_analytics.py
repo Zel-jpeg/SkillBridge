@@ -227,6 +227,9 @@ class AnalyticsTests(APITestCase):
         self.assertNotIn('ranking_input_fingerprint', str(result))
 
     def test_overview_matches_full_report_for_each_role_without_loading_report_history(self):
+        from .models import Institute
+        self.batch.institute = Institute.objects.create(code='SCOPE', name='Synthetic Shared Institute')
+        self.batch.save(update_fields=['institute'])
         self.ready(83)
         for user in (self.owner, self.admin):
             self.client.force_authenticate(user)
@@ -236,6 +239,8 @@ class AnalyticsTests(APITestCase):
             for field in ('summary', 'dashboard_attention', 'email_notifications', 'email_progress'):
                 self.assertEqual(overview[field], report[field])
             self.assertEqual(overview['scope']['batch_ids'], report['scope']['batch_ids'])
+            self.assertEqual(overview['scope']['shared_batch_ids'], report['scope']['shared_batch_ids'])
+            self.assertIn(self.batch.id, overview['scope']['shared_batch_ids'])
             self.assertEqual(overview['options']['batches'], report['options']['batches'])
             self.assertEqual(overview['students'], [{key: row[key] for key in (
                 'id', 'name', 'batch_id', 'batch', 'required_completed', 'required_total',
