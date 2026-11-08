@@ -31,6 +31,16 @@ def run(browser):
     other = call(context, parent, 'post', {'name': 'Independent Catalog Degree', 'code': 'OTHER'}, status=201)
     for role in ['instructor', 'other_instructor']:
         call(context, f'{parent}{program["id"]}/instructors/', 'post', {'instructor_id': AUTH[role]['user']['id']}, status=201)
+    page.goto(BASE + f'/admin/competencies?institute={institute["id"]}', wait_until='networkidle')
+    page.get_by_role('link', name='Shared CATALOG skills', exact=True).click()
+    page.get_by_role('button', name='Add Skill', exact=True).click()
+    shared_editor = page.get_by_role('dialog', name='Add Skill Category', exact=True)
+    shared_editor.get_by_label('Name', exact=True).fill('Shared service knowledge')
+    shared_editor.get_by_label('Description', exact=True).fill('Explain how shared service records are organized.')
+    shared_editor.get_by_label('Tags', exact=True).fill('Service records, Clear communication')
+    shared_editor.get_by_role('button', name='Add Skill', exact=True).click()
+    expect(shared_editor).to_have_count(0)
+    expect(page.get_by_role('heading', name='Shared service knowledge', exact=True)).to_be_visible()
     context.close()
 
     context, page = support.session(browser, 'instructor')
@@ -38,9 +48,12 @@ def run(browser):
     expect(page.get_by_text('Add the first skill', exact=False)).to_be_visible()
     page.get_by_role('button', name='Add Skill', exact=True).click()
     dialog = page.get_by_role('dialog', name='Add Skill', exact=True)
-    dialog.get_by_label('Name', exact=True).fill('Shared service knowledge')
+    dialog.get_by_text('Reuse an institute skill', exact=True).click()
+    expect(dialog.get_by_role('option', name='Shared service knowledge')).to_have_count(1)
+    dialog.get_by_label('Shared skill', exact=True).select_option(label='Shared service knowledge')
+    dialog.get_by_role('button', name='Copy into draft', exact=True).click()
+    expect(dialog.get_by_label('Name', exact=True)).to_have_value('Shared service knowledge')
     dialog.get_by_label('Description', exact=True).fill('Recognizes service records and explains an appropriate response.')
-    dialog.get_by_label('Tags', exact=True).fill('Service records, Clear communication')
     dialog.get_by_role('button', name='Add Skill', exact=True).click()
     expect(dialog).to_have_count(0)
     expect(page.get_by_role('heading', name='Shared service knowledge', exact=True)).to_be_visible()
@@ -48,6 +61,8 @@ def run(browser):
     version = call(context, frameworks, role='instructor')['results'][0]
     base = frameworks + f'{version["id"]}/'
     original = call(context, base + 'categories/', role='instructor')['results'][0]
+    shared = call(context, f'/api/management/institutes/{institute["id"]}/skills/', role='instructor')[0]
+    assert original['description'] != shared['description'] and original['tags'] == shared['tags']
     checks.append('instructor adds the first skill and the program skill set is created atomically through real HTTP')
 
     # Seed extra synthetic definitions to exercise the actual paginated UI.

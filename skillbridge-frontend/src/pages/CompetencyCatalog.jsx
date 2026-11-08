@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../api/axios'
 import { requestErrorMessage } from '../api/requestErrors'
@@ -9,7 +9,7 @@ import DialogShell from '../components/DialogShell'
 import TaxonomyLibraryCards from '../components/TaxonomyLibraryCards'
 import OrganizationBreadcrumbs from '../components/OrganizationBreadcrumbs'
 import SkillLibraryTable from '../components/SkillLibraryTable'
-import { ORGANIZATION_OPTIONS } from '../utils/organizationScope'
+import { instituteSkillsUrl, ORGANIZATION_OPTIONS } from '../utils/organizationScope'
 import { CatalogForm } from './admin/AdminInstitutes'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/admin/ConfirmModal'
@@ -32,7 +32,30 @@ const assistanceMessages = {
   no_suggestions: 'This saved category has no tags to reuse. Enter your own vocabulary.',
 }
 
-function Editor({ kind, row, source, url, framework, programId, revision = false, starterName, onClose, onSaved }) {
+function SharedSkillPicker({ url, onCopy }) {
+  const [open, setOpen] = useState(false)
+  const [id, setId] = useState('')
+  const selectId = useId()
+  const { data } = useApi(open ? url : null)
+  const selected = data?.find(skill => String(skill.id) === id)
+
+  return <details onToggle={event => setOpen(event.currentTarget.open)} className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+    <summary className="cursor-pointer font-semibold hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-600">Reuse an institute skill</summary>
+    {open && <DataSection url={url} layout="control" label="Loading institute skills">
+      {data?.length ? <div className="mt-3 space-y-2">
+        <label className="block font-semibold" htmlFor={selectId}>Shared skill</label>
+        <select id={selectId} className={field} value={id} onChange={event => setId(event.target.value)}>
+          <option value="">Choose a skill</option>
+          {data.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}
+        </select>
+        <button type="button" className={button} disabled={!selected} onClick={() => onCopy(selected)}>Copy into draft</button>
+        <p className="text-gray-500">Review the name, description and tags before saving your program’s copy.</p>
+      </div> : data && <p className="mt-3 text-gray-500">This institute has no shared skills yet.</p>}
+    </DataSection>}
+  </details>
+}
+
+function Editor({ kind, row, source, url, framework, programId, sharedUrl, revision = false, starterName, onClose, onSaved }) {
   const category = kind === 'category'
   const [name, setName] = useState(row?.name || source?.name || '')
   const [description, setDescription] = useState(row?.description || source?.description || '')
@@ -75,6 +98,12 @@ function Editor({ kind, row, source, url, framework, programId, revision = false
       {error && <p role="alert" className="text-rose-700 dark:text-rose-300">{error}</p>}
       <fieldset disabled={saving} className="space-y-4">
         {revision && <p className="rounded-lg bg-amber-50 p-3 leading-5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">This skill set is already in use. Saving creates an updated skill set for future work. Existing assessments and results keep their original definitions.</p>}
+        {sharedUrl && !row && <SharedSkillPicker url={sharedUrl} onCopy={skill => {
+          setName(skill.name)
+          setDescription(skill.description)
+          setTags(skill.tags.join(', '))
+          setTagDraft('')
+        }} />}
         {category ? <SkillDefinitionFields name={name} setName={setName} description={description} setDescription={setDescription}
           tags={tags} setTags={setTags} draft={tagDraft} setDraft={setTagDraft} disabled={saving}
           suggestionKey={JSON.stringify([programId, name, description])}
@@ -99,7 +128,7 @@ function Editor({ kind, row, source, url, framework, programId, revision = false
   </DialogShell>
 }
 
-function Categories({ programId, frameworkId, onRevised }) {
+function Categories({ programId, frameworkId, sharedUrl, onRevised }) {
   const { showToast } = useToast()
   const base = `/api/management/programs/${programId}/frameworks/`
   const detail = `${base}${frameworkId}/`
@@ -145,7 +174,7 @@ function Categories({ programId, frameworkId, onRevised }) {
           <button type="button" className={`${button} h-9 w-9 !p-0 text-rose-700 dark:text-rose-300`} aria-label={`Remove ${category.name}`} title={`Remove ${category.name}`} onClick={() => removeSkill(category)}><TrashIcon size={14} /></button>
         </div> : undefined}
         footer={data && <div className="px-4"><Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} /></div>} />
-      {editor && <Editor {...editor} framework={framework} programId={programId} revision={framework.locked} url={`${detail}categories/`} onClose={() => setEditor(null)} onSaved={saved} />}
+      {editor && <Editor {...editor} framework={framework} programId={programId} sharedUrl={sharedUrl} revision={framework.locked} url={`${detail}categories/`} onClose={() => setEditor(null)} onSaved={saved} />}
       {removal && <ConfirmModal title={`Remove ${removal.name}?`} confirmLabel={removal.remove_requires_revision ? 'Create updated skill set' : 'Remove skill'}
         message={removal.remove_requires_revision ? 'This skill has retained records. Create an updated skill set without it for future assessments and batches. Existing questions, results and skill definitions remain available in the original set.' : 'Remove this unused skill and its tags from this skill set?'}
         onCancel={() => setRemoval(null)} onConfirm={confirmRemoval} />}
@@ -154,7 +183,7 @@ function Categories({ programId, frameworkId, onRevised }) {
   </div></DataSection>
 }
 
-function ProgramSkills({ programId }) {
+function ProgramSkills({ programId, sharedUrl }) {
   const { showToast } = useToast()
   const programUrl = `${PROGRAMS}${programId}/`
   const { data: program } = useApi(programUrl)
@@ -167,7 +196,7 @@ function ProgramSkills({ programId }) {
   const frameworkId = data?.results[0]?.id ?? retired?.results[0]?.id
 
   if (!program || !data || retiredUrl && !retired) return <DataSection urls={[programUrl, url, retiredUrl].filter(Boolean)} layout="panel" label="Loading program skills" />
-  if (frameworkId) return <Categories key={frameworkId} programId={programId} frameworkId={frameworkId} onRevised={() => invalidateCache(base)} />
+  if (frameworkId) return <Categories key={frameworkId} programId={programId} frameworkId={frameworkId} sharedUrl={sharedUrl} onRevised={() => invalidateCache(base)} />
 
   return <section className="space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-4">
@@ -176,7 +205,7 @@ function ProgramSkills({ programId }) {
       <button type="button" className={primary} disabled={!program.is_active} onClick={() => setStarter(true)}>Add Skill</button>
     </header>
     <SkillLibraryTable />
-    {starter && <Editor kind="category" programId={programId} starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
+    {starter && <Editor kind="category" programId={programId} sharedUrl={sharedUrl} starterName={`${program.code} skills`} url={base} onClose={() => setStarter(false)} onSaved={() => {
       setStarter(false); invalidateCache(base); showToast('Skill added.')
     }} />}
   </section>
@@ -189,7 +218,7 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
   const admin = role === 'admin'
   const root = `/${role}/competencies`
   const { data, request } = useApi(ORGANIZATION_OPTIONS)
-  const instituteId = admin ? params.get('institute') : null
+  const instituteId = params.get('institute')
   const programId = params.get('program')
   const heading = useRef(null)
   const scopeKey = `${instituteId}:${programId}`
@@ -205,13 +234,18 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
   const libraryPath = id => `${institutePath}${institute ? '&' : '?'}program=${id}`
   const programs = (data?.programs || []).filter(row => !instituteId || row.institute_id === institute?.id)
   const program = programs.find(row => String(row.id) === programId)
-  const sharedInstitute = data?.institutes.find(row => row.id === data.shared_skill_institute_id)
-  const showShared = sharedInstitute && (!admin || institute?.id === sharedInstitute.id)
+  const legacyInstitute = data?.institutes.find(row => row.id === data.shared_skill_institute_id)
+  const sharedInstitutes = (data?.institutes || []).filter(row => admin ? row.id === institute?.id
+    : row.is_active && programs.some(program => program.is_active && program.institute_id === row.id))
+  const sharedInstitute = instituteId ? sharedInstitutes.find(row => row.id === institute?.id) : !admin ? legacyInstitute : null
+  const sharedTitle = row => `Shared ${row.code} skills`
+  const sharedPath = row => !admin && row.id === legacyInstitute?.id ? `${root}?program=shared` : `${root}?institute=${row.id}&program=shared`
+  const copySource = program && (program.institute_id === legacyInstitute?.id ? '/api/management/shared-ic-skills/' : instituteSkillsUrl(program.institute_id))
   const choosingInstitute = admin && !instituteId && !programId
   const items = choosingInstitute ? (data?.institutes || []).map(row => ({
     ...row, institute: true, to: `${root}?institute=${row.id}`, subtitle: 'Browse this institute’s skill libraries',
   })) : [
-    ...(showShared ? [{ name: 'Shared IC skills', shared: true, to: libraryPath('shared'), subtitle: sharedInstitute.name }] : []),
+    ...sharedInstitutes.map(row => ({ name: sharedTitle(row), shared: true, to: sharedPath(row), subtitle: row.name, is_active: row.is_active })),
     ...programs.map(row => ({ ...row, to: libraryPath(row.id), subtitle: row.institute_name })),
   ]
 
@@ -233,15 +267,16 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
     </header>
     {(instituteId || programId) && <OrganizationBreadcrumbs label="Taxonomy path" items={[
       { label: admin ? 'All institutes' : 'All skill libraries', to: root },
-      ...(institute ? [{ label: institute.name, ...(programId ? { to: institutePath } : {}) }] : []),
-      ...(programId === 'shared' && showShared ? [{ label: 'Shared IC skills' }]
+      ...(admin && institute ? [{ label: institute.name, ...(programId ? { to: institutePath } : {}) }] : []),
+      ...(programId === 'shared' && sharedInstitute ? [{ label: sharedTitle(sharedInstitute) }]
         : program ? [{ label: `${program.code} · ${program.name}` }] : []),
     ]} />}
     <DataSection url={ORGANIZATION_OPTIONS} layout="cards">
       {instituteId && !institute ? <p>This institute is unavailable.</p>
-        : programId ? (programId === 'shared' && showShared
-          ? <Suspense fallback={<p role="status">Loading shared IC skills…</p>}><AdminSkills embedded readOnly={!admin} /></Suspense>
-          : program ? <ProgramSkills key={program.id} programId={program.id} /> : <p>This skill library is unavailable.</p>)
+        : programId ? (programId === 'shared' && sharedInstitute
+          ? <Suspense fallback={<p role="status">Loading shared skills…</p>}><AdminSkills key={sharedInstitute.id} embedded
+            readOnly={!admin || !sharedInstitute.is_active} institute={sharedInstitute.id === legacyInstitute?.id ? undefined : sharedInstitute} /></Suspense>
+          : program ? <ProgramSkills key={program.id} programId={program.id} sharedUrl={copySource} /> : <p>This skill library is unavailable.</p>)
         : <>
           <TaxonomyLibraryCards key={instituteId || role} items={items} label={choosingInstitute ? 'Institutes' : 'Skill libraries'} onEdit={admin ? setEditor : null} />
         </>}

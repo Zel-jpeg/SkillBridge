@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from .change_events import notify_changes
 from .instructor_assignments import program_payload
 from .management_access import record_action
-from .models import (Assessment, Batch, CombinedCategoryScore, CompetencyFramework, Institute, Program,
+from .models import (Assessment, Batch, CombinedCategoryScore, CompetencyFramework, Institute, InstituteSkill, Program,
                      PositionRequirement, Question, SkillCategory, SkillScore, ManagementAction)
 from .organization import organization_image_url, page_payload
 from .program_scope import assigned_program_ids
@@ -49,6 +49,49 @@ def shared_ic_skills(request):
         raise PermissionDenied('Access to shared IC skills requires an active IC program assignment.')
     return Response(list(SkillCategory.objects.filter(framework__isnull=True).order_by('name', 'id')
                          .values('id', 'name', 'description', 'tags')))
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@notify_changes('institute_skill')
+def institute_skills(request, institute_id, skill_id=None):
+    staff(request.user)
+    if request.method == 'GET':
+        institutes = Institute.objects.all()
+        if request.user.role != 'admin':
+            institutes = institutes.filter(is_active=True, programs__is_active=True,
+                programs__in=assigned_program_ids(request.user)).distinct()
+        institute = get_object_or_404(institutes, pk=institute_id)
+        rows = (SkillCategory.objects.filter(framework__isnull=True) if institute.code.casefold() == 'ic'
+                else institute.shared_skills.all()).order_by('name', 'id')
+        if skill_id is None:
+            return Response(list(rows.values('id', 'name', 'description', 'tags')))
+        return Response(category_content(get_object_or_404(rows, pk=skill_id)))
+    if request.user.role != 'admin':
+        raise PermissionDenied('Only administrators manage institute skills.')
+    if (request.method == 'POST') != (skill_id is None):
+        return Response({'error': 'Use the skill collection to add and its detail to change a skill.'}, status=405)
+    with transaction.atomic():
+        institute = get_object_or_404(Institute.objects.select_for_update(), pk=institute_id)
+        if not institute.is_active:
+            raise ValidationError({'error': 'Restore the institute before changing its shared skills.'})
+        if institute.code.casefold() == 'ic':
+            return Response({'error': 'Use the existing IC shared skill catalog to manage these definitions.'}, status=405)
+        skills = institute.shared_skills
+        skill = get_object_or_404(skills, pk=skill_id) if skill_id is not None else None
+        if request.method == 'DELETE':
+            skill.delete()
+            return Response(status=204)
+        fields(request.data, ['id', 'name', 'description', 'tags'], ['name', 'description'])
+        values = definition(request.data)
+        if skills.exclude(pk=skill_id).filter(name__iexact=values['name']).exists():
+            raise DefinitionChanged({'error': 'This institute already has a shared skill with that name.'})
+        if skill is None:
+            return Response(category_content(skills.create(**values)), status=201)
+        for field, value in values.items():
+            setattr(skill, field, value)
+        skill.save(update_fields=list(values))
+        return Response(category_content(skill))
 
 
 def context(user, program_id, *, lock=False):

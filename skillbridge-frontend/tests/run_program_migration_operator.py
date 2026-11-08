@@ -23,7 +23,8 @@ PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0037_assessment_framework': '0036_program_competency_frameworks',
             '0038_position_program_eligibility': '0037_assessment_framework',
             '0039_coordinator_catalog_authority': '0038_position_program_eligibility',
-            '0042_position_descriptions': '0041_organization_banner_colors'}[MIGRATION]
+            '0042_position_descriptions': '0041_organization_banner_colors',
+            '0043_institute_shared_skills': '0042_position_descriptions'}[MIGRATION]
 if RECONCILE:
     PREVIOUS = '0031_recommendation_assessment_order'
 with socket.socket() as sock:
@@ -151,8 +152,10 @@ Position.objects.create(company_id=company.id, title='Frontend Developer', eligi
             'api_position': ['created_by_id', 'management_program_id'],
         },
         '0042_position_descriptions': {'api_position': ['description']},
+        '0043_institute_shared_skills': {},
     }[MIGRATION]
-    expected_tables = {'0036': ['api_competencyframework'], '0038': ['api_position_eligible_programs']}
+    expected_tables = {'0036': ['api_competencyframework'], '0038': ['api_position_eligible_programs'],
+                       '0043': ['api_instituteskill']}
     assert receipt['new_empty_tables'] == expected_tables.get(MIGRATION[:4], [])
     if MIGRATION == '0042_position_descriptions':
         run([PYTHON, 'manage.py', 'shell', '-c', """

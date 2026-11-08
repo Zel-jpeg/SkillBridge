@@ -28,6 +28,7 @@ def category_created(created):
 
 TOPICS = {
     'competency': ['competencies'],
+    'institute_skill': ['institute_skills'],
     'assignment': ['assignments'],
     'organization': ['organization'],
     'student': ['students', 'results', 'placements', 'management'],
@@ -116,7 +117,7 @@ def audience(kind, request, kwargs, response=None):
         if program_id:
             people.update(InstructorAssignment.objects.filter(program_id=program_id, is_active=True,
                 instructor__is_active=True, instructor__is_approved=True).values_list('instructor_id', flat=True))
-    if kind == 'organization':
+    if kind in ('organization', 'institute_skill'):
         institute_id = kwargs.get('institute_id') or kwargs.get('object_id')
         if institute_id:
             people.update(InstructorAssignment.objects.filter(program__institute_id=institute_id, is_active=True)

@@ -136,7 +136,7 @@ export function validateApiResponse(response) {
   } else if (method === 'get' && path === '/api/admin/users/') {
     valid = object(data) && ['students', 'instructors', 'pending_instructors'].every(field => Array.isArray(data[field])) &&
       pagination(data, ['students', 'instructors', 'pending_instructors', 'archived_students', 'archived_instructors'].flatMap(key => data[key] ?? []))
-  } else if (method === 'get' && path === '/api/admin/skills/') {
+  } else if (method === 'get' && (path === '/api/admin/skills/' || /^\/api\/management\/institutes\/\d+\/skills\/$/.test(path))) {
     valid = Array.isArray(data) && data.every(row => object(row) && id(row.id) && typeof row.name === 'string' &&
       Array.isArray(row.tags) && row.tags.every(tag => typeof tag === 'string'))
   } else if (method === 'get' && path === '/api/placements/suggestions/') {

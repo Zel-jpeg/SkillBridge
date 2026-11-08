@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from django.db.models.deletion import ProtectedError
+from django.db import connection
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
@@ -46,6 +47,38 @@ class CompetencyCatalogTests(APITestCase):
 
     def change(self, **changes):
         return self.client.patch(self.base, {'expected_digest': self.detail()['digest'], **changes}, format='json')
+
+    def test_shared_institute_catalog_is_scoped_and_independent_of_program_copies(self):
+        url = reverse('institute_skills', args=[self.program.institute_id])
+        foreign_url = reverse('institute_skills', args=[self.other_program.institute_id])
+        definition = {'name': 'Guest records', 'description': 'Review the service records.', 'tags': ['Intake']}
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(url, definition, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(self.client.post(url, {**definition, 'name': 'guest records'}, format='json').status_code, 409)
+        self.assertEqual(self.client.post(foreign_url, definition, format='json').status_code, 201)
+        detail = url + f'{created.data["id"]}/'
+        foreign_detail = foreign_url + f'{created.data["id"]}/'
+        self.assertEqual(self.client.put(foreign_detail, definition, format='json').status_code, 404)
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(url).data, [created.data])
+        self.assertEqual(self.client.get(foreign_url).status_code, 404)
+        self.assertEqual(self.client.delete(detail).status_code, 403)
+        copied = self.add(**{**definition, 'description': 'Program-specific interpretation.'})
+        self.assertEqual(copied.status_code, 201, copied.data)
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+        self.assertEqual(SkillCategory.objects.get(pk=copied.data['id']).description, 'Program-specific interpretation.')
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(self.owner)
+        self.grant.is_active = False
+        self.grant.save(update_fields=['is_active'])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        if connection.vendor == 'postgresql':
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT relrowsecurity FROM pg_class WHERE oid = 'api_instituteskill'::regclass")
+                self.assertTrue(cursor.fetchone()[0])
 
     def test_same_program_coordinators_share_unused_skill_editing(self):
         category = self.add().data

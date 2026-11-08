@@ -4,6 +4,7 @@ import SkillLibraryTable from '../../components/SkillLibraryTable'
 import { organizationPrimary as primary } from '../../components/admin/organizationUi'
 import { useAdminSkills } from '../../hooks/admin/useAdminSkills'
 import SkillModal from '../../components/admin/SharedSkillEditor'
+import { instituteSkillsUrl } from '../../utils/organizationScope'
 
 const PlusIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
 const PencilIcon = ({ size = 14 }) => (
@@ -18,8 +19,8 @@ const TrashIcon = ({ size = 14 }) => (
     <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
   </svg>
 )
-export default function AdminSkills({ embedded = false, readOnly = false }) {
-  const url = readOnly ? '/api/management/shared-ic-skills/' : '/api/admin/skills/'
+export default function AdminSkills({ embedded = false, readOnly = false, institute }) {
+  const url = institute ? instituteSkillsUrl(institute.id) : readOnly ? '/api/management/shared-ic-skills/' : '/api/admin/skills/'
   const {
     skills, loading, error, search, setSearch,
     showModal, setShowModal, selectedSkill, openAdd, openEdit,
@@ -55,8 +56,8 @@ export default function AdminSkills({ embedded = false, readOnly = false }) {
         {!embedded && <Link to="/admin/competencies" className="inline-flex min-h-10 items-center rounded-lg border border-gray-200 px-3 text-xs font-semibold text-green-800 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:border-gray-700 dark:text-green-300 dark:hover:bg-green-950">Back to program skill taxonomy</Link>}
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Heading className="text-lg font-bold text-gray-900 dark:text-white">IC shared skill taxonomy</Heading>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{readOnly ? 'View the shared skill definitions used by IC assessments and position requirements.' : 'Manage the shared Institute of Computing skill categories and tags used by IC assessments and position requirements.'}</p>
+            <Heading className="text-lg font-bold text-gray-900 dark:text-white">{institute ? `${institute.code} shared skill taxonomy` : 'IC shared skill taxonomy'}</Heading>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{institute ? 'Programs in this institute can reuse these definitions as editable copies.' : 'Shared skills used by IC assessments and position requirements. IC programs can reuse them as editable copies.'}</p>
           </div>
           {!readOnly && <button type="button" onClick={openAdd} className={primary}>
             <PlusIcon /> Add Skill

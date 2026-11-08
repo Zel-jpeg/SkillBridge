@@ -40,6 +40,7 @@ SUPPORTED = {
     '0040_organization_card_images': set(),
     '0041_organization_banner_colors': set(),
     '0042_position_descriptions': set(),
+    '0043_institute_shared_skills': {'api_instituteskill'},
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)

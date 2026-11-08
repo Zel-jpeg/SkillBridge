@@ -34,18 +34,18 @@ export function useAdminSkills(url = SKILLS_URL) {
     try {
       if (skillData.id) {
         // Edit
-        const res = await api.put(`/api/admin/skills/${skillData.id}/`, skillData)
-        updateCachedData(SKILLS_URL, skills.map(s => s.id === skillData.id ? res.data : s))
+        const res = await api.put(`${url}${skillData.id}/`, skillData)
+        updateCachedData(url, skills.map(s => s.id === skillData.id ? res.data : s))
         showToast('Skill updated successfully.')
       } else {
         // Add
-        const res = await api.post('/api/admin/skills/', skillData)
-        updateCachedData(SKILLS_URL, [...skills, res.data].sort((a, b) => a.name.localeCompare(b.name)))
+        const res = await api.post(url, skillData)
+        updateCachedData(url, [...skills, res.data].sort((a, b) => a.name.localeCompare(b.name)))
         showToast('Skill added successfully.')
       }
       setShowModal(false)
       setSelectedSkill(null)
-      fetchWithDedup(SKILLS_URL).catch(() => {})
+      fetchWithDedup(url).catch(() => {})
       return { ok: true }
     } catch (err) {
       const message = requestErrorMessage(err, { mutation: true })
@@ -60,9 +60,9 @@ export function useAdminSkills(url = SKILLS_URL) {
   const handleDelete = async () => {
     if (!deleteConfirm) return
     try {
-      await api.delete(`/api/admin/skills/${deleteConfirm.id}/`)
-      updateCachedData(SKILLS_URL, skills.filter(s => s.id !== deleteConfirm.id))
-      fetchWithDedup(SKILLS_URL).catch(() => {})
+      await api.delete(`${url}${deleteConfirm.id}/`)
+      updateCachedData(url, skills.filter(s => s.id !== deleteConfirm.id))
+      fetchWithDedup(url).catch(() => {})
       setDeleteConfirm(null)
       showToast('Skill deleted successfully.')
     } catch (error) {

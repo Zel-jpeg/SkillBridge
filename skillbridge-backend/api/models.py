@@ -187,6 +187,17 @@ class CompetencyFramework(models.Model):
             models.CheckConstraint(condition=models.Q(version__gte=1), name='framework_version_positive')]
 
 
+class InstituteSkill(models.Model):
+    institute = models.ForeignKey(Institute, on_delete=models.PROTECT, related_name='shared_skills')
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    tags = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(models.functions.Lower('name'), 'institute',
+            name='unique_shared_skill_name_institute')]
+
+
 class SkillCategory(models.Model):
     name        = models.CharField(max_length=100)
     description = models.TextField(blank=True)

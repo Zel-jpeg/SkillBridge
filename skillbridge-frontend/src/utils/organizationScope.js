@@ -1,4 +1,5 @@
 export const ORGANIZATION_OPTIONS = '/api/management/organization-options/'
+export const instituteSkillsUrl = id => `/api/management/institutes/${id}/skills/`
 export const ALL_ORGANIZATIONS = { institute: '', program: '' }
 
 export function organizationSearch(scope) {
