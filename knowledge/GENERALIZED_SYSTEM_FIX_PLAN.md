@@ -65,6 +65,43 @@ run is `organization-postgres-_765y9jg`, the integrated browser rerun is
 `organization-browser-s25dkxiw`, and the shared visibility run is
 `organization-browser-v0bbt5sx`.
 
+## Release simulation after the UI review
+
+The release simulation creates two synthetic institutes, three programs,
+three coordinator accounts and one student per program through the application
+API. The three attempts are open before any submission. Each learner can open
+and submit only their own assessment. Each coordinator sees only their own
+roster. All three use separate saved skills, partner records and positions.
+
+| Program | Correct answers | Final result | First suggested opening |
+| --- | ---: | ---: | --- |
+| Tourism Management | 2 of 3 | 66.67% | Tourism Management Foundation Intern |
+| Entrepreneurship | 1 of 3 | 33.33% | Entrepreneurship Foundation Intern |
+| Field Documentation | 3 of 3 | 100% | Field Documentation Advanced Intern |
+
+The assessment mixes multiple choice, true/false and identification. Ranking
+checks the saved program and category IDs, the exact eligible positions and
+their order. Each successful submission sends invalidations to the learner,
+their coordinator and the administrator after the transaction. The backend
+and browser Realtime checks cover private routing and recovery. The isolated
+application also delivered a synthetic submission through hosted Broadcast
+and completed a second submission through SSE after disconnecting.
+
+The UI checks cover responsive keyboard and focus behavior. Read markers
+and dismissed email confirmations survive sign-out and session expiry in the
+same browser. Closing the enrollment email dialog clears its reopen flag and
+preserves the batch scope.
+
+The separate browser enrollment journey passed for both admin and coordinator
+entry points. Each learner completed two assessments and earned 5 of 6 points
+(83.33%). The journey verified recovery from both a lost success response and
+a request that never saved, with synthetic email delivery held or queued.
+
+Use `api.test_release_workflow` for the PostgreSQL simulation and
+`--multi-institute-acceptance` for the production-bundle browser journey.
+These tests use synthetic data. Tourism's configured catalog is still available
+for the coordinator to set up for their evaluation.
+
 ## Remaining hosted release gates
 
 - [ ] Settle the separate shell, modal and Realtime work and select one release revision. Rebuild and test that exact revision.

@@ -31,14 +31,15 @@ function ticket(key, channel, expiresIn = 60) {
 
 async function withChannel(channelTopic, token, onMessage, verify) {
   const client = new RealtimeClient(`${origin.replace('https:', 'wss:')}/realtime/v1`, {
-    params: { apikey: publicKey }, timeout: 4000, reconnectAfterMs: () => 60_000,
+    params: { apikey: publicKey }, timeout: 12000, reconnectAfterMs: () => 60_000,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
   })
   const channel = client.channel(channelTopic, { config: { private: true } })
   try {
     if (token) await client.setAuth(token)
     if (onMessage) channel.on('broadcast', { event }, ({ payload }) => onMessage(payload))
     const status = await new Promise(resolve => {
-      const deadline = setTimeout(() => resolve('TIMEOUT'), 5000)
+      const deadline = setTimeout(() => resolve('TIMEOUT'), 14000)
       channel.subscribe((state, error) => {
         if (!['SUBSCRIBED', 'CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(state)) return
         clearTimeout(deadline)
@@ -53,7 +54,7 @@ async function withChannel(channelTopic, token, onMessage, verify) {
   }
 }
 
-async function request(path, { apiKey = publicKey, token, body } = {}) {
+async function request(path, { apiKey = publicKey, token, body, permissionDetails = false } = {}) {
   const response = await fetch(`${origin}${path}`, {
     method: body ? 'POST' : 'GET',
     headers: { apikey: apiKey, ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -61,6 +62,15 @@ async function request(path, { apiKey = publicKey, token, body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
     redirect: 'error', signal: AbortSignal.timeout(6000),
   })
+  if (permissionDetails) {
+    const error = await response.json().catch(() => ({}))
+    return { status: response.status,
+      permissionDenied: !response.ok && ([401, 403].includes(response.status) ||
+        String(error.statusCode) === '403' || ['42501', 'AccessDenied'].includes(error.code) ||
+        /permission denied for (schema|table|relation|function)|violates row-level security policy/i.test(error.message || '')),
+      bucketMissing: /bucket not found/i.test(error.message || ''),
+    }
+  }
   await response.body?.cancel()
   return response.status
 }
@@ -97,9 +107,9 @@ async function run() {
   const tableStatus = await request('/rest/v1/api_assessment?select=id&limit=0', { token: ticket(key, own) })
   check('application Data API denies the receiver', [401, 403].includes(tableStatus), tableStatus)
   const storageStatus = await request('/storage/v1/object/list/retake-evidence', {
-    token: ticket(key, own), body: { prefix: `synthetic-probe-${marker}`, limit: 1 },
+    token: ticket(key, own), body: { prefix: `synthetic-probe-${marker}`, limit: 1 }, permissionDetails: true,
   })
-  check('private Storage denies the receiver', [401, 403].includes(storageStatus), storageStatus)
+  check('private Storage denies the receiver', storageStatus.permissionDenied && !storageStatus.bucketMissing, storageStatus)
 }
 
 try {

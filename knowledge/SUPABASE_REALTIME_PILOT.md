@@ -8,6 +8,11 @@ for authentication, authorization, grading, result visibility and placement writ
 
 ## Current acceptance state
 
+- The approved receive-only setup was applied to the existing SkillBridge
+  Supabase project on 8 November. The configured signer matched its advertised
+  public key. All 11 hosted checks passed, followed by a local application
+  journey using real private Broadcast and local SSE fallback. Only the isolated
+  test processes enabled the application pilot. See the [real-channel results](#real-channel-local-application-results).
 - The SkillBridge project was inspected through read-only catalog queries. All
   34 `api_` tables have RLS enabled; none is in the Realtime publication. There
   were no `realtime.messages` policies and no `sb_realtime_receiver` role. No
@@ -26,10 +31,9 @@ for authentication, authorization, grading, result visibility and placement writ
 - The connectivity check changed no student/assessment/placement records,
   application-table publications, policies, roles or signing keys. Privileged
   credentials stayed inside local server processes.
-- The application pilot remains disabled. A dedicated trusted signing private
-  key and the receiver-role policy still need hosted verification. The current
-  public JWKS exposes an ES256 key; its public entry is not possession of a
-  private key suitable for Django token issuance.
+- Before provisioning, the dedicated signing key and receiver-role policy still
+  needed hosted verification. The project advertised an ES256 public key, which
+  by itself cannot issue Django's dedicated Realtime tokens.
 - On 8 November, the configured Realtime publish key returned HTTP 202 and
   delivered one dummy message to a private channel in 731 ms. The public-key
   client was denied. The locally prepared ES256 signer and topic secret passed
@@ -169,20 +173,51 @@ still require the pilot checks below.
 
 ## Hosted acceptance and rollback
 
-The next hosted step is a bounded change to the existing SkillBridge Supabase
-project. Review the prepared role SQL and its rollback, import the dedicated
-signer through **Authentication → JWT Signing Keys**, and activate it with the
-previous signing keys retained. Activating it changes the project's default
-Auth signing key. Treat import and activation as an explicit owner decision.
-Keep all application switches off during this step. A match in public JWKS is
-useful for identifying the new key, but the signed private-channel join proves
-whether Realtime accepts it. [Supabase signing-key lifecycle](https://supabase.com/docs/guides/auth/signing-keys#lifetime-of-a-signing-key)
+### Rollout checkpoint
 
-After approval, apply only the pilot receiver setup. Verify a signed own-topic
-join and a single synthetic message before connecting any SkillBridge session.
-If the role or trust checks fail, remove the pilot role and policy with the
-teardown script and restore the former current signer if the rotation caused
-the issue. Keep existing keys available throughout the verification.
+The owner approved the signing-key activation and receive-only pilot policy.
+Public checks on the canonical deployment passed: frontend HTTP 200, API health
+HTTP 200 with the canonical frontend origin allowed, and anonymous account API
+HTTP 401. Public JWKS returned one ES256 key. The read-only Supabase preflight
+found two Storage buckets, no Supabase Auth users, recent sessions, Edge
+Functions, pilot policy, receiver role, or published application tables. The
+Realtime table still has RLS. The owner confirmed a fresh SkillBridge Google
+sign-in and a Supabase Storage image loading in a partner profile before
+rotation. This baseline covers Google login and an image read. No production
+changes were applied in this checkpoint.
+
+After the authenticated baseline, the owner imports the prepared private JWK
+directly in the project dashboard, retains the current key and activates the
+imported standby key. Repeat the baseline with the existing session and a fresh
+session before provisioning the receiver policy. If the baseline regresses,
+restore the prior current key and leave the pilot disabled.
+
+After rotation, the owner confirmed instructor and student sign-ins and the same
+partner image loading from Storage in the local app. The owner subsequently
+confirmed sign-in and the partner image in the live deployment too. The owner
+reported slower data loading on the first local dashboard and after navigation.
+Three local database health
+requests took 0.93–1.16 s. Three anonymous account requests returned the expected
+401 in 0.004–0.022 s. The default local frontend port was unavailable for timing.
+The health check measures database access end to end without isolating connection
+setup or query time. The affected authenticated requests still need timing.
+
+Separately, public hosted API health took 1.31–1.72 s across three requests.
+Railway returned no successful samples for the authenticated routes queried. Its
+backend revision `181b4d6` predates the optimization at `323f587`.
+
+The selected Supabase project already records migrations through
+`0041_organization_banner_colors`. The institute, program, instructor assignment
+and competency framework tables have RLS enabled and no access policies. Recheck
+the exact target and migration plan in the release rehearsal. The Realtime
+receiver role was still absent at this check.
+
+The owner imported and activated the dedicated signer in the dashboard. The
+signed private-channel join subsequently passed. The approved receiver policy
+was applied as `skillbridge_receive_only_realtime_pilot` after repeating the
+privilege and health checks. Use the reviewed teardown to remove the marked
+pilot policy and role if the pilot is retired. Retaining earlier signing keys
+preserves the separate signing rollback. [Supabase signing-key lifecycle](https://supabase.com/docs/guides/auth/signing-keys#lifetime-of-a-signing-key)
 
 The [hosted probe](../skillbridge-frontend/tests/realtime_hosted_probe.mjs) reads
 only the five `SUPABASE_REALTIME_*` process variables for URL, publishable key,
@@ -192,8 +227,12 @@ with `node skillbridge-frontend/tests/realtime_hosted_probe.mjs`. It uses random
 topics, sends one dummy event on the normal success path and reports only check
 names and statuses. The Data API and Storage checks request no application
 records. A timeout or unrecognized denial fails the probe. All eleven assertions
-were exercised with a mock transport. Hosted execution awaits activation and the
-receiver-role setup.
+were exercised with a mock transport and subsequently passed against the real
+project. The join probe allows 12 seconds for an explicit server response.
+Timeouts fail the check. Storage permission errors wrapped in HTTP 400 must
+contain a recognized permission-denied indication. An unrelated 400, missing
+bucket or successful 200 fails the denial check. Five local mock cases verify
+those classifications.
 
 - Verify the exact dedicated key is trusted and the limited role can join only
   its own private topic. Test foreign/missing/expired/forged claims, anonymous
@@ -218,6 +257,154 @@ receiver-role setup.
 Keep destructive failure and heavy load tests in disposable/local or isolated
 staging environments. A same-project connectivity test shares current resources
 and does not replace these acceptance checks.
+
+## Login-to-assessment browser workflow
+
+Run this on the release build after the private-channel probe passes. Use a fresh
+synthetic cohort backed by an isolated application database. Adding programs and
+assessment catalog records to the live application can affect shared views and
+recommendation state. Bootstrap only the test administrator. Record the build,
+each outcome, the transport observed, and any external services substituted.
+
+- [ ] Sign in through the admin login page. Add a new instructor, add a program,
+  and assign that instructor to the program. Reload to confirm the assignment.
+- [ ] Sign in as the new instructor/OJT coordinator. Create a batch and its
+  competency category, add and publish an assessment, then enroll a test student.
+- [ ] Sign in as the enrolled student. Complete profile setup, open the published
+  assessment, answer, review and submit. Confirm the expected score and completion
+  after reload. Verify a repeat submit leaves one saved attempt.
+- [ ] Keep the assigned instructor's roster open in another browser session.
+  Verify the same completion appears through an authorized Django request. Confirm
+  student access to staff pages and unrelated roster data is denied.
+- [ ] Compare the submission and roster checks on ordinary SSE and on the
+  allowlisted WebSocket. Interrupt the socket during the pilot and verify the
+  roster catches up through fallback or on reconnect without a duplicate attempt.
+
+The [local API rehearsal](../skillbridge-backend/api/test_release_workflow.py)
+exercises this record chain with both pilot switches off and a simulated Google
+identity provider response. Browser acceptance and hosted transport checks are
+tracked separately above.
+
+### Real-channel local application results
+
+The owner authorized loading only `SUPABASE_REALTIME_*` settings from the backend
+environment file for this test. Credentials remained in local process memory.
+The frontend process received public build settings only. The probe matched
+the configured private signer to the project's public key before using it.
+
+The hosted probe passed all 11 assertions. Own-topic join and dummy delivery
+succeeded. Publishing with the receiver token returned 403. Foreign topics,
+expired tokens and public-key-only clients received explicit denials. The
+receiver was denied application-table and private Storage access. The first
+two foreign-topic probes timed out with the original four-second timeout. With
+a 12-second bounded join, the server explicitly denied the join. This changes
+the diagnostic probe's timeout. The application adapter keeps its existing
+eight-second join timeout and fallback.
+
+The approved role is NOLOGIN, NOINHERIT and has no application-table or Storage
+privileges. A post-setup health advisory was empty. The security advisor returned
+one informational RLS-without-policies finding. Existing Django-only tables are
+protected by RLS without direct client policies. [Advisor guidance](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+
+The local journey used a disposable SQLite database with two allowlisted
+synthetic accounts and an independent random topic secret. The browser used the
+real application transport, real Django token exchange and post-commit publisher,
+and the real hosted private channel. Submission used the normal Django API.
+No application records were written to the hosted database by this fixture.
+
+- The instructor joined the private channel while its SSE stream was inactive.
+- A committed student submission delivered through hosted Broadcast, triggered
+  a mounted roster GET and showed one required assessment complete.
+- Closing only the Supabase socket selected the existing local SSE transport.
+- A second submission refreshed the roster through SSE and retained the exact
+  final 6/6 combined score. The passing run had zero browser page errors.
+
+The passing samples measured 1,814 ms from the first submit request to the
+observed roster read and 1,603 ms for the second submission using SSE fallback.
+These are single samples from different assessments, including the write request
+and browser reconciliation. They do not establish p95 commit-to-visible latency,
+matched-load superiority, idle-query reduction or faster initial page loading.
+
+Evidence is in `work/realtime-hosted-acceptance.json` and
+`work/real-realtime-journey-6b8fmjug/results.json`. Earlier failed harness runs
+are retained. Their observer initially mistook Vite frames and OPTIONS responses
+for application traffic and closed Vite's development socket during fault
+injection. The passing harness filters to the actual Supabase socket and roster
+GETs. The test servers were stopped after the run. The approved hosted role and
+policy remain provisioned for the pilot.
+
+### Local rehearsal results after resuming
+
+The release UI review repeated the 11 hosted probe checks and the 11 local
+browser transport checks. A separate local synthetic assessment submission
+refreshed the coordinator's roster through real hosted Broadcast. After
+disconnect, the next submission used SSE and the final competency was 6 of 6.
+The [multi-program release simulation](GENERALIZED_SYSTEM_FIX_PLAN.md#release-simulation-after-the-ui-review)
+also verifies the exact post-commit recipient set for three program cohorts.
+
+Resumed on 8 November 2026 at `f8e4658` with the preserved working-tree changes.
+The full disposable PostgreSQL run passed 816 tests in 504.318 seconds and stopped
+its cluster. Its evidence is in `work/branch-review-postgres-ywtcu00f/tests.txt`.
+This includes the API chain from administrator login through instructor/program
+creation, assignment, assessment publication, student login and graded submission
+to instructor-visible completion, plus the receiver-policy tests.
+
+The enrollment browser journey now passes all six groups for instructor and
+admin enrollment. Students completed profile setup and two assessments with
+MCQ, true/false and identification answers. Both journeys saved the expected
+5/6 combined result, enforced required completion, recovered from interrupted
+submission, and verified completion through both staff roster APIs. The final
+browser run recorded zero page errors. Evidence is in
+`skillbridge-frontend/tests/artifacts/enrollment-assessment-journey/checks.json`.
+
+The fixture now selects BSIT before enrollment preview, follows institute/program
+navigation for the shared IC cohort, and checks the saved student-facing title
+from the canonical result response. These updates address outdated fixture
+assumptions found during this rehearsal. The production application code was
+unchanged during this resumed pass.
+
+The prior 322 frontend tests, production build, 12 browser sign-in cases, eight
+multi-institute groups, four program-dialog groups and 11 synthetic WebSocket
+groups passed in this rehearsal. Google identity, map responses and the
+WebSocket server were substituted where documented by each fixture. The linked
+API chain exercised instructor and program creation. Separate UI suites covered
+program forms and assignments. The whole workflow was not performed as one
+browser-only scenario.
+Hosted private-channel authorization and matched load timing remain open.
+
+### Earlier local rehearsal pause checkpoint
+
+Paused on 8 November 2026 on local `main` at `f8e4658`, 75 commits ahead of
+`origin/main`, with the existing working-tree edits preserved. The owner
+authorized local verification only and will review the system before publishing.
+The rehearsal used synthetic data and disabled normal dotenv loading.
+
+- Passed 322 frontend Node tests and a local production build with the pilot off.
+- Passed eight multi-institute browser checks and four program-management dialog
+  checks against isolated APIs. This covered the existing mixed IC cohort,
+  new-program assessment completion, roster and grading-key scope, assignment,
+  and an institute-scoped report. Evidence is in
+  `work/organization-browser-754pc7f0/browser.txt` and
+  `work/organization-browser-dgnbqlq0/browser.txt`.
+- Passed 12 browser sign-in contract checks and 11 browser Realtime checks
+  across the three roles. The Realtime suite used the actual SDK against an
+  intercepted synthetic server and verified authorized refresh, reconnect and
+  SSE fallback. It did not contact the hosted private channel.
+- The enrollment-to-assessment browser run stopped at the instructor enrollment
+  review. The fixture left Course empty in its unscoped legacy batch before
+  previewing and waited for a button labelled `Confirm 1 enrollments`. The
+  preview returned HTTP 200. The fixture correction has not been applied.
+- The exact login-to-assessment API test passed on disposable PostgreSQL. The
+  full suite was already running at pause. Its runner stops the cluster on exit.
+  Check `work/branch-review-postgres-ywtcu00f/tests.txt` for the final result
+  before rerunning any completed checks.
+
+On resume, inspect the PostgreSQL result and Git status. Select `BSIT` in the
+manual enrollment fixture before `Preview student` in
+`skillbridge-frontend/tests/enrollment_assessment_journey_playwright.py`, then
+rerun only that browser journey with the local harness. Check the confirmation,
+student profile setup, assessment result, and instructor roster before closing
+the local rehearsal. Hosted Realtime authorization and timing remain separate.
 
 Source: [backend exchange/publisher](../skillbridge-backend/api/realtime.py),
 [post-commit integration](../skillbridge-backend/api/change_events.py),

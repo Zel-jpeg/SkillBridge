@@ -81,6 +81,9 @@ with sync_playwright() as p:
             staff_page.set_default_timeout(15000)
             staff_page.set_default_navigation_timeout(45000)
             staff_page.goto(BASE + ('/instructor/students' if role == 'instructor' else f'/admin/batches?batch_id={AUTH["batch"]}'), wait_until='networkidle')
+            if role == 'admin':
+                staff_page.get_by_role('region', name='Institutes', exact=True).get_by_role('link', name='Institute of Computing', exact=True).click()
+                staff_page.get_by_role('region', name='Programs', exact=True).get_by_role('link', name='All IC programs', exact=True).click()
             staff_page.get_by_role('button', name='Enroll students', exact=True).click()
             enrollment = staff_page.get_by_role('dialog', name='Enroll students', exact=True)
             enrollment.get_by_role('button', name='Manual entry', exact=True).click()
@@ -88,6 +91,7 @@ with sync_playwright() as p:
             enrollment.get_by_placeholder('e.g. villanueva.azel@dnsc.edu.ph').fill(email)
             enrollment.get_by_placeholder('e.g. Azel Villanueva').fill(name)
             enrollment.get_by_placeholder('e.g. 2026-01982').fill('2098-00401' if role == 'instructor' else '2098-00402')
+            enrollment.get_by_role('button', name='BSIT', exact=True).click()
             enrollment.get_by_role('button', name='Preview student', exact=True).click()
             try:
                 expect(enrollment.get_by_label('Enrollment email timing')).to_be_visible()
@@ -154,7 +158,7 @@ with sync_playwright() as p:
             checked(f'{role}: required-pin guidance during map outage, disabled/enabled continue, map retry, pin removal/replacement, back/review pin preservation and saved profile; student signs in while emails remain unsent')
 
             for exam in AUTH['exams']:
-                page.goto(BASE + f'/student/assessments/{exam["id"]}/take', wait_until='networkidle')
+                page.goto(BASE + f'/student/assessments/{exam["id"]}/take', wait_until='domcontentloaded')
                 page.get_by_role('checkbox').check()
                 page.get_by_role('button', name=re.compile('^Agree.*start$')).click()
                 questions = [q for q in AUTH['questions'] if q['exam'] == exam['id']]
@@ -177,9 +181,10 @@ with sync_playwright() as p:
                     page.get_by_role('button', name='Submit', exact=True).click()
                     page.get_by_role('button', name='Yes, submit', exact=True).click()
                 expect(page).to_have_url(re.compile(f'/student/assessments/{exam["id"]}/results$'))
-                expect(page.get_by_role('heading', name=exam['title'], exact=True)).to_be_visible()
-                assert page.evaluate(f'localStorage.getItem("sb_integrity_active_{identity["user"]["id"]}_{exam["id"]}")') is None
                 results = get_json(context, f'/api/student/results/?assessment_id={exam["id"]}', session['token'])
+                assert results['assessment']['id'] == exam['id']
+                expect(page.get_by_role('heading', name=results['assessment']['title'], exact=True)).to_be_visible()
+                assert page.evaluate(f'localStorage.getItem("sb_integrity_active_{identity["user"]["id"]}_{exam["id"]}")') is None
                 assert results['completed_required_count'] == (1 if exam == AUTH['exams'][0] else 2)
                 assert results['recommendations_locked'] == (exam == AUTH['exams'][0])
                 page.screenshot(path=str(OUT / f'{role}-assessment-{exam["id"]}-result.png'), full_page=True)

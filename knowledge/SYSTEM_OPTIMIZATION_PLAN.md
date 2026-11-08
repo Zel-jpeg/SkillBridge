@@ -618,6 +618,11 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
   return, scroll locking, save retry and desktop/phone themes. Verify standard
   and reduced-motion session expiry in the current sign-in suite; retain toast
   timer/fullscreen and three-role notification checks. See the second local pass.
+- [x] Share the 160 ms ease-out entrance across profile, notification and action
+  menus, with reduced-motion support. The local Chrome dropdown suite passed
+  16 groups, including keyboard selection and Escape inside a native dialog.
+  Profile and notification menu checks passed for all three roles. Frontend
+  lint and the synthetic-configuration production build passed.
 - [ ] Extend shared tokens to remaining buttons/menus where appropriate and
   verify their reduced-motion behavior, including portaled content.
 - [ ] Apply the [animation guidance](#ui-animation-plan) to selected dialogs,
@@ -642,15 +647,17 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
 - [x] Implement the opt-in token exchange, post-commit REST publisher and browser
   transport with SSE fallback. Verify synthetic submission, failure and rollback,
   exact-topic SQL access, and all three browser roles locally. See the [pilot runbook](SUPABASE_REALTIME_PILOT.md).
-- [ ] Verify an approved hosted signing arrangement and measure resource headroom
-  before enabling the app pilot. A dedicated private signer trusted by Supabase
-  is not configured in this checkout.
-- [ ] In the chosen pilot environment, configure a private,
-  receive-only channel for one synthetic cohort. Verify short-lived Django
-  session exchange and exact recipient-topic access.
-- [ ] Publish a small invalidation after a successful student submission commits.
+- [x] Verify the approved signer and receive-only policy against the existing
+  hosted project. All 11 authorization and dummy-delivery checks passed. See the
+  [real-channel results](SUPABASE_REALTIME_PILOT.md#real-channel-local-application-results).
+- [ ] Measure resource headroom before expanding beyond the isolated local pilot.
+- [x] Configure a private receive-only channel for one synthetic cohort in an
+  isolated local app. Verify short-lived Django session exchange and exact
+  recipient-topic access against the real hosted service.
+- [x] Publish a small invalidation after a successful student submission commits.
   Verify the assigned instructor's open roster refreshes through the existing
-  authorized Django GET. Exercise rollback and publication failure.
+  authorized Django GET. Exercise rollback and publication failure in the local
+  regression suite, and verify real socket disconnect selects SSE recovery.
 - [ ] Verify anonymous, expired, revoked and cross-account denial. Confirm the
   pilot token cannot read application tables or private Storage, or publish
   client messages.
@@ -665,6 +672,10 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
 - [x] Verify the first local implementation with the PostgreSQL and frontend
   suites, lint, build and browser workflows. Retain the earlier integration
   baseline at `4d08501` and its evidence under `work/branch-review-postgres-qq4l4102/`.
+- [x] Complete the resumed local rehearsal with 816 PostgreSQL tests, 322
+  frontend tests, the build, and the instructor/admin enrollment-to-assessment
+  browser journey. Retain the API creation chain, separate program UI checks
+  and 11 synthetic WebSocket groups in the [local results](SUPABASE_REALTIME_PILOT.md#local-rehearsal-results-after-resuming).
 - [ ] Run staging role, accessibility and regression checks after each change
   group. Verify migrations if the group changes the schema.
 - [ ] Confirm deployment compatibility, rollback and an isolated restore.
@@ -672,5 +683,8 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
   measured and reversed.
 - [ ] For each authorized release, record the deployed revision and verify
   health, role-scoped navigation, assessment/results and placement flows.
+- [ ] Complete the [login-to-assessment browser workflow](SUPABASE_REALTIME_PILOT.md#login-to-assessment-browser-workflow)
+  with synthetic records on the release build. Repeat the submission and roster
+  checks with Realtime and its fallback before expanding the pilot.
 - [ ] Compare production metrics with the baseline and close each workstream
   when its acceptance gates pass. Record any intentionally deferred changes.

@@ -25,11 +25,14 @@ logging.getLogger('django.server').disabled = True
 from django.core.management import call_command
 from rest_framework_simplejwt.tokens import AccessToken
 from api.test_enrollment_assessment_journey import journey_fixture
+from api.models import Institute
 from api.serializers import UserSerializer
 from api import views
 
 call_command('migrate', verbosity=0)
 owner, admin, batch, exams, questions = journey_fixture()
+batch.institute = Institute.objects.create(code='IC', name='Institute of Computing')
+batch.save(update_fields=['institute'])
 
 
 def synthetic_google_userinfo(token):
