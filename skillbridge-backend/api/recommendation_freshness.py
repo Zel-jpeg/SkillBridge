@@ -8,7 +8,7 @@ from django.db.models import Prefetch
 
 from .models import PositionRequirement, RecommendationConfiguration, SkillCategory
 from .recommendation_nlp import (TEXT_GENERATION_VERSION, build_position_description, category_definition,
-                                 extract_coordinates, valid_coordinates)
+                                 extract_coordinates, position_role_context, valid_coordinates)
 from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
 from .opportunity_scope import active_positions, for_programs, legacy_positions
 
@@ -69,9 +69,13 @@ def catalog_fingerprint(batch=None):
     if batch and batch.program_id:
         return load_scoped_catalog(batch).fingerprint
     positions = list(legacy_positions().filter(requirements__isnull=False).order_by('id').values(
-        'id', 'title', 'tags', 'company_id', 'company__name',
+        'id', 'title', 'description', 'tags', 'company_id', 'company__name',
         'company__location_lat', 'company__location_lng',
     ).distinct())
+    for position in positions:
+        description = position_role_context(position.pop('description'))
+        if description:
+            position['description'] = description
     requirements = list(PositionRequirement.objects.filter(position_id__in=[p['id'] for p in positions])
                         .order_by('position_id', 'id').values('position_id', 'skill_category_id', 'required_percentage'))
     categories = list(SkillCategory.objects.filter(framework__isnull=True).order_by('id').values('id', 'name', 'tags', 'description'))

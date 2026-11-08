@@ -462,6 +462,7 @@ class Position(models.Model):
     archived_at = models.DateTimeField(null=True, blank=True)
     company         = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='positions')
     title           = models.CharField(max_length=255)
+    description     = models.TextField(blank=True, default='', db_default='')
     slots_available = models.PositiveIntegerField(default=1)
     tags            = models.JSONField(default=list, blank=True)
     # NULL identifies openings saved before program eligibility was introduced.

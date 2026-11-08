@@ -78,6 +78,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   const searchRef = useRef(null)
   const errorRef = useRef(null)
   const [title, setTitle] = useState(initialData?.title || '')
+  const [description, setDescription] = useState(initialData?.description || '')
   const [slots, setSlots] = useState(initialData?.slots ?? 1)
   const [tags, setTags] = useState((initialData?.tags || []).join(', '))
   const [scoped, setScoped] = useState(mode === 'add' || Boolean(initialData?.eligibility_configured))
@@ -94,10 +95,10 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedOnly, setSelectedOnly] = useState(false)
-  const original = useRef(JSON.stringify({ title, slots, tags, programId, selectedFrameworkId, reqs, programs }))
+  const original = useRef(JSON.stringify({ title, description, slots, tags, programId, selectedFrameworkId, reqs, programs }))
   useEffect(() => {
-    onDirtyChange(JSON.stringify({ title, slots, tags, programId, selectedFrameworkId, reqs, programs }) !== original.current)
-  }, [title, slots, tags, programId, selectedFrameworkId, reqs, programs, onDirtyChange])
+    onDirtyChange(JSON.stringify({ title, description, slots, tags, programId, selectedFrameworkId, reqs, programs }) !== original.current)
+  }, [title, description, slots, tags, programId, selectedFrameworkId, reqs, programs, onDirtyChange])
 
   const catalogUrl = scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
   const { data: catalog } = useApi(catalogUrl)
@@ -146,6 +147,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
       const result = await onSubmit({
         ...(initialData || {}),
         title: title.trim(),
+        description: description.trim(),
         slots: Number(slots),
         ...(scoped ? {
           eligible_program_ids: programs.map(program => program.id),
@@ -207,6 +209,13 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
                 aria-describedby={`${id}-slots-help`} onChange={event => { setSlots(event.target.value); setError('') }} className="position-editor-input" />
               <p id={`${id}-slots-help`} className="position-editor-help">All eligible programs share these slots. Use 0 to close capacity.</p>
             </div>
+          </div>
+          <div className="mt-3">
+            <label htmlFor={`${id}-description`} className="position-editor-label">Position description</label>
+            <textarea id={`${id}-description`} value={description} maxLength={2000} rows={4}
+              aria-describedby={`${id}-description-help`} placeholder="Summarize the work an intern would do."
+              onChange={event => { setDescription(event.target.value); setError('') }} className="position-editor-input" />
+            <p id={`${id}-description-help`} className="position-editor-help">The description helps students understand the role and provides context for matching.</p>
           </div>
         </section>
 

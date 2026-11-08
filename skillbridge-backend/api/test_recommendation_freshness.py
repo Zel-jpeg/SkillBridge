@@ -67,6 +67,7 @@ class RecommendationFreshnessTests(APITestCase):
         for label, mutate in [
             ('position title', lambda: Position.objects.filter(pk=self.position.pk).update(title='Changed intern')),
             ('position tags', lambda: Position.objects.filter(pk=self.position.pk).update(tags=['Changed vocabulary'])),
+            ('position description', lambda: Position.objects.filter(pk=self.position.pk).update(description='Review records and maintain an intake log.')),
             ('company name', lambda: Company.objects.filter(pk=self.company.pk).update(name='Changed employer')),
             ('company coordinates', lambda: Company.objects.filter(pk=self.company.pk).update(location_lat=7, location_lng=125)),
             ('category tags', lambda: SkillCategory.objects.filter(pk=self.first.pk).update(tags=['Changed category term'])),

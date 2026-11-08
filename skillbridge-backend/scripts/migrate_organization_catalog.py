@@ -6,6 +6,7 @@ schema/count facts. No grading, enrollment or recommendation helper is invoked.
 """
 import argparse
 import hashlib
+from importlib import import_module
 import json
 import os
 from pathlib import Path
@@ -38,6 +39,7 @@ SUPPORTED = {
     '0039_coordinator_catalog_authority': set(),
     '0040_organization_card_images': set(),
     '0041_organization_banner_colors': set(),
+    '0042_position_descriptions': set(),
 }
 BIN = ROOT / 'work/defense_audit/postgres-runtime/pgsql/bin'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -60,7 +62,21 @@ ADDED_COLUMNS = {
     },
     '0040_organization_card_images': {'api_institute': ['image_key'], 'api_program': ['image_key']},
     '0041_organization_banner_colors': {'api_institute': ['banner_color'], 'api_program': ['banner_color']},
+    '0042_position_descriptions': {'api_position': ['description']},
 }.get(args.migration, {})
+
+
+def position_description_plan(conn):
+    descriptions = import_module('api.migrations.0042_position_descriptions').IC_DESCRIPTIONS
+    with conn.cursor() as cursor:
+        cursor.execute('SELECT id, title FROM api_position WHERE management_program_id IS NULL AND eligibility_configured_at IS NULL')
+        return {pk: descriptions[title] for pk, title in cursor.fetchall() if title in descriptions}
+
+
+def verify_position_descriptions(conn, expected):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT id, description FROM api_position WHERE description <> ''")
+        assert dict(cursor.fetchall()) == expected, 'Position descriptions differ from the reviewed mapping'
 
 
 def digest(value):
@@ -222,7 +238,10 @@ try:
                     reconcile(rehearsal, reviewed, preserved, 'organization_restore')
                     assert columns(rehearsal) == before_columns
             else:
+                descriptions = position_description_plan(rehearsal) if TARGET[1] == '0042_position_descriptions' else None
                 MigrationExecutor(rehearsal).migrate([TARGET])
+                if descriptions is not None:
+                    verify_position_descriptions(rehearsal, descriptions)
                 rehearsed = snapshot(rehearsal, ADDED_COLUMNS)
                 assert all(rehearsed[name] == facts for name, facts in before.items()), 'Rehearsal changed preserved data'
                 assert set(rehearsed) - set(before) == ADDED_TABLES
@@ -250,10 +269,15 @@ try:
         else:
             assert columns(connection) == before_columns, 'Configured schema changed after backup'
             live_before = snapshot(connection)
+            live_descriptions = position_description_plan(connection) if TARGET[1] == '0042_position_descriptions' else None
+            if live_descriptions is not None:
+                assert live_descriptions == descriptions, 'Position mapping changed after rehearsal'
             MigrationExecutor(connection).migrate([TARGET])
             after = snapshot(connection, ADDED_COLUMNS)
             assert {column for column in columns(connection) if column[0] not in ADDED_TABLES} == before_columns | added_columns, 'Unexpected column changes; rollback'
-            if ADDED_COLUMNS:
+            if live_descriptions is not None:
+                verify_position_descriptions(connection, live_descriptions)
+            elif ADDED_COLUMNS:
                 with connection.cursor() as cursor:
                     for table, names in ADDED_COLUMNS.items():
                         for name in names:

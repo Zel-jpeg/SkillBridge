@@ -213,7 +213,7 @@ def partner_detail(request, program_id, company_id):
 
 
 def scoped_requirements(data, program, position=None):
-    fields(data, {'title', 'slots', 'tags', 'category_requirements', 'revision', 'reuse_existing'})
+    fields(data, {'title', 'description', 'slots', 'tags', 'category_requirements', 'revision', 'reuse_existing'})
     rubric = data.get('category_requirements')
     if rubric is not None:
         if not isinstance(rubric, list) or any(not isinstance(row, dict) for row in rubric):

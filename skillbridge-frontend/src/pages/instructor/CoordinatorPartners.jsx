@@ -33,6 +33,7 @@ function OpeningDetails({ position, partnerArchived }) {
       <span>{status} · {position.slots} shared slots</span>
     </div>
     <p className="break-words">Eligible programs: {eligibility}</p>
+    {position.description && <p className="whitespace-pre-wrap break-words leading-5">{position.description}</p>}
     <p className="break-words">Requirements: {requirements || 'No numerical requirements'}{!requirements && !closed && !archived && ' — manual placement only'}</p>
     <p className="break-words text-gray-500 dark:text-gray-400">Tags: {position.tags.join(', ') || 'None'}</p>
   </>
@@ -103,7 +104,7 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
       ? `${base}partners/${initial ? initial.id + '/' : ''}`
       : initial ? `${base}positions/${initial.id}/` : `${base}partners/${editor.company.id}/positions/`
     const details = editor.kind === 'partner' ? values : {
-      title: values.title, slots: values.slots, tags: values.tags, category_requirements: values.category_requirements || [],
+      title: values.title, description: values.description, slots: values.slots, tags: values.tags, category_requirements: values.category_requirements || [],
       ...(!initial && editor.reuse ? { reuse_existing: true } : {}),
     }
     if (initial) details.revision = initial.revision

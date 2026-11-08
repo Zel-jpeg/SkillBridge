@@ -22,7 +22,8 @@ PREVIOUS = {'0034_program_batch_context': '0033_instructor_program_assignment',
             '0036_program_competency_frameworks': '0035_neutral_user_department',
             '0037_assessment_framework': '0036_program_competency_frameworks',
             '0038_position_program_eligibility': '0037_assessment_framework',
-            '0039_coordinator_catalog_authority': '0038_position_program_eligibility'}[MIGRATION]
+            '0039_coordinator_catalog_authority': '0038_position_program_eligibility',
+            '0042_position_descriptions': '0041_organization_banner_colors'}[MIGRATION]
 if RECONCILE:
     PREVIOUS = '0031_recommendation_assessment_order'
 with socket.socket() as sock:
@@ -90,6 +91,16 @@ apps.get_model('api','SkillCategory').objects.create(name='Retained IC category'
 company = apps.get_model('api','Company').objects.create(name='Retained synthetic partner')
 apps.get_model('api','Position').objects.create(company_id=company.id, title='Retained opening', slots_available=2)
 """
+    if MIGRATION == '0042_position_descriptions':
+        seed += """
+from importlib import import_module
+from django.utils import timezone
+descriptions = import_module('api.migrations.0042_position_descriptions').IC_DESCRIPTIONS
+Position = apps.get_model('api', 'Position')
+for title in descriptions:
+    Position.objects.create(company_id=company.id, title=title, slots_available=2)
+Position.objects.create(company_id=company.id, title='Frontend Developer', eligibility_configured_at=timezone.now())
+"""
     run([PYTHON, 'manage.py', 'shell', '-c', seed.replace('PREVIOUS_MIGRATION', PREVIOUS)], 'seed.txt')
     if RECONCILE:
         run([PYTHON, 'manage.py', 'migrate', '--noinput'], 'upgrade-from-pre-organization.txt')
@@ -139,9 +150,20 @@ apps.get_model('api','Position').objects.create(company_id=company.id, title='Re
             'api_company': ['management_program_id'],
             'api_position': ['created_by_id', 'management_program_id'],
         },
+        '0042_position_descriptions': {'api_position': ['description']},
     }[MIGRATION]
     expected_tables = {'0036': ['api_competencyframework'], '0038': ['api_position_eligible_programs']}
     assert receipt['new_empty_tables'] == expected_tables.get(MIGRATION[:4], [])
+    if MIGRATION == '0042_position_descriptions':
+        run([PYTHON, 'manage.py', 'shell', '-c', """
+from importlib import import_module
+from api.models import Position
+expected = import_module('api.migrations.0042_position_descriptions').IC_DESCRIPTIONS
+assert dict(Position.objects.exclude(description='').values_list('title', 'description')) == expected
+assert Position.objects.exclude(description='').count() == 6
+assert Position.objects.get(eligibility_configured_at__isnull=False).description == ''
+assert Position.objects.get(title='Retained opening').description == ''
+"""], 'verify-descriptions.txt')
     if activity_worker:
         activity_stop.set()
         activity_worker.join(timeout=10)

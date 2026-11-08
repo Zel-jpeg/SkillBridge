@@ -52,6 +52,7 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
                     <p className="text-xs text-gray-500 dark:text-gray-400">{isAssessmentLed(position) ? 'Recommendation order' : 'Legacy hybrid reference'}</p>
                   </div> : <span className="text-xs text-gray-500 dark:text-gray-400">No current match score</span>}
                 </div>
+                {position.description && <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{position.description}</p>}
                 <p className="mt-4 mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Skills & requirements</p>
                 {tags.length ? <ul className="flex flex-wrap gap-1.5">
                   {tags.map(tag => <li key={tag} className="max-w-full rounded-lg bg-gray-100 px-2.5 py-1 text-xs leading-relaxed wrap-anywhere text-gray-600 dark:bg-gray-800 dark:text-gray-300">{tag}</li>)}

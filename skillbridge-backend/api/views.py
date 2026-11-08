@@ -3058,6 +3058,7 @@ def instructor_companies(request):
             positions_data.append({
                 'id':              pos.id,
                 'title':           pos.title,
+                'description':     pos.description,
                 'slots':           pos.slots_available,
                 'tags':            pos.tags or [],
                 'requirements': {
@@ -3391,6 +3392,7 @@ def student_companies(request):
             {
                 'id':          p.id,
                 'title':       p.title,
+                'description': p.description,
                 'slots':       p.slots_available,
                 'match_score': user_recs[p.id].match_score if p.id in user_recs else None,
                 **api_fields(user_recs.get(p.id)),

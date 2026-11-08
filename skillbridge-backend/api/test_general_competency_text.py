@@ -38,6 +38,15 @@ class GeneralCompetencyTextTests(SimpleTestCase):
         self.assertIn('not separately assessed', student)
         self.assertEqual(TEXT_GENERATION_VERSION, 'general-category-context-v4')
 
+    def test_position_text_includes_bounded_role_context_once(self):
+        position = self.position([self.score()])
+        original = build_position_description(position)
+        position.description = '  Review   booking records.  ' + 'context ' * 110 + 'excluded tail'
+        updated = build_position_description(position)
+        self.assertTrue(updated.startswith(original))
+        self.assertEqual(updated.count('Review booking records.'), 1)
+        self.assertNotIn('excluded tail', updated)
+
     def test_missing_and_zero_are_distinct_and_neither_expands_context_as_positive_evidence(self):
         zero = self.score(percentage=0)
         missing = self.score(percentage=None)

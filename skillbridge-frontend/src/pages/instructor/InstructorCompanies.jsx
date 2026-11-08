@@ -274,6 +274,7 @@ function CompanyDetailModal({ company, onClose }) {
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
                           }`}>{pos.matched_count > 0 ? `${pos.matched_count} matched` : 'None'}</span>
                         </div>
+                        {pos.description && <p className="px-4 pb-3 whitespace-pre-wrap break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{pos.description}</p>}
                         {pos.matched_students.length > 0 && (
                           <div className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                             {pos.matched_students.map((stu, si) => (

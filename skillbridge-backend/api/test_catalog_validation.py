@@ -33,6 +33,7 @@ class CatalogValidationTests(APITestCase):
             {'requirements': {'Unknown': 50}}, {'requirements': {'Programming': 20, 'programming': 30}},
             {'title': ''}, {'title': None}, {'title': ['bad']}, {'title': 'x' * 256},
             {'tags': {}}, {'tags': [None]},
+            {'description': None}, {'description': ['Invalid']}, {'description': 'x' * 2001},
         ]
         before = Position.objects.count()
         for values in invalid:
@@ -56,6 +57,13 @@ class CatalogValidationTests(APITestCase):
         self.assertEqual(updated.data['requirements'], {})
         self.assertEqual(self.edit({'requirements': {'Programming': 99.5}}).status_code, 200)
         self.assertEqual(self.position.requirements.get().required_percentage, 99.5)
+
+    def test_position_description_is_trimmed_and_preserved_by_partial_updates(self):
+        result = self.edit({'description': '  Support records review.  '})
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(result.data['description'], 'Support records review.')
+        self.assertEqual(self.edit({'slots': 3}).data['description'], 'Support records review.')
+        self.assertEqual(self.edit({'description': ''}).data['description'], '')
 
     def test_database_failure_rolls_back_create_and_replacement(self):
         with patch('api.models.PositionRequirement.objects.create', side_effect=RuntimeError('Synthetic write failure')):

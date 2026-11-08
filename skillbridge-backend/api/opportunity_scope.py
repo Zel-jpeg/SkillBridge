@@ -19,7 +19,7 @@ def position_scope_payload(position):
 def catalog_position_payload(position):
     requirements = list(position.requirements.all())
     return {
-        'id': position.pk, 'title': position.title, 'slots': position.slots_available,
+        'id': position.pk, 'title': position.title, 'description': position.description, 'slots': position.slots_available,
         'archived_at': position.archived_at, 'tags': position.tags or [],
         **position_scope_payload(position),
         'management_program_id': position.management_program_id,

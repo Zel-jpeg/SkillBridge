@@ -256,6 +256,10 @@ def generate_competency_insights(skill_scores):
     }
 
 
+def position_role_context(description):
+    return ' '.join(description[:1200].split()[:100]) if isinstance(description, str) else ''
+
+
 def build_position_description(position):
     """Current saved requirements/tags, generated on demand without writes."""
     requirements = list(position.requirements.all())
@@ -264,12 +268,14 @@ def build_position_description(position):
     # Role-specific tags remain visible but cannot overwhelm assessed skill
     # evidence with six repetitions of unassessed role vocabulary.
     role_evidence = [tag for tag in position_tags[:12] for _ in range(2)]
+    role_context = position_role_context(getattr(position, 'description', ''))
     return (
         f'{position.title} at {position.company.name}. Required skill percentages: '
         + '; '.join(f'{r.skill_category.name}: {float(r.required_percentage):g} percent' for r in requirements)
         + f". Competency requirements: {'; '.join(fragments) or 'not specified'}. "
         + f"Role-specific vocabulary: {', '.join(position_tags) or 'no saved role tags'}. "
         + f"Requirement evidence: {' '.join(evidence + role_evidence)}."
+        + (f' Role description: {role_context}' if role_context else '')
     )
 
 

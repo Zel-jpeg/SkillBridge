@@ -68,6 +68,11 @@ def position_data(data, *, partial=False):
     result = {}
     if not partial or 'title' in data:
         result['title'] = nonempty_text(data.get('title'), 'title')
+    if 'description' in data:
+        description = data['description']
+        if not isinstance(description, str) or len(description.strip()) > 2000:
+            invalid('description', 'Position description must be text with at most 2000 characters.')
+        result['description'] = description.strip()
     if not partial or 'slots' in data:
         result['slots_available'] = slots_value(data.get('slots', 1))
     if not partial or 'tags' in data:

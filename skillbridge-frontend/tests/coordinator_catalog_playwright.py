@@ -44,6 +44,7 @@ def create_partner(page, name):
 def opening(page, framework, title):
     dialog = page.get_by_role('dialog', name='Add Position', exact=True)
     dialog.get_by_label('Position title').fill(title)
+    dialog.get_by_label('Position description').fill('Review intake records and maintain the service log.')
     dialog.get_by_label('Available slots').fill('3')
     expect(dialog.get_by_role('combobox', name='Program skill set', exact=True)).to_have_value(str(framework['id']))
     dialog.get_by_label('Minimum level for Service knowledge', exact=True).select_option('50')
@@ -123,6 +124,8 @@ def run(browser):
     expect(selected.get_by_text('Service knowledge ≥ 50%', exact=False)).to_be_visible()
     partner = call(context, scoped + f'partners/{partner["id"]}/', role='instructor')
     position = partner['positions'][0]
+    assert position['description'] == 'Review intake records and maintain the service log.'
+    expect(selected.get_by_text(position['description'], exact=True)).to_be_visible()
     assert position['category_requirements'][0]['category_id'] == category['id'] and position['tags'] == ['Client records']
     checks.append('real partner create with validated manual pin; fixed program opening with numerical framework requirements and saved tags')
 

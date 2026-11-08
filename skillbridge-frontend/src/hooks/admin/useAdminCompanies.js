@@ -58,8 +58,8 @@ function normalizePosition(position) {
   }
 }
 
-function positionPayload({ title, slots, tags, eligible_program_ids, category_requirements, requirements }) {
-  return { title, slots, tags, ...(eligible_program_ids !== undefined
+function positionPayload({ title, description, slots, tags, eligible_program_ids, category_requirements, requirements }) {
+  return { title, description, slots, tags, ...(eligible_program_ids !== undefined
     ? { eligible_program_ids, category_requirements }
     : { requirements }) }
 }

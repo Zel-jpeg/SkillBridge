@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import expect, sync_playwright
 
 BASE = os.environ.get('SKILLBRIDGE_TEST_BASE', 'http://127.0.0.1:5213')
+COMPANY_PATH = '/admin/companies?institute=1&program=1'
 ARTIFACTS = Path(__file__).resolve().parents[2] / 'work/position-dialog'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 NAMES = ['Web Development', 'Database', 'Design', 'Networking', 'Backend', 'Cloud',
@@ -48,6 +49,9 @@ class Fixture:
             return route.fulfill(status=204)
         if path == '/api/auth/me/':
             return route.fulfill(json=USER)
+        if path == '/api/management/organization-options/':
+            return route.fulfill(json={'institutes': [{'id': 1, 'name': 'Institute of Computing', 'code': 'IC', 'is_active': True}],
+                'programs': [{'id': 1, 'institute_id': 1, 'name': 'Information Technology', 'code': 'BSIT', 'is_active': True}]})
         if path == '/api/categories/':
             if self.fail_categories:
                 return route.fulfill(status=503, json={'error': 'Synthetic category outage'})
@@ -90,7 +94,7 @@ class Fixture:
         return route.fulfill(json={} if path.endswith('/stats/') else [])
 
     def open(self, edit=True):
-        self.page.goto(BASE + '/admin/companies', wait_until='networkidle')
+        self.page.goto(BASE + COMPANY_PATH, wait_until='networkidle')
         self.page.get_by_role('button', name=('Edit position Backend Developer Intern' if edit else 'Add position to Sample Company'), exact=True).click()
         dialog = self.page.get_by_role('dialog', name='Edit Position' if edit else 'Add Position', exact=True)
         expect(dialog.get_by_label('Position title', exact=False)).to_be_visible()
@@ -129,6 +133,7 @@ with sync_playwright() as playwright:
         dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog.locator('.position-editor-error')).to_have_text('Position title is required.')
         dialog.get_by_label('Position title', exact=False).fill('Backend Developer Intern')
+        dialog.get_by_label('Position description', exact=True).fill('Maintain APIs and validate incoming records.')
         dialog.get_by_label('Available slots', exact=False).fill('1.5')
         dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog.locator('.position-editor-error')).to_contain_text('whole number')
@@ -183,7 +188,7 @@ with sync_playwright() as playwright:
         dialog.get_by_role('button', name='Save Changes', exact=True).click()
         expect(dialog).to_have_count(0)
         assert f.writes[-1] == ('PATCH', '/api/admin/positions/1/', {
-            'title': 'Backend Developer Intern', 'slots': 0,
+            'title': 'Backend Developer Intern', 'description': 'Maintain APIs and validate incoming records.', 'slots': 0,
             'requirements': {'Web Development': 50, 'Database': 75, 'Backend': 75, 'Cloud': 65},
             'tags': ['Django', 'REST API', 'PostgreSQL', 'Custom tag'],
         })
@@ -244,7 +249,7 @@ with sync_playwright() as playwright:
 
         f = Fixture(browser)
         f.fail_categories = True
-        f.page.goto(BASE + '/admin/companies', wait_until='networkidle')
+        f.page.goto(BASE + COMPANY_PATH, wait_until='networkidle')
         f.page.get_by_role('button', name='Edit position Backend Developer Intern', exact=True).click()
         dialog = f.page.get_by_role('dialog', name='Edit Position', exact=True)
         expect(dialog.locator('.sb-data-error')).to_contain_text('Could not load this section')
