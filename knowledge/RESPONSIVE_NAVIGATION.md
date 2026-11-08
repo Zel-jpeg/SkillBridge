@@ -1,5 +1,11 @@
 # Responsive navigation implementation and verification
 
+Sidebar dropdowns now reveal their intrinsic height and fade over 200ms, with a
+160ms exit and matching chevron rotation. Closed panels become inert and hidden
+from assistive technology immediately; the mobile focus trap excludes them.
+Reduced motion settles immediately. See [UI animation guidelines](UI_ANIMATION_GUIDELINES.md)
+for the user-provided reference and application rules.
+
 The staff navigation now groups related destinations on desktop and in the
 mobile drawer. The desktop icon rail retains the same links in grouped sets.
 The group containing the current page opens automatically on navigation.

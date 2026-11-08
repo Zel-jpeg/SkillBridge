@@ -45,9 +45,11 @@ function NavigationGroup({ section, active, collapsed, children, open, onToggle 
     <button type="button" className={`sb-nav-group-toggle ${active ? 'contains-current' : ''}`} aria-expanded={open} aria-controls={panel} onClick={onToggle}>
       <span aria-hidden="true" className="sb-nav-icon"><Icon size={20} /></span>
       <span>{section.label}</span>
-      <span aria-hidden="true" className="sb-nav-group-chevron"><ChevronDown size={15} open={open} /></span>
+      <span aria-hidden="true" className="sb-nav-group-chevron"><ChevronDown size={15} /></span>
     </button>
-    <div id={panel} className="sb-nav-group-links" hidden={!open}>{open && children}</div>
+    <div id={panel} className="sb-nav-group-panel" data-open={open} inert={!open} aria-hidden={!open}>
+      <div className="sb-nav-group-clip"><div className="sb-nav-group-links">{children}</div></div>
+    </div>
   </div>
 }
 

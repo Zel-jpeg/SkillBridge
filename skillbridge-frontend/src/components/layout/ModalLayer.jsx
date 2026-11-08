@@ -15,7 +15,7 @@ export default function ModalLayer({ children, labelId, label, onClose, restoreR
     if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`
     if (root) root.inert = true
     const dialog = ref.current
-    const focusable = () => [...dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length)
+    const focusable = () => [...dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]')].filter(node => !node.closest('[inert]') && node.getClientRects().length)
     const initialFocus = focusable()[0] ?? dialog
     initialFocus.focus()
     function onKey(event) {

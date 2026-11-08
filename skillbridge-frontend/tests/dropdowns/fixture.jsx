@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import AddressDropdowns from '../../src/components/AddressDropdowns'
+import ActionMenu from '../../src/components/ActionMenu'
 import '../../src/index.css'
 
 const batches = Array.from({ length: 36 }, (_, i) => `Sample Batch ${String(i + 1).padStart(2, '0')}`)
@@ -9,6 +10,7 @@ export default function Fixture() {
   const [status, setStatus] = useState('all')
   const [address, setAddress] = useState({})
   const [saved, setSaved] = useState('')
+  const [action, setAction] = useState('')
   const dialog = useRef(null)
   return <main className="mx-auto max-w-5xl space-y-6 p-4 text-xs text-gray-800 sm:p-8 dark:text-gray-200">
     <header><p className="text-green-700 dark:text-green-400">SkillBridge · Synthetic fixture</p><h1 className="mt-2 text-xl font-semibold">Modern dropdowns</h1><p className="mt-2 text-gray-500">Filters, forms and grouped addresses share one presentation.</p></header>
@@ -26,6 +28,8 @@ export default function Fixture() {
     <dialog ref={dialog} className="m-auto w-[min(480px,calc(100vw-32px))] rounded-2xl border border-gray-200 bg-white p-6 text-gray-800 backdrop:bg-black/40 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); setSaved(new FormData(event.currentTarget).get('course')); dialog.current.close() }}>
         <h2 className="text-base font-semibold">Enrollment course</h2><label className="grid gap-2">Course<select aria-label="Course" name="course" required defaultValue=""><option value="" disabled>Choose course</option><option value="BSIT">BSIT</option><option value="BSIS">BSIS</option></select></label>
+        <ActionMenu label="Course actions" items={[{ id: 'review', label: 'Review course' }]} onAction={setAction} />
+        <output aria-label="Selected course action">{action}</output>
         <button type="submit" className="rounded-lg bg-green-700 px-3 py-2 text-white">Save sample form</button><button type="button" onClick={() => dialog.current.close()}>Cancel</button>
       </form>
     </dialog><output aria-label="Saved course">{saved}</output>

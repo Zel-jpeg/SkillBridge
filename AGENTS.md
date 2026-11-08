@@ -51,6 +51,14 @@ to resolve differences with older project notes.
 
 ## Working conventions
 
+- Before creating, changing or reviewing UI designs, read and follow
+  [UI design guidelines](knowledge/UI_DESIGN_GUIDELINES.md). Apply the relevant
+  clarity, hierarchy and consistency rules while preserving functionality,
+  accessibility and the user's current visual brief.
+- Before creating, changing or reviewing UI animations, read and follow
+  [UI animation guidelines](knowledge/UI_ANIMATION_GUIDELINES.md). Apply the
+  relevant interaction rules, preserve accessibility, and respect reduced motion.
+
 - Follow nearby code conventions; keep changes focused on the requested behavior.
 - Preserve the student, instructor and admin access boundaries. Check backend authorization rather than relying on hidden frontend controls.
 - Keep assessment-level score history distinct from batch-level combined competency evidence and placement snapshots.

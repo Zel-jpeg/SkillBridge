@@ -12,6 +12,16 @@
   to { opacity: 1; translate: 0 0; }
 }
 
+@keyframes sb-popover-enter {
+  from { opacity: .75; translate: 0 var(--sb-popover-start-y, calc(-1 * var(--sb-motion-distance))); }
+  to { opacity: 1; translate: 0 0; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .sb-session-card { animation: sb-surface-enter var(--sb-motion-enter-duration) var(--sb-motion-enter-easing); }
+  .sb-profile-trigger:active > .sb-avatar { scale: var(--sb-motion-press-scale); }
+  .sb-profile-menu, .sb-notification-panel, .sb-action-menu[data-entering]:not([data-exiting]) {
+    animation: sb-popover-enter var(--sb-motion-enter-duration) var(--sb-motion-enter-easing);
+  }
+  .sb-action-menu[data-placement="top"] { --sb-popover-start-y: var(--sb-motion-distance); }
 }

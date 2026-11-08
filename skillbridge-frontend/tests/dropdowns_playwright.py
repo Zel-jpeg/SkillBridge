@@ -89,6 +89,34 @@ with sync_playwright() as p:
     assert batch.evaluate('el=>getComputedStyle(el).appearance') == 'auto'
     page.emulate_media(forced_colors='none')
     checks.append('Forced-colors mode restores the operating-system control appearance')
+    page.get_by_role('button', name='Open form dialog', exact=True).click()
+    dialog = page.locator('dialog')
+    trigger = dialog.get_by_role('button', name='Course actions', exact=True)
+    menu = dialog.get_by_role('menu', name='Course actions', exact=True)
+    page.evaluate('''() => {
+      window.actionMenuEntrances = 0;
+      document.addEventListener('animationstart', event => {
+        if (event.target.matches('.sb-action-menu') && event.animationName === 'sb-popover-enter') {
+          window.actionMenuEntrances++;
+        }
+      });
+    }''')
+    page.emulate_media(reduced_motion='no-preference')
+    trigger.press('ArrowDown')
+    expect(menu.get_by_role('menuitem', name='Review course')).to_be_focused()
+    page.wait_for_function('window.actionMenuEntrances === 1')
+    page.keyboard.press('Escape')
+    expect(menu).to_have_count(0)
+    expect(trigger).to_be_focused()
+    expect(dialog).to_be_visible()
+    page.emulate_media(reduced_motion='reduce')
+    trigger.press('ArrowDown')
+    expect(dialog.locator('.sb-action-menu')).to_have_css('animation-name', 'none')
+    page.keyboard.press('Enter')
+    expect(menu).to_have_count(0)
+    expect(dialog.get_by_label('Selected course action')).to_have_text('review')
+    expect(trigger).to_be_focused()
+    checks.append('Portaled action menu: entrance, reduced motion, keyboard selection and focus inside a native dialog')
     context.close()
     touch=browser.new_context(viewport={'width':375,'height':812},is_mobile=True,has_touch=True,reduced_motion='reduce')
     touch.route('https://psgc.gitlab.io/api/**',address)

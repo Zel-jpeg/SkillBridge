@@ -223,6 +223,23 @@ input:focus-visible {
 .dark .sb-nav-group-toggle { color: #d1d5db; }
 .dark .sb-nav-group-toggle:hover, .dark .sb-nav-group-toggle.contains-current { color: #bbf7d0; background: #052e16; }
 .sb-nav-group-chevron { display: inline-flex; margin-left: auto; }
+.sb-nav-group-chevron svg { transition: none; }
+.sb-nav-group-toggle[aria-expanded="true"] .sb-nav-group-chevron { transform: rotate(180deg); }
+.sb-nav-group-panel { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; }
+.sb-nav-group-panel[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; }
+.sb-nav-group-clip { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .sb-nav-group-panel {
+    transition: grid-template-rows 160ms ease-in-out, opacity 160ms var(--sb-motion-enter-easing), visibility 0s linear 160ms;
+  }
+  .sb-nav-group-panel[data-open="true"] {
+    transition-duration: 200ms, 200ms, 0s;
+    transition-timing-function: var(--sb-motion-enter-easing);
+    transition-delay: 0s;
+  }
+  .sb-nav-group-chevron { transition: transform 160ms ease-in-out; }
+  .sb-nav-group-toggle[aria-expanded="true"] .sb-nav-group-chevron { transition-duration: 200ms; }
+}
 .sb-nav-group-links { margin: 3px 0 5px 22px; padding-left: 8px; border-left: 1px solid #e5e7eb; }
 .dark .sb-nav-group-links { border-left-color: #374151; }
 .sb-nav-group-links .sb-nav-link { min-height: 42px; gap: 8px; padding: 7px 8px; font-size: 12px; }
