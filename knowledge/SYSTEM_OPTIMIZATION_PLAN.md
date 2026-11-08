@@ -728,7 +728,7 @@ that review must be verified again before proposing infrastructure changes.
   count, response size and save acknowledgement. Break server time into database,
   calculations and post-commit work on synthetic fixtures. Measure ordinary and
   pilot transport separately. Use timing metadata without student records.
-- [ ] N02. Fix the measured navigation causes. Reuse the existing cache and route
+- [x] N02. Fix the measured navigation causes. Reuse the existing cache and route
   preparation. Render page structure immediately, keep usable same-scope content
   during refresh, and load secondary panels independently. Profile repeated or
   sequential reads, large list responses and background requests competing with
@@ -843,3 +843,24 @@ with 100 MCQs took 666–725 ms and 613 operation SQL statements. Per-question
 category lookups and individual question/choice inserts are a measured follow-up
 for N03. Preserve the current validation, transaction and error-recovery behavior
 when batching those writes. Receipt `work/optimization-review-postgres-mmi9q7la/save-profile.json`.
+
+### N02 navigation changes
+
+Admin scope picker roots now prepare organization choices first. Collection
+preparation requires a valid selected context. Background preparation uses the
+current taxonomy route, and placement history preparation matches the first
+scoped page rather than an unused 500-row query.
+
+The repeated synthetic browser run reduced initial API calls from 8 to 3 for
+batches and placements and from 6 to 3 for assessments and taxonomy. Each initial
+screen transferred 7,170 API response bytes. First program selection starts the
+required collection reads, while switching between already loaded programs
+continues to use zero GETs. The run used a production bundle. Wall-clock timings
+under parallel test load were noisy and are not a deployment speed estimate.
+
+Frontend lint, build and 323 unit tests passed. Admin scope navigation passed
+14 browser groups and the shared visibility suite passed 7 with zero page errors.
+The browser regression asserts that five admin picker roots do not fetch their
+record collections or IC-only skills before context selection. Evidence includes
+`work/navigation-baseline-znhgijj7/`. A sequential timing repeat is saved
+separately when complete.

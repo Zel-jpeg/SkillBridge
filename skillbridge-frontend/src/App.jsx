@@ -62,8 +62,8 @@ function Page({ children }) {
   const { pathname, search } = useLocation()
   const { expired } = useSession()
   useEffect(() => {
-    if (!expired) loadDestination(pathname)
-  }, [pathname, expired])
+    if (!expired) loadDestination(pathname, search)
+  }, [pathname, search, expired])
   return <ErrorBoundary key={pathname}><Suspense fallback={<RouteSkeleton pathname={pathname} search={search} />}>
     <PreparedPage>{children}</PreparedPage>
   </Suspense></ErrorBoundary>

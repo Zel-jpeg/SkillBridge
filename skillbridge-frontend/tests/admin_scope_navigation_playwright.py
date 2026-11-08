@@ -1,5 +1,6 @@
 """Real API admin context selection, isolation and responsive navigation checks."""
 import json
+from urllib.parse import urlparse
 from playwright.sync_api import expect, sync_playwright
 from organization_playwright import BASE, OUT, api, errors, session
 
@@ -24,14 +25,22 @@ with sync_playwright() as p:
     programs = api(context, '/api/management/organization-options/').json()['programs']
     for item in (enterprise, tourism, third):
         item['code'] = next(row['code'] for row in programs if row['id'] == item['program_id'])
+    requested = []
+    page.on('request', lambda request: requested.append(urlparse(request.url).path))
     for path, hidden in [('/admin/batches', enterprise['batch_name']),
                          ('/admin/assessments', enterprise['assessment_title']),
                          ('/admin/assessments/archives', 'Archived assessments'),
                          ('/admin/retake-requests', 'All requests'),
                          ('/admin/placements', 'Students awaiting placement')]:
+        requested.clear()
         page.goto(BASE + path, wait_until='networkidle')
         expect(page.get_by_role('region', name='Institutes', exact=True)).to_be_visible()
         expect(page.get_by_text(hidden, exact=True)).to_have_count(0)
+        assert not set(requested) & {
+            '/api/instructor/batches/', '/api/admin/batch-instructors/',
+            '/api/instructor/assessments/', '/api/admin/skills/',
+            '/api/placements/', '/api/placements/suggestions/',
+        }, (path, requested)
     page.goto(BASE + '/admin/companies', wait_until='networkidle')
     expect(page.get_by_label('Program', exact=True)).to_be_disabled()
     expect(page.get_by_role('heading', name='Synthetic IC legacy partner', exact=True)).to_have_count(0)

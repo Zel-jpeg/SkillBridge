@@ -4,6 +4,7 @@ import { preloadPage } from '../router/preloadPage.js'
 import { waitForDashboard } from './dashboardReadiness.js'
 import { adminUsersUrl } from '../utils/collectionQueries.js'
 import { ANALYTICS_OVERVIEW_URL } from '../utils/analytics.js'
+import { ORGANIZATION_OPTIONS } from '../utils/organizationScope.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
 export const DESTINATION_QUERIES = {
@@ -16,20 +17,22 @@ export const DESTINATION_QUERIES = {
   '/instructor/students': ['/api/instructor/batches/'],
   '/instructor/assessments': ['/api/instructor/assessments/', '/api/instructor/batches/'],
   '/instructor/assessments/archives': ['/api/instructor/assessments/'],
-  '/admin/assessments/archives': ['/api/instructor/assessments/'],
+  '/admin/assessments/archives': [ORGANIZATION_OPTIONS],
   '/instructor/companies': ['/api/instructor/companies/'],
-  '/admin/assessments': ['/api/instructor/assessments/'],
-  '/admin/batches': ['/api/instructor/batches/'],
+  '/admin/assessments': [ORGANIZATION_OPTIONS],
+  '/admin/batches': [ORGANIZATION_OPTIONS],
+  '/admin/retake-requests': [ORGANIZATION_OPTIONS],
+  '/admin/placements': [ORGANIZATION_OPTIONS],
   '/admin/skills': ['/api/admin/skills/'],
   '/admin/institutes': ['/api/admin/institutes/?search=&status=all&page=1&page_size=8'],
-  '/admin/companies': ['/api/admin/companies/'],
+  '/admin/companies': [ORGANIZATION_OPTIONS, '/api/admin/companies/'],
 }
 const LIKELY = {
   student: ['/student/assessments', '/student/results', '/student/profile'],
   instructor: ['/instructor/students', '/instructor/assessments', '/instructor/companies'],
-  admin: ['/admin/assessments', '/admin/skills', '/admin/companies'],
+  admin: ['/admin/assessments', '/admin/competencies'],
 }
-const PLACEMENT_QUERIES = ['/api/placements/suggestions/?include_history=true&include_placed=true', '/api/placements/?limit=500']
+const PLACEMENT_QUERIES = ['/api/placements/suggestions/?include_history=true&include_placed=true', '/api/placements/?limit=10&offset=0']
 const PAGE_QUERIES = {
   ...DESTINATION_QUERIES,
   '/student/results': ['/api/student/results/combined/', '/api/students/me/'],
@@ -37,12 +40,35 @@ const PAGE_QUERIES = {
   '/instructor/reports': ['/api/management/analytics/'],
   '/instructor/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
-  '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
   '/instructor/placements': PLACEMENT_QUERIES,
   '/admin/dashboard': [ANALYTICS_OVERVIEW_URL, '/api/management/organization-options/'],
   '/admin/users': [adminUsersUrl()],
-  '/admin/placements': PLACEMENT_QUERIES,
   '/admin/reports': ['/api/management/analytics/'],
+}
+
+function destinationQueries(pathname, search) {
+  const scoped = {
+    '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
+    '/admin/assessments': ['/api/instructor/assessments/'],
+    '/admin/assessments/archives': ['/api/instructor/assessments/'],
+    '/admin/placements': PLACEMENT_QUERIES,
+  }
+  if (!scoped[pathname]) return PAGE_QUERIES[pathname] ?? []
+  const params = new URLSearchParams(search)
+  const instituteId = params.get('institute'), programId = params.get('program')
+  const positiveId = value => /^\d+$/.test(value || '') && Number.isSafeInteger(Number(value)) && Number(value) > 0
+  if (params.getAll('institute').length !== 1 || params.getAll('program').length !== 1 ||
+      !positiveId(instituteId) || programId !== 'all' && !positiveId(programId)) return [ORGANIZATION_OPTIONS]
+  const options = cache.read(ORGANIZATION_OPTIONS)?.data
+  const institute = options?.institutes.find(row => String(row.id) === instituteId)
+  const program = options?.programs.find(row => String(row.id) === programId && row.institute_id === institute?.id)
+  // Preparation follows the same selected context as the page. Missing or
+  // invalid choices only load options; they never fall back to all records.
+  if (!institute || programId !== 'all' && !program) return [ORGANIZATION_OPTIONS]
+  if (pathname !== '/admin/placements') return [ORGANIZATION_OPTIONS, ...scoped[pathname]]
+  const history = new URLSearchParams({ limit: '10', offset: '0', institute_id: instituteId })
+  if (program) history.set('program_id', programId)
+  return [ORGANIZATION_OPTIONS, PLACEMENT_QUERIES[0], `/api/placements/?${history}`]
 }
 
 function identity() {
@@ -57,12 +83,12 @@ function identity() {
 // Start only this destination's safe essential GETs while its code loads.
 // Mounted hooks share these requests. Setup, consent/attempt actions and review
 // keys are deliberately excluded; the server still authorizes every request.
-export function loadDestination(pathname) {
+export function loadDestination(pathname, search = '') {
   if (!identity()) return
   const role = localStorage.getItem('sb-role')
   if (!pathname.startsWith(`/${role}/`)) return
   const result = role === 'student' && pathname.match(/^\/student\/assessments\/(\d+)\/results$/)
-  const urls = result ? [`/api/student/results/?assessment_id=${result[1]}`] : PAGE_QUERIES[pathname] ?? []
+  const urls = result ? [`/api/student/results/?assessment_id=${result[1]}`] : destinationQueries(pathname, search)
   queue.prioritize(urls)
   urls.forEach(url => {
     const entry = cache.read(url)
