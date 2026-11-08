@@ -240,6 +240,29 @@ def run(browser):
     checks.append('revoked program access closes open editor, removes cached catalog and denies direct API access')
     context.close()
 
+    context, page = session(browser, 'instructor')
+    setup_services(context)
+    revised = call(context, scoped + 'frameworks/', 'post', {'name': 'Updated catalog skills',
+        'source_framework_id': framework['id'], 'request_id': str(uuid.uuid4())}, role='instructor', status=201)
+    open_workspace(page, program)
+    page.get_by_role('searchbox', name='Search partners', exact=True).fill('Coordinator Service')
+    page.get_by_role('button', name=re.compile('Coordinator Service Partner Updated')).click()
+    selected = page.get_by_role('region', name='Selected partner', exact=True)
+    selected.get_by_role('button', name='Edit Service Records Intern', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit Position', exact=True)
+    selector = dialog.get_by_role('combobox', name='Program skill set', exact=True)
+    expect(selector).to_have_value(str(framework['id']))
+    expect(dialog.get_by_text('These levels apply to batches using these earlier skills.', exact=False)).to_be_visible()
+    selector.select_option(str(revised['id']))
+    expect(dialog.get_by_text('With no minimum levels selected', exact=False)).to_be_visible()
+    expect(dialog.get_by_label('Minimum level for Service knowledge', exact=True)).to_have_value('0')
+    dialog.get_by_role('button', name='Cancel', exact=True).click()
+    page.get_by_role('dialog', name='Discard position changes?', exact=True).get_by_role('button', name='Discard changes', exact=True).click()
+    persisted = call(context, detail, role='instructor')['positions']
+    assert next(row for row in persisted if row['id'] == position['id'])['category_requirements'][0]['category_id'] == category['id']
+    checks.append('older position requirements explain batch compatibility; switching skills clears only the draft until saved')
+    context.close()
+
     context, page = session(browser, 'instructor', width=390)
     setup_services(context)
     open_workspace(page, foreign)

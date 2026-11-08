@@ -238,7 +238,12 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
               </select>
             </label>}
             <FrameworkSelect key={programId} programId={programId} value={frameworkId}
-              onChange={value => { if (value !== frameworkId) selectFramework(programId, value) }} onAutoSelect={setAutomaticFrameworkId} help="Changing the skill set clears requirement levels in this draft. Other eligible programs can use manual placement." />
+              onChange={value => { if (value !== frameworkId) selectFramework(programId, value) }} onAutoSelect={setAutomaticFrameworkId}
+              help="Changing the skill set clears the minimum levels in this draft. Review and set them again before saving."
+              earlierHelp="These levels apply to batches using these earlier skills. To recommend this position to batches using current skills, select the current set and review its minimum levels." />
+            <p className="position-editor-help">{selectedCount
+              ? 'Recommendations use the selected program and skill set. Other eligible batches can use manual placement.'
+              : 'With no minimum levels selected, eligible batches can use this opening for manual placement.'}</p>
           </div>}
           <DataSection url={scoped ? catalogUrl : '/api/categories/'} layout="control" label="Loading skill requirements">
           <p className="position-editor-help position-editor-intro">Choose a minimum level. Leave unused skills as Not required.</p>

@@ -40,6 +40,8 @@ def run(browser):
     page.get_by_placeholder('e.g. 60', exact=True).fill('35')
     skill_set = page.get_by_role('combobox', name='Program skill set', exact=True)
     expect(skill_set).to_have_value('')
+    expect(skill_set.get_by_role('option', name='Current program skills · Reviewed definitions 2 · v2')).to_have_count(1)
+    expect(skill_set.get_by_role('option', name='Earlier program skills · Reviewed definitions 1 · v1')).to_have_count(1)
     skill_set.select_option(str(version['id']))
     question = page.get_by_placeholder('Type the question here…', exact=True)
     question.fill('Explain booking records for arrival reservations.')
@@ -72,6 +74,12 @@ def run(browser):
     assert not legacy_requests, legacy_requests
     checks.append('instructor creates scoped draft with real saved-category suggestions; changing versions preserves question/keys, clears assignments and never calls global category endpoints')
     checks.append('stale framework digest rejects first save, preserves all draft content and succeeds after explicit definition refresh')
+
+    page.goto(BASE + f'/instructor/assessment/create?batch_id={batch["id"]}', wait_until='networkidle')
+    expect(skill_set).to_be_disabled()
+    expect(skill_set).to_have_value(str(version['id']))
+    expect(page.get_by_text('This batch keeps the skills already used for its assessments and results.', exact=True)).to_be_visible()
+    checks.append('an earlier bound batch keeps its saved skill set after newer skills are available')
 
     page.goto(BASE + '/instructor/assessments', wait_until='networkidle')
     page.get_by_role('button', name='Open assessment Framework browser draft', exact=True).click()
@@ -111,7 +119,7 @@ def run(browser):
 
     # Admin uses the shared authoring dialog; imports remain a local draft until save.
     context, page = support.session(browser, 'admin', width=390, dark=True)
-    page.goto(BASE + '/admin/assessments', wait_until='networkidle')
+    page.goto(BASE + f'/admin/assessments?institute={institute["id"]}&program={program["id"]}', wait_until='networkidle')
     page.get_by_role('button', name='View details for Framework browser draft', exact=True).click()
     page.get_by_role('tab', name='Questions', exact=False).click()
     page.get_by_role('button', name='Edit assessment and questions', exact=True).click()
