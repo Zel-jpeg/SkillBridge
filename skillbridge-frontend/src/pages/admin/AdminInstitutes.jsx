@@ -17,29 +17,37 @@ import { companyRequest } from '../../utils/companyImages'
 import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
 import { queryStore } from '../../api/queryStore'
 import { publishOrganizationRecord } from '../../utils/organizationCache'
+import { useOrganizationBannerSave } from '../../hooks/useOrganizationBannerSave'
 
 const ROOT = '/api/admin/institutes/'
 
-export function CatalogForm({ item, program, institute, onClose, onSave, brandingOnly = false }) {
+export function CatalogForm({ item, program, institute, onClose, onSave, onSavePreset, attemptedColor, brandingOnly = false }) {
   const id = useId()
   const [values, setValues] = useState({ code: item?.code || '', name: item?.name || '', description: item?.description || '', aliases: (item?.aliases || []).join('\n') })
   const [saving, setSaving] = useState(false)
   const [image, setImage] = useState({ action: 'unchanged', file: null, error: '' })
-  const [bannerColor, setBannerColor] = useState(() => taxonomyBannerColor(item?.banner_color, item?.id))
+  const [bannerColor, setBannerColor] = useState(() => attemptedColor ?? taxonomyBannerColor(item?.banner_color, item?.id))
   const [error, setError] = useState('')
   const pending = useRef(false)
   const close = () => { if (!pending.current) onClose() }
   async function save(event) {
     event.preventDefault()
     if (pending.current || image.error) return
+    const details = { name: values.name.trim(), banner_color: bannerColor, ...(!brandingOnly && {
+      code: values.code.trim(), description: values.description.trim(),
+      ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
+    }) }
+    if (onSavePreset && item?.id && !item.image_url && !image.file && image.action !== 'replace' &&
+        bannerColor !== taxonomyBannerColor(item.banner_color, item.id) &&
+        details.name === item.name && details.code === item.code && details.description === (item.description || '') &&
+        (!program || JSON.stringify(details.aliases) === JSON.stringify(item.aliases || []))) {
+      onSavePreset(bannerColor)
+      return
+    }
     pending.current = true
     setSaving(true)
     setError('')
     try {
-      const details = { name: values.name.trim(), banner_color: bannerColor, ...(!brandingOnly && {
-        code: values.code.trim(), description: values.description.trim(),
-        ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
-      }) }
       const result = await onSave(companyRequest(details, image))
       if (!result.ok && !result.cancelled) setError(errorText(result))
     } finally {
@@ -85,7 +93,7 @@ export function CatalogForm({ item, program, institute, onClose, onSave, brandin
   </DialogShell>
 }
 
-function CatalogCollection({ institute: selected, onSelect, onBack }) {
+function CatalogCollection({ institute: selected, onSelect, onBack, bannerSave }) {
   const statusId = useId()
   const { data: latestInstitute } = useApi(selected ? `${ROOT}${selected.id}/` : null)
   const institute = latestInstitute || selected
@@ -97,16 +105,22 @@ function CatalogCollection({ institute: selected, onSelect, onBack }) {
   const [instructorProgram, setInstructorProgram] = useState(null)
   const base = institute ? `${ROOT}${institute.id}/programs/` : ROOT
   const query = new URLSearchParams({ ...filters, page_size: 8 })
-  const { data, loading, error } = useApi(`${base}?${query}`)
+  const listUrl = `${base}?${query}`
+  const { data, loading, error } = useApi(listUrl)
   const { request } = useApi()
   const kind = institute ? 'program' : 'institute'
   const rows = data?.results || []
   function change(key, value) { setFilters(previous => ({ ...previous, [key]: value, page: 1 })) }
   function refresh() { invalidateCache(base) }
+  function savePreset(color) {
+    if (bannerSave.save(`${base}${form.id}/`, listUrl, form, color)) setForm(null)
+  }
   async function save(values) {
     const result = await request(form.id ? 'patch' : 'post', form.id ? `${base}${form.id}/` : base, values, { silentError: true })
     if (result.ok) {
-      publishOrganizationRecord(queryStore, `${base}${result.data.id}/`, result.data)
+      const detailUrl = `${base}${result.data.id}/`
+      bannerSave.discard(detailUrl)
+      publishOrganizationRecord(queryStore, detailUrl, result.data)
       applyDataChange({ topics: ['organization'] })
       setForm(null)
       showToast(`${institute ? 'Program' : 'Institute'} saved.`, 'success')
@@ -150,12 +164,18 @@ function CatalogCollection({ institute: selected, onSelect, onBack }) {
         <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{data.count} {kind}{data.count === 1 ? '' : 's'}{filtered ? ' matching filters' : ''}</p>
       </div>
       {rows.length === 0 ? <EmptyState message={filtered ? `No ${kind}s match these filters.` : `No ${kind}s yet. Add one to get started.`} onClear={filtered ? clear : undefined} /> : <ul className={`grid gap-4 ${view === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`}>
-        {rows.map(row => <OrganizationCatalogCard key={row.id} row={row} program={Boolean(institute)} view={view}
-          onOpen={institute ? setInstructorProgram : onSelect} onEdit={setForm} onToggle={setConfirmation} />)}
+        {rows.map(row => {
+          const detailUrl = `${base}${row.id}/`
+          const banner = bannerSave.states[detailUrl]
+          return <OrganizationCatalogCard key={row.id} row={row} program={Boolean(institute)} view={view}
+            banner={banner} onCheckBanner={() => bannerSave.check(detailUrl)}
+            onOpen={institute ? setInstructorProgram : onSelect} onEdit={setForm} onToggle={setConfirmation} />
+        })}
       </ul>}
       <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={page => setFilters(previous => ({ ...previous, page }))} />
     </>}
-    {form && <CatalogForm item={form} program={Boolean(institute)} institute={institute} onClose={() => setForm(null)} onSave={save} />}
+    {form && <CatalogForm item={form} program={Boolean(institute)} institute={institute} onClose={() => setForm(null)} onSave={save}
+      onSavePreset={savePreset} attemptedColor={bannerSave.states[`${base}${form.id}/`]?.color} />}
     {instructorProgram && <ProgramInstructors program={instructorProgram} institute={institute} onClose={() => setInstructorProgram(null)} />}
     {confirmation && <ConfirmModal title={`${confirmation.is_active ? 'Archive' : 'Restore'} ${kind}`} confirmLabel={confirmation.is_active ? 'Archive' : 'Restore'} archive tone="neutral"
       message={confirmation.is_active ? `Archive ${confirmation.name}? Records are retained. ${institute ? '' : 'Archive its active programs first.'}` : `Restore ${confirmation.name}?`}
@@ -165,7 +185,8 @@ function CatalogCollection({ institute: selected, onSelect, onBack }) {
 
 export default function AdminInstitutes() {
   const [institute, setInstitute] = useState(null)
+  const bannerSave = useOrganizationBannerSave()
   return <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-    <CatalogCollection key={institute?.id || 'institutes'} institute={institute} onSelect={setInstitute} onBack={() => setInstitute(null)} />
+    <CatalogCollection key={institute?.id || 'institutes'} institute={institute} onSelect={setInstitute} onBack={() => setInstitute(null)} bannerSave={bannerSave} />
   </section>
 }

@@ -106,6 +106,7 @@ try:
             ('--coordinator-catalog', 'coordinator_catalog_playwright.py'),
             ('--staff-scope', 'staff_scope_playwright.py'),
             ('--collection-layout', 'collection_layout_playwright.py'),
+            ('--optimistic-banner', 'optimistic_banner_playwright.py'),
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),

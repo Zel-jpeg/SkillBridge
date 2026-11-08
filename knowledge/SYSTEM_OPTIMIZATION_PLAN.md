@@ -740,7 +740,7 @@ that review must be verified again before proposing infrastructure changes.
   Measure whether a redundant GET or ancillary work extends the visible wait.
   Preserve the server acknowledgement for publishing, scoring, enrollment,
   grants, archives, placement approvals and other consequential operations.
-- [ ] N04. Pilot optimistic feedback on a small reversible edit. Prefer an
+- [x] N04. Pilot optimistic feedback on a small reversible edit. Prefer an
   isolated display change such as an institute's banner choice. Show its pending
   state immediately and retain it until confirmed. On explicit rejection, restore
   the server value while retaining the attempted input for correction. On an
@@ -913,3 +913,26 @@ and `work/organization-browser-ya2zf97h/`.
 The full backend suite passed all 831 tests on disposable PostgreSQL, including
 the nested-write rollback and scoring regressions. Receipt:
 `work/organization-postgres-r1y7ro1w/tests.txt`.
+
+### N04 preset banner pilot
+
+On Institutes & Programs, changing only the preset color on a card without an
+uploaded banner shows an immediate preview and a saving status. The write sends
+only the color. Pending colors stay local to the page; confirmed records update
+the shared cache, and unrelated edits keep their normal confirmation flow.
+
+A rejected change restores the current card and retains the selection for
+review. If the response is lost, the page checks the saved record and never
+automatically repeats the write. A newer record detected during the save is
+checked before the older response can overwrite it. A session reset or loss
+of record access clears the preview and draft.
+
+Chrome against the freshly built production bundle passed eight pilot scenarios:
+pending feedback and focus, rejection and retained input, a committed response
+lost in transit, offline recovery, competing sessions, revoked access,
+confirmation for program details, and session switching during a program save.
+Organization CRUD and management dialogs also passed (15 and 4 groups).
+Frontend lint, production build, and 326 unit tests passed. Receipts:
+`work/organization-browser-llgvc_hs/`, `work/organization-browser-fgp233q6/`,
+`work/organization-browser-ir48_e6s/`. These tests use synthetic records
+and controlled network failures; they do not estimate deployment response time.
