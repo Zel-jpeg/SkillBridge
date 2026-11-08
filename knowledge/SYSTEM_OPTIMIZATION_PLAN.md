@@ -688,3 +688,158 @@ rebuild its optimized development dependencies. [Vite dependency caching](https:
   checks with Realtime and its fallback before expanding the pilot.
 - [ ] Compare production metrics with the baseline and close each workstream
   when its acceptance gates pass. Record any intentionally deferred changes.
+
+## Navigation and save feedback plan · 8 November 2026
+
+The user requested planning before implementation after reporting slow navigation
+and saves. The application baseline for this review is local main `11ed70d`.
+The user authorized continuous implementation on 8 November, including agents
+and fixes found during verification. Complete and merge each phase locally
+before implementing the next.
+
+### Current implementation
+
+React renders authenticated pages in the browser. Django authorizes requests,
+queries PostgreSQL and returns the data. Supabase hosts PostgreSQL and Storage.
+The browser uses the existing account-scoped query cache, shared in-flight GETs,
+route code loading, navigation preparation and background revalidation.
+This is server data access with client page rendering. Full HTML server rendering
+would be a separate architecture change.
+
+The assessment creator validates locally, sends its POST and shows success after
+the API response. Some editors already publish the returned saved record into
+the cache immediately and reconcile through a later GET. Operation latency can
+include authorization, SQL round trips, locking, recalculation, serialization,
+recipient lookup and synchronous post-commit notification delivery. Measure
+these contributions before selecting a change.
+
+Historical hosted timings earlier in this document belong to an older deployed
+revision. They establish previous slow requests, without establishing the
+current revision's bottleneck. The API/database region separation recorded in
+that review must be verified again before proposing infrastructure changes.
+
+### Ordered implementation and verification
+
+- [x] N01. Measure current navigation and saves. Trace admin dashboard, batches,
+  users, taxonomy, assessments, partners, placements and reports, plus coordinator
+  rosters and student assessments/results. Compare cold entry, repeat navigation,
+  a page with cached data, changed institute/program, and first submission after
+  process startup. Record time to visible content, time to usable data, request
+  count, response size and save acknowledgement. Break server time into database,
+  calculations and post-commit work on synthetic fixtures. Measure ordinary and
+  pilot transport separately. Use timing metadata without student records.
+- [ ] N02. Fix the measured navigation causes. Reuse the existing cache and route
+  preparation. Render page structure immediately, keep usable same-scope content
+  during refresh, and load secondary panels independently. Profile repeated or
+  sequential reads, large list responses and background requests competing with
+  the destination. Select server query, pagination or connection changes only
+  when traces identify their cost. Verify access revocation and account changes.
+- [ ] N03. Improve confirmed-save feedback. Show pending feedback immediately,
+  preserve draft input and prevent repeated submissions. Use the saved response
+  to update the relevant cache and screen before background reconciliation.
+  Measure whether a redundant GET or ancillary work extends the visible wait.
+  Preserve the server acknowledgement for publishing, scoring, enrollment,
+  grants, archives, placement approvals and other consequential operations.
+- [ ] N04. Pilot optimistic feedback on a small reversible edit. Prefer an
+  isolated display change such as an institute's banner choice. Show its pending
+  state immediately and retain it until confirmed. On explicit rejection, restore
+  the server value while retaining the attempted input for correction. On an
+  uncertain transport failure, check the saved record before offering a retry.
+  A late GET or Realtime event must not duplicate or overwrite the pending edit.
+- [ ] N05. Broaden only after the pilot passes. Evaluate simple display edits
+  individually. Skill descriptions, eligibility, permissions and role requirements
+  can change recommendations or access and need confirmed-save handling.
+  A background job is appropriate only for identified slow work with durable
+  status, retry and failure recovery. Returning before database durability would
+  require a separate durable operation receipt.
+- [ ] N06. Verify and merge each completed phase locally. Compare before/after
+  timings on the same build mode and fixtures. Test delayed success, validation
+  failure, lost success response, offline failure, duplicate clicks, competing
+  edits, newer edits arriving before older responses, two tabs, logout during a
+  request, revoked access and different programs acting together. Preserve exact
+  scores, completion gates and placement capacity. Keep the release workflow's
+  existing branch, test and local-merge sequence.
+
+### UI state contract
+
+| Situation | What the user sees |
+| --- | --- |
+| Local form validation fails | Field guidance and the preserved input |
+| A confirmed-save operation is pending | Saving or Publishing status with repeated submission blocked |
+| A reversible optimistic edit is pending | Immediate visual preview with a Saving indicator |
+| The API confirms the saved record | Confirmed values and success feedback |
+| The API explicitly rejects the operation | Error guidance and recoverable input, with the authoritative value restored |
+| The response is lost or the outcome is uncertain | Checking saved status, followed by reconciliation before retry |
+
+Optimistic updates change the displayed pending state. Their rollback changes
+the browser view. Database rollback is controlled by the server transaction.
+An operation that committed before its response was lost requires reconciliation.
+Success must describe what the server has confirmed. For example, a saved email
+request can be queued while delivery remains pending.
+
+Full server rendering can be evaluated later if the measured first render is
+dominated by browser startup or dependent requests. It still needs database
+reads and save acknowledgements. The initial work should use the existing
+React and Django architecture and isolate the actual delays.
+
+Reference definitions follow the
+[React optimistic state guide](https://react.dev/reference/react/useOptimistic)
+and [MDN server rendering explanation](https://developer.mozilla.org/en-US/docs/Glossary/SSR).
+
+### N01 baseline results
+
+The baseline uses application revision `11ed70d`. The production browser run
+used synthetic records with no artificial latency. An additional PostgreSQL
+profile used an owned disposable cluster at two fixture sizes. The configured
+database probe enforced read-only transactions and recorded only timings,
+counts and response sizes.
+
+| Browser route, cold entry | API requests | API response bytes | Visible cards or heading |
+| --- | ---: | ---: | ---: |
+| Admin batches | 8 | 16,844 | 2,650 ms |
+| Admin assessments | 6 | 14,240 | 1,158 ms |
+| Admin placements | 8 | 21,110 | 1,035 ms |
+| Admin taxonomy | 6 | 14,240 | 784 ms |
+| Instructor roster | 7 | 9,501 | 933 ms |
+| Student assessments | 3 | 3,031 | 688 ms |
+| Student results | 3 | 3,031 | 628 ms |
+
+The first browser case includes cold module work. These are single-run local
+timings. Request counts and bytes provide the repeatable before/after comparison.
+Warm Tourism/Entrepreneurship switches in batches and assessments used zero
+GETs, settling in 269/243 ms respectively.
+
+The admin scope picker starts full collection reads before selection. Required
+organization choices begin 156–421 ms after unnecessary reads in the measured
+batch/assessment cases. Admin background preparation still requests the old
+IC-only skill endpoint. Placement preparation warms a 500-row history URL that
+differs from the workspace's scoped first-page URL. N02 will address those paths
+using the existing cache.
+
+The configured database's new connections took 852–1,366 ms across three
+samples, with same-connection SELECT 1 taking 117–183 ms. Median direct view
+times were 3,299 ms for instructor dashboard recommendations (18 SQL), 4,128 ms
+for full analytics (24 SQL), 8,108 ms for partner listings (53 SQL) and 5,659 ms
+for the roster (34 SQL). These exclude HTTP, connection setup and browser work.
+Student profile/results reads attempted work prohibited by the read-only guard,
+so the probe stopped those cases. Synthetic student browser checks succeeded.
+
+The loopback PostgreSQL profile at 200 students/20 batches measured admin
+overview at 110 ms/20 queries/47,857 bytes and full analytics at
+153 ms/24 queries/320,056 bytes. Query counts stayed constant as fixtures grew
+from 20 to 200 students. The configured database round trips explain a substantial
+part of the observed local wait. Connection policy and service region changes
+still require matched deployment measurements.
+
+Receipts are under `work/navigation-baseline-uxz255ah/`,
+`work/optimization-review-postgres-zh8t9l7t/` and the refreshed
+`work/local-performance-2026-10-30/`. No configured records were changed.
+
+The save profile used disposable PostgreSQL with external publication disabled.
+Warm institute banner patches took 48–61 ms with 12 SQL statements, including
+audience and event persistence. A first request with cold imports took 4.9 s.
+Drafts with 20 MCQs took 196–276 ms and 133 operation SQL statements. Drafts
+with 100 MCQs took 666–725 ms and 613 operation SQL statements. Per-question
+category lookups and individual question/choice inserts are a measured follow-up
+for N03. Preserve the current validation, transaction and error-recovery behavior
+when batching those writes. Receipt `work/optimization-review-postgres-mmi9q7la/save-profile.json`.
