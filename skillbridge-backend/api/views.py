@@ -1784,12 +1784,16 @@ def instructor_assessments(request):
             return Response({'error': 'Batch not found or not yours'}, status=404)
 
     # Old clients omit publication_status and still publish; the new creator sends draft explicitly.
+    from functools import cache
     from .authoring_scope import UNSET, resolve_framework, category_fields, bind_batch
     framework = resolve_framework(request.user, batch, data.get('framework_id', UNSET), creating=True)
     if framework:
         from .competencies import framework_payload, expect_digest
         expect_digest(data.get('framework_digest'), framework_payload(framework, request.user)['digest'])
-    questions_data = [category_fields(question, framework, _question_category_name) for question in questions_data]
+    category_cache = {category.id: category for category in framework.categories.all()} if framework else None
+    legacy_name = cache(_question_category_name)
+    questions_data = [category_fields(question, framework, legacy_name, category_cache=category_cache)
+                      for question in questions_data]
     publication_status = data.get('publication_status', 'closed' if legacy_active is False else 'published')
     if publication_status not in dict(Assessment.PUBLICATION_CHOICES):
         return Response({'error': 'Invalid publication_status'}, status=400)
@@ -1829,14 +1833,12 @@ def instructor_assessments(request):
         due_at=due_at,
     )
 
-    created_questions = []
+    pending_questions = []
+    legacy_categories = {}
     for order, q_data in enumerate(questions_data, start=1):
         q_text    = q_data.get('question_text', '').strip()
         q_type    = q_data.get('question_type', 'mcq').lower()
         cat_name  = q_data.get('category', '').strip()
-        choices   = q_data.get('choices', [])
-        correct_answer = q_data.get('correct_answer', '')   # for identification
-
         if not q_text:
             continue
         if q_type not in ('mcq', 'truefalse', 'identification'):
@@ -1847,38 +1849,47 @@ def instructor_assessments(request):
         if framework:
             cat = q_data.get('_category')
         elif cat_name:
-            cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
-                name__iexact=cat_name,
-                defaults={'name': cat_name, 'created_by': request.user}
-            )
-            category_created(cat_created)
+            if cat_name not in legacy_categories:
+                cat, cat_created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(
+                    name__iexact=cat_name,
+                    defaults={'name': cat_name, 'created_by': request.user}
+                )
+                category_created(cat_created)
+                legacy_categories[cat_name] = cat
+            cat = legacy_categories[cat_name]
 
-        question = Question.objects.create(
+        question = Question(
             assessment=assessment,
             skill_category=cat,
             question_text=q_text,
             question_type=q_type,
             question_order=order,
         )
+        pending_questions.append((question, q_data))
+
+    created_questions = Question.objects.bulk_create([question for question, _ in pending_questions])
+    answer_choices = []
+    for question, q_data in pending_questions:
+        choices = q_data.get('choices', [])
+        correct_answer = q_data.get('correct_answer', '')
 
         # Create choices
-        if q_type == 'identification':
+        if question.question_type == 'identification':
             # Store correct answer as a single AnswerChoice with is_correct=True
             if correct_answer:
-                AnswerChoice.objects.create(
+                answer_choices.append(AnswerChoice(
                     question=question,
                     choice_text=correct_answer.strip(),
                     is_correct=True,
-                )
+                ))
         else:
             for c in choices:
-                AnswerChoice.objects.create(
+                answer_choices.append(AnswerChoice(
                     question=question,
                     choice_text=c.get('text', '').strip(),
                     is_correct=c['is_correct'],
-                )
-
-        created_questions.append(question.id)
+                ))
+    AnswerChoice.objects.bulk_create(answer_choices)
 
     record_action(request.user, 'assessment.create', 'assessment', assessment.id, assessment.batch_id,
                   after=assessment_state(assessment), question_count=len(created_questions))

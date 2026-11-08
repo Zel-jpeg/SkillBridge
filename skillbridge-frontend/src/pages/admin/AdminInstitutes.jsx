@@ -15,6 +15,8 @@ import OrganizationBreadcrumbs from '../../components/OrganizationBreadcrumbs'
 import CatalogBannerEditor from '../../components/CatalogBannerEditor'
 import { companyRequest } from '../../utils/companyImages'
 import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
+import { queryStore } from '../../api/queryStore'
+import { publishOrganizationRecord } from '../../utils/organizationCache'
 
 const ROOT = '/api/admin/institutes/'
 
@@ -39,7 +41,7 @@ export function CatalogForm({ item, program, institute, onClose, onSave, brandin
         ...(program ? { aliases: values.aliases.split('\n').map(value => value.trim()).filter(Boolean) } : {}),
       }) }
       const result = await onSave(companyRequest(details, image))
-      if (!result.ok) setError(errorText(result))
+      if (!result.ok && !result.cancelled) setError(errorText(result))
     } finally {
       pending.current = false
       setSaving(false)
@@ -104,6 +106,7 @@ function CatalogCollection({ institute: selected, onSelect, onBack }) {
   async function save(values) {
     const result = await request(form.id ? 'patch' : 'post', form.id ? `${base}${form.id}/` : base, values, { silentError: true })
     if (result.ok) {
+      publishOrganizationRecord(queryStore, `${base}${result.data.id}/`, result.data)
       applyDataChange({ topics: ['organization'] })
       setForm(null)
       showToast(`${institute ? 'Program' : 'Institute'} saved.`, 'success')

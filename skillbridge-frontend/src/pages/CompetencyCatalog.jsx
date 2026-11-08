@@ -19,6 +19,8 @@ import SkillDefinitionFields from '../components/SkillDefinitionFields'
 import { skillTagValues } from '../utils/skillTagEditor'
 import { PencilIcon, TrashIcon } from '../components/Icons'
 import { organizationField as field, organizationButton as button, organizationPrimary as primary } from '../components/admin/organizationUi'
+import { queryStore } from '../api/queryStore'
+import { publishOrganizationRecord } from '../utils/organizationCache'
 
 const PROGRAMS = '/api/management/competency-programs/'
 const AdminSkills = lazy(() => import('./admin/AdminSkills'))
@@ -251,8 +253,10 @@ export default function CompetencyCatalog({ role = 'instructor' }) {
 
   async function saveCard(values) {
     const base = `/api/admin/institutes/${editor.institute ? editor.id : editor.institute_id}/`
-    const result = await request('patch', editor.institute ? base : `${base}programs/${editor.id}/`, values, { silentError: true })
+    const detailUrl = editor.institute ? base : `${base}programs/${editor.id}/`
+    const result = await request('patch', detailUrl, values, { silentError: true })
     if (result.ok) {
+      publishOrganizationRecord(queryStore, detailUrl, result.data)
       applyDataChange({ topics: ['organization'] })
       setEditor(null)
       showToast('Card updated.')

@@ -734,7 +734,7 @@ that review must be verified again before proposing infrastructure changes.
   sequential reads, large list responses and background requests competing with
   the destination. Select server query, pagination or connection changes only
   when traces identify their cost. Verify access revocation and account changes.
-- [ ] N03. Improve confirmed-save feedback. Show pending feedback immediately,
+- [x] N03. Improve confirmed-save feedback. Show pending feedback immediately,
   preserve draft input and prevent repeated submissions. Use the saved response
   to update the relevant cache and screen before background reconciliation.
   Measure whether a redundant GET or ancillary work extends the visible wait.
@@ -887,3 +887,29 @@ students. All 56 focused PostgreSQL tests and the scoped-ranking browser journey
 passed. Receipts are `work/organization-postgres-xet3li5o/` and
 `work/organization-browser-w1o86nec/`. The SQLite browser fixture recovered
 from a transient lock during initial profile loading and completed successfully.
+
+### N03 confirmed saves
+
+The questionnaire creator writes questions and choices in batches within the
+existing transaction. Program category IDs still validate against the selected
+framework, and repeated shared skill names still follow the current name
+validation. The disposable PostgreSQL profile dropped from 133 to 15 operation
+statements at 20 MCQs and from 613 to 15 at 100 MCQs. The comparable local times
+were 196–276 to 28–35 ms and 666–725 to 48–53 ms. These are synthetic draft
+saves with external provider calls disabled; they do not measure publishing
+work, deployment latency, or network delivery. Receipt:
+`work/optimization-review-postgres-jijrib8a/save-profile.json`.
+
+Organization editors now display the confirmed institute or program record
+before the normal background refresh. They preserve the current list page and
+search, keep rejected edits in the form, and discard feedback from a previous
+account session. Older GET results cannot overwrite a confirmed publication.
+Frontend lint, the production browser build and 326 frontend tests passed.
+The real HTTP collection, scoped authoring and AIKEN browser checks passed
+(15, 7 and 4 groups), including a delayed GET, rejected save, account switch,
+unchanged answer keys and a stale skill definition. Receipts:
+`work/organization-browser-y1qubywi/`, `work/organization-browser-y4__1y3h/`
+and `work/organization-browser-ya2zf97h/`.
+The full backend suite passed all 831 tests on disposable PostgreSQL, including
+the nested-write rollback and scoring regressions. Receipt:
+`work/organization-postgres-r1y7ro1w/tests.txt`.

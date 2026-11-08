@@ -80,7 +80,7 @@ def bind_batch(batch, framework):
         transaction.on_commit(lambda recipients=recipients: publish_changes({pk: {'topics': ['batches'], 'batch_ids': [batch_id]} for pk in recipients}))
 
 
-def category_fields(fields, framework, legacy_name):
+def category_fields(fields, framework, legacy_name, *, category_cache=None):
     """Canonicalize identity without creating a category or trusting its label."""
     if framework is None:
         if fields.get('category_id') is not None:
@@ -96,7 +96,9 @@ def category_fields(fields, framework, legacy_name):
         return fields
     if type(value) is not int or value <= 0:
         fail('Choose a valid category ID from this framework.')
-    category = get_object_or_404(SkillCategory.objects.filter(framework=framework), pk=value)
+    category = category_cache.get(value) if category_cache is not None else None
+    if category is None or category.framework_id != framework.id:
+        category = get_object_or_404(SkillCategory.objects.filter(framework=framework), pk=value)
     if fields.get('category') and fields['category'] != category.name:
         fail('The category name and ID disagree. Reload the saved definition.')
     fields.update(category_id=category.id, category=category.name, _category=category)

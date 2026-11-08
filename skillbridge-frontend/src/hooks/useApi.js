@@ -33,6 +33,7 @@ import { invalidateQueries } from '../api/queryInvalidation'
 import { useToast } from '../context/ToastContext'
 import { useSession } from '../context/SessionContext'
 import { friendlyStatus, requestErrorMessage } from '../api/requestErrors'
+import { readBrowserSession } from '../api/sessionRenewal'
 
 // ── Cache constants ───────────────────────────────────────────────────────────
 
@@ -224,14 +225,19 @@ export function useApi(url, { skip = false, initialData = null } = {}) {
 
   // ── Manual trigger (POST, PATCH, DELETE) ─────────────────────────────────
   const request = useCallback(async (method, endpoint, payload, { silentError = false } = {}) => {
+    const requestSession = readBrowserSession().id
     const requestToken = localStorage.getItem('sb-token')
     if (!url || !cache.read(url)) setLoading(true)
     setFailure({ url, message: null, status: null })
     try {
       const res = await api[method](endpoint, payload)
+      if (requestSession !== readBrowserSession().id) return { ok: false, cancelled: true }
       setLoading(false)
       return { ok: true, data: res.data }
     } catch (err) {
+      if (err.staleIdentity || err.code === 'ERR_CANCELED' || requestSession !== readBrowserSession().id) {
+        return { ok: false, cancelled: true }
+      }
       setLoading(false)
       const status = err.response?.status
 

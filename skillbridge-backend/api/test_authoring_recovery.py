@@ -34,7 +34,8 @@ class AuthoringRecoveryTests(APITestCase):
     def test_failed_create_or_append_rolls_back_all_nested_rows(self):
         for endpoint, envelope in [(reverse('instructor_assessments'), {'title': 'Must roll back', 'batch_id': self.batch.id, 'publication_status': 'draft'}),
                                    (reverse('instructor_assessment_add_questions', args=[self.assessment.id]), {})]:
-            with patch('api.views.AnswerChoice.objects.create', side_effect=RuntimeError('Synthetic write failure')):
+            choice_write = 'bulk_create' if endpoint == reverse('instructor_assessments') else 'create'
+            with patch(f'api.views.AnswerChoice.objects.{choice_write}', side_effect=RuntimeError('Synthetic write failure')):
                 with self.assertRaises(RuntimeError):
                     self.client.post(endpoint, {**envelope, 'questions': [self.valid]}, format='json')
             self.assertEqual(Assessment.objects.count(), 1)

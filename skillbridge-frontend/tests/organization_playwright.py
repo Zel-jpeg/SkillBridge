@@ -58,6 +58,96 @@ def form(page, kind, name, code):
     return dialog
 
 
+def confirmed_card_updates(browser):
+    context, page = session(browser)
+    open_page(page)
+    page.get_by_role('searchbox', name='Search by name or code').fill('Synthetic Institute')
+    page.get_by_role('button', name='Next →', exact=True).click()
+    expect(page.get_by_role('heading', name='Synthetic Institute 09', exact=True)).to_be_visible()
+    held = []
+    def hold_reconciliation(route):
+        path = urlparse(route.request.url).path
+        if route.request.method == 'GET' and (path.startswith('/api/admin/institutes/') or path == '/api/management/organization-options/'):
+            held.append(route)
+        else:
+            route.fallback()
+    context.route('**/api/**', hold_reconciliation)
+    page.get_by_role('button', name='Edit Synthetic Institute 09', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit institute', exact=True)
+    dialog.get_by_label('Name', exact=True).fill('Synthetic Institute 09 reviewed')
+    dialog.get_by_role('button', name='Save institute', exact=True).click()
+    expect(dialog).to_have_count(0)
+    expect(page.get_by_role('heading', name='Synthetic Institute 09 reviewed', exact=True)).to_be_visible()
+    expect(page.get_by_role('searchbox', name='Search by name or code')).to_have_value('Synthetic Institute')
+    expect(page.get_by_text('Showing 9–12 of 12', exact=True)).to_be_visible()
+    assert held, 'The edit must be visible while reconciliation GETs remain pending'
+    context.unroute('**/api/**', hold_reconciliation)
+    for route in held:
+        route.fallback()
+    page.wait_for_load_state('networkidle')
+    checks.append('confirmed institute response updates the card before delayed GETs while preserving page two and search')
+
+    page.get_by_role('button', name='Edit Synthetic Institute 09 reviewed', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit institute', exact=True)
+    dialog.get_by_label('Name', exact=True).fill('Synthetic Institute 00')
+    dialog.get_by_role('button', name='Save institute', exact=True).click()
+    expect(dialog.get_by_role('alert')).to_contain_text('already uses')
+    expect(dialog.get_by_label('Name', exact=True)).to_have_value('Synthetic Institute 00')
+    expect(page.get_by_role('heading', name='Synthetic Institute 09 reviewed', exact=True)).to_be_visible()
+    dialog.get_by_role('button', name='Cancel', exact=True).click()
+    checks.append('rejected institute PATCH retains the draft and the previous confirmed card')
+
+    page.goto(BASE + '/admin/competencies', wait_until='networkidle')
+    page.get_by_role('searchbox', name='Search institutes').fill('Synthetic Institute 09')
+    held.clear()
+    context.route('**/api/**', hold_reconciliation)
+    page.get_by_role('button', name='Edit Synthetic Institute 09 reviewed', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit institute', exact=True)
+    dialog.get_by_label('Name', exact=True).fill('Synthetic Institute 09 final')
+    dialog.get_by_role('button', name='Save institute', exact=True).click()
+    expect(dialog).to_have_count(0)
+    expect(page.get_by_role('link', name='Synthetic Institute 09 final', exact=True)).to_be_visible()
+    assert held
+    context.unroute('**/api/**', hold_reconciliation)
+    for route in held:
+        route.fallback()
+    page.wait_for_load_state('networkidle')
+    checks.append('taxonomy card uses the confirmed write response before its delayed organization options GET')
+
+    # An old account's delayed success must not repopulate the next session.
+    pending = []
+    def hold_patch(route):
+        if route.request.method == 'PATCH':
+            pending.append(route)
+        else:
+            route.fallback()
+    context.route('**/api/admin/institutes/**', hold_patch)
+    page.get_by_role('button', name='Edit Synthetic Institute 09 final', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit institute', exact=True)
+    dialog.get_by_label('Name', exact=True).fill('OLD_ADMIN_RESPONSE_SENTINEL')
+    dialog.get_by_role('button', name='Save institute', exact=True).click()
+    page.wait_for_timeout(100)
+    assert len(pending) == 1
+    identity = AUTH['instructor']
+    page.evaluate("""identity => {
+        localStorage.setItem('sb-session-id', 'different-synthetic-session');
+        localStorage.setItem('sb-token', identity.token);
+        localStorage.setItem('sb-role', identity.user.role);
+        localStorage.setItem('sb-user', JSON.stringify(identity.user));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'sb-session-id' }));
+    }""", identity)
+    route, = pending
+    path = urlparse(route.request.url).path
+    response = route.fetch(url=API + path)
+    route.fulfill(response=response)
+    expect(page).to_have_url(BASE + '/instructor/dashboard')
+    page.wait_for_load_state('networkidle')
+    expect(page.locator('.sb-toast')).to_have_count(0)
+    assert page.evaluate("!JSON.stringify(sessionStorage).includes('OLD_ADMIN_RESPONSE_SENTINEL')")
+    context.close()
+    checks.append('account switch discards a late organization mutation response without cached rows or stale feedback')
+
+
 def run(browser):
     context, page = session(browser)
     open_page(page)
@@ -221,6 +311,7 @@ if __name__ == '__main__':
             browser = playwright.chromium.launch(channel='chrome', headless=True)
             try:
                 run(browser)
+                confirmed_card_updates(browser)
             finally:
                 browser.close()
         assert not errors, errors
