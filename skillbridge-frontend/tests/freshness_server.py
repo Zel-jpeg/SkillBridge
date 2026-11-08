@@ -19,6 +19,10 @@ sys.path.insert(0, str(ROOT / 'skillbridge-backend'))
 from django.conf import settings
 
 settings.DATABASES['default']['NAME'] = str(ARTIFACTS / f'local-{os.getpid()}.sqlite3')
+# Serialize the synthetic SQLite writes when several role tabs read/backfill together.
+# PostgreSQL concurrency is checked by the separate API transport suite.
+settings.DATABASES['default'].setdefault('OPTIONS', {})['transaction_mode'] = 'IMMEDIATE'
+
 settings.DEBUG = True
 settings.SECURE_SSL_REDIRECT = False
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
@@ -29,7 +33,7 @@ django.setup()
 from django.core.management import call_command
 from rest_framework_simplejwt.tokens import AccessToken
 from api import views
-from api.models import Assessment, AnswerChoice, Batch, BatchEnrollment, Company, Position, PositionRequirement, Question, SkillCategory, User
+from api.models import Assessment, AnswerChoice, Batch, BatchEnrollment, Company, Position, PositionRequirement, Question, SkillCategory, User, Institute, Program, InstructorAssignment
 from api.serializers import UserSerializer
 
 call_command('migrate', verbosity=0)
@@ -38,7 +42,13 @@ users = {}
 for role in ('admin', 'instructor', 'student'):
     users[role] = User.objects.create_user(f'{role}.freshness@dnsc.edu.ph', role=role,
         name=f'Synthetic {role}', is_approved=True, school_id={'student': '2099-99999'}.get(role, ''), course='BSIT')
-batch = Batch.objects.create(name='Synthetic live cohort', instructor=users['instructor'])
+institute = Institute.objects.create(code='IC', name='Institute of Computing')
+program = Program.objects.create(institute=institute, code='BSIT', name='Bachelor of Science in Information Technology')
+InstructorAssignment.objects.create(program=program, instructor=users['instructor'])
+batch = Batch.objects.create(name='Synthetic live cohort', instructor=users['instructor'], institute=institute)
+users['student'].program = program
+users['student'].department = institute.name
+users['student'].save(update_fields=['program', 'department'])
 users['student'].address = {'pinLat': 7.31, 'pinLng': 125.62}
 users['student'].save(update_fields=['address'])
 BatchEnrollment.objects.create(student=users['student'], batch=batch)
@@ -56,7 +66,7 @@ AnswerChoice.objects.create(question=q2, choice_text='Draft yes', is_correct=Tru
 AnswerChoice.objects.create(question=q2, choice_text='Draft no')
 auth = {role: {'token': str(AccessToken.for_user(user)), 'user': UserSerializer(user).data} for role, user in users.items()}
 auth['ids'] = {'batch': batch.id, 'company': company.id, 'position': position.id,
-    'assessment': assessment.id, 'draft': draft.id, 'question': question.id, 'choice': choice.id}
+    'assessment': assessment.id, 'draft': draft.id, 'question': question.id, 'choice': choice.id, 'institute': institute.id, 'program': program.id}
 (ARTIFACTS / 'auth.json').write_text(json.dumps(auth), encoding='utf-8')
 print('Synthetic freshness server ready (SQLite; not PostgreSQL worker verification)', flush=True)
 logging.getLogger('django.server').setLevel(logging.CRITICAL)

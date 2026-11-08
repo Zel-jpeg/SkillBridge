@@ -45,7 +45,7 @@ def session(browser, role, mobile=False):
               setView() { this.views++; return this; }, fitBounds() { this.views++; return this; },
               invalidateSize() {}, remove() { this.removed = true; } };
               window.__maps.push(map); return map; },
-            tileLayer() { return {addTo(){}}; }, divIcon(value) { return value; },
+            tileLayer() { return {addTo(){ return this; }}; }, divIcon(value) { return value; },
             featureGroup() { return {getBounds(){ return {pad(){return {};}}; }}; },
             marker(coords, options) { return {coords, options,
               addTo(map) { this.map = map; map.markers.push(this); return this; },
@@ -74,6 +74,7 @@ def mutate(context, role, method, path, data=None):
 
 def record(name, start=None):
     checks.append(name)
+    print('PASS', name, flush=True)
     if start is not None:
         latencies.append({'check': name, 'response_to_dom_ms': round((time.perf_counter() - start) * 1000)})
 
@@ -208,27 +209,45 @@ with sync_playwright() as p:
 
         # A metadata draft is separate from the live assessment header.
         go(admin, '/admin/assessments')
-        admin.get_by_role('button', name='Synthetic assessment revised', exact=True).click()
+        admin.get_by_role('region', name='Institutes', exact=True).get_by_role('link', name='Institute of Computing', exact=True).click()
+        admin.get_by_role('region', name='Programs', exact=True).get_by_role('link', name='All IC programs', exact=True).click()
+        admin.get_by_role('button', name='View details for Synthetic assessment revised', exact=True).click()
+        admin.get_by_role('tab', name='Settings', exact=True).click()
         title = admin.get_by_label('Title', exact=True)
         title.fill('Unsaved local title')
         mutate(instructor_context, 'instructor', 'PATCH', f"/api/instructor/assessments/{ids['assessment']}/", {'title': 'Synthetic remote title'})
         expect(admin.get_by_role('dialog').get_by_role('heading', name=re.compile('Synthetic remote title'))).to_be_visible(timeout=10000)
         expect(title).to_have_value('Unsaved local title')
         record('Unsaved assessment metadata draft survives remote edit')
-        admin.get_by_role('button', name='Close', exact=True).click()
+        admin.get_by_role('button', name='Close assessment details', exact=True).click()
+        admin.get_by_role('button', name='Discard changes', exact=True).click()
 
-        # Generated reports keep their original payload and become explicitly stale.
-        go(admin, '/admin/reports')
-        admin.get_by_role('button', name='Generate report', exact=True).click()
-        expect(admin.get_by_text(re.compile('Generated .*records'))).to_be_visible(timeout=10000)
-        generated = admin.get_by_text(re.compile('Generated .*records')).inner_text()
+        # Exported files keep the downloaded snapshot while analytics stays live.
+        go(admin, '/admin/reports?tab=assessments&group=assessments')
+        with admin.expect_response(lambda response:
+                '/api/management/analytics/?institute_id=' + str(ids['institute']) in response.url) as scoped_report:
+            admin.get_by_label('Institute', exact=True).select_option(str(ids['institute']))
+        assert scoped_report.value.ok
+        expect(admin.get_by_role('region', name='Report scope')).to_contain_text('Institute: Institute of Computing')
+        admin.get_by_role('button', name='Assessment table', exact=True).click()
+        records = admin.get_by_role('region', name='Analytics records', exact=True)
+        expect(records.get_by_text('Synthetic remote title', exact=True)).to_be_visible()
+        admin.wait_for_function("new URLSearchParams(location.search).get('group') === 'assessments'")
+        with admin.expect_download() as download:
+            records.get_by_role('button', name='Download displayed CSV', exact=True).click()
+        report = ARTIFACTS / 'live-assessment-snapshot.csv'
+        download.value.save_as(str(report))
+        original_export = report.read_bytes()
+        assert b'Synthetic remote title' in original_export
         mutate(instructor_context, 'instructor', 'PATCH', f"/api/instructor/assessments/{ids['assessment']}/", {'title': 'Synthetic report change'})
-        expect(admin.get_by_role('button', name='Regenerate report', exact=True)).to_be_visible(timeout=10000)
-        assert admin.get_by_text(re.compile('Generated .*records')).inner_text() == generated
-        record('Generated assessment report retains its timestamp and exposes regeneration')
+        expect(records.get_by_text('Synthetic report change', exact=True)).to_be_visible(timeout=10000)
+        assert report.read_bytes() == original_export
+        record('Live analytics updates its rows while downloaded CSV retains the saved snapshot')
 
-        # Company/capacity and placement updates reach staff and the student's saved result view.
+        # Company/capacity and placement updates reach staff and student results.
         go(admin, '/admin/placements')
+        admin.get_by_role('region', name='Institutes', exact=True).get_by_role('link', name='Institute of Computing', exact=True).click()
+        admin.get_by_role('region', name='Programs', exact=True).get_by_role('link', name='All IC programs', exact=True).click()
         go(instructor, '/instructor/companies')
         go(student, '/student/results')
         student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.length === 2)')
@@ -238,15 +257,19 @@ with sync_playwright() as p:
         start = time.perf_counter()
         expect(admin.get_by_text('Synthetic renamed employer', exact=True).first).to_be_visible(timeout=10000)
         expect(instructor.get_by_text('Synthetic renamed employer', exact=True).first).to_be_visible(timeout=10000)
+        expect(student.get_by_text(re.compile('Suggestions need refreshing'))).to_be_visible(timeout=10000)
+        mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/', {'batch_id': ids['batch']})
         expect(student.get_by_text('Synthetic renamed employer', exact=True).first).to_be_visible(timeout=10000)
-        record('Company edits reach open placement, company and student result views', start)
-        student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.some(m => m.html.includes("Synthetic renamed employer") && m.open))')
+        record('Catalog edits mark old suggestions stale; an admin rerun updates open result views', start)
+        student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.some(m => m.html.includes("Synthetic renamed employer")))')
         assert student.evaluate('window.__maps.filter(map => !map.removed)[0].views') == initial_views
-        record('Result map markers and open popup reconcile while keeping viewport (instrumented Leaflet)')
+        record('Result map markers recover after catalog refresh while keeping viewport (instrumented Leaflet)')
         mutate(admin_context, 'admin', 'PATCH', f"/api/admin/positions/{ids['position']}/", {'slots': 8})
         start = time.perf_counter()
         expect(admin.get_by_text(re.compile('8.*slots', re.I)).first).to_be_visible(timeout=10000)
         record('Position capacity reaches open placement suggestions', start)
+        mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/', {'batch_id': ids['batch']})
+        mutate(admin_context, 'admin', 'POST', '/api/placements/draft/', {'action': 'sync'})
         mutate(admin_context, 'admin', 'POST', '/api/placements/manual-assign/', {'student_id': AUTH['student']['user']['id'], 'position_id': ids['position'], 'remarks': 'Synthetic local verification'})
         start = time.perf_counter()
         expect(student.get_by_text('Approved', exact=True).first).to_be_visible(timeout=10000)
@@ -259,12 +282,15 @@ with sync_playwright() as p:
         start = time.perf_counter()
         expect(instructor.get_by_text('Synthetic after reconnect', exact=True).first).to_be_visible(timeout=15000)
         record('Disconnected view converges after reconnection and resynchronization', start)
+        mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/', {'batch_id': ids['batch']})
         go(student, '/student/dashboard')
         student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.length === 2)')
         dashboard_views = student.evaluate('window.__maps.filter(map => !map.removed)[0].views')
         mutate(admin_context, 'admin', 'PATCH', f"/api/admin/companies/{ids['company']}/", {'lat': 7.4, 'lng': 125.7})
+        mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/', {'batch_id': ids['batch']})
         student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.some(m => m.coords[0] === 7.4))')
         mutate(student_context, 'student', 'PATCH', '/api/students/me/profile/', {'name': 'Synthetic learner revised', 'studentId': '2099-99999', 'course': 'BSIT', 'pinLat': 7.33, 'pinLng': 125.66})
+        mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/', {'batch_id': ids['batch']})
         student.wait_for_function('window.__maps.some(map => !map.removed && map.markers.some(m => m.coords[0] === 7.33))')
         assert student.evaluate('window.__maps.filter(map => !map.removed)[0].views') == dashboard_views
         record('Dashboard map pins reconcile without resetting viewport (instrumented Leaflet)')
@@ -277,6 +303,13 @@ with sync_playwright() as p:
         start = time.perf_counter()
         expect(instructor.get_by_role('table').get_by_text('Synthetic Import Student', exact=True)).to_be_visible(timeout=10000)
         record('Bulk enrollment reaches an open instructor dashboard', start)
+        blocked_archive = instructor_context.request.post(API + f"/api/instructor/batches/{ids['batch']}/archive/",
+            headers={'Authorization': 'Bearer ' + AUTH['instructor']['token']})
+        assert blocked_archive.status == 409 and 'retake' in blocked_archive.json()['error'].lower()
+        mutate(instructor_context, 'instructor', 'PATCH',
+               f"/api/instructor/students/{AUTH['student']['user']['id']}/retake/",
+               {'assessment_id': ids['assessment'], 'retake_allowed': False})
+        record('Approved retakes block batch archive until the coordinator resolves them')
         instructor.get_by_role('row').filter(has_text='Synthetic learner revised').get_by_text('Synthetic learner revised', exact=True).click()
         expect(instructor.locator('dialog[open]')).to_be_visible()
         mutate(instructor_context, 'instructor', 'DELETE', f"/api/instructor/students/{AUTH['student']['user']['id']}/")

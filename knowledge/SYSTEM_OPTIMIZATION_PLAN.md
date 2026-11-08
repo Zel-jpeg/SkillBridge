@@ -1005,3 +1005,58 @@ tests verify that a routine results event preserves the access revision while
 a grant or enrollment removal changes it. Receipt:
 `work/organization-postgres-2rpeonnk/tests.txt`.
 The fix is on branch `codex/quiet-live-refresh`, verified for local merge.
+
+### Full verification follow-up · 8 November 2026
+
+The user requested a fresh full check after the quiet reconnect fix. Local
+application revision `0ce4ee9` passed all 832 PostgreSQL backend tests, all
+329 frontend tests, frontend lint and the production build. Django found no
+model/migration drift, and pip found no broken requirements. The synthetic
+deployment check reported only the existing optional HSTS preload warning.
+
+The old live walkthrough is now aligned with the current institute/program
+navigation and accessible assessment controls. It checks live analytics and an
+actual downloaded CSV snapshot. Its Leaflet stub returns its layer as the
+current component expects, and the isolated SQLite fixture uses immediate
+transactions to avoid test-only reader/writer lock races. Catalog changes
+first make saved recommendations stale. The walkthrough explicitly refreshes
+them, synchronizes the shared allocation before approval and resolves the
+approved retake before archiving. Those checks exercise the current safety
+rules rather than assuming the older workflow.
+
+The complete real-HTTP/SSE walkthrough passed 20 checks with zero browser page
+errors. It includes timed student work, live results, hidden-tab return,
+preserved drafts, CSV download, stale suggestions, map marker/viewport recovery,
+placement approval, offline recovery, enrollment, archive gates, access
+revocation and logout. Map checks instrument Leaflet lifecycle rather than
+contacting the public tile or road services.
+
+Fresh production-bundle browser suites also passed multi-institute acceptance
+(8 groups), shared visibility (7), pending-save recovery (8), organization CRUD
+(15), instructor management dialogs (4), admin scope navigation (14), and school
+reports (9). These use synthetic records and do not claim hosted-load capacity.
+
+Evidence receipts:
+
+- Backend: `work/organization-postgres-w110v8ev/tests.txt`.
+- Complete live walkthrough: `work/quiet-live-refresh-p_3dvbdp/browser.txt`.
+- Multi-institute acceptance: `work/organization-browser-irbkly0j/browser.txt`.
+- Shared visibility: `work/organization-browser-lg29w9dw/browser.txt`.
+- Pending saves: `work/organization-browser-jy2wyi6l/browser.txt`.
+- Organization management: `work/organization-browser-lb9q0y38/browser.txt`.
+- Instructor dialogs: `work/organization-browser-4g3oczq7/browser.txt`.
+- Admin navigation: `work/organization-browser-0_bapypt/browser.txt`.
+- Reports and CSV/PDF: `work/organization-browser-kjwtpbdf/browser.txt`.
+
+The existing hosted database migration ledger was read through the Supabase
+connector. All local API migrations through `0043_institute_shared_skills`
+were present. A separate read-only connection attempt through the configured
+PostgreSQL pooler still timed out from this machine. This remains an operational
+blocker for normal local startup. The successful disposable tests do not close
+that connectivity issue.
+
+The next steps are to restore and verify the normal pooler connection, complete
+the deployment configuration/backup review, and run the role walkthrough on the
+hosted release when authorized. This verification branch changes only the two
+browser test files and this checkpoint. Separate analytics-design documents and
+outputs already in the checkout belong to the other ongoing work.
