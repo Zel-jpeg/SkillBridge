@@ -105,34 +105,44 @@ with sync_playwright() as playwright:
 
     current = call(context, detail, role='instructor')
     call(context, detail, 'patch', {'expected_digest': current['digest'], 'freeze': True}, status=200)
+    page.evaluate('sessionStorage.clear()')
     page.reload(wait_until='networkidle')
-    page.get_by_text('More options', exact=True).click()
-    page.get_by_role('button', name='Refresh catalog', exact=True).click()
     expect(page.get_by_text('Definitions frozen or in use', exact=False)).to_be_visible()
     page.get_by_role('button', name='Edit Database Management', exact=True).click()
     expect(dialog.get_by_text('This skill set is already in use.', exact=False)).to_be_visible()
     dialog.get_by_label('Description', exact=True).fill('A reviewed future definition.')
     dialog.get_by_role('button', name='Save changes', exact=True).click()
     expect(dialog).to_have_count(0)
-    expect(page.get_by_role('heading', name='Reviewed skills · v2', exact=True)).to_be_visible()
+    expect(page.get_by_text('A reviewed future definition.', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='Skill set versions', exact=True)).to_have_count(0)
+    expect(page.get_by_text('More options', exact=True)).to_have_count(0)
     original = call(context, detail + f'categories/{skill["id"]}/', role='instructor')
     assert original['description'] == 'Completely different definition.'
     page.goto(BASE + f'/instructor/competencies?program={program["id"]}', wait_until='networkidle')
-    page.get_by_role('button', name='Open v1', exact=True).click()
+    latest = call(context, frameworks, role='instructor')['results'][0]
+    latest_detail = frameworks + f'{latest["id"]}/'
+    call(context, latest_detail, 'patch', {'expected_digest': latest['digest'], 'freeze': True})
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
+    expect(page.get_by_text('Definitions frozen or in use', exact=False)).to_be_visible()
     page.get_by_role('button', name='Remove Database Management', exact=True).click()
     confirm = page.get_by_role('dialog', name='Remove Database Management?', exact=True)
     confirm.get_by_role('button', name='Create updated skill set', exact=True).click()
     expect(confirm).to_have_count(0)
-    expect(page.get_by_role('heading', name='Reviewed skills · v3', exact=True)).to_be_visible()
+    expect(page.get_by_text('No skill categories found.', exact=True)).to_be_visible()
     expect(page.get_by_role('button', name='Edit Database Management', exact=True)).to_have_count(0)
     assert call(context, detail + f'categories/{skill["id"]}/', role='instructor')['id'] == skill['id']
     print('PASS frozen skill edit/removal creates future versions while the original definition stays available')
+    # Retire the updated copy so the earlier active library becomes current.
+    latest = call(context, frameworks, role='instructor')['results'][0]
+    call(context, frameworks + f'{latest["id"]}/', 'patch', {'expected_digest': latest['digest'], 'is_active': False})
     context.close()
 
     for role, width, dark in (('other_instructor', 390, True), ('admin', 1440, False)):
         context, page = support.session(browser, role, width=width, dark=dark)
         page.goto(BASE + f'/{"admin" if role == "admin" else "instructor"}/competencies?program={program["id"]}', wait_until='networkidle')
-        page.get_by_role('button', name='Open v2', exact=True).click()
+        expect(page.get_by_role('button', name='Skill set versions', exact=True)).to_have_count(0)
+        expect(page.get_by_text('More options', exact=True)).to_have_count(0)
         page.get_by_role('button', name='Edit Database Management', exact=True).click()
         dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
         expect(dialog.get_by_role('button', name='Suggest tags', exact=True)).to_be_visible()
@@ -145,6 +155,7 @@ with sync_playwright() as playwright:
     shared = call(context, '/api/admin/skills/', 'post', {'name': 'Cloud',
         'description': 'Deploy virtual machines, cloud storage.', 'tags': ['Manual keyword']}, status=201)
     page.goto(BASE + '/admin/skills', wait_until='networkidle')
+    expect(page.get_by_text('More options', exact=True)).to_have_count(0)
     page.get_by_role('button', name='Edit Cloud', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Skill Category', exact=True)
     dialog.get_by_role('button', name='Suggest tags', exact=True).click()

@@ -1,20 +1,6 @@
 import DataSection from './DataSection'
 import EmptyState from './EmptyState'
 import SearchBar from './SearchBar'
-import { ChevronDown } from './Icons'
-import { organizationButton } from './admin/organizationUi'
-
-export function SkillLibraryOptions({ children }) {
-  return <details className="group">
-    <summary className={`${organizationButton} list-none [&::-webkit-details-marker]:hidden`}>
-      More options <span aria-hidden="true" className="group-open:rotate-180"><ChevronDown /></span>
-    </summary>
-    <div className="mt-3 space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      {children}
-    </div>
-  </details>
-}
-
 export default function SkillLibraryTable({
   url, skills = [], total = skills.length, search = '', onSearch, renderActions, footer,
 }) {

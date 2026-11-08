@@ -10,7 +10,7 @@ OUT, AUTH, BASE, API = support.OUT, support.AUTH, support.BASE, support.API
 checks, errors = support.checks, support.errors
 
 
-def open_program(page, role='instructor', name='Synthetic Catalog Degree', advanced=True):
+def open_program(page, role='instructor', name='Synthetic Catalog Degree'):
     page.goto(BASE + f'/{role}/competencies', wait_until='networkidle')
     expect(page.get_by_role('heading', name='Skill taxonomy', exact=True)).to_be_visible()
     if role == 'admin':
@@ -19,14 +19,8 @@ def open_program(page, role='instructor', name='Synthetic Catalog Degree', advan
     else:
         page.get_by_role('searchbox', name='Search skill libraries').fill(name)
     page.get_by_role('link', name=name, exact=True).click()
-    if advanced:
-        more = page.get_by_text('More options', exact=True)
-        create = page.get_by_role('button', name='Create framework', exact=True)
-        expect(more.or_(create)).to_be_visible()
-        if more.is_visible():
-            more.click()
-            page.get_by_role('button', name='Skill set versions', exact=True).click()
-        expect(create).to_be_visible()
+    expect(page.get_by_role('button', name='Skill set versions', exact=True)).to_have_count(0)
+    expect(page.get_by_text('More options', exact=True)).to_have_count(0)
 
 
 def run(browser):
@@ -40,7 +34,7 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor')
-    open_program(page, advanced=False)
+    open_program(page)
     expect(page.get_by_text('Add the first skill', exact=False)).to_be_visible()
     page.get_by_role('button', name='Add Skill', exact=True).click()
     dialog = page.get_by_role('dialog', name='Add Skill', exact=True)
@@ -61,10 +55,8 @@ def run(browser):
         call(context, base + 'categories/', 'post', {'name': f'Extra category {index:02}',
             'description': 'Recognizes and explains a distinct synthetic knowledge area.', 'tags': []}, role='instructor', status=201)
     open_program(page)
-    page.get_by_role('button', name='Open v1', exact=True).click()
-    page.get_by_text('More options', exact=True).click()
-    with page.expect_response(lambda response: response.request.method == 'GET' and response.url.split('?')[0].endswith(base)):
-        page.get_by_role('button', name='Refresh catalog', exact=True).click()
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
     expect(page.get_by_text('10 skills', exact=True)).to_be_visible()
     page.get_by_role('button', name='Next →', exact=True).click()
     expect(page.get_by_text('Showing 9–10 of 10', exact=True)).to_be_visible()
@@ -92,35 +84,38 @@ def run(browser):
     dialog.get_by_role('button', name='Cancel', exact=True).click()
     page.get_by_role('dialog', name='Discard definition changes?', exact=True).get_by_role('button', name='Discard changes', exact=True).click()
     open_program(page)
-    page.get_by_role('button', name='Open v1', exact=True).click()
-    page.get_by_text('More options', exact=True).click()
-    with page.expect_response(lambda response: response.request.method == 'GET' and response.url.split('?')[0].endswith(base)):
-        page.get_by_role('button', name='Refresh catalog', exact=True).click()
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
     page.get_by_role('searchbox', name='Search skills').fill('Shared service')
     expect(page.get_by_text('A reviewed concurrent change.', exact=True)).to_be_visible()
-    page.get_by_role('button', name='Freeze definitions', exact=True).click()
-    page.get_by_role('dialog', name='Freeze this version?', exact=True).get_by_role('button', name='Freeze definitions', exact=True).click()
+    current = call(context, base, role='instructor')
+    call(context, base, 'patch', {'expected_digest': current['digest'], 'freeze': True})
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
     expect(page.get_by_text('This skill set is already in use.', exact=False)).to_be_visible()
     expect(page.get_by_role('button', name='Add Skill', exact=True)).to_have_count(0)
     checks.append('stale editor preserves its draft and cannot overwrite; reviewed freeze preserves definitions and explains future-copy editing')
 
-    page.get_by_role('button', name='Create new version', exact=True).click()
-    dialog = page.get_by_role('dialog', name='Create new version', exact=True)
+    page.get_by_role('searchbox', name='Search skills').fill('Shared service')
+    page.get_by_role('button', name='Edit Shared service knowledge', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
+    dialog.get_by_label('Description', exact=True).fill('An updated definition for future work.')
+    revisions = base + f'categories/{original["id"]}/revisions/'
     # Lose only the first response after the API commits. Retry uses the same UUID.
     lost = {'count': 0}
     def lose_once(route):
         if route.request.method == 'POST':
             lost['count'] += 1
             if lost['count'] == 1:
-                response = route.fetch(url=API + frameworks)
+                response = route.fetch(url=API + revisions)
                 assert response.status == 201
                 return route.abort('failed')
         return route.fallback()
-    context.route('**' + frameworks, lose_once)
-    dialog.get_by_role('button', name='Create version', exact=True).click()
+    context.route('**' + revisions, lose_once)
+    dialog.get_by_role('button', name='Save changes', exact=True).click()
     expect(dialog.locator('form [role="alert"]')).to_be_visible()
-    expect(dialog.get_by_label('Name', exact=True)).to_have_value('ANY skills')
-    dialog.get_by_role('button', name='Create version', exact=True).click()
+    expect(dialog.get_by_label('Name', exact=True)).to_have_value('Shared service knowledge')
+    dialog.get_by_role('button', name='Save changes', exact=True).click()
     expect(dialog).to_have_count(0)
     versions = call(context, frameworks, role='instructor')['results']
     assert [row['version'] for row in versions] == [2, 1]
@@ -128,20 +123,17 @@ def run(browser):
     copied = call(context, frameworks + f'{clone["id"]}/categories/?search=Shared', role='instructor')['results'][0]
     assert copied['id'] != original['id'] and copied['source_category_id'] == original['id']
     assert call(context, base, role='instructor')['locked']
-    page.get_by_role('button', name='Open v2', exact=True).click()
     page.get_by_role('searchbox', name='Search skills').fill('Shared')
     expect(page.get_by_role('button', name='Edit Shared service knowledge', exact=True)).to_be_visible()
     page.screenshot(path=str(OUT / 'program-competencies-desktop.png'), animations='disabled')
-    checks.append('lost clone response retries idempotently, preserves frozen source IDs/content and opens an editable new version')
+    checks.append('lost skill revision response retries idempotently and opens updated skills while preserving original evidence')
     context.close()
 
     context, page = support.session(browser, 'other_instructor', width=390, dark=True)
     open_program(page)
-    page.get_by_role('button', name='Open v2', exact=True).click()
     page.get_by_role('searchbox', name='Search skills').fill('Shared')
     expect(page.get_by_role('heading', name='Shared service knowledge', exact=True)).to_be_visible()
     expect(page.get_by_role('button', name='Edit Shared service knowledge', exact=True)).to_be_visible()
-    page.get_by_text('More options', exact=True).click()
     expect(page.get_by_role('button', name='Freeze definitions', exact=True)).to_have_count(0)
     call(context, f'/api/management/programs/{other["id"]}/frameworks/', role='other_instructor', status=404)
     page.get_by_role('button', name='Add Skill', exact=True).click()
@@ -159,15 +151,19 @@ def run(browser):
 
     context, page = support.session(browser)
     open_program(page, 'admin')
-    page.get_by_role('button', name='Open v2', exact=True).click()
-    page.get_by_text('More options', exact=True).click()
-    page.get_by_role('button', name='Retire version', exact=True).click()
-    page.get_by_role('dialog', name='Retire this version?', exact=True).get_by_role('button', name='Retire version', exact=True).click()
-    expect(page.get_by_role('button', name='Restore version', exact=True)).to_be_visible()
-    expect(page.get_by_role('button', name='Create new version', exact=True)).to_be_visible()
-    page.get_by_role('button', name='Restore version', exact=True).click()
-    page.get_by_role('dialog', name='Restore this version?', exact=True).get_by_role('button', name='Restore version', exact=True).click()
-    expect(page.get_by_role('button', name='Retire version', exact=True)).to_be_visible()
+    clone_detail = frameworks + f'{clone["id"]}/'
+    current = call(context, clone_detail)
+    call(context, clone_detail, 'patch', {'expected_digest': current['digest'], 'is_active': False})
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
+    page.get_by_role('searchbox', name='Search skills').fill('Shared')
+    expect(page.get_by_text('A reviewed concurrent change.', exact=True)).to_be_visible()
+    current = call(context, clone_detail)
+    call(context, clone_detail, 'patch', {'expected_digest': current['digest'], 'is_active': True})
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
+    page.get_by_role('searchbox', name='Search skills').fill('Peer')
+    expect(page.get_by_role('heading', name='Peer knowledge', exact=True)).to_be_visible()
     assert call(context, frameworks + f'{clone["id"]}/categories/')['count'] == 11
     call(context, base, role='student', status=403)
     grants = call(context, f'{parent}{program["id"]}/instructors/?status=active')['results']
@@ -175,6 +171,16 @@ def run(browser):
     call(context, f'{parent}{program["id"]}/instructors/{grant["id"]}/', 'patch', {'is_active': False})
     call(context, frameworks, role='other_instructor', status=404)
     checks.append('admin retire/restore keeps category identities; student access and same-JWT revoked program access are denied')
+    for path in (base, clone_detail):
+        current = call(context, path)
+        call(context, path, 'patch', {'expected_digest': current['digest'], 'is_active': False})
+    page.evaluate('sessionStorage.clear()')
+    page.reload(wait_until='networkidle')
+    expect(page.get_by_text('Retired', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='Edit Shared service knowledge', exact=True)).to_have_count(0)
+    expect(page.get_by_text('Add the first skill', exact=False)).to_have_count(0)
+    checks.append('a program with only retired libraries shows its latest saved definitions read-only')
+
     context.close()
 
 

@@ -50,18 +50,8 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor')
-    open_program(page, advanced=False)
-    page.get_by_text('More options', exact=True).click()
-    page.get_by_text('Check a question against saved categories', exact=True).click()
-    question = page.get_by_label('Question to check', exact=True)
-    question.fill('Explain booking records for arrival reservations.')
-    page.get_by_role('button', name='Check saved categories', exact=True).click()
-    expect(page.get_by_text('Suggested category: Records knowledge.', exact=False)).to_be_visible()
-    question.fill('Quantum wavefunction spectroscopy')
-    expect(page.get_by_text('Suggested category: Records knowledge.', exact=False)).to_have_count(0)
-    page.get_by_role('button', name='Check saved categories', exact=True).click()
-    expect(page.get_by_text('No clear match in these definitions.', exact=False)).to_be_visible()
-    checks.append('real saved-description match and unfamiliar-text abstention; editing input immediately hides old suggestions')
+    open_program(page)
+    expect(page.get_by_text('More options', exact=True)).to_have_count(0)
 
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
@@ -121,20 +111,12 @@ def run(browser):
     checks.append('late response after draft edit is ignored; failed assistance preserves manual content and manual saving works')
     page.unroute(pattern)
 
-    # A response for the old program cannot reach the newly mounted program view.
-    held.clear()
-    question.fill(category['description'])
-    category_pattern = '**' + base + 'assist/category/'
-    def hold_category(route):
-        held.append((route, route.fetch(url=API + base + 'assist/category/')))
-    page.route(category_pattern, hold_category)
-    page.get_by_role('button', name='Check saved categories', exact=True).click()
-    expect(page.get_by_role('button', name='Checking…', exact=True)).to_be_visible()
-    await_held(page, held)
+    # Switching libraries still resolves vocabulary only from the chosen program.
     page.get_by_role('link', name='All skill libraries', exact=True).click()
     page.get_by_role('link', name='Separate Assistance Degree', exact=True).click()
-    held[0][0].fulfill(response=held[0][1])
-    expect(page.get_by_text('Suggested category:', exact=False)).to_have_count(0)
+    expect(page.get_by_text('More options', exact=True)).to_have_count(0)
+    expect(page.get_by_role('heading', name='Records knowledge', exact=True)).to_be_visible()
+
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     show_reuse(dialog)
@@ -142,21 +124,7 @@ def run(browser):
     expect(dialog.get_by_text('Saved tags from Records knowledge: Independent vocabulary', exact=True)).to_be_visible()
     expect(dialog.get_by_role('region', name='Optional tag assistance').get_by_role('status')).not_to_contain_text('Arrival reservations')
     dialog.get_by_role('button', name='Cancel', exact=True).click()
-    checks.append('program switch discards in-flight suggestions; identical category names reuse only the new program vocabulary')
-
-    # The server must not offer a confident choice between identical definitions.
-    call(context, bases[1] + 'categories/', 'post', {'name': 'Different knowledge',
-        'description': category['description'], 'tags': ['Independent vocabulary']}, role='instructor', status=201)
-    page.get_by_text('More options', exact=True).click()
-    with page.expect_response(lambda response: response.request.method == 'GET' and response.url.split('?')[0].endswith(bases[1])):
-        page.get_by_role('button', name='Refresh catalog', exact=True).click()
-    page.get_by_text('Check a question against saved categories', exact=True).click()
-    page.get_by_label('Question to check', exact=True).fill(category['description'])
-    page.get_by_role('button', name='Check saved categories', exact=True).click()
-    expect(page.get_by_text('Several categories are similar.', exact=False)).to_be_visible()
-    expect(page.get_by_role('list', name='Similar saved categories').get_by_role('listitem')).to_have_count(2)
-    page.screenshot(path=str(OUT / 'assistance-desktop.png'), animations='disabled')
-    checks.append('ambiguous definitions show both saved choices and require manual review')
+    checks.append('identical category names reuse only the selected program vocabulary')
 
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
@@ -173,7 +141,7 @@ def run(browser):
     context.close()
 
     context, page = support.session(browser, 'instructor', width=390, dark=True)
-    open_program(page, advanced=False)
+    open_program(page)
     page.get_by_role('button', name='Edit Records knowledge', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Skill', exact=True)
     show_reuse(dialog)

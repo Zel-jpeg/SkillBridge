@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
-import TaxonomyQuality from '../../components/admin/TaxonomyQuality'
 import ConfirmModal from '../../components/admin/ConfirmModal'
-import SkillLibraryTable, { SkillLibraryOptions } from '../../components/SkillLibraryTable'
+import SkillLibraryTable from '../../components/SkillLibraryTable'
 import { organizationPrimary as primary } from '../../components/admin/organizationUi'
 import { useAdminSkills } from '../../hooks/admin/useAdminSkills'
 import SkillModal from '../../components/admin/SharedSkillEditor'
@@ -63,7 +62,6 @@ export default function AdminSkills({ embedded = false, readOnly = false }) {
             <PlusIcon /> Add Skill
           </button>}
         </header>
-        {!readOnly && <SkillLibraryOptions><TaxonomyQuality /></SkillLibraryOptions>}
         <SkillLibraryTable url={url} skills={skills} total={loading || error ? null : skills.length} search={search} onSearch={setSearch}
           renderActions={readOnly ? undefined : skill => <>
             <button type="button" onClick={() => openEdit(skill)} title="Edit skill" aria-label={`Edit ${skill.name}`}

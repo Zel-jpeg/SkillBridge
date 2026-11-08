@@ -36,6 +36,26 @@ and does not change other detail or confirmation dialog layouts.
   suggestion service but now preserves manual draft tags rather than replacing
   them. It shares the same chip UI, validation and discard behavior.
 
+## Simplified program skill page
+
+The admin and instructor taxonomy pages open the latest active program skill
+library directly, including programs with multiple saved revisions. They show
+the same skill table, description, tags and permitted editing actions.
+Version browsing, manual framework creation, freezing and retirement controls
+are removed from this page. Empty programs begin with Add Skill.
+If all saved libraries are retired, the latest retired library remains readable.
+
+The More options section is removed from program and shared skill pages.
+The backend still preserves original definitions when a used skill is revised.
+Existing assessment and batch references continue to resolve their saved IDs.
+
+Verified with frontend lint/build and the real-API browser runs
+`--competencies`, `--skill-editor` and `--competency-assistance`, using
+isolated SQLite fixtures and synthetic accounts. The checks cover first-skill
+creation, latest active library selection, retired-library display, revision
+retries, retained definitions, shared/program editor permissions, tag suggestions,
+search/pagination, and phone/dark layouts.
+
 ## Evidence preservation
 
 An unused, unreferenced category in an editable set can be removed after explicit
