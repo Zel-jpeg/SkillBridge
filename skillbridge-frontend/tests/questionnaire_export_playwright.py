@@ -47,7 +47,7 @@ def run(browser):
     checks.append('Instructor downloads the explicitly confirmed AIKEN subset with the original choice order and key.')
 
     admin, page = session(browser, 'admin', width=390, dark=True)
-    page.goto(BASE + '/admin/assessments', wait_until='networkidle')
+    page.goto(BASE + f'/admin/assessments?institute={batch["institute_id"]}&program=all', wait_until='networkidle')
     page.get_by_role('button', name='View details for Synthetic export source', exact=True).click()
     page.get_by_role('tab', name='Questions', exact=True).click()
     page.get_by_role('button', name='Export questionnaire', exact=True).click()

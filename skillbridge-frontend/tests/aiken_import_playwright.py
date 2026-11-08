@@ -142,7 +142,7 @@ def run(browser):
     assert [row['question_type'] for row in saved] == ['truefalse', 'identification']
     assert [next(choice['text'] for choice in row['choices'] if choice['is_correct']) for row in saved] == ['False', '0']
 
-    page.goto(BASE + '/admin/assessments', wait_until='networkidle')
+    page.goto(BASE + f'/admin/assessments?institute={batch["institute_id"]}&program={batch["program_id"]}', wait_until='networkidle')
     page.get_by_role('button', name='View details for Admin native import draft', exact=True).click()
     page.get_by_role('tab', name='Questions', exact=False).click()
     page.get_by_role('button', name='Edit assessment and questions', exact=True).click()

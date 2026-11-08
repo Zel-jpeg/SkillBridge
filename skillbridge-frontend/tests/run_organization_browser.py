@@ -28,7 +28,7 @@ if '--general-text' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'general-text'
 if '--scoped-ranking' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'scoped-ranking'
-if '--legacy-organization' in sys.argv:
+if '--legacy-organization' in sys.argv or '--questionnaire-export' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'legacy-organization'
 if '--multi-institute-acceptance' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'multi-institute-acceptance'

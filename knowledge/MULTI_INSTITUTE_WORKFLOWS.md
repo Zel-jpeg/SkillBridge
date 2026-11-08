@@ -7,8 +7,9 @@
   appear in approved enrollment files.
 - [ ] Assign approved instructors to that program. Assign instructors
   separately for each program they should manage.
-- [ ] In **Program competencies**, create a framework and add the skills the
-  program intends to assess. Review the definitions before freezing the version.
+- [ ] In **Skill taxonomy**, open the program and use **Add Skill** to define
+  the areas the program will assess. Review each definition before using it in
+  an assessment or a position requirement.
 - [ ] In **Batches & students**, create a batch for one program and choose its
   responsible instructor. Review enrollment rows and confirm the correct roster.
 - [ ] Prepare the partner catalog and openings for the program. Coordinators
@@ -27,7 +28,7 @@ new-batch rule applies when staff create a new batch. Entrepreneurship and
 Tourism are synthetic acceptance examples under IBPA. The same configuration
 works for other programs. [DNSC program research](DNSC_PROGRAM_AND_COMPETENCY_RESEARCH.md)
 
-## Define competencies
+## Maintain skills
 
 A category is an assessable area with a name, a description and vocabulary
 tags. Use the description to state what the questions can demonstrate. Use tags
@@ -37,12 +38,17 @@ incorrect entries. Its tags could include booking record, confirmation and
 cancellation. The description and tags can support text matching. Scored
 evidence comes from the linked assessment questions.
 
-Instructors assigned to the same program share its category library. Verify
-that a category covers the intended construct before reusing it. Once a
-framework is frozen or used, create a new version for definition changes.
-Earlier assessments and placement requirements retain their version and category
-IDs. Category identity comes from the saved framework and ID, even when names
-match.
+Administrators can open an institute in **Skill taxonomy** and manage its
+**Shared skills** card. Coordinators see the shared libraries of their assigned
+institutes and can maintain the skills for their assigned programs. To use an
+institute definition in a program, open **Add Skill → Reuse an institute skill**,
+choose a definition and select **Copy into draft**. Review the name, required
+description and tags, then save. Each program copy is independently editable.
+
+When staff change a skill set already in use, saving creates an updated set
+for future work. Existing batches, assessments and requirements keep their
+saved definitions. The saved category ID determines which definition each
+assessment or opening uses.
 [Competency frameworks](PROGRAM_COMPETENCY_FRAMEWORKS.md) ·
 [Starter competency research](DNSC_PROGRAM_AND_COMPETENCY_RESEARCH.md)
 
@@ -51,10 +57,14 @@ match.
 1. Open **OJT Partners → Manage partners & positions** and select an assigned
    program. Use **Add partner** for a new organization or **Reuse existing
    partner** to review an existing organization before adding an opening.
-2. Enter a role, the available slots and relevant tags. Select the program's
-   framework and numerical requirements if the opening should participate in
-   recommendations. With no numerical requirements, an eligible opening is
-   available for manual placement.
+2. Enter the role, a description of the intern's duties, the available slots
+   and relevant tags. Select the program's skill set and add minimum levels
+   for the opening to participate in recommendations. Without minimum levels,
+   eligible batches can use the opening for manual placement.
+   For an opening using earlier skills, review the minimum levels against the
+   current set before switching. The position editor clears draft levels when
+   the selection changes. One position uses one requirement set, and its
+   eligible programs share the same slots.
 3. Review the listed eligibility and capacity. Ask an administrator to share
    one opening across programs when they compete for the same actual seats.
    Separate positions are appropriate when the organizations offer separate
@@ -71,8 +81,9 @@ match.
 
 ## Prepare, import and export a questionnaire
 
-1. Open the assessment creator. Choose the batch and its framework, then set
-   the timing and completion options.
+1. Open the assessment creator. Choose the batch, then set the timing and
+   completion options. Use **Current program skills** for new work. When a
+   batch already uses a skill set, the creator shows its saved selection.
 2. Add questions manually using the multiple choice, true/false or
    identification buttons. Enter the stem, answer key and category. For bulk
    entry choose **Upload file**, or **Import questions** in an existing editor.
@@ -106,9 +117,11 @@ in both systems. [Import](QUESTIONNAIRE_IMPORT.md) ·
   Approval requires a separate coordinator decision and checks the applicable
   evidence, eligibility and capacity rules. A saved placement keeps the
   evidence used at approval.
-- Scoped reports and exports check current access. Ranking inputs can become
-  stale independently of valid assessment results. Staff can request a
-  recalculation in the appropriate batch scope when needed.
+- Scoped reports and exports check current access. Position descriptions
+  contribute text context to matching. If changed inputs make recommendations
+  stale, administrators can open **Placements → Recommendation maintenance**
+  and select the appropriate active batch scope. Shared mixed batches use their
+  institute scope.
 
 [Matching inputs and freshness](SCOPED_RECOMMENDATION_INPUTS.md) ·
 [Ordering and allocation](ASSESSMENT_LED_RECOMMENDATIONS.md) ·
