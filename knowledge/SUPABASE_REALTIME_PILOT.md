@@ -30,6 +30,14 @@ for authentication, authorization, grading, result visibility and placement writ
   key and the receiver-role policy still need hosted verification. The current
   public JWKS exposes an ES256 key; its public entry is not possession of a
   private key suitable for Django token issuance.
+- On 8 November, the configured Realtime publish key returned HTTP 202 and
+  delivered one dummy message to a private channel in 731 ms. The public-key
+  client was denied. The locally prepared ES256 signer and topic secret passed
+  Django configuration and local signature validation. The candidate key was
+  absent from the hosted public signing metadata. The project audit found zero
+  Supabase Auth users, recent Auth sessions and Edge Functions, and found no
+  pilot receiver role or policies. Evidence for the message test is in
+  `work/realtime-configured-credentials-check.json`.
 
 ## Local verification
 
@@ -160,6 +168,32 @@ tests model the managed message table locally. Hosted grants and key acceptance
 still require the pilot checks below.
 
 ## Hosted acceptance and rollback
+
+The next hosted step is a bounded change to the existing SkillBridge Supabase
+project. Review the prepared role SQL and its rollback, import the dedicated
+signer through **Authentication → JWT Signing Keys**, and activate it with the
+previous signing keys retained. Activating it changes the project's default
+Auth signing key. Treat import and activation as an explicit owner decision.
+Keep all application switches off during this step. A match in public JWKS is
+useful for identifying the new key, but the signed private-channel join proves
+whether Realtime accepts it. [Supabase signing-key lifecycle](https://supabase.com/docs/guides/auth/signing-keys#lifetime-of-a-signing-key)
+
+After approval, apply only the pilot receiver setup. Verify a signed own-topic
+join and a single synthetic message before connecting any SkillBridge session.
+If the role or trust checks fail, remove the pilot role and policy with the
+teardown script and restore the former current signer if the rotation caused
+the issue. Keep existing keys available throughout the verification.
+
+The [hosted probe](../skillbridge-frontend/tests/realtime_hosted_probe.mjs) reads
+only the five `SUPABASE_REALTIME_*` process variables for URL, publishable key,
+publish key, signer PEM and key ID. It does not load `.env`. After the owner
+provides those variables in a private process, run it from the repository root
+with `node skillbridge-frontend/tests/realtime_hosted_probe.mjs`. It uses random
+topics, sends one dummy event on the normal success path and reports only check
+names and statuses. The Data API and Storage checks request no application
+records. A timeout or unrecognized denial fails the probe. All eleven assertions
+were exercised with a mock transport. Hosted execution awaits activation and the
+receiver-role setup.
 
 - Verify the exact dedicated key is trusted and the limited role can join only
   its own private topic. Test foreign/missing/expired/forged claims, anonymous
