@@ -148,6 +148,16 @@ with sync_playwright() as playwright:
         expect(dialog.get_by_role('button', name='Suggest tags', exact=True)).to_be_visible()
         page.screenshot(path=str(OUT / f'skill-editor-{role}.png'), animations='disabled')
         dialog.get_by_role('button', name='Cancel', exact=True).click()
+        if role == 'admin':
+            page.get_by_role('button', name='Add Skill', exact=True).click()
+            dialog = page.get_by_role('dialog', name='Add Skill', exact=True)
+            expect(dialog.get_by_text('This skill set is already in use.', exact=False)).to_be_visible()
+            dialog.get_by_label('Name', exact=True).fill('New knowledge after assessment use')
+            dialog.get_by_label('Description', exact=True).fill('Explains an additional reviewed knowledge area.')
+            dialog.get_by_role('button', name='Add Skill', exact=True).click()
+            expect(dialog).to_have_count(0)
+            expect(page.get_by_role('heading', name='New knowledge after assessment use', exact=True)).to_be_visible()
+            assert call(context, detail + f'categories/{skill["id"]}/', role='instructor')['description'] == 'Completely different definition.'
         context.close()
     print('PASS peer and administrator use the same skill editor, including phone dark mode')
 

@@ -43,6 +43,7 @@ urlpatterns = [
     path('management/competency-programs/<int:program_id>/', competencies.catalog_programs, name='competency_program_detail'),
     path('management/programs/<int:program_id>/frameworks/', competencies.frameworks, name='program_frameworks'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/', competencies.framework_detail, name='framework_detail'),
+    path('management/programs/<int:program_id>/frameworks/<int:framework_id>/revisions/', competencies.category_revision, name='framework_skill_addition'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/categories/', competencies.framework_categories, name='framework_categories'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/categories/<int:category_id>/', competencies.framework_categories, name='framework_category_detail'),
     path('management/programs/<int:program_id>/frameworks/<int:framework_id>/categories/<int:category_id>/revisions/', competencies.category_revision, name='framework_category_revision'),

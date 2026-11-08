@@ -61,8 +61,9 @@ function Editor({ kind, row, source, url, framework, programId, revision = false
       ...(row ? { expected_digest: row.digest } : !category ? { request_id: requestId, ...(source ? { source_framework_id: source.id } : {}) } : {}) }
     try {
       const payload = starterName ? { name: starterName, request_id: requestId, initial_category: content } : content
-      const { data } = revision ? await api.post(`${url}${row.id}/revisions/`, {
-        ...content, operation: 'update', expected_digest: framework.digest, request_id: requestId,
+      const revisionUrl = row ? `${url}${row.id}/revisions/` : `${url.replace(/categories\/$/, '')}revisions/`
+      const { data } = revision ? await api.post(revisionUrl, {
+        ...content, operation: row ? 'update' : 'add', expected_digest: framework.digest, request_id: requestId,
       }) : await api[row ? 'patch' : 'post'](row ? `${url}${row.id}/` : url, payload)
       onSaved(data)
     } catch (failure) { setError(requestErrorMessage(failure, { mutation: true })) }
@@ -135,9 +136,9 @@ function Categories({ programId, frameworkId, onRevised }) {
   return <DataSection url={detail} layout="panel"><div className="space-y-5">
     {framework && <>
       <header className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h2 className="break-words text-lg font-bold">{framework.program.name} skills</h2><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{framework.program.institute_code} · {framework.program.code} · {!framework.is_active ? 'Retired' : framework.locked ? 'Definitions frozen or in use' : 'Editable definitions'}</p><p className="mt-2 max-w-3xl whitespace-pre-wrap break-words text-xs">{framework.description}</p></div>
-        {available && !framework.locked && <button type="button" className={primary} onClick={() => setEditor({ kind: 'category' })}>Add Skill</button>}
+        {available && <button type="button" className={primary} onClick={() => setEditor({ kind: 'category' })}>Add Skill</button>}
       </header>
-      {framework.locked && <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">This skill set is already in use. Editing or removing a skill creates an updated copy for future work. Existing assessments and results stay unchanged.</p>}
+      {framework.locked && <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">This skill set is already in use. Adding, editing or removing a skill prepares updated definitions for future work. Existing assessments keep their saved definitions.</p>}
       <SkillLibraryTable url={url} skills={data?.results} total={data?.count ?? null} search={search} onSearch={value => { setSearch(value); setPage(1) }}
         renderActions={available ? category => <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className={`${button} h-9 w-9 !p-0`} aria-label={`Edit ${category.name}`} title={`Edit ${category.name}`} onClick={() => setEditor({ kind: 'category', row: category })}><PencilIcon size={14} /></button>

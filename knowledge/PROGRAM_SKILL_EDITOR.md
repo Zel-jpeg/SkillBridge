@@ -49,6 +49,13 @@ The More options section is removed from program and shared skill pages.
 The backend still preserves original definitions when a used skill is revised.
 Existing assessment and batch references continue to resolve their saved IDs.
 
+Add Skill also works when the current library is in use. It submits an atomic
+addition to the library revision endpoint, copies the existing definitions and
+adds the new category for future work. Request IDs make successful uncertain
+retries idempotent. If another coordinator has already prepared newer skills,
+an addition from the older library is rejected for review rather than replacing
+their additions. Existing batch and score references retain their original IDs.
+
 Verified with frontend lint/build and the real-API browser runs
 `--competencies`, `--skill-editor` and `--competency-assistance`, using
 isolated SQLite fixtures and synthetic accounts. The checks cover first-skill

@@ -93,7 +93,7 @@ def run(browser):
     page.evaluate('sessionStorage.clear()')
     page.reload(wait_until='networkidle')
     expect(page.get_by_text('This skill set is already in use.', exact=False)).to_be_visible()
-    expect(page.get_by_role('button', name='Add Skill', exact=True)).to_have_count(0)
+    expect(page.get_by_role('button', name='Add Skill', exact=True)).to_be_visible()
     checks.append('stale editor preserves its draft and cannot overwrite; reviewed freeze preserves definitions and explains future-copy editing')
 
     page.get_by_role('searchbox', name='Search skills').fill('Shared service')

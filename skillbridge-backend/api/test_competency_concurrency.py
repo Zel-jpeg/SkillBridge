@@ -5,6 +5,7 @@ import uuid
 
 from django.db import connection, close_old_connections
 from django.test import TransactionTestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .models import CompetencyFramework, Institute, InstructorAssignment, ManagementAction, Program, SkillCategory, User
@@ -66,3 +67,28 @@ class CompetencyConcurrencyTests(TransactionTestCase):
         framework.refresh_from_db()
         category.refresh_from_db()
         self.assertEqual(category.description, 'Original definition' if framework.locked_at else 'Changed definition')
+
+    def test_skill_addition_replay_and_competing_additions_preserve_the_latest_library(self):
+        framework = CompetencyFramework.objects.create(program=self.program, version=1, name='Knowledge',
+            created_by=self.owner, locked_at=timezone.now())
+        SkillCategory.objects.create(framework=framework, name='Original skill', description='Original knowledge.')
+        client = APIClient()
+        client.force_authenticate(self.owner)
+        detail = self.base + f'{framework.id}/'
+        payload = {'operation': 'add', 'name': 'Added skill', 'description': 'Additional knowledge.',
+            'expected_digest': client.get(detail).data['digest'], 'request_id': str(uuid.uuid4())}
+        request = ('post', detail + 'revisions/', payload)
+        outcomes = self.race(request, request)
+        self.assertEqual(sorted(code for code, _ in outcomes), [200, 201], outcomes)
+        self.assertEqual(len({data['id'] for _, data in outcomes}), 1)
+        latest = CompetencyFramework.objects.order_by('-version').first()
+        detail = self.base + f'{latest.id}/'
+        payload.update(expected_digest=client.get(detail).data['digest'])
+        outcomes = self.race(
+            ('post', detail + 'revisions/', {**payload, 'name': 'First new skill', 'request_id': str(uuid.uuid4())}),
+            ('post', detail + 'revisions/', {**payload, 'name': 'Second new skill', 'request_id': str(uuid.uuid4())}))
+        self.assertEqual(sorted(code for code, _ in outcomes), [201, 409], outcomes)
+        latest = CompetencyFramework.objects.order_by('-version').first()
+        self.assertEqual(latest.categories.count(), 3)
+        self.assertTrue(latest.categories.filter(name='Added skill').exists())
+        self.assertEqual(ManagementAction.objects.filter(action='category.revise').count(), 2)

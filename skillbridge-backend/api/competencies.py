@@ -370,16 +370,17 @@ def framework_categories(request, program_id, framework_id, category_id=None):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @notify_changes('competency')
-def category_revision(request, program_id, framework_id, category_id):
+def category_revision(request, program_id, framework_id, category_id=None):
     """Revise future definitions by copying, never rewriting bound evidence."""
     fields(request.data, ['operation', 'name', 'description', 'tags', 'expected_digest', 'request_id'],
            ['operation', 'expected_digest', 'request_id'])
     operation = request.data['operation']
-    if operation not in ('update', 'remove'):
-        raise ValidationError({'error': 'Choose update or remove.'})
+    allowed = ('add',) if category_id is None else ('update', 'remove')
+    if operation not in allowed:
+        raise ValidationError({'error': 'Choose a supported skill change.'})
     if operation == 'remove' and set(request.data) & {'name', 'description', 'tags'}:
         raise ValidationError({'error': 'Removal does not accept replacement skill details.'})
-    values = definition(request.data) if operation == 'update' else None
+    values = definition(request.data) if operation != 'remove' else None
     try:
         nonce = uuid.UUID(request.data['request_id'])
     except (ValueError, TypeError, AttributeError):
@@ -401,21 +402,26 @@ def category_revision(request, program_id, framework_id, category_id):
             response.skip_change_event = True
             return response
         expect_digest(request.data['expected_digest'], framework_payload(source, request.user)['digest'])
-        category = get_object_or_404(source.categories, pk=category_id)
-        if values and source.categories.exclude(pk=category.id).filter(name__iexact=values['name']).exists():
+        if operation == 'add' and program.competency_frameworks.filter(is_active=True).order_by('-version').values_list('pk', flat=True).first() != source.id:
+            raise DefinitionChanged({'error': 'The program skills changed. Reload the latest skills before adding another skill.'})
+        if category_id is not None:
+            get_object_or_404(source.categories, pk=category_id)
+        if values and source.categories.exclude(pk=category_id).filter(name__iexact=values['name']).exists():
             return Response({'error': 'Another skill already uses this name.'}, status=409)
         version = (program.competency_frameworks.aggregate(latest=Max('version'))['latest'] or 0) + 1
         updated = CompetencyFramework.objects.create(program=program, version=version, name=source.name,
             description=source.description, created_by=request.user, source_framework=source, creation_key=nonce)
         copies = []
         for original in source.categories.all():
-            if original.id == category.id and operation == 'remove':
+            if original.id == category_id and operation == 'remove':
                 continue
-            content = values if original.id == category.id else {
+            content = values if original.id == category_id else {
                 'name': original.name, 'description': original.description, 'tags': original.tags}
             copies.append(SkillCategory(framework=updated, source_category=original, created_by=request.user, **content))
+        if operation == 'add':
+            copies.append(SkillCategory(framework=updated, created_by=request.user, **values))
         SkillCategory.objects.bulk_create(copies)
         record_action(request.user, 'category.revise', 'competency_framework', updated.id,
             program_id=program.id, framework_id=updated.id, source_framework_id=source.id,
-            category_id=category.id, operation=operation, request_digest=signature)
+            category_id=category_id, operation=operation, request_digest=signature)
         return Response(framework_payload(current_framework(request.user, program, updated.id), request.user), status=201)

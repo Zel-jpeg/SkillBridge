@@ -269,6 +269,51 @@ class CompetencyCatalogTests(APITestCase):
         self.assertFalse(SkillCategory.objects.filter(pk=row['id']).exists())
         self.assertTrue(ManagementAction.objects.filter(action='category.remove', actor=self.peer).exists())
 
+    def test_adding_to_used_skills_preserves_original_evidence_and_retries(self):
+        row = self.add().data
+        batch = Batch.objects.create(name='Used definitions', instructor=self.owner, program=self.program,
+            institute=self.program.institute, framework_id=self.framework['id'])
+        assessment = Assessment.objects.create(title='Existing work', batch=batch, created_by=self.owner)
+        question = Question.objects.create(assessment=assessment, skill_category_id=row['id'], question_text='Saved question')
+        score = SkillScore.objects.create(student=self.student, assessment=assessment, skill_category_id=row['id'],
+            raw_score=7, max_score=10, percentage=70)
+        payload = {'operation': 'add', 'name': 'Additional knowledge', 'description': 'Explains a new knowledge area.',
+            'tags': ['New vocabulary'], 'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}
+        self.client.force_authenticate(self.peer)
+        result = self.client.post(self.base + 'revisions/', payload, format='json')
+        self.assertEqual(result.status_code, 201, result.data)
+        copied = SkillCategory.objects.get(framework_id=result.data['id'], source_category_id=row['id'])
+        self.assertEqual((copied.name, copied.description, copied.tags), (row['name'], row['description'], row['tags']))
+        self.assertTrue(SkillCategory.objects.filter(framework_id=result.data['id'], name=payload['name']).exists())
+        replay = self.client.post(self.base + 'revisions/', payload, format='json')
+        self.assertEqual((replay.status_code, replay.data['id']), (200, result.data['id']))
+        for changes in ({'description': 'Changed retry'}, {'request_id': str(uuid.uuid4()), 'name': 'Concurrent addition'}):
+            self.assertEqual(self.client.post(self.base + 'revisions/', {**payload, **changes}, format='json').status_code, 409)
+        batch.refresh_from_db(); question.refresh_from_db(); score.refresh_from_db()
+        self.assertEqual(batch.framework_id, self.framework['id'])
+        self.assertEqual(question.skill_category_id, row['id'])
+        self.assertEqual((score.raw_score, score.max_score, score.percentage), (7, 10, 70))
+        self.assertEqual(CompetencyFramework.objects.count(), 2)
+
+    def test_skill_addition_checks_duplicates_access_and_atomic_audit(self):
+        row = self.add().data
+        payload = {'operation': 'add', 'name': row['name'], 'description': 'New description.', 'tags': [],
+            'expected_digest': self.detail()['digest'], 'request_id': str(uuid.uuid4())}
+        url = self.base + 'revisions/'
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 409)
+        payload['name'] = 'Additional knowledge'
+        with patch('api.competencies.record_action', side_effect=RuntimeError('Synthetic audit failure')):
+            with self.assertRaises(RuntimeError):
+                self.client.post(url, payload, format='json')
+        self.assertEqual(CompetencyFramework.objects.count(), 1)
+        self.client.force_authenticate(self.foreign)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 404)
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        self.client.force_authenticate(self.owner)
+        self.grant.is_active = False; self.grant.save(update_fields=['is_active'])
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 404)
+
     def test_used_skill_revision_keeps_questions_scores_batch_and_original_definitions(self):
         row = self.add().data
         other = self.add(name='Keep this skill').data
