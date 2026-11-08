@@ -2996,20 +2996,25 @@ def instructor_companies(request):
 
     # Students belonging to this instructor's batches
     batches = managed_batches(request.user)
-    enrollments = BatchEnrollment.objects.filter(batch__in=batches).select_related('batch', 'student')
+    enrollments = list(BatchEnrollment.objects.filter(batch__in=batches)
+        .select_related('batch__framework', 'student'))
 
     student_batch_info = {}
+    active_cohorts = {}
     for e in enrollments:
         student_batch_info[(e.student_id, e.batch_id)] = {
             'name': e.batch.name,
             'status': e.batch.status
         }
+        if e.batch.status == 'active':
+            active_cohorts.setdefault(e.batch_id, []).append(e)
     student_ids = list({student_id for student_id, _ in student_batch_info})
     catalogs = {}
-    unlocked_batches = {
-        (e.student_id, e.batch_id) for e in enrollments
-        if e.batch.status == 'active' and combined_is_unlocked(e.student, e.batch, catalog=cached_catalog_fingerprint(e.batch, catalogs))
-    }
+    unlocked_batches = set()
+    for batch_id, cohort in active_cohorts.items():
+        states = bulk_management_states([e.student for e in cohort], cohort[0].batch,
+            include_history=False, summary_only=True, catalog_cache=catalogs)
+        unlocked_batches.update((student_id, batch_id) for student_id, (_, unlocked) in states.items() if unlocked)
 
     # Bulk-load all recommendations for those students
     from collections import defaultdict

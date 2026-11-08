@@ -864,3 +864,26 @@ The browser regression asserts that five admin picker roots do not fetch their
 record collections or IC-only skills before context selection. Evidence includes
 `work/navigation-baseline-znhgijj7/`. A sequential timing repeat is saved
 separately when complete.
+
+The sequential N02 repeat is `work/navigation-baseline-ayhjw2j5/`.
+Illustrative settled times changed from 3,644 to 2,434 ms for batches, 1,726 to
+1,222 ms for assessments and 2,368 to 1,366 ms for placements. The unchanged
+instructor roster measured 2,189/2,191 ms. These are local single-run samples.
+
+### N02 partner page query batching
+
+The instructor partner page now groups completion checks by active batch using
+the existing bulk management-state helper. Candidate selection, numerical scores
+and eligibility continue through the same rules. The configured read-only
+comparison fell from 53 to 16 SQL statements and from 8,108 to 2,694 ms median
+across three samples, with the same 5,527-byte response size.
+
+New regression checks compare the entire JSON to the previous direct gate
+for admin and instructor roles across scoped and mixed IC cohorts, foreign
+ownership, archived memberships, review holds, missing or stale profiles,
+flagged and stopped attempts, incomplete work and retained closed-assessment
+evidence. They also verify no GET writes and bounded query growth from 1 to 20
+students. All 56 focused PostgreSQL tests and the scoped-ranking browser journey
+passed. Receipts are `work/organization-postgres-xet3li5o/` and
+`work/organization-browser-w1o86nec/`. The SQLite browser fixture recovered
+from a transient lock during initial profile loading and completed successfully.
