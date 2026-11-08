@@ -965,3 +965,43 @@ configured database write, or live migration was performed. The next
 performance checkpoint is a matched timing comparison on the eventual deployment
 if requested, with particular attention to the remaining roster and analytics
 reads measured in N01.
+
+### Live refresh follow-up · 8 November 2026
+
+The user reported the instructor dashboard appearing to reload after an admin
+recommendation rerun, then requested a review of the other pages. Returning
+to a hidden instructor tab reconnects its live stream. Previously every
+instructor reconnect emitted a scope invalidation and evicted the saved
+workspace data, temporarily replacing loaded sections with skeletons.
+
+SSE connections and optional Broadcast tickets now include an opaque server
+revision of instructor grants, managed batches and enrollment access. A
+matching revision applied within the same login session refreshes the existing
+sections in place. A changed or unavailable revision, and explicit access
+events, retain the conservative eviction behavior. The transports share this
+verified state across a fallback. Logout clears it.
+
+The real local SSE browser regression holds the recommendation GET after an
+admin rerun and a hidden-tab reconnect. It verifies that the existing student
+row stays connected to the DOM, the search remains, and the new position title
+arrives in the same dashboard. Assessment answers and timer preservation and
+open admin/instructor submission updates also passed. Receipt:
+`work/quiet-live-refresh-7xkutrtw/browser.txt`.
+
+A separate synthetic sweep covered 33 authenticated routes, including the
+institute/program picker roots, setup, assessments, results, retake and profile
+views. It checked that the main element and heading survive a reconnect with
+zero loading-skeleton insertions. Receipts:
+`work/quiet-live-refresh-krgrmn9w/browser.txt` (29 routes) and
+`work/quiet-live-refresh-cg4kf9zd/browser.txt` (four result/profile routes).
+This is route/reconnect coverage with synthetic fixtures. It does not replace
+every populated program workflow. The old full freshness walkthrough still
+needs its later admin scope-picker selectors updated. The focused regression
+has a dedicated `--recommendation-reconnect-only` option.
+
+All 49 focused PostgreSQL transport, Realtime and instructor assignment tests
+passed, as did 329 frontend tests, lint and the production build. The backend
+tests verify that a routine results event preserves the access revision while
+a grant or enrollment removal changes it. Receipt:
+`work/organization-postgres-2rpeonnk/tests.txt`.
+The fix is on branch `codex/quiet-live-refresh`, verified for local merge.

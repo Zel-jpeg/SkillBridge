@@ -1,6 +1,8 @@
+import { createLiveScope } from './liveScope.js'
+
 // Browser-independent lifecycle so disconnect/identity races are testable.
 export function createEventStream({ identity, preflight, source, changed, unauthorized,
-  visible = () => true, timers = globalThis }) {
+  visible = () => true, timers = globalThis, scope = createLiveScope() }) {
   let current = null, stream = null, retry = null, watchdog = null, flush = null
   let generation = 0, delay = 1000, running = false, connecting = false, pending = []
 
@@ -13,10 +15,11 @@ export function createEventStream({ identity, preflight, source, changed, unauth
     retry = watchdog = flush = null
     pending = []
   }
-  function stop() {
+  function stop({ preserveScope = false } = {}) {
     running = false
     current = null
     delay = 1000
+    if (!preserveScope) scope.clear()
     cancelConnection()
   }
   function expire() { stop(); unauthorized() }
@@ -33,6 +36,12 @@ export function createEventStream({ identity, preflight, source, changed, unauth
           const values = [...new Set(changes.flatMap(item => item[field] || []))]
           if (['topics', 'urls'].includes(field) || values.length <= 100) merged[field] = values
         }
+      }
+      const user = identity()
+      if (!running || user?.key !== current) return
+      const connected = changes.findLast(item => item.connected)
+      if (connected && scope.requiresEviction(user, connected.scopeRevision) && !merged.topics.includes('scope')) {
+        merged.topics.push('scope')
       }
       changed(merged)
     }, 150)
@@ -73,7 +82,7 @@ export function createEventStream({ identity, preflight, source, changed, unauth
         if (data.type === 'reconnect') { reconnect(); return }
         if (data.type === 'connected') {
           delay = 1000
-          enqueue(next.role === 'instructor' ? { resync: true, topics: ['scope'] } : { resync: true })
+          enqueue({ resync: true, connected: true, scopeRevision: data.scope_revision })
         } else if (data.type === 'data_changed') enqueue(data)
       }
       connection.onerror = () => { if (activeGeneration === generation) reconnect() }

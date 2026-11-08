@@ -204,9 +204,14 @@ dialog-open flag and keeps the selected batch and scope.
 - Heartbeats arrive every 15 seconds; the client reconnects after 45 seconds
   without a message. Retry delays are bounded at 1, 2, 4, 8, 16, 30 seconds.
   Hidden tabs close their stream and pause background requests. Return reconnects.
-- Every connection announces resynchronization. Clients invalidate all known
-  live query families, refresh mounted visible queries, and mark persisted
-  unmounted entries stale. Historical log replay/Last-Event-ID is not required.
+- Every connection announces resynchronization. Clients mark live query data
+  stale and fetch mounted visible queries in the background. An instructor
+  reconnect keeps the current screen when the server's access revision matches
+  the revision already applied for the same login session. The revision is an
+  opaque digest of current grants, managed batches and enrollment access.
+  A different or missing revision, or an explicit scope event, clears the
+  affected cached data before revalidation. SSE and the optional Broadcast
+  ticket use the same revision. Historical event replay is unnecessary.
 - Mounted visible queries retain the existing approximately 30-second fallback
   and tab/focus return checks. This covers failed publication and scheduled
   assessment opening/due dates without a mutation. Time-based availability

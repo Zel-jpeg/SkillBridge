@@ -1,3 +1,5 @@
+import { createLiveScope } from './liveScope.js'
+
 // Pilot selection and lifecycle are independent from React and the provider SDK.
 // A transport switch always closes the old connection before opening another.
 const TOPICS = new Set(['scope', 'competencies', 'organization', 'assignments', 'email',
@@ -26,11 +28,12 @@ function validHint(hint) {
 }
 
 export function createRealtimeStream({ identity, session, load, sse, changed,
-  unauthorized = () => {}, visible = () => true, enabled = false, timers = globalThis, now = Date.now }) {
+  unauthorized = () => {}, visible = () => true, enabled = false, timers = globalThis, now = Date.now, scope = createLiveScope() }) {
   let running = false, current = null, generation = 0, connection = null, controller = null
   let renew = null, expiry = null, join = null, flush = null, selecting = false, fallback = false
   let closing = null, scopePending = false
   const seen = new Set()
+  let joinedScope = null
 
   function cancel() {
     generation++
@@ -43,30 +46,37 @@ export function createRealtimeStream({ identity, session, load, sse, changed,
       closing = close
       close.then(() => { if (closing === close) closing = null })
     }
-    sse.stop()
+    // The transport can change within the same authenticated browser session.
+    sse.stop({ preserveScope: true })
     for (const timer of [renew, expiry, join, flush]) timers.clearTimeout(timer)
     renew = expiry = join = flush = null
     selecting = fallback = false
     scopePending = false
+    joinedScope = null
   }
   function stop() {
     running = false
     current = null
     seen.clear()
+    scope.clear()
     cancel()
   }
   function active(version, user) {
     return running && visible() && version === generation && identity()?.key === user.key
   }
-  function resync(version, user, scopeChanged = false) {
+  function resync(version, user, scopeChanged = false, joined = null) {
     if (!active(version, user)) return
     scopePending ||= scopeChanged && user.role === 'instructor'
+    if (joined) joinedScope = joined
     if (flush !== null) return
     flush = timers.setTimeout(() => {
       flush = null
-      const change = scopePending ? { resync: true, topics: ['scope'] } : { resync: true }
+      if (!active(version, user)) return
+      const reconnectEviction = joinedScope && scope.requiresEviction(user, joinedScope.revision)
+      const change = scopePending || reconnectEviction ? { resync: true, topics: ['scope'] } : { resync: true }
       scopePending = false
-      if (active(version, user)) changed(change)
+      joinedScope = null
+      changed(change)
     }, 150)
   }
   function fallbackToSse(version, user) {
@@ -111,7 +121,7 @@ export function createRealtimeStream({ identity, session, load, sse, changed,
             subscribed = true
             timers.clearTimeout(join)
             join = null
-            resync(version, user, true)
+            resync(version, user, false, { revision: ticket.scope_revision })
           } else if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) fallbackToSse(version, user)
         },
       })

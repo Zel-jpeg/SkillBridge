@@ -10,7 +10,7 @@ import time
 from django.db import DatabaseError, close_old_connections, connections
 from django.http import HttpResponse, HttpResponseNotAllowed, StreamingHttpResponse
 
-from .management_access import managed_assessments, managed_batches
+from .management_access import instructor_scope_revision, managed_assessments, managed_batches
 from .models import BatchEnrollment, ChangeEvent, User
 from .program_scope import assigned_program_ids
 from rest_framework_simplejwt.exceptions import TokenError
@@ -87,12 +87,16 @@ def scoped_change(user, rows):
     return change
 
 
-def _event_stream(request, role, user_id):
+def _event_stream(request, subscriber):
+    role, user_id = subscriber.role, subscriber.pk
     try:
+        connected = {'type': 'connected', 'resync': True}
         cursor = (ChangeEvent.objects.filter(recipient_id=user_id).order_by('-id')
                   .values_list('id', flat=True).first() or 0)
+        if role == 'instructor':
+            connected['scope_revision'] = instructor_scope_revision(subscriber)
         connections.close_all()
-        yield _message({'type': 'connected', 'resync': True})
+        yield _message(connected)
         heartbeat = time.monotonic()
         while True:
             time.sleep(POLL_SECONDS)
@@ -138,7 +142,7 @@ def _events(request, role):
     # Axios preflight exposes authorization errors hidden by EventSource.
     if request.GET.get('check') == '1':
         return HttpResponse(status=204)
-    response = StreamingHttpResponse(_event_stream(request, role, user.id), content_type='text/event-stream; charset=utf-8')
+    response = StreamingHttpResponse(_event_stream(request, user), content_type='text/event-stream; charset=utf-8')
     response['Cache-Control'] = 'no-cache, no-store'
     response['X-Accel-Buffering'] = 'no'
     return response

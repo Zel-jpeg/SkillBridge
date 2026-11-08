@@ -5,6 +5,7 @@ host. Results distinguish SQLite browser convergence from PostgreSQL delivery.
 """
 import json
 import re
+import sys
 import time
 from pathlib import Path
 
@@ -77,6 +78,69 @@ def record(name, start=None):
         latencies.append({'check': name, 'response_to_dom_ms': round((time.perf_counter() - start) * 1000)})
 
 
+def check_quiet_recommendation_refresh(admin_context, instructor, ids):
+    row = instructor.get_by_role('row').filter(has_text='Synthetic student')
+    search = instructor.get_by_placeholder('Search by name or ID…')
+    search.fill('Synthetic')
+    expect(row).to_be_visible()
+    original_row = row.element_handle()
+    before = instructor.evaluate('window.__changes.length')
+    instructor.evaluate("""() => {
+      Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'hidden'});
+      document.dispatchEvent(new Event('visibilitychange'));
+    }""")
+    instructor.wait_for_function('window.__activeStreams === 0')
+
+    mutate(admin_context, 'admin', 'PATCH', f"/api/admin/positions/{ids['position']}/",
+           {'title': 'Synthetic Intern revised'})
+    rerun = mutate(admin_context, 'admin', 'POST', '/api/admin/rerun-recommendations/',
+                   {'batch_id': ids['batch']})
+    assert rerun['students_processed'] == 1 and rerun['errors'] == 0, rerun
+
+    # Delay the Axios request in the browser so the real server response is
+    # untouched and the assertions run while the same-scope refresh is pending.
+    instructor.evaluate("""() => {
+      const originalOpen = XMLHttpRequest.prototype.open;
+      const originalSend = XMLHttpRequest.prototype.send;
+      const requests = new WeakSet();
+      const held = [];
+      XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        if (method === 'GET' && new URL(url, location.href).pathname === '/api/instructor/students/recommendations/') {
+          requests.add(this);
+        }
+        return originalOpen.call(this, method, url, ...args);
+      };
+      XMLHttpRequest.prototype.send = function(...args) {
+        if (requests.has(this)) { held.push(() => originalSend.apply(this, args)); return; }
+        return originalSend.apply(this, args);
+      };
+      window.__recommendationReads = held;
+      window.__resumeRecommendationReads = () => {
+        XMLHttpRequest.prototype.open = originalOpen;
+        XMLHttpRequest.prototype.send = originalSend;
+        held.splice(0).forEach(send => send());
+      };
+      Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible'});
+      document.dispatchEvent(new Event('visibilitychange'));
+    }""")
+    try:
+        instructor.wait_for_function('window.__recommendationReads.length > 0')
+        instructor.wait_for_function('count => window.__changes.slice(count).some(event => event.detail.resync)', arg=before)
+        assert not instructor.evaluate("count => window.__changes.slice(count).some(event => event.detail.topics?.includes('scope'))", before)
+        assert original_row.evaluate('(row) => row.isConnected')
+        expect(search).to_have_value('Synthetic')
+        expect(row.get_by_text('Done', exact=True)).to_be_visible()
+        expect(instructor.get_by_text('Loading top matches', exact=True)).to_have_count(0)
+        instructor.evaluate('window.__resumeRecommendationReads()')
+        expect(instructor.get_by_role('region', name='Top matches').get_by_text('Synthetic Intern revised', exact=True)).to_be_visible(timeout=10000)
+        assert original_row.evaluate('(row) => row.isConnected')
+        expect(search).to_have_value('Synthetic')
+    finally:
+        instructor.evaluate("window.__resumeRecommendationReads(); delete document.visibilityState")
+    search.clear()
+    record('Recommendation rerun updates instructor matches in place after a hidden-tab reconnect')
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(channel='chrome', headless=True)
     admin_context, admin = session(browser, 'admin')
@@ -114,9 +178,13 @@ with sync_playwright() as p:
             student.get_by_role('button', name='Yes, submit', exact=True).click()
         assert submitted.value.ok
         start = time.perf_counter()
-        expect(admin.get_by_text('100%', exact=True)).to_be_visible(timeout=10000)
+        expect(admin.get_by_text('100% of selected students', exact=True)).to_be_visible(timeout=10000)
         expect(instructor.get_by_role('row').filter(has_text='Synthetic student').get_by_text('Done', exact=True)).to_be_visible(timeout=10000)
         record('Student UI submission updates open admin and instructor dashboards', start)
+        check_quiet_recommendation_refresh(admin_context, instructor, ids)
+        if '--recommendation-reconnect-only' in sys.argv:
+            assert not errors, errors
+            raise SystemExit(0)
 
         go(student, '/student/assessments')
         mutate(instructor_context, 'instructor', 'PATCH', f"/api/instructor/students/{AUTH['student']['user']['id']}/retake/", {'assessment_id': ids['assessment'], 'retake_allowed': True})
@@ -125,7 +193,8 @@ with sync_playwright() as p:
         record('Retake approval reaches an already open student assessment list', start)
         mutate(instructor_context, 'instructor', 'PATCH', f"/api/instructor/assessments/{ids['draft']}/", {'publication_status': 'published'})
         start = time.perf_counter()
-        expect(student.get_by_text('Synthetic future assessment', exact=True)).to_be_visible(timeout=10000)
+        expect(student.get_by_role('region', name='Assigned assessments').get_by_role('article').filter(has_text='Optional')
+               .get_by_role('button', name='Start Assessment', exact=True)).to_be_visible(timeout=10000)
         record('Publication reaches an already open student assessment list', start)
 
         # A live read-only selection updates from the current source and clears on removal.

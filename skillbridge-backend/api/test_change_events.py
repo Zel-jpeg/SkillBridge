@@ -216,6 +216,28 @@ class ChangeEventTests(TestCase):
         token.set_exp(lifetime=-timedelta(seconds=1))
         self.assertEqual(admin_events(RequestFactory().get('/', {'token': str(token)})).status_code, 401)
 
+    @patch('api.sse.connections.close_all')
+    def test_instructor_reconnect_revision_tracks_current_access_not_routine_changes(self, _close):
+        def revision():
+            stream = _event_stream(self.sse_request(self.teacher), self.teacher)
+            try:
+                return json.loads(next(stream).removeprefix('data: '))['scope_revision']
+            finally:
+                stream.close()
+
+        original = revision()
+        self.assertRegex(original, r'^[a-f0-9]{64}$')
+        self.batch.name = 'Renamed cohort'
+        self.batch.save(update_fields=['name'])
+        publish_changes({self.teacher.id: {'topics': ['results', 'students', 'placements']}})
+        self.assertEqual(revision(), original)
+        # Access can change while disconnected, even if no event is delivered.
+        InstructorAssignment.objects.filter(instructor=self.teacher, program=self.program).update(is_active=False)
+        after_grant = revision()
+        self.assertNotEqual(after_grant, original)
+        BatchEnrollment.objects.filter(batch=self.batch, student=self.student).delete()
+        self.assertNotEqual(revision(), after_grant)
+
     @patch('api.sse.close_old_connections')
     @patch('api.sse.connections.close_all')
     @patch('api.sse.time.sleep')
@@ -223,7 +245,7 @@ class ChangeEventTests(TestCase):
         # TestCase owns an outer transaction. Actual connection release belongs
         # in the PostgreSQL TransactionTestCase below, outside that transaction.
         request = self.sse_request(self.teacher)
-        stream = _event_stream(request, 'instructor', self.teacher.id)
+        stream = _event_stream(request, self.teacher)
         self.assertIn('"resync": true', next(stream))
         publish_changes({self.teacher.id: {'topics': ['students'], 'batch_ids': [self.batch.id]}})
         publish_changes({self.other.id: {'topics': ['catalog']}})
@@ -244,7 +266,7 @@ class PostgreSQLTransportTests(TransactionTestCase):
     def test_stream_releases_real_connections_and_rechecks_revocation(self, _sleep):
         user = User.objects.create_user('stream@synthetic.invalid', name='Stream', role='instructor', is_approved=True)
         request = RequestFactory().get('/api/instructor/events/', {'token': str(AccessToken.for_user(user))})
-        stream = _event_stream(request, 'instructor', user.id)
+        stream = _event_stream(request, user)
         try:
             self.assertIn('connected', next(stream))
             self.assertIsNone(connection.connection)

@@ -1,6 +1,9 @@
 """Shared management scopes and deliberately small audit metadata."""
+import json
+
 from django.db import connection
 from django.db.models import Q, F, Func, IntegerField
+from django.utils.crypto import salted_hmac
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from .models import Assessment, Batch, ManagementAction, User
 
@@ -19,6 +22,21 @@ def managed_batches(user):
     length = 'jsonb_array_length' if connection.vendor == 'postgresql' else 'json_array_length'
     return rows.annotate(closeout_version_count=Func(F('closeout_snapshots'), function=length,
                         output_field=IntegerField())).defer('closeout_snapshots')
+
+
+def instructor_scope_revision(user):
+    """Opaque snapshot of access that may change while a live tab is disconnected."""
+    from .program_scope import assigned_program_ids
+
+    grants = assigned_program_ids(user).order_by('program_id').values_list(
+        'program_id', 'program__is_active', 'program__institute__is_active',
+    )
+    cohorts = managed_batches(user).order_by('pk', 'enrollments__student_id').values_list(
+        'pk', 'program_id', 'institute_id', 'status', 'enrollments__student_id',
+        'enrollments__student__is_active', 'enrollments__student__is_approved',
+    )
+    snapshot = json.dumps([user.pk, list(grants), list(cohorts)])
+    return salted_hmac('skillbridge.live-instructor-scope', snapshot, algorithm='sha256').hexdigest()
 
 
 def managed_assessments(user):

@@ -22,6 +22,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .management_access import instructor_scope_revision
 from .models import BatchEnrollment, User
 
 logger = logging.getLogger(__name__)
@@ -142,6 +143,8 @@ def realtime_session(request):
     response.data = {'transport': 'supabase_broadcast', 'url': config.url,
                      'publishable_key': config.publishable_key, 'token': token,
                      'topic': topic, 'expires_at': expires, 'event': EVENT}
+    if user.role == 'instructor':
+        response.data['scope_revision'] = instructor_scope_revision(user)
     return response
 
 

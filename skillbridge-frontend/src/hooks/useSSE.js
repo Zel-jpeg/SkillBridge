@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import api from '../api/axios'
 import { createEventStream } from '../api/eventStream'
+import { createLiveScope } from '../api/liveScope'
 import { createRealtimeStream } from '../api/realtimeStream'
 import { applyDataChange } from './useApi'
 
@@ -10,10 +11,12 @@ function identity() {
   const role = localStorage.getItem('sb-role')
   let id = ''
   try { id = JSON.parse(localStorage.getItem('sb-user'))?.id ?? '' } catch { /* Invalid identity. */ }
-  return { token, role, key: `${role}:${id}:${localStorage.getItem('sb-session-id') ?? ''}:${token}` }
+  const scopeKey = `${role}:${id}:${localStorage.getItem('sb-session-id') ?? ''}`
+  return { token, role, scopeKey, key: `${scopeKey}:${token}` }
 }
+const scope = createLiveScope()
 const sse = createEventStream({
-  identity,
+  identity, scope,
   preflight: user => api.get(`/api/${user.role}/events/?check=1`, { _sbToken: user.token }),
   source: user => new EventSource(`${BASE_URL}/api/${user.role}/events/?token=${encodeURIComponent(user.token)}`),
   changed: applyDataChange,
@@ -23,7 +26,7 @@ const sse = createEventStream({
 const manager = import.meta.env.VITE_SUPABASE_REALTIME_PILOT === 'true'
   ? createRealtimeStream({
     enabled: true,
-    identity,
+    identity, scope,
     session: async (user, { signal }) => (await api.post('/api/realtime/session/', {}, {
       _sbToken: user.token, signal, timeout: 5000,
     })).data,

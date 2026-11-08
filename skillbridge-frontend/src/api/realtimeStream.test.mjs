@@ -100,6 +100,26 @@ test('instructor joins and scope changes evict scoped data, while ordinary hints
   f.manager.stop()
 })
 
+test('an instructor rejoin with the same access revision leaves mounted data in place', async () => {
+  let revision = 'a'.repeat(64)
+  const f = fixture({ session: async () => ticket({ scope_revision: revision }) })
+  f.setUser({ token: 'synthetic', role: 'instructor', key: 'instructor:2:synthetic' })
+  f.manager.start(); await settle()
+  f.connections.at(-1).status('SUBSCRIBED')
+  await f.tick(150)
+  assert.deepEqual(f.changes.at(-1), { resync: true, topics: ['scope'] })
+
+  for (const next of [revision, 'b'.repeat(64)]) {
+    f.setVisible(false); f.manager.visibilityChanged()
+    revision = next
+    f.setVisible(true); f.manager.visibilityChanged(); await settle()
+    f.connections.at(-1).status('SUBSCRIBED')
+    await f.tick(150)
+  }
+  assert.deepEqual(f.changes.slice(1), [{ resync: true }, { resync: true, topics: ['scope'] }])
+  f.manager.stop()
+})
+
 test('fallback waits for the old socket to close and a hidden tab cancels the pending fallback', async () => {
   for (const hide of [false, true]) {
     const f = fixture()

@@ -63,6 +63,51 @@ test('disconnect reconnects with resynchronization; hidden tabs suspend', async 
   f.manager.stop()
 })
 
+test('returning to an instructor tab keeps the same access quiet but evicts on a change', async () => {
+  const f = fixture()
+  const user = { key: 'instructor:1:token1', scopeKey: 'instructor:1:session1', role: 'instructor', token: 'token1' }
+  f.setUser(user)
+  f.manager.start(); await Promise.resolve()
+  f.message({ type: 'connected', scope_revision: 'a'.repeat(64) })
+  await f.tick(150)
+  assert.deepEqual(f.changes.at(-1).topics, ['scope'])
+
+  f.setVisible(false); f.manager.visibilityChanged()
+  f.setVisible(true); f.manager.visibilityChanged(); await Promise.resolve()
+  f.message({ type: 'connected', scope_revision: 'a'.repeat(64) })
+  await f.tick(150)
+  assert.equal(f.changes.at(-1).resync, true)
+  assert.deepEqual(f.changes.at(-1).topics, [])
+
+  f.setUser({ ...user, key: 'instructor:1:token2', token: 'token2' })
+  f.manager.start(); await Promise.resolve()
+  f.message({ type: 'connected', scope_revision: 'b'.repeat(64) })
+  await f.tick(150)
+  assert.deepEqual(f.changes.at(-1).topics, ['scope'])
+
+  f.message({ type: 'connected' })
+  await f.tick(150)
+  assert.deepEqual(f.changes.at(-1).topics, ['scope'])
+  f.manager.stop()
+})
+
+test('a transport handoff keeps the applied scope while logout drops it', async () => {
+  const f = fixture()
+  f.setUser({ key: 'instructor:1:token1', role: 'instructor', token: 'token1' })
+  const message = { type: 'connected', scope_revision: 'a'.repeat(64) }
+  f.manager.start(); await Promise.resolve()
+  f.message(message); await f.tick(150)
+  f.manager.stop({ preserveScope: true })
+  f.manager.start(); await Promise.resolve()
+  f.message(message); await f.tick(150)
+  assert.deepEqual(f.changes.at(-1).topics, [])
+  f.manager.stop()
+  f.manager.start(); await Promise.resolve()
+  f.message(message); await f.tick(150)
+  assert.deepEqual(f.changes.at(-1).topics, ['scope'])
+  f.manager.stop()
+})
+
 test('logout cancels reconnects and stale preflights cannot create a stream', async () => {
   let resolve
   const f = fixture({ preflight: () => new Promise(yes => { resolve = yes }) })
