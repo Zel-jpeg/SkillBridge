@@ -15,8 +15,9 @@ from .placement_scope import current_approvals
 from .management_access import managed_batches
 from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
+from .analytics_geography import placement_geography
 from .organization_visibility import batch_visibility_q
-from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, CombinedCategoryScore,
+from .models import (Assessment, AssessmentAttemptHistory, BatchEnrollment, Company, CombinedCategoryScore,
                      CombinedCompetencyProfile, Institute, OJTPlacement, Program, Recommendation,
                      SkillScore, StudentResponse, User)
 
@@ -92,11 +93,13 @@ def analytics_payload(user, params):
     if user.role not in ('admin', 'instructor') or not user.is_active or (user.role == 'instructor' and not user.is_approved):
         raise PermissionDenied('Approved staff only.')
     allowed = {'batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id',
-               'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period', 'view', '_t'}
+               'company_id', 'position_id', 'area', 'batch_scope', 'date_from', 'date_to', 'activity_period', 'view', '_t'}
     if set(params) - allowed or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated analytics filter.'})
     if 'view' in params and params['view'] != 'overview':
         raise ValidationError({'error': 'Unsupported analytics view.'})
+    if params.get('batch_scope', '') not in ('', 'matching'):
+        raise ValidationError({'error': 'Invalid batch_scope.'})
     full = 'view' not in params
     batch_id = positive_id(params, 'batch_id')
     instructor_id = positive_id(params, 'instructor_id')
@@ -147,7 +150,7 @@ def analytics_payload(user, params):
         selected = [batch for batch in selected if batch.id == batch_id]
         if not selected:
             raise ValidationError({'error': 'Selected batch does not match the status/instructor filter.'})
-    elif user.role == 'instructor' and status == 'active' and not (institute_id or program_id):
+    elif user.role == 'instructor' and status == 'active' and not (institute_id or program_id) and params.get('batch_scope') != 'matching':
         selected = selected[:1]  # Same default active-batch ordering as the dashboard.
     selected_ids = [batch.id for batch in selected]
     course = params.get('course', '').strip()
@@ -288,8 +291,16 @@ def analytics_payload(user, params):
                     .annotate(total=Count('id')).values_list('position_id', 'total'))
     openings = active_positions()
     scoped_catalog = user.role == 'instructor' or bool(institute_id or program_id or batch_id)
+    catalog_program_ids = {batch.program_id for batch in selected}
+    if user.role == 'admin' and (institute_id or program_id) and not (batch_id or instructor_id):
+        # Catalog availability does not require an enrolled/active cohort. An
+        # explicitly selected organization can already have configured partners.
+        catalog_program_ids = ({program_id} if program_id else set(
+            Program.objects.filter(institute_id=institute_id).values_list('id', flat=True)))
+        if any(batch.program_id is None for batch in organization_batches):
+            catalog_program_ids.add(None)  # Preserve visible shared-institute records.
     if scoped_catalog:
-        openings = for_programs(openings, {batch.program_id for batch in selected})
+        openings = for_programs(openings, catalog_program_ids)
     catalog = list(openings.select_related('company').order_by('company__name', 'title', 'id'))
     if position_id and position_id not in {position.id for position in catalog}:
         raise NotFound('Position not found.')
@@ -343,6 +354,52 @@ def analytics_payload(user, params):
         and (not position_id or row['position_id'] == position_id)
         and (not params.get('area') or row['company_area'] == params['area'])]
     company_counts = Counter((row['company_id'], row['company']) for row in placed_filtered if row['placement_status'] == 'approved')
+    map_partners = {item.company_id: item.company for item in catalog
+                    if (not company_id or item.company_id == company_id)
+                    and (not position_id or item.id == position_id)
+                    and (not params.get('area') or area_of(item.company.address) == params['area'])}
+    if not position_id:
+        # A newly added partner can have a location before any openings exist.
+        empty_partners = Company.objects.filter(archived_at__isnull=True, positions__isnull=True)
+        if scoped_catalog:
+            visibility = Q(management_program_id__in=[key for key in catalog_program_ids if key is not None])
+            if None in catalog_program_ids:
+                visibility |= Q(management_program__isnull=True)
+            empty_partners = empty_partners.filter(visibility)
+        if company_id:
+            empty_partners = empty_partners.filter(pk=company_id)
+        for company in empty_partners:
+            if not params.get('area') or area_of(company.address) == params['area']:
+                map_partners[company.id] = company
+    # The company lookup also seeds partner-area counts. Do not let an approved
+    # placement excluded by company/position/area filters re-enter as a zero-row
+    # partner area through the unfiltered placement lookup.
+    mapped_company_ids = {row['company_id'] for row in placed_filtered if row['placement_status'] == 'approved'}
+    mapped_companies = {item.company_id: item.company for item in placements if item.company_id in mapped_company_ids}
+    placement_map = placement_geography(placed_filtered, mapped_companies, partners=map_partners.values())
+    # Read saved current allocations only. Do not generate/reconcile suggestions on GET.
+    students_by_id = {row['id']: row for row in students}
+    suggested_students, suggested_companies = [], {}
+    for item in OJTPlacement.objects.filter(student_id__in=current, batch_id__in=selected_ids,
+            status='suggested', is_active_suggestion=True).select_related('company', 'position'):
+        original = students_by_id[item.student_id]
+        valid_recs = {rec.id: rec for rec in recs[(item.student_id, item.batch_id)] if rec.position_id == item.position_id}
+        if (item.batch_id != original['batch_id'] or original['batch_status'] != 'active'
+                or original['placement_status'] != 'unplaced' or original['recommendations_locked']
+                or item.recommendation_id not in valid_recs or item.company_id != item.position.company_id):
+            continue
+        if ((company_id and item.company_id != company_id) or (position_id and item.position_id != position_id)
+                or (params.get('area') and area_of(item.company.address) != params['area'])):
+            continue
+        suggested_students.append({**original, 'placement_status': 'suggested', 'company_id': item.company_id,
+            'company': item.company.name, 'position_id': item.position_id, 'position': item.position.title,
+            'suggested_recommendation': {**api_fields(valid_recs[item.recommendation_id]),
+                'match_score': round(valid_recs[item.recommendation_id].match_score, 2)},
+            'company_area': area_of(item.company.address)})
+        suggested_companies[item.company_id] = item.company
+    suggested_students.sort(key=lambda row: (row['name'].casefold(), row['id']))
+    suggested_placement_map = placement_geography(suggested_students, suggested_companies,
+        partners=map_partners.values(), status='suggested')
     area_counts = Counter(row['company_area'] for row in placed_filtered if row['placement_status'] == 'approved')
     residents = Counter(row['resident_area'] for row in students)
     unplaced_residents = Counter(row['resident_area'] for row in students if row['placement_status'] == 'unplaced')
@@ -392,6 +449,8 @@ def analytics_payload(user, params):
         'match_bands': [{'name': name, 'count': count} for name, count in match_bands.items()],
         'companies': [{'id': key[0], 'name': key[1], 'count': count} for key, count in company_counts.most_common()],
         'areas': [{'name': name, 'count': count} for name, count in area_counts.most_common()], 'geography': geography, 'activity': activity,
+        'placement_map': placement_map, 'suggested_placement_map': suggested_placement_map,
+        'suggested_students': suggested_students,
         'activity_days': [{'date': day.isoformat(), 'submissions': count} for day, count in sorted(activity_days.items())],
         'options': {'batches': batch_options,
             'institutes': institute_options,

@@ -13,7 +13,7 @@ export function useAnalyticsRecords({ report, students, studentTable, fullColumn
     sortUndefined: 'last',
     sortDescFirst: false,
   })) ?? empty, [report])
-  const columnVisibility = useMemo(() => Object.fromEntries(columns.map(column => [column.id, !studentTable || fullColumns || ['0', '4', '5', '7', '12', '10'].includes(column.id)])), [columns, studentTable, fullColumns])
+  const columnVisibility = useMemo(() => Object.fromEntries(columns.map(column => [column.id, !studentTable || fullColumns || (report?.suggested ? ['0', '4', '5', '7', '8', '10'] : ['0', '4', '5', '7', '12', '10']).includes(column.id)])), [columns, studentTable, fullColumns, report?.suggested])
   // This Vite app does not use React Compiler. Consumers read the instance on each render.
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack v8 is intentionally used without compiler memoization.
   return useReactTable({

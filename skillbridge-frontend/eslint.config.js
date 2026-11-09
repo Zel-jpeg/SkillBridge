@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'test-results/**', 'tests/.runtime/**', 'tests/.runtime-win/**', 'tests/artifacts/**']),
+  globalIgnores(['public/vendor/leaflet-heat.js', 'dist', 'test-results/**', 'tests/.runtime/**', 'tests/.runtime-win/**', 'tests/artifacts/**']),
   {
     files: ['src/utils/studentDetail.test.mjs', 'tests/student-modal/data.mjs'],
     extends: [js.configs.recommended],

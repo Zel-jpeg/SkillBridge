@@ -42,9 +42,17 @@ area_company = Company.objects.create(name='Synthetic Panabo Agency', address={'
 Position.objects.create(company=area_company, title='Panabo Support Intern', slots_available=3)
 tagum_company = Company.objects.create(name='Synthetic Tagum Agency', address={'city': 'Tagum City'})
 Position.objects.create(company=tagum_company, title='Tagum Support Intern', slots_available=2)
+if os.environ.get('SB_ANALYTICS_REDESIGN'):
+    company.location_lat, company.location_lng = 7.07, 125.61
+    company.save()
+if os.environ.get('SB_ANALYTICS_REDESIGN'):
+    suggested_company = Company.objects.create(name='Synthetic Cebu Partner', address={'province': 'Cebu', 'city': 'Cebu City'}, location_lat=10.32, location_lng=123.9)
+    suggested_position = Position.objects.create(company=suggested_company, title='Cebu Intern', slots_available=4)
 categories = [SkillCategory.objects.create(name=name) for name in ['Database', 'Networking', 'Programming', 'Web']]
 for category in categories:
     PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=60)
+    if os.environ.get('SB_ANALYTICS_REDESIGN'):
+        PositionRequirement.objects.create(position=suggested_position, skill_category=category, required_percentage=60)
 required = Assessment.objects.create(title='Required foundations', batch=batch, created_by=owner,
     publication_status='published', due_at=timezone.now() - timedelta(days=1))
 optional = Assessment.objects.create(title='Optional practice', batch=batch, created_by=owner,
@@ -83,6 +91,11 @@ for index in range(1, 16):
     if index == 11:
         StudentResponse.objects.create(student=student, assessment=required, status='in_progress', started_at=timezone.now())
 BatchEnrollment.objects.create(batch=archive, student=students[0])
+
+if os.environ.get('SB_ANALYTICS_REDESIGN'):
+    from api.placement_drafts import store_suggestion
+    rec = Recommendation.objects.create(student=students[3], batch=batch, position=suggested_position, match_score=30)
+    store_suggestion(rec, owner).save()
 
 def identity(user):
     return {'token': str(AccessToken.for_user(user)), 'user': {'id': user.id, 'role': user.role,

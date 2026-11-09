@@ -4,13 +4,14 @@ import { scoreColor } from '../../utils/formatters'
 import { reportTableStyles as styles } from './reportTableStyles'
 
 const compactOrder = ['0', '4', '5', '7', '12', '10']
-const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 10: 'Recommendation order', 12: 'Top recommendation' }
+const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 8: 'Suggested partner', 10: 'Recommendation order', 12: 'Top recommendation' }
 const matchSurface = value => value == null ? '' : value >= 80 ? 'bg-green-50/70 dark:bg-green-950/30' : value >= 60 ? 'bg-amber-50/70 dark:bg-amber-950/30' : 'bg-rose-50/70 dark:bg-rose-950/30'
 
 export default function AnalyticsRecordTable({ engine, report, page, pageSize = 10, studentTable, fullColumns, selectionLabel, onStudent }) {
+  const order = report.suggested ? ['0', '4', '5', '7', '8', '10'] : compactOrder
   // In the compact view keep the recommendation and its match next to each other.
-  const displayHeaders = group => !studentTable || fullColumns ? group.headers : [...group.headers].sort((a, b) => compactOrder.indexOf(a.column.id) - compactOrder.indexOf(b.column.id))
-  const displayCells = row => !studentTable || fullColumns ? row.getVisibleCells() : [...row.getVisibleCells()].sort((a, b) => compactOrder.indexOf(a.column.id) - compactOrder.indexOf(b.column.id))
+  const displayHeaders = group => !studentTable || fullColumns ? group.headers : [...group.headers].sort((a, b) => order.indexOf(a.column.id) - order.indexOf(b.column.id))
+  const displayCells = row => !studentTable || fullColumns ? row.getVisibleCells() : [...row.getVisibleCells()].sort((a, b) => order.indexOf(a.column.id) - order.indexOf(b.column.id))
   return <div role="region" aria-label="Report table, scroll horizontally for more columns" tabIndex={0} className={`max-h-[42rem] ${styles.frame}`}>
     <table className={styles.table}>
       <caption className="sr-only">{report.title}. {selectionLabel}. Assessment status shows required work; placement is a separate decision. Column headers sort all filtered records before pagination.</caption>
@@ -38,6 +39,7 @@ export default function AnalyticsRecordTable({ engine, report, page, pageSize = 
         </div>
         else if (studentTable && index === 5 && !fullColumns) content = <div className="space-y-1"><StatusBadge status={student.required_complete ? 'completed' : Object.values(student.attempt_states || {}).includes('stopped') ? 'stopped' : 'pending'} /><p className="text-gray-400 dark:text-gray-500">{value} required</p>{student.recommendations_locked && <p className="text-gray-500 dark:text-gray-400">Final results locked</p>}{student.reasons.length > 0 && <p className="text-amber-800 dark:text-amber-300">{student.reasons.join(' · ')}</p>}</div>
         else if (studentTable && index === 7) content = <StatusBadge status={student.placement_status} label={student.placement_status === 'approved_other_batch' ? 'Approved in another batch' : undefined} />
+        else if (studentTable && index === 8 && report.suggested && !fullColumns) content = <div><p className="font-medium">{student.company}</p><p className="text-gray-500 dark:text-gray-400">{student.position}</p></div>
         else if (studentTable && index === 12 && !fullColumns) content = value ? <div><p className="font-medium text-gray-700 dark:text-gray-200">{value}</p><p className="text-gray-400 dark:text-gray-500">{student.top_company}</p></div> : <span className="text-gray-400 dark:text-gray-500">—</span>
         else if (score && value != null) content = <strong className={`font-semibold tabular-nums ${scoreColor(value)}`}>{value}%</strong>
         else if (numeric) content = <span className="tabular-nums">{value}</span>

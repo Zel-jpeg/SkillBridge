@@ -295,6 +295,14 @@ and fallback when explaining results.
   presets, recorded activity/history limits and local verification.
 - [Approved dashboard and analytics plan](DASHBOARD_AND_ANALYTICS_PLAN.md): Design
   rationale, metric definitions and historical-snapshot boundary.
+- [Analytics charts and placement map improvement plan](ANALYTICS_CHARTS_AND_PLACEMENT_MAP_PLAN.md):
+  Saved chart/map concepts, current Leaflet/Recharts/backend feasibility, shared
+  admin/instructor report redesign, scoped map aggregates, canonical area IDs,
+  boundary-data prerequisites and implementation/verification phases. This is
+  the original design brief; see the implementation receipt below for delivery.
+- [Analytics map redesign implementation](ANALYTICS_MAP_REDESIGN_IMPLEMENTATION.md):
+  Open report sections, weighted heatmaps and tile-free Philippines outlines
+  with approved/suggested record drilldowns and partner-only area lists; instructor placement-workspace change limited to a map button.
 
 - [Dashboard highlights](DASHBOARD_HIGHLIGHTS.md): Shared clickable top matches,
   skill leaderboards and student details for admin/instructor dashboards; frontend

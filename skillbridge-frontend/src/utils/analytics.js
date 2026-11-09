@@ -2,7 +2,7 @@ import { recommendationDisplay, summaryRecommendation } from './recommendationRe
 import { organizationComparison } from './analyticsOrganization.js'
 export const ANALYTICS_URL = '/api/management/analytics/'
 export const ANALYTICS_OVERVIEW_URL = `${ANALYTICS_URL}?view=overview`
-export const FILTER_KEYS = ['batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
+export const FILTER_KEYS = ['batch_scope', 'batch_id', 'instructor_id', 'institute_id', 'program_id', 'course', 'batch_status', 'assessment_id', 'company_id', 'position_id', 'area', 'date_from', 'date_to', 'activity_period']
 
 export function analyticsUrl(params) {
   const filters = new URLSearchParams()
@@ -42,15 +42,20 @@ export function selectAnalyticsStudents(data, tab, group, search = '') {
   // Status counts summarize selected students independently of company filters.
   // Company/area drill-downs and the default placement records use filtered data.
   const studentStatus = ['approved', 'approved_other_batch', 'unplaced', 'awaiting'].includes(group)
-  let rows = tab === 'placements' && !studentStatus ? data.placement_students : data.students
+  let rows = group.startsWith('map-suggested:') ? (data.suggested_students || []) : tab === 'placements' && !studentStatus ? data.placement_students : data.students
   if (group === 'complete') rows = rows.filter(row => row.required_complete)
   else if (group === 'incomplete') rows = rows.filter(row => !row.required_complete)
   else if (group === 'followup') rows = rows.filter(row => row.reasons.length)
   else if (group === 'awaiting') rows = rows.filter(row => row.awaiting_review)
   else if (['approved', 'approved_other_batch', 'unplaced'].includes(group)) rows = rows.filter(row => row.placement_status === group)
+  else if (group.startsWith('map:') || group.startsWith('map-suggested:')) {
+    const [, level, id] = group.split(':')
+    rows = rows.filter(row => row.placement_status === (group.startsWith('map-suggested:') ? 'suggested' : 'approved') && (level === 'pins' ? row.partner_pin_status !== 'mapped' : (level === 'province' ? row.partner_province_id : row.partner_city_id) === (id === 'unknown' ? '' : id)))
+  }
   else if (group.startsWith('reason:')) rows = rows.filter(row => row.reasons.includes(group.slice(7)))
   else if (group.startsWith('band:')) rows = rows.filter(row => row.match_band === group.slice(5))
   else if (group.startsWith('attempt:')) { const [, id, state] = group.split(':'); rows = rows.filter(row => row.attempt_states[id] === state) }
+  else if (group.startsWith('batch-score:')) { const [, id, state] = group.split(':'); rows = rows.filter(row => String(row.batch_id) === id && row.required_complete === (state === 'complete')) }
   else if (group.startsWith('batch:')) rows = rows.filter(row => String(row.batch_id) === group.slice(6))
   else if (group.startsWith('skill:')) {
     const [, id, band] = group.split(':')
@@ -74,9 +79,10 @@ export function analyticsTable(data, tab, group, students, search = '') {
     rows: data.assessments.map(row => [row.name, row.batch, row.publication_status, row.assigned, row.submitted, row.in_progress, row.not_started, row.stopped, row.retake_approved]) }
   if (group === 'activity') return { title: 'Recorded submission activity', columns: [data.scope?.activity_interval === 'month' ? 'Philippine month' : data.scope?.activity_interval === 'year' ? 'Philippine year' : 'Philippine date', 'Valid submitted attempts'], rows: data.activity.map(row => [data.scope?.activity_interval === 'month' ? row.date.slice(0, 7) : data.scope?.activity_interval === 'year' ? row.date.slice(0, 4) : row.date, row.submissions]) }
   if (group === 'skills') return { title: 'Combined skill distribution', columns: ['Category', 'Students with evidence', 'Missing / locked', 'Strong', 'Fair', 'Needs work', 'Mean of final student percentages'], rows: data.skills.map(row => [analyticsSkillName(row), row.sample, row.missing, row.strong, row.fair, row.needs_work, row.average]) }
-  return { title: tab === 'placements' ? 'Placement records' : tab === 'skills' ? 'Student competency records' : 'Student progress and follow-up',
-    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', 'Approved partner', 'Approved position', 'Recommendation order / legacy match', 'Follow-up reasons', 'Top recommended position', 'Top recommended partner', ...(tab === 'skills' ? data.skills.map(row => `${analyticsSkillName(row)} %`) : [])],
-    rows: students.map(row => [row.name, row.school_id, row.course, row.batch, row.instructor, `${row.required_completed}/${row.required_total}`, (row.competency_locked ?? row.recommendations_locked) ? 'Locked / unavailable' : 'Current', row.placement_status.replaceAll('_', ' '), row.company, row.position, recommendationDisplay(summaryRecommendation(row)), row.reasons.join('; '), row.top_position || null, row.top_company || null, ...(tab === 'skills' ? data.skills.map(skill => row.scores[skill.id] ?? null) : [])]) }
+  const suggested = group.startsWith('map-suggested:')
+  return { suggested, title: suggested ? 'Suggested placement records' : tab === 'placements' ? 'Placement records' : tab === 'skills' ? 'Student competency records' : 'Student progress and follow-up',
+    columns: ['Student', 'School ID', 'Course', 'Batch', 'Instructor', 'Required complete / total', 'Final evidence', 'Placement status', suggested ? 'Suggested partner' : 'Approved partner', suggested ? 'Suggested position' : 'Approved position', 'Recommendation order / legacy match', 'Follow-up reasons', 'Top recommended position', 'Top recommended partner', ...(tab === 'skills' ? data.skills.map(row => `${analyticsSkillName(row)} %`) : [])],
+    rows: students.map(row => [row.name, row.school_id, row.course, row.batch, row.instructor, `${row.required_completed}/${row.required_total}`, (row.competency_locked ?? row.recommendations_locked) ? 'Locked / unavailable' : 'Current', row.placement_status.replaceAll('_', ' '), row.company, row.position, recommendationDisplay(suggested ? row.suggested_recommendation : summaryRecommendation(row)), row.reasons.join('; '), row.top_position || null, row.top_company || null, ...(tab === 'skills' ? data.skills.map(skill => row.scores[skill.id] ?? null) : [])]) }
 }
 
 export function analyticsSelectionLabel(data, group) {
@@ -84,6 +90,8 @@ export function analyticsSelectionLabel(data, group) {
   if (!group) return 'All records in scope'
   const [kind, id, state] = group.split(':')
   const states = { submitted: 'Valid submitted', in_progress: 'In progress', not_started: 'Not started', stopped: 'Stopped / flagged', strong: 'Strong', fair: 'Fair', needs_work: 'Needs work' }
+  if (kind === 'map-suggested') return id === 'pins' ? 'Suggested students without valid partner pins' : `Suggested placements · ${state === 'unknown' ? 'Unmatched area' : data.suggested_placement_map?.areas[id]?.find(row => row.id === state)?.name || state}`
+  if (kind === 'map') return id === 'pins' ? 'Approved students without valid partner pins' : `Approved placements · ${state === 'unknown' ? 'Unmatched area' : data.placement_map?.areas[id]?.find(row => row.id === state)?.name || state}`
   if (kind === 'reason') return group.slice(7)
   if (kind === 'band') return ({ Strong: 'Strong fit · best current partner match', Fair: 'Fair fit · best current partner match', Low: 'Low fit · best current partner match', 'No current match': 'No current recommendation', Locked: 'Final results locked' })[group.slice(5)] || 'Selected partner match group'
   if (kind === 'skill') {
@@ -91,6 +99,7 @@ export function analyticsSelectionLabel(data, group) {
     return `${skill ? analyticsSkillName(skill) : 'Selected category'} · ${states[state] || 'All evidence'}`
   }
   if (kind === 'attempt') return `${data.assessments.find(row => String(row.id) === id)?.name || 'Selected assessment'} · ${states[state] || 'All attempts'}`
+  if (kind === 'batch-score') return `${data.options.batches.find(row => String(row.id) === id)?.name || 'Selected batch'} · ${state}`
   if (kind === 'batch') return data.options.batches.find(row => String(row.id) === id)?.name || 'Selected batch'
   if (kind === 'company') return data.options.companies.find(row => String(row.id) === id)?.name || 'Selected partner'
   if (kind === 'area') return `Partner area: ${group.slice(5)}`

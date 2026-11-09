@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import DialogShell from '../../components/DialogShell'
 import DataSection from '../../components/DataSection'
 import PageHeader from '../../components/PageHeader'
@@ -11,7 +12,7 @@ import PlacementReportPanel from '../../components/placements/PlacementReportPan
 import { ActionModal, ManualAssignmentModal } from './PlacementDialogs'
 import PositionReviewWorkspace, { CANDIDATE_PAGE_SIZE } from './PositionReviewWorkspace'
 import { AllocationDetails, AwaitingAllocationList, CollectionPagination, CompanyOverviewCard, DecisionDetails, DecisionHistory, PlacementIdentity as Identity } from './PlacementCollections'
-import { BriefcaseIcon, CheckCircleIcon, RefreshIcon, ReportIcon, SearchIcon, UserIcon, WarnIcon } from '../../components/Icons'
+import { MapIcon, BriefcaseIcon, CheckCircleIcon, RefreshIcon, ReportIcon, SearchIcon, UserIcon, WarnIcon } from '../../components/Icons'
 import { DRAFT_URL, usePlacements } from '../../hooks/usePlacements'
 import './placements.css'
 import './positionReview.css'
@@ -174,7 +175,7 @@ export default function PlacementWorkspace({ role = 'admin', organizationScope =
   }
 
   return <section className="pl-page">
-    <PageHeader title="OJT Placement Management" subtitle={role === 'admin' ? 'Review suggested placements across active batches. You make the final decision.' : 'Review placements for your students. Partner slots are shared across all batches.'} action={<><button className="pl-button" aria-expanded={reports} onClick={() => setReports(value => !value)}><ReportIcon size={16} />Download reports</button><button className="pl-button" onClick={async () => { await data.synchronize(); await data.refresh() }} disabled={data.refreshing || data.syncing}><RefreshIcon size={16} />{data.refreshing || data.syncing ? 'Refreshing…' : 'Refresh suggestions'}</button></>} />
+    <PageHeader title="OJT Placement Management" subtitle={role === 'admin' ? 'Review suggested placements across active batches. You make the final decision.' : 'Review placements for your students. Partner slots are shared across all batches.'} action={<>{role === 'instructor' && <Link className="pl-button" to={`/instructor/reports?${new URLSearchParams({ tab: 'placements', batch_scope: 'matching', batch_status: batch ? 'all' : 'active', ...(batch ? { batch_id: batch } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })}`}><MapIcon size={16} />View placement map</Link>}<button className="pl-button" aria-expanded={reports} onClick={() => setReports(value => !value)}><ReportIcon size={16} />Download reports</button><button className="pl-button" onClick={async () => { await data.synchronize(); await data.refresh() }} disabled={data.refreshing || data.syncing}><RefreshIcon size={16} />{data.refreshing || data.syncing ? 'Refreshing…' : 'Refresh suggestions'}</button></>} />
     {reports && <p className="pl-muted">Report filters are independent of the placement workspace. Downloads include recorded decisions and official capacity; provisional slots are not approved placements.</p>}
     {reports && <PlacementReportPanel companies={data.companies} positions={data.positions} placements={[...data.approvedPlacements, ...data.placements]} students={data.students} role={role} />}
     <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout="placement-stats" count={3}>

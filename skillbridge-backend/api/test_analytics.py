@@ -278,3 +278,165 @@ class AnalyticsTests(APITestCase):
         self.assertFalse(row['scores'])
         original = self.get(batch_id=self.batch.id)
         self.assertEqual(original['students'][0]['scores'], {str(self.category.id): 0.0})
+
+    def test_map_weights_respect_owned_cohort_and_partner_filter(self):
+        self.company.address = {'province': 'Davao del Norte', 'city': 'Panabo'}
+        self.company.location_lat, self.company.location_lng = 7.3, 125.6
+        self.company.save()
+        for student, batch in [(self.student, self.batch), (self.foreign_student, self.foreign)]:
+            OJTPlacement.objects.create(student=student, batch=batch, company=self.company, position=self.position, status='approved')
+        result = self.get()
+        self.assertEqual(result['placement_map']['approved_students'], 1)
+        self.assertEqual(result['placement_map']['points'][0]['count'], 1)
+        self.assertEqual(result['placement_students'][0]['partner_city_id'], '1102315000')
+        self.client.force_authenticate(self.admin)
+        result = self.get()
+        self.assertEqual(result['placement_map']['approved_students'], 2)
+        self.assertEqual(result['placement_map']['points'][0]['count'], 2)
+
+    def test_matching_batch_scope_still_excludes_foreign_batches(self):
+        from .models import Batch
+        second = Batch.objects.create(name='Second owned', instructor=self.owner)
+        another = User.objects.create_user('second-geo@example.invalid', role='student', name='Second')
+        BatchEnrollment.objects.create(batch=second, student=another)
+        result = self.get(batch_scope='matching')
+        self.assertEqual(result['summary']['students'], 2)
+        self.assertNotIn(self.foreign.id, result['scope']['batch_ids'])
+
+    def test_admin_catalog_scope_includes_configured_partners_without_batches(self):
+        from .models import Institute, Program
+        institute = Institute.objects.create(code='CAT', name='Catalog institute')
+        program = Program.objects.create(institute=institute, code='CAT', name='Catalog program')
+        foreign_institute = Institute.objects.create(code='OTHER', name='Other institute')
+        foreign_program = Program.objects.create(institute=foreign_institute, code='OTHER', name='Other program')
+        company = Company.objects.create(name='Configured new-program partner', management_program=program,
+            address={'province': 'Davao del Norte', 'city': 'Panabo'})
+        position = Position.objects.create(company=company, title='New-program opening', management_program=program,
+            eligibility_configured_at=timezone.now(), slots_available=2)
+        position.eligible_programs.add(program)
+        Company.objects.create(name='Empty new-program partner', management_program=program,
+            address={'province': 'Cebu', 'city': 'Cebu City'})
+        foreign_company = Company.objects.create(name='Foreign configured partner', management_program=foreign_program,
+            address={'city': 'Davao City'})
+        foreign_position = Position.objects.create(company=foreign_company, title='Foreign configured opening',
+            eligibility_configured_at=timezone.now(), slots_available=2)
+        foreign_position.eligible_programs.add(foreign_program)
+        self.client.force_authenticate(self.admin)
+        for filters in ({'program_id': program.id}, {'institute_id': institute.id}):
+            with self.subTest(filters=filters):
+                result = self.get(**filters)
+                self.assertEqual(result['summary']['students'], 0)
+                self.assertEqual([row['id'] for row in result['capacity']], [position.id])
+                for key in ('placement_map', 'suggested_placement_map'):
+                    self.assertEqual({row['id'] for row in result[key]['areas']['city']},
+                                     {'1102315000', '0730600000'})
+                self.assertNotIn(foreign_company.name, str(result['capacity']))
+        restricted = self.get(program_id=program.id, instructor_id=self.owner.id)
+        self.assertEqual(restricted['capacity'], [])
+        self.assertEqual(restricted['placement_map']['areas']['city'], [])
+
+    def test_admin_catalog_scope_keeps_shared_institute_and_explicit_batch_boundaries(self):
+        from .models import Institute, Program
+        institute = Institute.objects.create(code='SHARED', name='Shared institute')
+        program = Program.objects.create(institute=institute, code='SCOPED', name='Scoped program')
+        self.batch.institute = institute
+        self.batch.save(update_fields=['institute'])
+        company = Company.objects.create(name='Program-only partner', management_program=program)
+        position = Position.objects.create(company=company, title='Program-only opening',
+            eligibility_configured_at=timezone.now(), slots_available=2)
+        position.eligible_programs.add(program)
+        self.client.force_authenticate(self.admin)
+        result = self.get(program_id=program.id)
+        self.assertEqual({row['id'] for row in result['capacity']}, {self.position.id, position.id})
+        restricted = self.get(program_id=program.id, batch_id=self.batch.id)
+        self.assertEqual([row['id'] for row in restricted['capacity']], [self.position.id])
+
+    def test_approved_partner_areas_respect_company_position_and_area_filters(self):
+        self.company.address = {'province': 'Davao del Norte', 'city': 'Panabo'}
+        self.company.save()
+        second_company = Company.objects.create(name='Other approved partner',
+            address={'province': 'Cebu', 'city': 'Cebu City'})
+        second_position = Position.objects.create(company=second_company, title='Other opening', slots_available=2)
+        second_student = User.objects.create_user('filtered-map-student@example.invalid',
+            name='Second approved student', role='student', is_approved=True)
+        BatchEnrollment.objects.create(batch=self.batch, student=second_student)
+        for student, company, position in [(self.student, self.company, self.position),
+                                          (second_student, second_company, second_position)]:
+            OJTPlacement.objects.create(student=student, batch=self.batch, company=company,
+                position=position, status='approved')
+        self.assertEqual({row['id'] for row in self.get()['placement_map']['areas']['city']},
+                         {'1102315000', '0730600000'})
+        for filters in ({'company_id': self.company.pk}, {'position_id': self.position.pk}, {'area': 'Panabo'}):
+            with self.subTest(filters=filters):
+                result = self.get(**filters)
+                self.assertEqual(result['placement_map']['student_count'], 1)
+                areas = result['placement_map']['areas']['city']
+                self.assertEqual([(row['id'], row['count'], row['partner_count']) for row in areas],
+                                 [('1102315000', 1, 1)])
+
+    def test_suggested_geography_uses_saved_active_current_allocation(self):
+        from .models import ManagementAction
+        self.company.address = {'province': 'Cebu', 'city': 'Cebu City'}
+        self.company.location_lat, self.company.location_lng = 10.32, 123.9
+        self.company.save()
+        self.ready()
+        rec = Recommendation.objects.get(student=self.student, position=self.position)
+        OJTPlacement.objects.create(student=self.student, batch=self.batch, company=self.company,
+            position=self.position, recommendation=rec, status='suggested', is_active_suggestion=True)
+        before = ManagementAction.objects.count()
+        result = self.get()
+        self.assertEqual(result['suggested_placement_map']['student_count'], 1)
+        self.assertEqual(result['suggested_placement_map']['points'][0]['count'], 1)
+        self.assertEqual(result['suggested_students'][0]['company'], self.company.name)
+        self.assertEqual(result['suggested_students'][0]['partner_city_id'], '0730600000')
+        self.assertEqual(result['summary']['approved'], 0)
+        self.assertEqual(result['summary']['unplaced'], 1)
+        self.assertEqual(ManagementAction.objects.count(), before)
+        rec.is_current = False
+        rec.save(update_fields=['is_current'])
+        self.assertEqual(self.get()['suggested_placement_map']['student_count'], 0)
+
+    def test_approved_student_and_inactive_suggestions_do_not_enter_suggested_map(self):
+        self.ready()
+        rec = Recommendation.objects.get(student=self.student, position=self.position)
+        pending = OJTPlacement.objects.create(student=self.student, batch=self.batch,
+            company=self.company, position=self.position, recommendation=rec, status='suggested')
+        self.assertEqual(self.get()['suggested_placement_map']['student_count'], 0)
+        pending.is_active_suggestion = True
+        pending.save(update_fields=['is_active_suggestion'])
+        OJTPlacement.objects.create(student=self.student, batch=self.batch, company=self.company,
+            position=self.position, status='approved')
+        result = self.get()
+        self.assertEqual(result['placement_map']['student_count'], 1)
+        self.assertEqual(result['suggested_placement_map']['student_count'], 0)
+
+    def test_partner_area_list_omits_places_without_partners_but_keeps_zero_counts(self):
+        self.company.address = {'province': 'Cebu', 'city': 'Cebu City'}
+        self.company.save()
+        result = self.get()
+        areas = result['placement_map']['areas']['city']
+        self.assertEqual(len(areas), 1)
+        self.assertEqual(areas[0]['id'], '0730600000')
+        self.assertEqual(areas[0]['partner_count'], 1)
+        self.assertEqual(areas[0]['count'], 0)
+
+    def test_suggested_map_preserves_instructor_ownership(self):
+        self.ready()
+        rec = Recommendation.objects.get(student=self.student, position=self.position)
+        OJTPlacement.objects.create(student=self.student, batch=self.batch, company=self.company,
+            position=self.position, recommendation=rec, status='suggested', is_active_suggestion=True)
+        foreign_rec = Recommendation.objects.create(student=self.foreign_student, batch=self.foreign,
+            position=self.position, match_score=70)
+        OJTPlacement.objects.create(student=self.foreign_student, batch=self.foreign, company=self.company,
+            position=self.position, recommendation=foreign_rec, status='suggested', is_active_suggestion=True)
+        result = self.get()
+        self.assertEqual(result['suggested_placement_map']['student_count'], 1)
+        self.assertEqual([row['id'] for row in result['suggested_students']], [self.student.id])
+        self.assertNotIn(self.foreign_student.name, str(result['suggested_students']))
+
+    def test_partner_location_appears_before_openings_or_placements_exist(self):
+        Company.objects.create(name='New partner without openings', address={'province': 'Cebu', 'city': 'Cebu City'})
+        result = self.get()
+        city = next(row for row in result['placement_map']['areas']['city'] if row['id'] == '0730600000')
+        self.assertEqual(city['partner_count'], 1)
+        self.assertEqual(city['count'], 0)

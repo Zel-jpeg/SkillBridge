@@ -1,0 +1,20 @@
+{
+  "review_date": "2026-11-08",
+  "source_revision": "0ce4ee97ed6433a79bd81a0f556ec5c829e29646",
+  "coverage": {
+    "objectives": 5,
+    "functional_requirements": 13,
+    "nonfunctional_requirements": 8
+  },
+  "source_paths_verified": 33,
+  "application_tests_run": false,
+  "original_documents_modified": false,
+  "source_document_sha256": {
+    "C:\\Users\\acer\\Downloads\\Outline_Acceptance_Form.pdf": "1befb5b7e71dcb8fa57ed219e6ec235e57635ed7db924ada7e8c31bdac44aa29",
+    "C:\\Users\\acer\\Downloads\\rev3_SKILLBRIDGE_ A_WEB-BASED OJT PLACEMENT DECISION SUPPORT SYSTEM WITH NLP-ASSISTED SKILLS ASSESSMENT AND COMPANY-POSITION RECOMMENDATION.docx.pdf": "ff46efcc0934a70915cef32452dee74881264a502ea92bf93acbe74fe1bbdb81"
+  },
+  "outputs": [
+    "MINIMAL_COPYABLE_REVISIONS.md",
+    "REVIEW_AND_CHANGE_MAP.md"
+  ]
+}

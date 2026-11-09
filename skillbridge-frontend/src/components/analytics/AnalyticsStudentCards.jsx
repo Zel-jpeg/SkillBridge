@@ -1,4 +1,4 @@
-import { recommendationDisplay, summaryRecommendation } from '../../utils/recommendationResults'
+import { analyticsCardRecommendation } from '../../utils/analyticsCardRecommendation'
 import Avatar from '../Avatar'
 import CompanyImage from '../CompanyImage'
 import StatusBadge from '../StatusBadge'
@@ -9,10 +9,11 @@ import './analyticsStudentCards.css'
 
 // Analytics records are scoped snapshots, not management student profiles. Render
 // their supplied progress and reasons directly; never synthesize an overall score.
-export default function AnalyticsStudentCards({ records, skills = [], onStudent }) {
+export default function AnalyticsStudentCards({ records, skills = [], onStudent, suggested = false }) {
   return <div className="analytics-student-grid">{records.map(({ student: row }) => {
     const stopped = Object.values(row.attempt_states || {}).includes('stopped')
     const progress = row.required_total > 0 ? Math.max(0, Math.min(100, row.required_completed / row.required_total * 100)) : 0
+    const recommendation = analyticsCardRecommendation(row, suggested)
     return <article className="sp-card analytics-student-card" key={row.id} data-student-id={row.id}>
       <header className="sp-card-header">
         <div className="sp-card-identity"><Avatar name={row.name} photoUrl={row.photo_url} className="h-10 w-10 rounded-full text-sm" />
@@ -29,8 +30,8 @@ export default function AnalyticsStudentCards({ records, skills = [], onStudent 
       {row.reasons.length ? <div className="analytics-student-followup"><strong>Needs follow-up</strong><ul>{row.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
         : <p className="analytics-student-note">{row.batch_status === 'archived' ? 'Archived record · read-only' : 'No follow-up flagged'}</p>}
       {skills.length > 0 && <dl className="analytics-student-skills">{skills.map(skill => <div key={skill.id}><dt>{analyticsSkillName(skill)}</dt><dd className={scoreColor(row.scores[skill.id])}>{row.scores[skill.id] == null ? 'Missing / locked' : `${row.scores[skill.id]}%`}</dd></div>)}</dl>}
-      {!row.recommendations_locked && row.top_match != null ? <div className="analytics-student-match"><CompanyImage name={row.top_company} className="h-7 w-7 shrink-0 rounded-md" /><div><span>Top recommendation</span><strong>{row.top_position || 'Position not provided'}</strong><p>{row.top_company || 'Partner not provided'}</p></div><strong>{recommendationDisplay(summaryRecommendation(row))}</strong></div>
-        : <p className="analytics-student-note">Top recommendation: {row.recommendations_locked ? 'Locked / unavailable' : 'Unavailable'}</p>}
+      {recommendation.available ? <div className="analytics-student-match"><CompanyImage name={recommendation.company} className="h-7 w-7 shrink-0 rounded-md" /><div><span>{recommendation.label}</span><strong>{recommendation.position}</strong><p>{recommendation.company}</p></div><strong>{recommendation.display}</strong></div>
+        : <p className="analytics-student-note">{recommendation.label}: {recommendation.state}</p>}
     </article>
   })}</div>
 }

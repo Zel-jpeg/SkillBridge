@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/faeldon/philippines-json-maps",
+  "revision": "680e32e62baeccbcd8845d3b1387bc67c1baf78a",
+  "resolution": "lowres 0.001",
+  "sources": [
+    {
+      "path": "latest/geojson/provdists/lowres/municities-provdist-1102300000.0.001.json",
+      "sha256": "0a891f8875dfa2fcd7aaec5ff6f7c76881bb91fe962a010ca3665829ecdd1df6"
+    },
+    {
+      "path": "latest/geojson/provdists/lowres/municities-provdist-1102400000.0.001.json",
+      "sha256": "3e20f644e95f7073b1f3630c375cc5b744c3a50a5f47722e30b24515d396bf8d"
+    },
+    {
+      "path": "latest/geojson/provdists/lowres/municities-provdist-1102500000.0.001.json",
+      "sha256": "1e351495e2e164d053ff6044c2a95e4aaab79adcbb2568d6f9fbbe4a4001a52c"
+    },
+    {
+      "path": "latest/geojson/provdists/lowres/municities-provdist-1108200000.0.001.json",
+      "sha256": "b1ab30938d233095f54ca5739bf084c073d40220a8f30e92c6267a03ea9ff6c1"
+    },
+    {
+      "path": "latest/geojson/provdists/lowres/municities-provdist-1108600000.0.001.json",
+      "sha256": "3abe35d60486a99e250f0dd16f9195b2f41497af8490c71f08b68785e06b750d"
+    }
+  ]
+}

@@ -44,14 +44,12 @@ export default function SkillsInsights({ data, selection, onSelect }) {
   return <div className="si-panels">
     <section className="si-panel" aria-label="Skill results by category">
       <header className="si-header"><span className="si-icon" aria-hidden="true"><SkillIcon size={23} /></span><div><h3>Skill results by category</h3><p>Final skill scores. Numbers below count students, not average scores.</p></div><span className="si-badge">{data.skills.length} {data.skills.length === 1 ? 'category' : 'categories'}</span></header>
-      {rows.length ? <table className="si-matrix">
-        <caption className="sr-only">Students in each final category score band. Unavailable means missing or locked evidence, not a zero score. Select a score-band count to filter student records.</caption>
-        <thead><tr><th scope="col">Skill category</th>{scoreBands.map(band => <th scope="col" key={band.key}><span><i className={`si-dot si-dot-${band.key}`} />{band.label}</span><small>{band.guide}</small></th>)}<th scope="col" className="si-unavailable"><span><i className="si-dot si-dot-missing" />Unavailable</span><small>Missing or locked</small></th></tr></thead>
-        <tbody>{rows.map(row => {
-          const name = analyticsSkillName(row)
-          return <tr key={row.id}><th scope="row">{name}</th>{scoreBands.map(band => <td key={band.key} data-label={`${band.label} · ${band.guide}`}><button type="button" className={`si-count ${row[band.key] ? `si-tone-${band.key}` : ''}`} aria-label={`${name} · ${band.label}: ${row[band.key]}`} aria-pressed={selection === `skill:${row.id}:${band.key}`} onClick={() => onSelect(`skill:${row.id}:${band.key}`)}><span>{row[band.key]}</span><ChevronRightIcon size={14} /></button></td>)}<td className="si-unavailable" data-label="Unavailable · Missing or locked"><span className="si-missing" aria-label={`${name}: ${row.missing} students with missing or locked results`}>{row.missing}</span></td></tr>
-        })}</tbody>
-      </table> : <p className="si-empty">{data.summary.students ? 'No final category results in this scope. Missing or locked evidence stays unavailable.' : 'No students in this scope. Adjust the report scope to review skills.'}</p>}
+      <div className="ar-skill-legend">{scoreBands.map(band => <span key={band.key}><i className={`ar-band-${band.key}`} />{band.label} · {band.guide}</span>)}<span><i className="ar-band-missing" />Unavailable · Missing or locked</span></div>
+      {rows.length ? <div className="ar-skill-bars">{rows.map(row => {
+        const name = analyticsSkillName(row)
+        const total = row.strong + row.fair + row.needs_work + row.missing
+        return <div className="ar-skill-row" key={row.id}><strong>{name}</strong><div className="ar-stacked">{scoreBands.map(band => <button type="button" key={band.key} className={`ar-band-${band.key}`} style={{ flex: row[band.key] || 0.01 }} aria-label={`${name} · ${band.label}: ${row[band.key]}`} aria-pressed={selection === `skill:${row.id}:${band.key}`} onClick={() => onSelect(`skill:${row.id}:${band.key}`)} title={`${band.label}: ${row[band.key]}`}>{row[band.key]}</button>)}<span className="ar-band-missing" title={`Missing or locked: ${row.missing}`} style={{ flex: row.missing || 0.01 }}>{row.missing}</span></div><span className="tabular-nums">{total}</span></div>
+      })}</div> : <p className="si-empty">No eligible final category evidence in this scope.</p>}
       {data.skills.length > PAGE_SIZE && <nav className="si-pagination" aria-label="Skill category pages"><Pagination total={data.skills.length} page={current} onPage={setPage} pageSize={PAGE_SIZE} /></nav>}
       {rows.length > 0 && <p className="si-helper">Each row counts students in the matching framework or legacy cohorts. A student may appear in several skill categories.</p>}
       <footer className="si-footer"><button type="button" className="si-table-action" onClick={() => onSelect('skills')}><ReportIcon size={16} />View category table</button><div><p>Select a score-band count to view its students.</p><p>Unavailable is not a zero score.</p></div></footer>
