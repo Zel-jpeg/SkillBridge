@@ -53,7 +53,7 @@ def student_nlp_text(request, student_id):
              'text_generation_version': TEXT_GENERATION_VERSION,
              'text': generate_competency_insights(scores)['competency_profile_text'] if scores else '',
              'note': 'Generated from current saved category scores, bounded definitions and tags. Not saved; recommendations are unchanged.'}],
-        'note': 'Diagnostic inputs for NLP fit, not model accuracy. Category vocabulary does not verify each subskill. No question or answer content is included.'})
+        'note': 'Full assessment-profile previews, not the position-specific text used for each current recommendation. Current matching selects the position-required assessed categories. Category vocabulary does not verify each subskill. No question or answer content is included.'})
 
 
 def saved_text_version(profile):

@@ -115,7 +115,8 @@ class RuntimeRankingFallbackTests(APITestCase):
         self.assertEqual(Recommendation.objects.get(student=self.student).model_used, 'simple_fallback')
 
     def test_empty_vocabulary_produces_zero_text_component_without_fake_similarity(self):
-        with patch('api.recommendation_nlp.preprocess_texts', return_value=(['', ''], 'spacy_md', None)):
+        with patch('api.recommendation_nlp.preprocess_texts',
+                   side_effect=lambda texts, model: ([''] * len(texts), 'spacy_md', None)):
             _, _, results = recalculate_combined(self.student, self.batch)
         self.assertEqual(results[0]['nlp_score_component'], 0)
         self.assertEqual(results[0]['category_score_component'], 100)

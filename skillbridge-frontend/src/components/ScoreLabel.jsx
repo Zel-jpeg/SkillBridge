@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 const explanations = {
   'Recommendation order': 'Positions are ordered by numerical requirement coverage, declared requirement-demand alignment, then supporting text similarity and location. Rank is not confidence or placement approval.',
   'Requirement coverage': 'Average capped attainment of the listed numerical minimums. 100% means these minimums are met, not 100% assessment grades or certainty of workplace suitability. Unassessed requirements stay explicit.',
-  'NLP text similarity': 'Similarity between generated assessment-context text and position text. Contextual tags are not separately assessed skills; this percentage is not model accuracy or confidence.',
+  'NLP text similarity': 'Similarity between the student’s assessed category context required by this position and its position text. Contextual tags are not separately assessed skills; this percentage is not model accuracy or confidence.',
   'Location score': 'A supporting proximity score based on the saved locations. Positions outside your preferred area remain available.',
   'Legacy hybrid reference': 'Previous 60% category cosine, 25% text similarity and 15% location calculation. This reference does not determine assessment-led order.',
   'Best position match': 'The highest individual position match at this partner, not an average of its roles. Each position uses 60% category fit, 25% NLP fit, and 15% location fit.',

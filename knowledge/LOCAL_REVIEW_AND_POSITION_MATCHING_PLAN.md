@@ -22,7 +22,8 @@ Review branch: `codex/review-analytics-map-20261109`.
   337 frontend tests, 41 backend tests, frontend lint/build, and both-role,
   three-tab browser checks at 1440/768/390px with dark phone layouts, actual
   Leaflet/heat rendering, tile-free national outlines and allocated card/list parity.
-- [ ] Commit reviewed work, merge into local main and verify clean status.
+- [x] Commit reviewed work as `4036e6e`, fast-forward into local main and verify
+  both branches clean. No remote push performed.
 
 Initial sandboxed browser runners could start their local helpers but could not
 connect to the loopback readiness ports. They cleaned up and did not reach browser
@@ -37,25 +38,52 @@ databases are staged with this baseline.
 
 ## Phase 2 — position-specific matching
 
-Start only after Phase 1 is merged and clean. Create a separate local branch.
+Phase 1 was merged and clean before creating `codex/position-specific-nlp-20261109`.
 
-- [ ] Trace scoring callers, category identity, explanations, previews and
+- [x] Trace scoring callers, category identity, explanations, previews and
   freshness/version checks using current code.
-- [ ] Keep the full visible combined profile and all numeric assessment evidence.
+- [x] Keep the full visible combined profile and all numeric assessment evidence.
   Create position-specific text internally from relevant assessed categories.
-- [ ] Use one shared fitted TF-IDF space for a student's compatible candidate
+- [x] Use one shared fitted TF-IDF space for a student's compatible candidate
   corpus; transform the filtered profiles into that space.
-- [ ] Retain exact program/framework IDs. Reuse the existing canonical category
+- [x] Retain exact program/framework IDs. Reuse the existing canonical category
   map only on the established unscoped compatibility path.
-- [ ] Guard lack of positive relevant evidence and preserve missing versus zero
+- [x] Guard lack of positive relevant evidence and preserve missing versus zero
   numerical evidence, numeric coverage/alignment priorities and location inputs.
-- [ ] Explain overlap using actual per-position student vectors; version input
+- [x] Explain overlap using actual per-position student vectors; version input
   freshness so existing suggestions require an explicit authorized refresh.
-- [ ] Verify backend regressions, generic program fixtures, legacy aliases,
+- [x] Verify backend regressions, generic program fixtures, legacy aliases,
   rejected cross-program evidence, history/freshness and unchanged grading.
-- [ ] Repeat the researched six-student simulation against the integrated code
+- [x] Repeat the researched six-student simulation against the integrated code
   on disposable data. Inspect changes rather than tuning to larger percentages.
-- [ ] Record tests, remaining limitations and the feature branch status.
+  Passed 169 checks; repeatable verifier and fictional fixture are now in the
+  backend. No live records changed.
+- [x] Record tests, remaining limitations and the feature branch status.
+
+## Current checkpoint
+
+The reviewed baseline is on local main at `4036e6e`. The NLP implementation is
+kept on `codex/position-specific-nlp-20261109` for the requested feature testing;
+main remains the clean baseline for comparison. All intended changes are confined to matching,
+truthful preview wording, tests, the fictional fixture/verifier and documentation.
+
+Completed verification: all 857 backend tests on disposable PostgreSQL (276.301s),
+38 focused matching/ordering/runtime tests on disposable SQLite, all 337 frontend
+helper tests, frontend lint and production build, scoped real-API desktop/phone
+browser checks, and the integrated six-student simulation with 169 checks. No
+failures remain. The full-suite receipt is
+`work/branch-review-postgres-h3tj83_h/tests.txt`; the integrated receipt is
+`work/position-specific-nlp-integrated/report.json`.
+
+No live database migration, real recommendation refresh, deployment or remote
+push has occurred. When using this branch with configured records, the matching
+version makes old suggestions stale until an explicit authorized maintenance
+refresh. Valid grades and historical placement evidence remain intact.
+
+The implementation contract and repeatable verification command are in
+[position-specific matching](POSITION_SPECIFIC_NLP_MATCHING.md). The next user
+walkthrough should inspect program-specific results and explanations before
+choosing when to merge this feature into main or refresh real recommendations.
 
 Do not push remotely, migrate live data, regenerate real recommendations or alter
 historical placement snapshots. Grade-band/tag-count artifacts remain a distinct

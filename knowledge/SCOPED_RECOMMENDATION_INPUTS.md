@@ -1,5 +1,10 @@
 # Scoped recommendation inputs and freshness
 
+9 November 2026 follow-up: supporting NLP now compares position-required assessed
+category context in one common TF-IDF space. Matching version participates in
+freshness; full visible profiles and numerical ordering are preserved.
+[Position-specific matching contract](POSITION_SPECIFIC_NLP_MATCHING.md)
+
 F10 uses the active enrollment's batch and its recorded framework version to
 select evidence and positions. Submitted assessment scores enter combined totals
 only when the assessment and category belong to that version. Individual score

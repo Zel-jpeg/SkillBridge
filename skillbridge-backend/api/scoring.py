@@ -266,11 +266,13 @@ def build_skill_vector(student, assessment, categories):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def generate_recommendations(student, assessment, categories):
-    """Generate explainable 60/25/15 hybrid recommendations.
+    """Generate assessment-led recommendations with a legacy hybrid reference.
 
     Category alignment uses cosine similarity over assessment percentages and
     position requirements. Rich profile/position text is preprocessed by the
-    configured spaCy/Stanza model, then compared with TF-IDF cosine similarity.
+    configured spaCy/Stanza model, then compared in a common TF-IDF space using
+    the student's position-required category context. Numerical requirement
+    coverage/alignment lead ordering; the hybrid value remains a reference.
     Location uses an 80 km linear decay; missing coordinates receive a neutral
     50% location score so unavailable data does not crash or dominate ranking.
     """
@@ -316,10 +318,10 @@ def generate_combined_recommendations(student, batch, combined_scores, profile, 
 
 def _rank_recommendations(student, skill_scores, categories, insights, batch, *, scoped_catalog=None):
     from django.db import transaction
-    from sklearn.feature_extraction.text import TfidfVectorizer
     from .models import Recommendation, RecommendationConfiguration
-    from .recommendation_nlp import (build_position_description, location_similarity, preprocess_texts,
+    from .recommendation_nlp import (build_position_description, location_similarity,
                                      company_address_text, valid_coordinates, TEXT_GENERATION_VERSION)
+    from .recommendation_matching import position_specific_similarity, MATCHING_INPUT_VERSION
     from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key
     from .nlp_explanations import explain_overlap
 
@@ -356,19 +358,12 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
     profile_text = insights['competency_profile_text']
     position_texts = scoped_catalog.position_texts if scoped_catalog else [build_position_description(position) for position in positions]
     requested_model = scoped_catalog.requested_model if scoped_catalog else RecommendationConfiguration.get_active().active_model
-    processed, model_used, _fallback_reason = preprocess_texts(
-        [profile_text] + position_texts,
-        requested_model,
+    text_match = position_specific_similarity(
+        profile_text, skill_scores, positions, mapping, requested_model,
+        position_texts=position_texts,
     )
-
-    matrix = tfidf = None
-    try:
-        tfidf = TfidfVectorizer(ngram_range=(1, 3), min_df=1, sublinear_tf=True)
-        matrix = tfidf.fit_transform(processed)
-        nlp_scores = cosine_similarity(matrix[:1], matrix[1:])[0]
-    except ValueError:
-        # Empty vocabulary is possible when all text is stop words.
-        nlp_scores = np.zeros(len(positions), dtype=float)
+    model_used = text_match.model_used
+    nlp_scores = text_match.scores
 
     results = []
     pending = []
@@ -407,13 +402,14 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
         if scoped_catalog:
             details['ranking_inputs'] = {**scoped_catalog.scope, 'catalog_fingerprint': scoped_catalog.fingerprint,
                 'text_generation_version': TEXT_GENERATION_VERSION, 'requested_model': requested_model,
-                'model_used': model_used}
+                'model_used': model_used, 'matching_input_version': MATCHING_INPUT_VERSION}
             for row, category_id in zip(details['requirements'], sorted(targets)):
                 row['category_id'] = category_id
         details.update(support=(25 * component_values['nlp_score_component']
                                 + 15 * component_values['location_score_component']) / 40,
                        legacy_hybrid_reference=component_values['match_score'],
-                       nlp_evidence={**explain_overlap(tfidf, matrix, index),
+                       nlp_evidence={**explain_overlap(text_match.vectorizer, text_match.overlap_matrix(index), 0),
+                                     **text_match.input_metadata(index),
                                      'similarity_percent': component_values['nlp_score_component']})
         component_values.update(assessment_rank=None, assessment_details=details)
         pending.append((position, component_values))

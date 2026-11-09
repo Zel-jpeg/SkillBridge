@@ -35,8 +35,8 @@ export function GeneratedText({ label, text, note }) {
       })}
     </div>
     {raw && <details className="pt-1 text-xs text-gray-500 dark:text-gray-400">
-      <summary className="cursor-pointer font-medium text-violet-700 dark:text-violet-300">View raw weighted NLP input</summary>
-      <p className="my-2">Exact input before model preprocessing. Repeated evidence gives terms more influence in scoring; the readable summary above omits that repeated section.</p>
+      <summary className="cursor-pointer font-medium text-violet-700 dark:text-violet-300">View full generated text</summary>
+      <p className="my-2">Generated text before preprocessing, including repeated weighted vocabulary. Current recommendations use the assessed categories required by each position; a full student profile can include other categories.</p>
       <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-3 text-xs leading-relaxed font-sans text-gray-700 dark:text-gray-300">{raw}</pre>
     </details>}
   </div>

@@ -83,7 +83,7 @@ class ScopedRecommendationTests(ScopedRankingFixtures, APITestCase):
         profile, _, rows = recalculate_combined(student, batch)
         self.assertEqual([row['position_id'] for row in rows], [self.port_opening])
         texts, _ = self.preprocess.call_args.args
-        self.assertEqual(len(texts), 2)
+        self.assertEqual(len(texts), 3)  # Full profile, scoped role, relevant student view.
         self.assertIn('DockManifest', texts[1])
         self.assertTrue(all(term not in ' '.join(texts) for term in ('KitchenLog', 'FutureRubric', 'ManualOnly', 'LegacyRubric')))
         details = rows[0]['assessment_details']
@@ -99,7 +99,7 @@ class ScopedRecommendationTests(ScopedRankingFixtures, APITestCase):
 
         _, _, other = recalculate_combined(*self.food[:2])
         self.assertEqual([row['position_id'] for row in other], [self.food_opening])
-        self.assertEqual(len(self.preprocess.call_args.args[0]), 2)
+        self.assertEqual(len(self.preprocess.call_args.args[0]), 3)
 
     def test_independent_edits_and_relevant_eligibility_have_scoped_freshness(self):
         recalculate_combined(*self.port[:2])

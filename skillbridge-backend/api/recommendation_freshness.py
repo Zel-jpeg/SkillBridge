@@ -10,6 +10,7 @@ from .models import PositionRequirement, RecommendationConfiguration, SkillCateg
 from .recommendation_nlp import (TEXT_GENERATION_VERSION, build_position_description, category_definition,
                                  extract_coordinates, position_role_context, valid_coordinates)
 from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
+from .recommendation_matching import MATCHING_INPUT_VERSION
 from .opportunity_scope import active_positions, for_programs, legacy_positions
 
 
@@ -50,6 +51,7 @@ def load_scoped_catalog(batch):
     model = RecommendationConfiguration.objects.filter(pk=1).values_list('active_model', flat=True).first() or 'spacy_md'
     fingerprint = _digest({'version': 'scoped-ranking-inputs-v1', 'scope': scope, 'model': model,
         'text_version': TEXT_GENERATION_VERSION,
+        'matching_input_version': MATCHING_INPUT_VERSION,
         'categories': [(row.id, row.name, row.tags, category_definition(row)) for row in categories],
         'positions': [(position.id, position.company_id, text,
                        valid_coordinates(position.company.location_lat, position.company.location_lng),
@@ -83,6 +85,7 @@ def catalog_fingerprint(batch=None):
         category['description'] = category_definition(SimpleNamespace(description=category['description']))
     model = RecommendationConfiguration.objects.filter(pk=1).values_list('active_model', flat=True).first() or 'spacy_md'
     return _digest({'version': 'ranking-inputs-v1', 'text_version': TEXT_GENERATION_VERSION,
+                    'matching_input_version': MATCHING_INPUT_VERSION,
                     'positions': positions, 'requirements': requirements, 'categories': categories, 'model': model})
 
 

@@ -109,7 +109,11 @@ class EvidencePolicyTests(SimpleTestCase):
 
 
 def controlled_preprocess(texts, requested, **kwargs):
-    return ['alpha', *['alpha' if i == 0 else 'beta' for i in range(len(texts) - 1)]], requested, None
+    # Deliberately favor First role's text so this test proves numerical policy
+    # wins over the legacy hybrid. Recognize every generated student view rather
+    # than assuming a single student document at input index zero.
+    return ['alpha' if text.startswith(('The student demonstrates', 'Assessment results:', 'First role at'))
+            else 'beta' for text in texts], requested, None
 
 
 class AssessmentLedAPITests(APITestCase):

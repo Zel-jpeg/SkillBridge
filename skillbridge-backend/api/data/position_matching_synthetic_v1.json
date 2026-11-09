@@ -1,0 +1,1501 @@
+{
+  "created": "2026-11-09",
+  "sources": {
+    "DNSC": {
+      "title": "DNSC program offerings",
+      "url": "https://dnsc.edu.ph/program-offerings/",
+      "use": "Program/institute names and general program context; not numeric thresholds."
+    },
+    "WEB": {
+      "title": "O*NET Web Developers 15-1254.00",
+      "url": "https://www.onetonline.org/link/summary/15-1254.00",
+      "use": "Web development, code review, browser compatibility and interface duties."
+    },
+    "NETWORK": {
+      "title": "O*NET Network and Computer Systems Administrators 15-1244.00",
+      "url": "https://www.onetonline.org/link/summary/15-1244.00",
+      "use": "Networks, troubleshooting, records, backups and access/security duties."
+    },
+    "SOCIAL": {
+      "title": "O*NET Social and Human Service Assistants 21-1093.00",
+      "url": "https://www.onetonline.org/link/summary/21-1093.00",
+      "use": "Supervised intake, service referral, group support, documentation and monitoring examples."
+    },
+    "FRONT": {
+      "title": "TESDA Front Office Services NC II",
+      "url": "https://www.tesda.gov.ph/Downloadables/TR%20Front%20Office%20Services%20NC%20II.pdf",
+      "use": "Reservations, reception, customer service and workplace communication examples; 2013 amended document."
+    },
+    "TRAVEL": {
+      "title": "TESDA Travel Services NC II Revision 01",
+      "url": "https://tesda.gov.ph/Downloadables/Travel%20Services%20NC%20II.pdf",
+      "use": "Travel requests, reservations/transactions, documentation and related records; promulgated 2019."
+    }
+  },
+  "notes": [
+    "All students, answers, partners and internship openings are fictional.",
+    "Skills and duties are adapted from referenced occupational/training material; question wording is newly authored for software testing.",
+    "Numeric minima, scores and expected-role labels are developer-authored test assumptions, not official DNSC, TESDA or O*NET thresholds.",
+    "Five items per category produce score steps of 20%; no random student proficiency is claimed."
+  ],
+  "groups": [
+    {
+      "key": "IC",
+      "institute": "IC",
+      "programs": [
+        "BSIT",
+        "BSIS"
+      ],
+      "categories": [
+        {
+          "name": "Web interface development",
+          "description": "Build accessible browser pages, responsive layouts and interactive web interface behavior.",
+          "tags": [
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "DOM",
+            "responsive layout",
+            "accessibility",
+            "browser compatibility",
+            "web forms"
+          ],
+          "sources": [
+            "WEB"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Which HTML element is intended for a clickable form submission control?",
+              "answer": "button",
+              "distractors": [
+                "div",
+                "span",
+                "section"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Which CSS layout approach helps content adapt to different screen widths?",
+              "answer": "Responsive layout",
+              "distractors": [
+                "Fixed desktop-only width",
+                "Disabling zoom",
+                "Removing all labels"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A script must change an existing paragraph. Which browser interface represents page elements?",
+              "answer": "DOM",
+              "distractors": [
+                "DNS",
+                "SMTP",
+                "DHCP"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a form control should have an understandable accessible label.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the standard three-letter acronym for Cascading Style Sheets.",
+              "answer": "CSS",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Programming and testing",
+          "description": "Implement clear application logic, investigate code faults and verify expected outputs.",
+          "tags": [
+            "functions",
+            "control flow",
+            "algorithms",
+            "debugging",
+            "unit tests",
+            "input validation",
+            "code review",
+            "program logic"
+          ],
+          "sources": [
+            "WEB"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Python: what does print(3 + 2 * 4) output?",
+              "answer": "11",
+              "distractors": [
+                "20",
+                "14",
+                "9"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What best checks a repaired function?",
+              "answer": "Test expected and boundary cases",
+              "distractors": [
+                "Rename the file only",
+                "Delete all error messages",
+                "Assume it works once it opens"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why validate an order quantity before calculating totals?",
+              "answer": "Reject invalid input",
+              "distractors": [
+                "Increase screen brightness",
+                "Change the network address",
+                "Hide every result"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a successful code run proves every possible input is correct.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the Python keyword that returns a function result.",
+              "answer": "return",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Network connectivity",
+          "description": "Investigate network addressing, name resolution and communication between connected devices.",
+          "tags": [
+            "IP addressing",
+            "DNS",
+            "DHCP",
+            "routing",
+            "switching",
+            "connectivity",
+            "network diagnostics",
+            "LAN"
+          ],
+          "sources": [
+            "NETWORK"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Which service resolves domain names to network addresses?",
+              "answer": "DNS",
+              "distractors": [
+                "CSS",
+                "CPU",
+                "RAM"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Which service commonly supplies automatic network addresses?",
+              "answer": "DHCP",
+              "distractors": [
+                "HTML",
+                "SQL",
+                "USB"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A workstation reports no cable connection. What should be checked first?",
+              "answer": "Cable and connection status",
+              "distractors": [
+                "Website colors",
+                "Document fonts",
+                "The payroll report"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: duplicate network addresses can disrupt connectivity.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the standard three-letter acronym for a local area network.",
+              "answer": "LAN",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "User technical support",
+          "description": "Clarify reported faults, perform authorized checks and record supervised troubleshooting actions.",
+          "tags": [
+            "helpdesk",
+            "fault diagnosis",
+            "support records",
+            "user communication",
+            "hardware checks",
+            "escalation",
+            "resolution testing",
+            "software support"
+          ],
+          "sources": [
+            "NETWORK"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A user says an app failed. What information is most useful first?",
+              "answer": "Observed behavior and error details",
+              "distractors": [
+                "Their private account password",
+                "An unrelated holiday date",
+                "The office wall color"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What should an intern do when troubleshooting exceeds their authorized role?",
+              "answer": "Escalate with recorded findings",
+              "distractors": [
+                "Change all access permissions",
+                "Hide the issue",
+                "Promise an untested solution"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What should happen before restarting a computer with unsaved work?",
+              "answer": "Ask the user to save their work",
+              "distractors": [
+                "Discard every open file",
+                "Delete the user account",
+                "Disable all backups"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: the support record should describe checks already attempted.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the three-letter acronym for the computer central processing unit.",
+              "answer": "CPU",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Database records",
+          "description": "Retrieve structured records carefully and maintain accurate authorized data updates.",
+          "tags": [
+            "SQL",
+            "queries",
+            "tables",
+            "record accuracy",
+            "data validation",
+            "backup",
+            "relational records",
+            "parameterized queries"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Which SQL keyword retrieves records?",
+              "answer": "SELECT",
+              "distractors": [
+                "PAINT",
+                "BOOT",
+                "PING"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why use a WHERE condition in a targeted update?",
+              "answer": "Limit affected records",
+              "distractors": [
+                "Change the monitor resolution",
+                "Rename all tables",
+                "Disable login checks"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Before an approved bulk correction, what supports recovery?",
+              "answer": "A verified backup",
+              "distractors": [
+                "Removing every audit record",
+                "An untested guess",
+                "A new desktop background"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: user search values should be passed as query parameters.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the SQL keyword used to sort a query result.",
+              "answer": "ORDER BY",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Systems access and protection",
+          "description": "Support controlled access, backups and appropriate handling of system security concerns.",
+          "tags": [
+            "access control",
+            "least privilege",
+            "backups",
+            "authentication",
+            "security reports",
+            "system logs",
+            "recovery",
+            "user permissions"
+          ],
+          "sources": [
+            "NETWORK"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "An intern needs to read one folder. What access is appropriate?",
+              "answer": "Only necessary read access",
+              "distractors": [
+                "Administrator access everywhere",
+                "Everyone's password",
+                "Unrestricted delete access"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What helps determine whether a scheduled backup completed?",
+              "answer": "Its recorded completion and verification",
+              "distractors": [
+                "The keyboard color",
+                "An unrelated browser bookmark",
+                "A guess about yesterday"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What should happen after detecting suspicious system activity?",
+              "answer": "Report through the authorized process",
+              "distractors": [
+                "Publish all private records",
+                "Disable every account without approval",
+                "Ignore all alerts"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: successful recovery should be checked rather than assumed.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the standard three-letter acronym for multi-factor authentication.",
+              "answer": "MFA",
+              "distractors": []
+            }
+          ]
+        }
+      ],
+      "roles": [
+        {
+          "title": "Web Development Intern",
+          "requirements": {
+            "0": 70,
+            "1": 60
+          },
+          "description": "Under supervision, implement web page changes, check browser behavior and test application logic.",
+          "tags": [
+            "web pages",
+            "browser testing",
+            "application code"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "title": "Network Support Intern",
+          "requirements": {
+            "2": 70,
+            "3": 60
+          },
+          "description": "Assist with connectivity checks, user support records and supervised network troubleshooting.",
+          "tags": [
+            "connectivity",
+            "support records",
+            "network diagnostics"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Database Support Intern",
+          "requirements": {
+            "1": 50,
+            "4": 70
+          },
+          "description": "Assist authorized record queries, validate routine data changes and test supporting scripts.",
+          "tags": [
+            "queries",
+            "record accuracy",
+            "data checks"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Systems Protection Support Intern",
+          "requirements": {
+            "2": 60,
+            "5": 70
+          },
+          "description": "Support access reviews, backup verification and recording network security concerns.",
+          "tags": [
+            "user access",
+            "backups",
+            "system records"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        }
+      ],
+      "students": [
+        {
+          "label": "IC-1",
+          "program": "BSIT",
+          "correct_counts": [
+            5,
+            4,
+            2,
+            2,
+            3,
+            2
+          ],
+          "expected_role": 0
+        },
+        {
+          "label": "IC-2",
+          "program": "BSIS",
+          "correct_counts": [
+            2,
+            2,
+            5,
+            4,
+            2,
+            3
+          ],
+          "expected_role": 1
+        }
+      ]
+    },
+    {
+      "key": "Social Work",
+      "institute": "IBPA",
+      "programs": [
+        "BSSW"
+      ],
+      "categories": [
+        {
+          "name": "Client intake and listening",
+          "description": "Gather relevant client information respectfully under supervision using attentive communication.",
+          "tags": [
+            "client interview",
+            "active listening",
+            "needs information",
+            "intake records",
+            "clarifying questions",
+            "respectful communication",
+            "supervision",
+            "service request"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A client gives an unclear request. What is an appropriate next action?",
+              "answer": "Ask a respectful clarifying question",
+              "distractors": [
+                "Invent missing details",
+                "Interrupt repeatedly",
+                "Promise an unavailable service"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why record the client's stated concern accurately?",
+              "answer": "Support an informed supervised response",
+              "distractors": [
+                "Replace all supervision",
+                "Guarantee benefit approval",
+                "Avoid future clarification"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A trainee cannot answer a complex eligibility question. What should they do?",
+              "answer": "Consult the supervising worker",
+              "distractors": [
+                "Make a final decision alone",
+                "Guess the rule",
+                "Publish the client's identity"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: listening includes checking that the client's concern was understood.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for the initial process of collecting a new client's service information.",
+              "answer": "intake",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Case documentation",
+          "description": "Record factual service information and maintain careful confidential case documentation.",
+          "tags": [
+            "case notes",
+            "confidential records",
+            "factual reporting",
+            "service history",
+            "record accuracy",
+            "authorized access",
+            "documentation",
+            "secure storage"
+          ],
+          "sources": [
+            "SOCIAL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Which note is most appropriate?",
+              "answer": "A factual account of the reported event",
+              "distractors": [
+                "An unsupported personal accusation",
+                "An invented diagnosis",
+                "An unrelated rumor"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Who should receive a case record?",
+              "answer": "Only people authorized by agency procedures",
+              "distractors": [
+                "Any curious visitor",
+                "Every social media contact",
+                "An unrelated customer"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "An error is found in a case note. What should an intern do?",
+              "answer": "Follow the agency correction process",
+              "distractors": [
+                "Silently invent a replacement history",
+                "Delete all case records",
+                "Ignore it permanently"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: confidential records belong in approved protected storage.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for keeping client information restricted to authorized use.",
+              "answer": "confidentiality",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Community resources and referral",
+          "description": "Identify relevant services and assist supervised referrals to appropriate community resources.",
+          "tags": [
+            "service directory",
+            "community resources",
+            "referral",
+            "agency contact",
+            "client needs",
+            "service availability",
+            "follow up",
+            "resource information"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A client needs a service the office does not provide. What is a useful supervised response?",
+              "answer": "Check an appropriate referral resource",
+              "distractors": [
+                "Promise the office provides it anyway",
+                "Share the case publicly",
+                "Dismiss the request without information"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why verify a service directory contact?",
+              "answer": "Avoid giving outdated referral information",
+              "distractors": [
+                "Replace client consent procedures",
+                "Guarantee admission",
+                "Avoid documenting a referral"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What should be recorded after an authorized referral?",
+              "answer": "Relevant referral details and follow-up arrangements",
+              "distractors": [
+                "Unrelated gossip",
+                "A fabricated approval",
+                "Every private detail in a public post"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a referral guarantees that another agency will accept a client.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for directing a client to an appropriate outside service.",
+              "answer": "referral",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Group and outreach support",
+          "description": "Assist supervised group activities and communicate community participation arrangements clearly.",
+          "tags": [
+            "group activities",
+            "outreach",
+            "participation",
+            "coordination",
+            "community information",
+            "activity schedule",
+            "inclusive communication",
+            "attendance"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "An activity schedule changes. What should the intern help do?",
+              "answer": "Communicate the verified change",
+              "distractors": [
+                "Keep every participant uninformed",
+                "Invent a different venue",
+                "Cancel unrelated services"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What helps make a community invitation useful?",
+              "answer": "Clear purpose, time, place and contact details",
+              "distractors": [
+                "Unverified promises only",
+                "Private case records",
+                "An unreadable image alone"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A participant raises a concern outside the intern's responsibility. What is appropriate?",
+              "answer": "Refer it to the supervisor",
+              "distractors": [
+                "Make an unsupported final ruling",
+                "Announce the concern publicly",
+                "Ignore the participant"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: attendance records and activity notes can support supervised program follow-up.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for community-directed contact and participation activities.",
+              "answer": "outreach",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Program monitoring and reporting",
+          "description": "Record service activities and summarize program information accurately for supervisors.",
+          "tags": [
+            "activity records",
+            "monitoring",
+            "service counts",
+            "progress reporting",
+            "data accuracy",
+            "follow up",
+            "program summaries",
+            "record review"
+          ],
+          "sources": [
+            "SOCIAL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A report states 12 visits but the activity log lists 10. What should happen?",
+              "answer": "Reconcile the discrepancy before finalizing",
+              "distractors": [
+                "Choose the larger number automatically",
+                "Delete the log",
+                "Invent two visits"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why distinguish completed activities from planned activities?",
+              "answer": "Avoid overstating delivered services",
+              "distractors": [
+                "Guarantee program success",
+                "Remove the need for review",
+                "Make the report longer"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What is useful in a supervised activity summary?",
+              "answer": "Verified dates, counts and relevant observations",
+              "distractors": [
+                "Unverified achievements",
+                "Private information unrelated to the report",
+                "Only decorative graphics"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a summary should distinguish recorded facts from assumptions.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for tracking activities or progress against a program plan.",
+              "answer": "monitoring",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Professional boundaries and supervision",
+          "description": "Recognize trainee limits, protect respectful practice and consult the designated supervisor.",
+          "tags": [
+            "supervision",
+            "professional boundaries",
+            "respect",
+            "confidentiality",
+            "authorized role",
+            "accountability",
+            "ethical concerns",
+            "consultation"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A request exceeds the trainee's authority. What should happen?",
+              "answer": "Seek guidance from the designated supervisor",
+              "distractors": [
+                "Pretend to be the final decision-maker",
+                "Promise an outcome",
+                "Share confidential details with friends"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What supports respectful client communication?",
+              "answer": "Clear language without unsupported promises",
+              "distractors": [
+                "Ridicule",
+                "Public discussion of private cases",
+                "Threats about services"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "The intern is unsure whether information may be disclosed. What is appropriate?",
+              "answer": "Check agency procedure and consult the supervisor",
+              "distractors": [
+                "Post it immediately",
+                "Ask an unrelated visitor",
+                "Assume all records are public"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a trainee should present an unsupported personal view as an official agency decision.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for guidance and oversight by an assigned professional.",
+              "answer": "supervision",
+              "distractors": []
+            }
+          ]
+        }
+      ],
+      "roles": [
+        {
+          "title": "Supervised Casework Support Intern",
+          "requirements": {
+            "0": 70,
+            "1": 70,
+            "5": 60
+          },
+          "description": "Assist intake interviews, prepare factual case notes and consult the assigned supervisor.",
+          "tags": [
+            "intake information",
+            "case notes",
+            "supervised service"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "title": "Community Outreach Support Intern",
+          "requirements": {
+            "2": 70,
+            "3": 70,
+            "5": 60
+          },
+          "description": "Assist resource referrals, communicate community activity arrangements and report to supervisors.",
+          "tags": [
+            "community resources",
+            "outreach",
+            "participation records"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        },
+        {
+          "title": "Social Program Monitoring Intern",
+          "requirements": {
+            "1": 60,
+            "4": 75
+          },
+          "description": "Check service activity records and prepare factual monitoring summaries for review.",
+          "tags": [
+            "service counts",
+            "monitoring records",
+            "report summaries"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "title": "Group Activity Support Intern",
+          "requirements": {
+            "0": 65,
+            "3": 75
+          },
+          "description": "Help organize supervised group sessions and communicate with participating clients.",
+          "tags": [
+            "group activities",
+            "client communication",
+            "activity schedule"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        }
+      ],
+      "students": [
+        {
+          "label": "SW-1",
+          "program": "BSSW",
+          "correct_counts": [
+            5,
+            4,
+            2,
+            2,
+            3,
+            4
+          ],
+          "expected_role": 0
+        },
+        {
+          "label": "SW-2",
+          "program": "BSSW",
+          "correct_counts": [
+            2,
+            2,
+            5,
+            4,
+            3,
+            4
+          ],
+          "expected_role": 1
+        }
+      ]
+    },
+    {
+      "key": "Tourism",
+      "institute": "IBPA",
+      "programs": [
+        "BSTM"
+      ],
+      "categories": [
+        {
+          "name": "Accommodation reservations",
+          "description": "Capture accurate accommodation booking details and verify reservation availability and confirmation.",
+          "tags": [
+            "reservations",
+            "room availability",
+            "booking details",
+            "confirmation",
+            "guest requests",
+            "dates",
+            "reservation changes",
+            "record accuracy"
+          ],
+          "sources": [
+            "FRONT"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A guest requests a room for two nights. What must be checked before confirmation?",
+              "answer": "Dates, availability and booking details",
+              "distractors": [
+                "Only the room color",
+                "An unrelated flight time",
+                "A different guest's private record"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why repeat key reservation details to the guest?",
+              "answer": "Check shared understanding",
+              "distractors": [
+                "Guarantee every future request",
+                "Replace the booking record",
+                "Avoid checking dates"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A guest asks to change arrival dates. What should the trainee do?",
+              "answer": "Check the change procedure and availability",
+              "distractors": [
+                "Overwrite another guest's booking",
+                "Promise any room without checking",
+                "Ignore the request"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: an unverified room request should be represented as a confirmed booking.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for arranging a room booking in advance.",
+              "answer": "reservation",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Accommodation reception",
+          "description": "Support guest arrival and departure procedures using accurate approved reception records.",
+          "tags": [
+            "guest reception",
+            "check in",
+            "check out",
+            "arrival records",
+            "room information",
+            "reception procedures",
+            "guest assistance",
+            "handover"
+          ],
+          "sources": [
+            "FRONT"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A guest arrives with a booking reference. What should be verified?",
+              "answer": "The matching reservation and arrival details",
+              "distractors": [
+                "An unrelated customer record",
+                "A social media password",
+                "The trainee's private calendar only"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A room is not ready at the stated time. What is appropriate?",
+              "answer": "Give verified information and seek authorized assistance",
+              "distractors": [
+                "Invent a ready room",
+                "Ignore the guest",
+                "Change unrelated records"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why record a shift handover accurately?",
+              "answer": "Help the next staff member continue pending service",
+              "distractors": [
+                "Replace all reservation records",
+                "Guarantee no future complaint",
+                "Avoid supervisor review"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: reception staff should give clear directions relevant to the guest's request.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the two-word term for the guest arrival registration procedure.",
+              "answer": "check in",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Customer service communication",
+          "description": "Clarify visitor requests and communicate verified service information professionally.",
+          "tags": [
+            "customer service",
+            "active listening",
+            "clear communication",
+            "service requests",
+            "complaint handling",
+            "verified information",
+            "courtesy",
+            "follow up"
+          ],
+          "sources": [
+            "FRONT",
+            "TRAVEL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A visitor's request is unclear. What is most useful?",
+              "answer": "A polite clarifying question",
+              "distractors": [
+                "An invented answer",
+                "Repeated interruption",
+                "An unrelated sales promise"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A complaint cannot be resolved within the trainee's authority. What should happen?",
+              "answer": "Escalate with accurate details",
+              "distractors": [
+                "Guarantee compensation without authority",
+                "Discard the complaint",
+                "Blame another guest"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A service detail is uncertain. What should the trainee communicate?",
+              "answer": "Verified information after checking",
+              "distractors": [
+                "A confident guess",
+                "Another customer's private itinerary",
+                "An unsupported guarantee"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: attentive listening helps identify the actual service request.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for a customer's expression of dissatisfaction with a service.",
+              "answer": "complaint",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Travel documentation assistance",
+          "description": "Check travel-document information for completeness and refer uncertain requirements for verification.",
+          "tags": [
+            "travel documents",
+            "document checklist",
+            "traveler details",
+            "completeness checks",
+            "verification",
+            "application assistance",
+            "secure records",
+            "authorized guidance"
+          ],
+          "sources": [
+            "TRAVEL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A form is missing a required traveler detail. What should the trainee do?",
+              "answer": "Request verification of the missing detail",
+              "distractors": [
+                "Invent the detail",
+                "Submit an unrelated person's data",
+                "Delete every application"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why use an approved document checklist?",
+              "answer": "Check required information consistently",
+              "distractors": [
+                "Guarantee a visa decision",
+                "Replace official verification",
+                "Avoid checking identity details"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A traveler asks about an uncertain entry rule. What is appropriate?",
+              "answer": "Verify through an approved current source or supervisor",
+              "distractors": [
+                "Guess from an old conversation",
+                "Guarantee entry",
+                "Change the traveler's nationality"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: an intern's document check guarantees approval by an external authority.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for a structured list used to check document completeness.",
+              "answer": "checklist",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Travel reservations and transactions",
+          "description": "Prepare accurate travel bookings and record confirmed supplier transaction information.",
+          "tags": [
+            "travel booking",
+            "supplier confirmation",
+            "travel dates",
+            "booking reference",
+            "transactions",
+            "service availability",
+            "itinerary details",
+            "payment record"
+          ],
+          "sources": [
+            "TRAVEL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "Before confirming a travel booking, what should be checked?",
+              "answer": "Requested service, traveler details and supplier availability",
+              "distractors": [
+                "An unrelated room number",
+                "A different customer's payment card",
+                "Only the brochure color"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why keep the supplier's booking reference?",
+              "answer": "Support confirmation and later transaction checks",
+              "distractors": [
+                "Guarantee no travel disruption",
+                "Replace traveler details",
+                "Avoid all record keeping"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "A quoted option changes before confirmation. What should the trainee do?",
+              "answer": "Explain the verified change and seek approval",
+              "distractors": [
+                "Hide the difference",
+                "Change unrelated bookings",
+                "Invent a confirmation"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: requested services and confirmed services should be distinguished in records.",
+              "answer": "True",
+              "distractors": [
+                "False"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for a completed or recorded business exchange associated with a booking.",
+              "answer": "transaction",
+              "distractors": []
+            }
+          ]
+        },
+        {
+          "name": "Travel request records",
+          "description": "Capture traveler requirements and communicate accurately about requested travel services.",
+          "tags": [
+            "travel requests",
+            "traveler needs",
+            "service records",
+            "inquiries",
+            "request clarification",
+            "supplier information",
+            "response records",
+            "follow up"
+          ],
+          "sources": [
+            "TRAVEL"
+          ],
+          "questions": [
+            {
+              "type": "mcq",
+              "prompt": "A traveler requests assistance but provides no travel dates. What is useful next?",
+              "answer": "Clarify the missing travel requirements",
+              "distractors": [
+                "Invent the dates",
+                "Book a random route",
+                "Discard all contact details"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "What belongs in the service request record?",
+              "answer": "Relevant verified requirements and agreed follow-up",
+              "distractors": [
+                "Unrelated personal gossip",
+                "A fabricated approval",
+                "Another traveler's private details"
+              ]
+            },
+            {
+              "type": "mcq",
+              "prompt": "Why confirm what service the traveler is requesting?",
+              "answer": "Avoid processing the wrong service",
+              "distractors": [
+                "Guarantee the lowest price forever",
+                "Replace the booking system",
+                "Avoid supervisor contact"
+              ]
+            },
+            {
+              "type": "truefalse",
+              "prompt": "True or false: a trainee should record an unanswered inquiry as a confirmed completed booking.",
+              "answer": "False",
+              "distractors": [
+                "True"
+              ]
+            },
+            {
+              "type": "identification",
+              "prompt": "Enter the one-word term for a customer's question requesting service information.",
+              "answer": "inquiry",
+              "distractors": []
+            }
+          ]
+        }
+      ],
+      "roles": [
+        {
+          "title": "Front Office Services Intern",
+          "requirements": {
+            "0": 70,
+            "1": 70,
+            "2": 60
+          },
+          "description": "Assist room reservations, arrival reception and professional guest communication under supervision.",
+          "tags": [
+            "room bookings",
+            "reception",
+            "guest service"
+          ],
+          "sources": [
+            "FRONT"
+          ]
+        },
+        {
+          "title": "Travel Reservations Support Intern",
+          "requirements": {
+            "2": 60,
+            "4": 75,
+            "5": 70
+          },
+          "description": "Help capture travel needs, arrange verified bookings and communicate supplier confirmations.",
+          "tags": [
+            "travel reservations",
+            "service requests",
+            "supplier confirmations"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "title": "Travel Documentation Support Intern",
+          "requirements": {
+            "3": 75,
+            "5": 60
+          },
+          "description": "Assist document completeness checks and record verified traveler service requirements.",
+          "tags": [
+            "travel documents",
+            "checklists",
+            "traveler information"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "title": "Guest Relations Support Intern",
+          "requirements": {
+            "1": 60,
+            "2": 80,
+            "5": 65
+          },
+          "description": "Help clarify guest inquiries, communicate reception information and record service follow-up.",
+          "tags": [
+            "guest inquiries",
+            "service communication",
+            "reception support"
+          ],
+          "sources": [
+            "FRONT",
+            "TRAVEL"
+          ]
+        }
+      ],
+      "students": [
+        {
+          "label": "TOUR-1",
+          "program": "BSTM",
+          "correct_counts": [
+            5,
+            4,
+            4,
+            2,
+            2,
+            3
+          ],
+          "expected_role": 0
+        },
+        {
+          "label": "TOUR-2",
+          "program": "BSTM",
+          "correct_counts": [
+            2,
+            2,
+            4,
+            5,
+            4,
+            5
+          ],
+          "expected_role": 1
+        }
+      ]
+    }
+  ]
+}

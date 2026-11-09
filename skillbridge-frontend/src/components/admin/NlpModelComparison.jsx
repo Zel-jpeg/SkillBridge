@@ -62,7 +62,7 @@ export default function NlpModelComparison() {
         <p className="text-xs text-gray-500 dark:text-gray-400">{result.dataset.description}</p>
         <TaxonomyWarnings data={result.dataset.taxonomy} label="Evaluated taxonomy" />
         {result.text_samples && <details className="text-xs text-gray-600 dark:text-gray-300"><summary className="cursor-pointer font-semibold">View Generated Text Samples</summary>
-          <p className="my-2">Readable summaries of the inputs used in this run. Expand “View raw weighted NLP input” to inspect each exact scoring text before preprocessing. Category tags describe vocabulary, not separately verified subskills. These previews are read-only and contain no assessment answers.</p>
+          <p className="my-2">Readable summaries of the inputs used in this evaluation run. Expand “View full generated text” to inspect the generated text before preprocessing. Category tags describe vocabulary, not separately verified subskills. These previews are read-only and contain no assessment answers.</p>
           <div className="space-y-3">{result.text_samples.profiles.map(p => <GeneratedText key={p.case_id} label={`Student competency profile — ${p.case_id}`} text={p.text} />)}
           {result.text_samples.positions.map(p => <GeneratedText key={p.id} label={`Position description — ${p.title}`} text={p.text} />)}</div>
         </details>}

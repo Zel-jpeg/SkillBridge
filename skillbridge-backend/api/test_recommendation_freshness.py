@@ -57,7 +57,11 @@ class RecommendationFreshnessTests(APITestCase):
         result = self.client.get(reverse('student_combined_results'))
         self.assertFalse(result.data['recommendations_locked'])
         self.assertFalse(result.data['recommendations_stale'])
-        self.assertEqual(result.data['recommendations'][0]['match_score'], 32.5)
+        # The changed requirement has no positive assessed evidence. Shared
+        # preprocessing boilerplate must not contribute an invented text match.
+        self.assertEqual(result.data['recommendations'][0]['nlp_score_component'], 0)
+        self.assertEqual(result.data['recommendations'][0]['match_score'], 7.5)
+        self.assertEqual(result.data['recommendations'][0]['assessment_details']['requirements'][0]['state'], 'unassessed')
 
     def test_all_matching_catalog_inputs_and_the_candidate_corpus_invalidate_saved_rankings(self):
         def add_candidate():

@@ -76,8 +76,8 @@ class RecommendationContractTests(APITestCase):
     def test_category_order_and_weight_formula_ignore_input_order(self):
         # [Programming,Networking] vectors are [0.6,0.8] versus [1,0].
         # Category=.6; shared text=1; missing location=.5 => 68.5%.
-        scores = [Obj(skill_category_id=self.other_category.id, percentage=80),
-                  Obj(skill_category_id=self.category.id, percentage=60)]
+        scores = [Obj(skill_category_id=self.other_category.id, skill_category=self.other_category, percentage=80),
+                  Obj(skill_category_id=self.category.id, skill_category=self.category, percentage=60)]
         categories = [self.other_category, self.category]
         self.position.requirements.update(required_percentage=100)
         rows = _rank_recommendations(self.student, scores, categories, {'competency_profile_text': 'Synthetic profile'}, self.batch)

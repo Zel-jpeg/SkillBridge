@@ -86,6 +86,12 @@ NLP models are optional and loaded lazily. The implementation has deterministic
 regex preprocessing when optional models are unavailable; record the actual model
 and fallback when explaining results.
 
+Supporting NLP uses each position's required assessed categories in one common
+TF-IDF space, while full student profiles and numerical grading remain complete.
+The matching version invalidates old suggestions for explicit refresh without
+regrading or altering placement snapshots. See
+[position-specific matching](POSITION_SPECIFIC_NLP_MATCHING.md).
+
 ## Existing knowledge
 
 - [Coordinator catalog screens](COORDINATOR_CATALOG_SCREENS.md) describes the

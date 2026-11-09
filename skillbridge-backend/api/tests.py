@@ -382,8 +382,8 @@ class HybridRecommendationTests(APITestCase):
 
     @patch('api.recommendation_nlp.preprocess_texts')
     def test_hybrid_formula_and_components_are_persisted(self, preprocess):
-        preprocess.return_value = (
-            ['python django backend', 'python django backend'], 'simple_fallback', None,
+        preprocess.side_effect = lambda texts, model: (
+            ['python django backend'] * len(texts), 'simple_fallback', None,
         )
         from .scoring import generate_recommendations
 
@@ -417,8 +417,8 @@ class HybridRecommendationTests(APITestCase):
     def test_missing_location_uses_neutral_component(self, preprocess):
         self.student.address = {}
         self.student.save(update_fields=['address'])
-        preprocess.return_value = (
-            ['python django backend', 'python django backend'], 'simple_fallback', None,
+        preprocess.side_effect = lambda texts, model: (
+            ['python django backend'] * len(texts), 'simple_fallback', None,
         )
         from .scoring import generate_recommendations
 
