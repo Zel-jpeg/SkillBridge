@@ -62,9 +62,11 @@ Phase 1 was merged and clean before creating `codex/position-specific-nlp-202611
 
 ## Current checkpoint
 
-The reviewed baseline is on local main at `4036e6e`. The NLP implementation is
-kept on `codex/position-specific-nlp-20261109` for the requested feature testing;
-main remains the clean baseline for comparison. All intended changes are confined to matching,
+The reviewed baseline was merged at `4036e6e`. Local main is now `4ad1e63`,
+including the independently tested shared-partner visibility fix. That fix was
+merged into `codex/position-specific-nlp-20261109` as `3c37c18`, preserving the
+existing NLP feature in the active development checkout. The NLP implementation
+itself remains unmerged into main. Its changes remain confined to matching,
 truthful preview wording, tests, the fictional fixture/verifier and documentation.
 
 Completed verification: all 857 backend tests on disposable PostgreSQL (276.301s),
@@ -84,6 +86,19 @@ The implementation contract and repeatable verification command are in
 [position-specific matching](POSITION_SPECIFIC_NLP_MATCHING.md). The next user
 walkthrough should inspect program-specific results and explanations before
 choosing when to merge this feature into main or refresh real recommendations.
+
+The follow-up [shared partner visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md)
+records 97 PostgreSQL tests, 340 frontend tests, lint/build and nine real-API
+browser check groups. It restores original shared IC partners in both program
+management views, shared numerical requirement display and the reports shared-
+roster disclosure. No edit permissions, placement eligibility or score formulas
+changed. The separate proposed assessment-average "% Match" remains a read-only
+calculation preview and has not been implemented or used to rerank live records.
+
+After merging the visibility fix into the active NLP branch, 18 focused
+visibility/matching tests passed together on disposable in-memory SQLite with
+dotenv disabled. The working checkout retains both features; no live refresh
+or remote push was performed.
 
 Do not push remotely, migrate live data, regenerate real recommendations or alter
 historical placement snapshots. Grade-band/tag-count artifacts remain a distinct
