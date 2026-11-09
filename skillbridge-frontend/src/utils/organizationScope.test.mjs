@@ -29,3 +29,26 @@ test('scoped catalogs keep one shared opening, display legacy openings at instit
   assert.deepEqual(scopedPartners(companies, { institute: '10', program: '1' }, options)[0].positions, [shared, legacy])
   assert.deepEqual(scopedPartners(companies, { institute: '20', program: '2' }, options)[0].positions, [shared, closed])
 })
+
+test('shared openings remain visible in both sibling programs while exclusive openings stay within their program', () => {
+  const sibling = { id: 3, institute_id: 10 }
+  const extra = { ...options, programs: [...options.programs, sibling] }
+  const original = { id: 11, eligibility_configured: false }
+  const specific = { id: 12, eligibility_configured: true, eligible_programs: [it] }
+  const sharedElsewhere = { id: 13, eligibility_configured: true, eligible_programs: [tourism] }
+  const companies = [{ id: 20, positions: [original, specific, sharedElsewhere] }]
+  assert.deepEqual(scopedPartners(companies, { institute: '10', program: '1' }, extra)[0].positions, [original, specific])
+  assert.deepEqual(scopedPartners(companies, { institute: '10', program: '3' }, extra)[0].positions, [original])
+  assert.deepEqual(scopedPartners(companies, { institute: '20', program: '2' }, extra)[0].positions, [sharedElsewhere])
+  assert.equal(companies[0].positions.length, 3)
+})
+
+test('explicitly shared openings work in any institute without exposing a sibling-only opening', () => {
+  const sibling = { id: 4, institute_id: 20 }
+  const extra = { ...options, programs: [...options.programs, sibling] }
+  const shared = { id: 21, eligibility_configured: true, eligible_programs: [tourism, sibling] }
+  const specific = { id: 22, eligibility_configured: true, eligible_programs: [tourism] }
+  const companies = [{ id: 30, positions: [shared, specific] }]
+  assert.deepEqual(scopedPartners(companies, { institute: '20', program: '4' }, extra)[0].positions, [shared])
+  assert.equal(scopedPartners(companies, { institute: '10', program: '1' }, extra).length, 0)
+})

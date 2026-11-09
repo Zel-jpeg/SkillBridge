@@ -11,6 +11,7 @@ import DialogShell from '../../components/DialogShell'
 import ConfirmModal from '../../components/admin/ConfirmModal'
 import CompanyImage from '../../components/CompanyImage'
 import { companyRequest } from '../../utils/companyImages'
+import { positionRequirementRows } from '../../utils/companyCollection'
 import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationCard as card } from '../../components/admin/organizationUi'
 import CollectionViewToggle from '../../components/CollectionViewToggle'
 import { ChevronRightIcon } from '../../components/Icons'
@@ -25,8 +26,9 @@ function OpeningDetails({ position, partnerArchived }) {
   const archived = Boolean(position.archived_at || partnerArchived)
   const closed = position.eligibility_configured && !programs.length
   const status = archived ? 'Archived' : closed ? 'Closed to new placements' : 'Active'
-  const eligibility = position.eligibility_configured ? programs.map(program => program.name).join(', ') || 'None' : 'Legacy eligibility'
-  const requirements = position.category_requirements.map(row => `${row.name} ≥ ${row.percentage}%`).join('; ')
+  const eligibility = position.eligibility_configured ? programs.map(program => program.name).join(', ') || 'None'
+    : position.shared_institute ? `Shared ${position.shared_institute.code} batch eligibility` : 'Shared batch eligibility'
+  const requirements = positionRequirementRows(position).map(row => `${row.name} ≥ ${row.percentage}%`).join('; ')
   return <>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h3 className="min-w-0 break-words font-bold">{position.title}</h3>

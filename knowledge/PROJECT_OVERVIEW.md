@@ -26,6 +26,10 @@ F19 records the verified workflows, findings and remaining field evaluation.
 [Coordinator catalog extension](INSTRUCTOR_PARTNER_POSITION_PLAN.md) ·
 [Acceptance receipt](COORDINATOR_CATALOG_ACCEPTANCE.md)
 
+The [shared partner visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md)
+records the correction for retained IC openings in instructor program management,
+shared requirement display and the related cross-page scope checks.
+
 ## Architecture
 
 | Area | Implementation | Entry points |

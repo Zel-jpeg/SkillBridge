@@ -25,7 +25,10 @@ remain within that program. Once other programs share the organization,
 administrators manage the common details. Independently owned positions stay
 editable by their creators. Administrators manage a position shared across
 programs. Existing rows with nullable management authority retain administrator
-control.
+control. Original shared IC partners and openings are readable under both IC
+programs without rewriting these authority or eligibility fields. Explicitly
+shared program links work in every institute. See the
+[shared visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md).
 
 ## Requests and integrity
 

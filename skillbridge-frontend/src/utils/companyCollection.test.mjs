@@ -1,6 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { companyDisclosures, companyLocation, positionDisclosureKey } from './companyCollection.js'
+import { companyDisclosures, companyLocation, positionDisclosureKey, positionRequirementRows } from './companyCollection.js'
+
+test('opening details retain shared numerical requirements and prefer exact program rows', () => {
+  assert.deepEqual(positionRequirementRows({ requirements: { Programming: 50, 'Web Development': 90 }, category_requirements: [] }),
+    [{ name: 'Programming', percentage: 50 }, { name: 'Web Development', percentage: 90 }])
+  const scoped = [{ category_id: 3, name: 'Records', percentage: 75 }]
+  assert.equal(positionRequirementRows({ category_requirements: scoped, requirements: { Records: 40 } }), scoped)
+  assert.deepEqual(positionRequirementRows({}), [])
+})
 
 test('disclosures use stable company/position IDs and do not mutate prior state', () => {
   const initial = new Set()
