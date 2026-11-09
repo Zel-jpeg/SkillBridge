@@ -714,7 +714,7 @@ function ScopedCompanies({ scope, canCreate }) {
           <CollectionViewToggle view={view} onChange={setView} label="Partner view" mobile />
         </div>
         <p role="status" className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} matching {filtered.length === 1 ? 'partner' : 'partners'}</p>
-        <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Choose a program to manage its partners and eligible openings. Original shared IC openings are under Institute of Computing → All IC programs. Shared openings have one slot count across programs.</p>
+        <p className="text-xs leading-6 text-gray-500 dark:text-gray-400">Choose an institute and program to view its partners and openings. Shared IC openings also appear under both IT and IS. Shared openings have one slot count across programs.</p>
         {lifecycleNote && <p role="status" className="text-xs text-green-800 dark:text-green-300">{lifecycleNote}</p>}
 {/* ── Company cards grid ────────────────────────────────────── */}
         {displayed.length === 0 && (

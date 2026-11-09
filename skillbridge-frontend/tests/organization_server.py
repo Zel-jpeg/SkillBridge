@@ -80,8 +80,11 @@ if os.environ.get('SB_ORGANIZATION_SCENARIO') in ('general-text', 'scoped-rankin
         for program in Program.objects.filter(institute__code='IC'):
             InstructorAssignment.objects.create(instructor=owner, program=program)
         legacy = Company.objects.create(name='Synthetic IC legacy partner')
-        Position.objects.create(company=legacy, title='Synthetic IC legacy opening', slots_available=4)
-        SkillCategory.objects.create(name='Synthetic IC shared skill', description='Review a synthetic skill definition.')
+        shared_opening = Position.objects.create(company=legacy, title='Synthetic IC legacy opening', slots_available=4)
+        shared_skill = SkillCategory.objects.create(name='Synthetic IC shared skill', description='Review a synthetic skill definition.')
+        if os.environ.get('SB_SHARED_VISIBILITY'):
+            from api.models import PositionRequirement
+            PositionRequirement.objects.create(position=shared_opening, skill_category=shared_skill, required_percentage=55)
         Assessment.objects.create(title='Synthetic IC mixed assessment', batch=batch, created_by=owner)
         scenarios = json.loads((OUT / 'general-text.json').read_text(encoding='utf-8'))
         shared = Position.objects.get(pk=scenarios[0]['position_id'])

@@ -105,6 +105,23 @@ with sync_playwright() as p:
         page.screenshot(path=str(OUT / f'shared-full-roster-{width}.png'), full_page=True, animations='disabled')
     assert next(row for row in api(context, '/api/instructor/batches/').json() if row['id'] == mixed['id'])['program_id'] is None
     context.close()
+    context, page = session(browser, 'instructor')
+    for index, program in enumerate(programs):
+        page.set_viewport_size({'width': 1440 if index == 0 else 390, 'height': 900})
+        page.goto(BASE + f'/instructor/companies/manage?program_id={program["id"]}', wait_until='networkidle')
+        page.get_by_role('button', name='Synthetic IC legacy partner', exact=False).click()
+        selected = page.get_by_role('region', name='Selected partner', exact=True)
+        expect(selected.get_by_role('heading', name='Synthetic IC legacy opening', exact=True)).to_be_visible()
+        expect(selected.get_by_text('Eligible programs: Shared IC batch eligibility', exact=True)).to_be_visible()
+        expect(selected.get_by_text('Requirements: Synthetic IC shared skill ≥ 55%', exact=True)).to_be_visible()
+        expect(selected.get_by_text('Legacy eligibility', exact=True)).to_have_count(0)
+        expect(selected.get_by_role('button', name='Edit partner', exact=True)).to_have_count(0)
+        expect(selected.get_by_role('button', name='Edit Synthetic IC legacy opening', exact=True)).to_have_count(0)
+        page.get_by_role('button', name='List view', exact=True).first.click()
+        expect(page.get_by_role('button', name='Synthetic IC legacy partner', exact=False)).to_be_visible()
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+        print(f'PASS {program["code"]}: instructor shared partner list/details, numerical requirements, read-only authority and responsive layout')
+    context.close()
     browser.close()
     assert not errors, errors
     print('PASS four responsive full-roster widths, no reassignment and zero browser page errors')

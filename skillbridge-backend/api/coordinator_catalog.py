@@ -19,6 +19,7 @@ from .instructor_assignments import program_payload
 from .management_access import record_action
 from .models import Company, Position, PositionRequirement, Recommendation, User
 from .opportunity_scope import catalog_position_payload, eligible_recommendations
+from .partner_visibility import original_shared_position, position_visibility_q, position_visible
 from .placement_drafts import digest, lock_state
 from .placement_scope import current_approvals
 from .program_scope import active_program
@@ -45,11 +46,12 @@ def lock_program(request, program_id):
 
 
 def partners_for(program):
-    return Company.objects.filter(Q(management_program=program) | Q(positions__eligible_programs=program)).distinct()
+    visible = Position.objects.filter(position_visibility_q(program)).values('company_id')
+    return Company.objects.filter(Q(management_program=program) | Q(pk__in=visible)).distinct()
 
 
 def positions_for(company, program):
-    return company.positions.filter(Q(management_program=program) | Q(eligible_programs=program)).distinct()
+    return company.positions.filter(position_visibility_q(program)).distinct()
 
 
 def company_rows():
@@ -99,12 +101,14 @@ def partner_payload(company, user, program):
         'archived_at': company.archived_at, 'program': program_payload(program),
         'can_edit': can_edit_company(user, company, program), 'revision': company_revision(company),
         'positions': [position_payload(row, user, program) for row in company.positions.all()
-                      if row.management_program_id == program.pk or
-                      any(item.pk == program.pk for item in row.eligible_programs.all())]}
+                      if position_visible(row, program)]}
 
 
 def position_payload(position, user, program):
     return {**catalog_position_payload(position), 'company_id': position.company_id,
+            'shared_institute': ({'id': program.institute_id, 'code': program.institute.code,
+                                  'name': program.institute.name}
+                                 if original_shared_position(position, program) else None),
             'can_edit': can_edit_position(user, position, program),
             'revision': position_revision(position)}
 
@@ -264,7 +268,7 @@ def position_detail(request, program_id, position_id):
     if request.method == 'PATCH':
         program = lock_program(request, program_id)
     position = get_object_or_404(Position.objects.select_related('company').filter(
-        Q(management_program=program) | Q(eligible_programs=program)).distinct(), pk=position_id)
+        position_visibility_q(program)).distinct(), pk=position_id)
     if request.method == 'GET':
         return Response(position_payload(position, request.user, program))
     require_edit(can_edit_position(request.user, position, program))
@@ -307,7 +311,7 @@ def archive(request, program_id, object_id, kind):
         reviewed(request.data, company_revision(row))
         scope = {'company_id': row.pk}
     else:
-        row = get_object_or_404(Position.objects.filter(Q(management_program=program) | Q(eligible_programs=program))
+        row = get_object_or_404(Position.objects.filter(position_visibility_q(program))
                                .distinct().select_related('company'), pk=object_id)
         require_edit(can_edit_position(request.user, row, program))
         reviewed(request.data, position_revision(row))

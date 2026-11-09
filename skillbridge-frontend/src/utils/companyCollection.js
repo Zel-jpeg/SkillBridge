@@ -1,5 +1,10 @@
 export const positionDisclosureKey = (companyId, positionId) => `${companyId}:${positionId}`
 
+export function positionRequirementRows(position) {
+  if (position.category_requirements?.length) return position.category_requirements
+  return Object.entries(position.requirements || {}).map(([name, percentage]) => ({ name, percentage }))
+}
+
 export function companyDisclosures(state, action) {
   if (action.type === 'toggle') {
     const next = new Set(state)
