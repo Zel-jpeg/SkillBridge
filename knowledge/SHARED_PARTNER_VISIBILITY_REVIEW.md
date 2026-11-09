@@ -1,5 +1,8 @@
 # Shared partner visibility review
 
+The later [coordinator editing update](COORDINATOR_SHARED_EDITING.md) supersedes
+the editing restrictions recorded in this initial visibility-only receipt.
+
 User request, 9 November 2026: restore existing shared IC partners in both
 instructor program management views and check other pages for inconsistent
 institute/program filtering. No remote push or live data migration.

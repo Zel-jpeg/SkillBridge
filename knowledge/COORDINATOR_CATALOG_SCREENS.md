@@ -15,17 +15,22 @@ program-scoped API and works before any batch or enrollment exists.
 4. Add a position with its actual shared slot count, tags and optional numerical
    requirements from a saved framework version of this program. Without numerical
    requirements the opening uses the existing manual-placement path.
-5. Review and edit entries you created. Other assigned coordinators can view and
-   reuse them. Common organization details become administrator-controlled when
-   several programs share the partner. The server supplies editing capabilities
-   and enforces the same rules on every write.
-6. Archive or restore authorized entries through confirmation. Current approved
+5. Assigned coordinators can edit entries available in their programs, including
+   shared and admin-created entries. The management collection now reuses the
+   admin partner/position cards with icon-only edit actions and expandable details.
+   Shared IC numerical requirements retain their format. Another program's
+   framework rubric is preserved unless editing through that program context.
+   The server supplies capabilities and rechecks them on every write.
+6. Archive or restore creator/admin-authorized entries through confirmation. Current approved
    decisions can block archiving; recorded assessment evidence remains intact.
    The catalog includes active/archived filters and bounded server pagination.
 
 Student matches remain on the original OJT Partners page and retain their
 existing batch ownership restrictions. This management catalog has no student
 roster. Existing administrative controls remain available.
+
+The [9 November editing update](COORDINATOR_SHARED_EDITING.md) supersedes the
+original creator-only edit restrictions in the earlier F18 verification below.
 
 ## Recovery and freshness
 

@@ -41,8 +41,10 @@ class SharedPartnerVisibilityTests(APITestCase):
                 self.assertEqual(listed['results'][0], detail.data)
                 self.assertEqual(detail.data['positions'], [opening.data])
                 self.assertEqual(opening.data['shared_institute']['id'], self.ic.pk)
-                self.assertFalse(opening.data['can_edit'])
-                self.assertFalse(detail.data['can_edit'])
+                self.assertTrue(opening.data['can_edit'])
+                self.assertTrue(detail.data['can_edit'])
+                self.assertFalse(opening.data['can_archive'])
+                self.assertFalse(detail.data['can_archive'])
                 self.assertFalse(any(q['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for q in queries))
         self.opening.refresh_from_db()
         self.assertIsNone(self.opening.management_program_id)
@@ -73,14 +75,14 @@ class SharedPartnerVisibilityTests(APITestCase):
             self.assertIsNone(listed['results'][0]['positions'][0]['shared_institute'])
             self.assertEqual(self.client.get(reverse('coordinator_position_detail', args=[program.pk, self.opening.pk])).status_code, 404)
 
-    def test_new_visibility_does_not_grant_edit_archive_or_duplicate_creation(self):
+    def test_program_editing_keeps_archive_and_duplicate_creation_protected(self):
         for program in (self.it, self.is_program):
             partner_url = reverse('coordinator_partner_detail', args=[program.pk, self.company.pk])
             position_url = reverse('coordinator_position_detail', args=[program.pk, self.opening.pk])
             partner = self.client.get(partner_url).data
             position = self.client.get(position_url).data
-            self.assertEqual(self.client.patch(partner_url, {'revision': partner['revision'], 'name': 'Unauthorized'}, format='json').status_code, 403)
-            self.assertEqual(self.client.patch(position_url, {'revision': position['revision'], 'slots': 5}, format='json').status_code, 403)
+            self.assertEqual(self.client.patch(partner_url, {'revision': partner['revision'], 'name': 'Updated partner'}, format='json').status_code, 200)
+            self.assertEqual(self.client.patch(position_url, {'revision': position['revision'], 'slots': 5}, format='json').status_code, 200)
             for name, pk, revision in [('partner', self.company.pk, partner['revision']), ('position', self.opening.pk, position['revision'])]:
                 self.assertEqual(self.client.post(reverse(f'coordinator_{name}_archive', args=[program.pk, pk]), {'revision': revision}, format='json').status_code, 403)
             duplicate = self.client.post(reverse('coordinator_positions', args=[program.pk, self.company.pk]),

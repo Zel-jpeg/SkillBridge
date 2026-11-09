@@ -1,4 +1,4 @@
-"""Program catalog management with explicit creator authority and reviewed edits."""
+"""Program catalog management with current grants and reviewed shared edits."""
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -75,7 +75,7 @@ def position_revision(position):
                    'owner': position.created_by_id, 'program': position.management_program_id})
 
 
-def can_edit_company(user, company, program):
+def can_archive_company(user, company, program):
     if not program.is_active or not program.institute.is_active:
         return False
     if user.role == 'admin':
@@ -87,7 +87,7 @@ def can_edit_company(user, company, program):
                for row in company.positions.all())
 
 
-def can_edit_position(user, position, program):
+def can_archive_position(user, position, program):
     if not program.is_active or not program.institute.is_active:
         return False
     return user.role == 'admin' or (
@@ -95,11 +95,37 @@ def can_edit_position(user, position, program):
         and {item.pk for item in position.eligible_programs.all()} == {program.pk})
 
 
+def can_edit_company(user, company, program):
+    if not program.is_active or not program.institute.is_active:
+        return False
+    return user.role == 'admin' or company.management_program_id == program.pk or any(
+        position_visible(row, program) for row in company.positions.all())
+
+
+def can_edit_position(user, position, program):
+    if not program.is_active or not program.institute.is_active:
+        return False
+    return user.role == 'admin' or (position_visible(position, program) and (
+        position.eligibility_configured_at is None or bool(list(position.eligible_programs.all()))))
+
+
+def can_edit_requirements(user, position, program):
+    if not can_edit_position(user, position, program):
+        return False
+    if original_shared_position(position, program):
+        return True
+    if position.eligibility_configured_at is None:
+        return False
+    return all(row.skill_category.framework_id and row.skill_category.framework.program_id == program.pk
+               for row in position.requirements.all())
+
+
 def partner_payload(company, user, program):
     return {'id': company.pk, 'name': company.name, 'address': company.address,
         'lat': company.location_lat, 'lng': company.location_lng, **image_fields(company),
         'archived_at': company.archived_at, 'program': program_payload(program),
-        'can_edit': can_edit_company(user, company, program), 'revision': company_revision(company),
+        'can_edit': can_edit_company(user, company, program),
+        'can_archive': can_archive_company(user, company, program), 'revision': company_revision(company),
         'positions': [position_payload(row, user, program) for row in company.positions.all()
                       if position_visible(row, program)]}
 
@@ -110,6 +136,8 @@ def position_payload(position, user, program):
                                   'name': program.institute.name}
                                  if original_shared_position(position, program) else None),
             'can_edit': can_edit_position(user, position, program),
+            'can_edit_requirements': can_edit_requirements(user, position, program),
+            'can_archive': can_archive_position(user, position, program),
             'revision': position_revision(position)}
 
 
@@ -120,7 +148,7 @@ def reviewed(data, revision):
 
 def require_edit(allowed):
     if not allowed:
-        raise PermissionDenied('Only the authorized creator or an administrator can edit this entry. Shared entries require administrator review.')
+        raise PermissionDenied('Your current program access does not allow this action.')
 
 
 def partner_page(rows, params, serialize):
@@ -217,6 +245,9 @@ def partner_detail(request, program_id, company_id):
 
 
 def scoped_requirements(data, program, position=None):
+    if position and original_shared_position(position, program):
+        fields(data, {'title', 'description', 'slots', 'tags', 'requirements', 'revision'})
+        return position_scope(data, position)
     fields(data, {'title', 'description', 'slots', 'tags', 'category_requirements', 'revision', 'reuse_existing'})
     rubric = data.get('category_requirements')
     if rubric is not None:
@@ -275,6 +306,8 @@ def position_detail(request, program_id, position_id):
     reviewed(request.data, position_revision(position))
     if position.archived_at or position.company.archived_at:
         raise CatalogConflict({'error': 'Restore the partner and position before editing this opening.'})
+    if {'requirements', 'category_requirements'} & set(request.data):
+        require_edit(can_edit_requirements(request.user, position, program))
     _, requirements = scoped_requirements(request.data, program, position)
     values = position_data(request.data, partial=True)
     if values.get('slots_available', position.slots_available) < current_approvals(position=position).count():
@@ -285,7 +318,7 @@ def position_detail(request, program_id, position_id):
     for field, value in values.items():
         setattr(position, field, value)
     position.save()
-    if 'category_requirements' in request.data:
+    if 'category_requirements' in request.data or 'requirements' in request.data:
         position.requirements.all().delete()
         for category, percentage in requirements:
             PositionRequirement.objects.create(position=position, skill_category=category, required_percentage=percentage)
@@ -307,13 +340,13 @@ def archive(request, program_id, object_id, kind):
         raise ValidationError({'error': 'restore must be true or false.'})
     if kind == 'partner':
         row = get_object_or_404(partners_for(program), pk=object_id)
-        require_edit(can_edit_company(request.user, row, program))
+        require_edit(can_archive_company(request.user, row, program))
         reviewed(request.data, company_revision(row))
         scope = {'company_id': row.pk}
     else:
         row = get_object_or_404(Position.objects.filter(position_visibility_q(program))
                                .distinct().select_related('company'), pk=object_id)
-        require_edit(can_edit_position(request.user, row, program))
+        require_edit(can_archive_position(request.user, row, program))
         reviewed(request.data, position_revision(row))
         if restore and row.company.archived_at:
             raise CatalogConflict({'error': 'Restore the partner before restoring the position.'})

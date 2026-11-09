@@ -30,6 +30,11 @@ The [shared partner visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md)
 records the correction for retained IC openings in instructor program management,
 shared requirement display and the related cross-page scope checks.
 
+Assigned coordinators now edit the partners/openings available to their programs
+using the same collection cards as administrators. Creator history, separate
+archive authority and program-specific requirement boundaries remain preserved.
+[Coordinator editing update](COORDINATOR_SHARED_EDITING.md).
+
 ## Architecture
 
 | Area | Implementation | Entry points |

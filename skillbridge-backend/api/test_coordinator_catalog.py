@@ -63,18 +63,21 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertIn('no-store', page['Cache-Control'])
         self.assertEqual(ManagementAction.objects.filter(action='position.update').count(), 1)
 
-    def test_peer_reuse_does_not_grant_common_or_position_edit_rights(self):
+    def test_assigned_peer_can_edit_program_partner_and_position_without_taking_ownership(self):
         partner = self.create_partner()
         position = self.create_position(partner)
         detail = reverse('coordinator_partner_detail', args=[self.program.pk, partner['id']])
         self.client.force_authenticate(self.peer)
         view = self.client.get(detail)
         self.assertEqual(view.status_code, 200)
-        self.assertFalse(view.data['can_edit'])
-        self.assertFalse(view.data['positions'][0]['can_edit'])
-        self.assertEqual(self.client.patch(detail, {'revision': view.data['revision'], 'name': 'Changed'}, format='json').status_code, 403)
+        self.assertTrue(view.data['can_edit'])
+        self.assertTrue(view.data['positions'][0]['can_edit'])
+        self.assertFalse(view.data['can_archive'])
+        self.assertFalse(view.data['positions'][0]['can_archive'])
+        self.assertEqual(self.client.patch(detail, {'revision': view.data['revision'], 'name': 'Changed'}, format='json').status_code, 200)
         url = reverse('coordinator_position_detail', args=[self.program.pk, position['id']])
-        self.assertEqual(self.client.patch(url, {'revision': position['revision'], 'slots': 3}, format='json').status_code, 403)
+        self.assertEqual(self.client.patch(url, {'revision': position['revision'], 'slots': 3}, format='json').status_code, 200)
+        self.assertEqual(Position.objects.get(pk=position['id']).created_by_id, self.owner.pk)
         self.create_position(partner, title='Another position')
         self.assertEqual(Position.objects.count(), 2)
 
@@ -97,11 +100,12 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertEqual(view.data['positions'][0]['id'], result.data['id'])
         self.client.force_authenticate(self.owner)
         original = self.client.get(reverse('coordinator_partner_detail', args=[self.program.pk, partner['id']]))
-        self.assertFalse(original.data['can_edit'])
+        self.assertTrue(original.data['can_edit'])
+        self.assertFalse(original.data['can_archive'])
         self.assertTrue(original.data['positions'][0]['can_edit'])
         self.assertEqual(original.data['positions'][0]['id'], position['id'])
         self.assertEqual(self.client.patch(reverse('coordinator_partner_detail', args=[self.program.pk, partner['id']]),
-            {'revision': original.data['revision'], 'name': 'Affects another program'}, format='json').status_code, 403)
+            {'revision': original.data['revision'], 'name': 'Updated shared partner'}, format='json').status_code, 200)
 
     def test_direct_foreign_program_and_revoked_grant_requests_are_denied(self):
         partner = self.create_partner()
@@ -148,16 +152,16 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertEqual(Company.objects.count(), 1)
         self.assertEqual(Company.objects.get().name, 'First edit')
 
-    def test_admin_created_shared_opening_stays_readable_but_not_editable(self):
+    def test_admin_created_program_opening_is_editable_by_assigned_coordinator(self):
         company = Company.objects.create(name='Existing catalog', added_by=self.admin)
         position = Position.objects.create(company=company, title='Existing shared opening')
         position.eligible_programs.add(self.program)
         url = reverse('coordinator_partner_detail', args=[self.program.pk, company.pk])
         view = self.client.get(url)
         self.assertEqual(view.status_code, 200)
-        self.assertFalse(view.data['can_edit'])
-        self.assertFalse(view.data['positions'][0]['can_edit'])
-        self.assertEqual(self.client.patch(url, {'revision': view.data['revision'], 'name': 'Take over'}, format='json').status_code, 403)
+        self.assertTrue(view.data['can_edit'])
+        self.assertTrue(view.data['positions'][0]['can_edit'])
+        self.assertEqual(self.client.patch(url, {'revision': view.data['revision'], 'name': 'Updated partner'}, format='json').status_code, 200)
         self.client.force_authenticate(self.admin)
         edited = self.client.patch(reverse('coordinator_position_detail', args=[self.program.pk, position.pk]),
             {'revision': view.data['positions'][0]['revision'], 'slots': 3}, format='json')
@@ -237,19 +241,27 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         cleanup.assert_called_once_with(upload.call_args.args[0])
         self.assertFalse(Company.objects.exists())
 
-    def test_foreign_creator_cannot_replace_an_image_or_archive_a_peer_entry(self):
+    def test_image_upload_checks_program_access_while_archive_keeps_its_authority(self):
         partner = self.create_partner()
-        self.client.force_authenticate(self.peer)
+        self.client.force_authenticate(self.foreign)
         url = reverse('coordinator_partner_detail', args=[self.program.pk, partner['id']])
         with patch('api.company_images.upload_image') as upload:
             response = self.client.patch(url, {
                 'payload': json.dumps({'revision': partner['revision'], 'image_action': 'replace'}),
                 'image': fixture(),
             }, format='multipart')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
         upload.assert_not_called()
+        self.client.force_authenticate(self.peer)
+        with patch('api.company_images.upload_image') as allowed_upload:
+            edited = self.client.patch(url, {
+                'payload': json.dumps({'revision': partner['revision'], 'image_action': 'replace'}),
+                'image': fixture(),
+            }, format='multipart')
+        self.assertEqual(edited.status_code, 200, edited.data)
+        allowed_upload.assert_called_once()
         self.assertEqual(self.client.post(reverse('coordinator_partner_archive', args=[self.program.pk, partner['id']]),
-            {'revision': partner['revision']}, format='json').status_code, 403)
+            {'revision': edited.data['revision']}, format='json').status_code, 403)
 
     def test_archived_program_stays_readable_while_new_writes_are_denied(self):
         partner = self.create_partner()
