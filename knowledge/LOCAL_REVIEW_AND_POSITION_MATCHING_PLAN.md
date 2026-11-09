@@ -62,10 +62,11 @@ Phase 1 was merged and clean before creating `codex/position-specific-nlp-202611
 
 ## Current checkpoint
 
-The reviewed baseline was merged at `4036e6e`. Local main is now `4ad1e63`,
-including the independently tested shared-partner visibility fix. That fix was
-merged into `codex/position-specific-nlp-20261109` as `3c37c18`, preserving the
-existing NLP feature in the active development checkout. The NLP implementation
+The reviewed baseline was merged at `4036e6e`. Local main is now `f77baa1`,
+including the independently tested shared-partner visibility fix (`4ad1e63`)
+and assigned-coordinator editing with consistent admin/instructor partner cards.
+Main was merged into `codex/position-specific-nlp-20261109` as `c1880ac`, preserving
+the existing NLP feature in the active development checkout. The NLP implementation
 itself remains unmerged into main. Its changes remain confined to matching,
 truthful preview wording, tests, the fictional fixture/verifier and documentation.
 
@@ -99,6 +100,19 @@ After merging the visibility fix into the active NLP branch, 18 focused
 visibility/matching tests passed together on disposable in-memory SQLite with
 dotenv disabled. The working checkout retains both features; no live refresh
 or remote push was performed.
+
+The subsequent [coordinator editing update](COORDINATOR_SHARED_EDITING.md)
+supersedes creator-only editing, preserves original shared IC requirement format,
+and reuses the administrator partner/position cards with role-appropriate actions.
+Its checks passed: 102 PostgreSQL tests, 342 frontend tests, lint/build, nine
+shared-visibility and thirteen coordinator browser check groups. Main contains
+the update; the NLP feature itself and the proposed assessment-average headline
+remain separate from main's implemented recommendation policy. No remote push,
+live data edit or migration was performed.
+
+After the merge, 23 focused coordinator-editing, shared-visibility and NLP-matching
+tests also passed together on disposable in-memory SQLite. The development
+checkout retains both completed catalog updates and the separate NLP feature.
 
 Do not push remotely, migrate live data, regenerate real recommendations or alter
 historical placement snapshots. Grade-band/tag-count artifacts remain a distinct
