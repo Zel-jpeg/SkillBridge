@@ -10,8 +10,9 @@ catalog APIs keep their established contracts.
 New coordinator-created partners record their creator through `Company.added_by`
 and their management program through `Company.management_program`. New positions
 record `created_by` and `management_program`. Eligibility determines which
-program can use an opening. Editing also checks the creator and current program
-assignment.
+program can use an opening. Editing checks current program assignment; creator
+fields retain audit provenance. The user's 9 November clarification supersedes
+creator-only editing. [Current coordinator editing policy](COORDINATOR_SHARED_EDITING.md).
 
 Same-program coordinators can read the program's partners and reuse them for
 their own openings. An organization lookup returns only ID, name and address for
@@ -20,15 +21,15 @@ requires `reuse_existing: true`. Its new opening belongs to the requesting
 program and coordinator. Foreign openings and student matches are excluded from
 that program's management response.
 
-The organization creator can edit its common details while all its positions
-remain within that program. Once other programs share the organization,
-administrators manage the common details. Independently owned positions stay
-editable by their creators. Administrators manage a position shared across
-programs. Existing rows with nullable management authority retain administrator
-control. Original shared IC partners and openings are readable under both IC
-programs without rewriting these authority or eligibility fields. Explicitly
-shared program links work in every institute. See the
-[shared visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md).
+Assigned coordinators can edit common partner details and openings visible in
+their programs, including shared and admin-created entries. Shared edits appear
+in the other program views without changing ownership. Original IC requirements
+retain their shared format. Framework minimums are edited through their own
+program context; another eligible program can update details while preserving
+that rubric. Eligibility changes remain administrative. Archive/restore keeps
+the earlier creator/admin authority rather than inheriting editing rights.
+Original shared IC entries appear under both IC programs; configured program
+sharing works in every institute. [Visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md).
 
 ## Requests and integrity
 
@@ -42,7 +43,8 @@ shared program links work in every institute. See the
 | `partners/{partner}/archive/` | POST archive or restore after ownership and revision checks |
 | `positions/{position}/archive/` | POST archive or restore after ownership and revision checks |
 
-Detail payloads include `can_edit` and `revision`. PATCH and archive/restore
+Detail payloads include `can_edit`, `can_archive`, `can_edit_requirements` for
+openings, and `revision`. PATCH and archive/restore
 require that revision. A stale review returns 409. Repeated names are flagged
 for review before creating another partner or an identically named opening in
 the same program. The UI must reconcile an uncertain create outcome through

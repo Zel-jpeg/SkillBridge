@@ -135,7 +135,8 @@ class CoordinatorAcceptanceTests(APITestCase):
         for scenario in scenarios:
             partner = self.request(self.peer, 'get', scenario['base'] + f'partners/{first["company"]["id"]}/')
             self.assertEqual([row['id'] for row in partner['positions']], [scenario['position']['id']])
-            self.assertFalse(partner['can_edit'])
+            self.assertTrue(partner['can_edit'])
+            self.assertFalse(partner['can_archive'])
             self.request(self.peer, 'get', f'/api/instructor/batches/{scenario["batch"]["id"]}/students/', status=404)
 
         rec = Recommendation.objects.get(student=first['student'], position_id=first['position']['id'])

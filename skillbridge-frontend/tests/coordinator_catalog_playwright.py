@@ -91,11 +91,11 @@ def run(browser):
     dialog.get_by_label('Street / Building / Unit', exact=True).fill('Synthetic service road')
     dialog.get_by_role('button', name='Create partner', exact=True).click()
     expect(dialog).to_have_count(0)
-    selected = page.get_by_role('region', name='Selected partner', exact=True)
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
     expect(selected.get_by_role('heading', name='Coordinator Service Partner', exact=True)).to_be_visible()
     partner = call(context, scoped + 'partners/?search=Coordinator', role='instructor')['results'][0]
     assert partner['lat'] == 7.3 and partner['lng'] == 125.7 and partner['address']['street'] == 'Synthetic service road'
-    selected.get_by_role('button', name='Edit partner', exact=True).click()
+    selected.get_by_role('button', name=re.compile('^Edit partner ')).click()
     dialog = page.get_by_role('dialog', name='Edit Partner', exact=True)
     dialog.locator('input[type=file]').set_input_files({'name': 'corrupt.png', 'mimeType': 'image/png', 'buffer': b'not an image'})
     dialog.get_by_role('button', name='Save Changes', exact=True).click()
@@ -108,20 +108,20 @@ def run(browser):
     expect(dialog).to_have_count(0)
     partner = call(context, scoped + f'partners/{partner["id"]}/', role='instructor')
     assert partner['image_url'] and len(list((OUT / 'synthetic-images').iterdir())) == 1
-    selected.get_by_role('button', name='Edit partner', exact=True).click()
+    selected.get_by_role('button', name=re.compile('^Edit partner ')).click()
     dialog.get_by_role('button', name='Remove image', exact=True).click()
     dialog.get_by_role('button', name='Save Changes', exact=True).click()
     expect(dialog).to_have_count(0)
     assert not call(context, scoped + f'partners/{partner["id"]}/', role='instructor')['image_url']
     assert not list((OUT / 'synthetic-images').iterdir())
     checks.append('real multipart image validation, WebP conversion, saved reference and removal using isolated object transport')
-    selected.get_by_role('button', name='Add position', exact=True).click()
+    selected.get_by_role('button', name=re.compile('^Add position to ')).click()
     dialog = opening(page, framework, 'Service Records Intern')
     dialog.get_by_role('button', name='Cancel', exact=True).click()
     page.get_by_role('dialog', name='Discard position changes?', exact=True).get_by_role('button', name='Cancel', exact=True).click()
     dialog.get_by_role('button', name='Add Position', exact=True).click()
     expect(dialog).to_have_count(0)
-    expect(selected.get_by_text('Service knowledge ≥ 50%', exact=False)).to_be_visible()
+    expect(selected.get_by_text('≥50%', exact=True)).to_be_visible()
     partner = call(context, scoped + f'partners/{partner["id"]}/', role='instructor')
     position = partner['positions'][0]
     assert position['description'] == 'Review intake records and maintain the service log.'
@@ -129,7 +129,7 @@ def run(browser):
     assert position['category_requirements'][0]['category_id'] == category['id'] and position['tags'] == ['Client records']
     checks.append('real partner create with validated manual pin; fixed program opening with numerical framework requirements and saved tags')
 
-    selected.get_by_role('button', name='Edit partner', exact=True).click()
+    selected.get_by_role('button', name=re.compile('^Edit partner ')).click()
     dialog = page.get_by_role('dialog', name='Edit Partner', exact=True)
     dialog.get_by_label('Organization name', exact=True).fill('Unsaved stale name')
     call(context, scoped + f'partners/{partner["id"]}/', 'patch', {'revision': partner['revision'], 'address': {'street': 'Updated concurrently'}}, role='instructor')
@@ -176,12 +176,11 @@ def run(browser):
     expect(page.get_by_text('Showing 9–11 of 11', exact=True)).to_be_visible()
     page.get_by_role('searchbox', name='Search partners', exact=True).fill('Coordinator Service')
     expect(page.get_by_text('1 matching partner', exact=True)).to_be_visible()
-    page.get_by_role('button', name=re.compile('Coordinator Service Partner Updated')).click()
-    selected = page.get_by_role('region', name='Selected partner', exact=True)
-    selected.get_by_role('button', name='Archive Service Records Intern', exact=True).click()
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
+    selected.get_by_role('button', name='Archive position', exact=True).click()
     page.get_by_role('dialog', name='Archive position?', exact=True).get_by_role('button', name='Archive', exact=True).click()
-    expect(selected.get_by_role('button', name='Restore Service Records Intern', exact=True)).to_be_visible()
-    selected.get_by_role('button', name='Restore Service Records Intern', exact=True).click()
+    expect(selected.get_by_role('button', name='Restore position', exact=True)).to_be_visible()
+    selected.get_by_role('button', name='Restore position', exact=True).click()
     page.get_by_role('dialog', name='Restore position?', exact=True).get_by_role('button', name='Restore', exact=True).click()
     selected.get_by_role('button', name='Archive partner', exact=True).click()
     page.get_by_role('dialog', name='Archive partner?', exact=True).get_by_role('button', name='Archive', exact=True).click()
@@ -191,22 +190,28 @@ def run(browser):
     selected.get_by_role('button', name='Restore partner', exact=True).click()
     page.get_by_role('dialog', name='Restore partner?', exact=True).get_by_role('button', name='Restore', exact=True).click()
     expect(page.get_by_role('dialog', name='Restore partner?', exact=True)).to_have_count(0)
+    expect(page.get_by_text('0 matching partners', exact=True)).to_be_visible()
+    page.get_by_role('combobox', name='Partner status', exact=True).select_option('active')
+    expect(page.get_by_text('1 matching partner', exact=True)).to_be_visible()
     checks.append('real paginated catalog, search resets page, position/partner archive and restore with active/archived filters')
 
     admin_opening = f'/api/admin/positions/{position["id"]}/'
     detail = scoped + f'partners/{partner["id"]}/'
-    catalog_change = """url => window.dispatchEvent(new CustomEvent('sse:data_changed',
-        {detail: {topics: ['catalog'], urls: [url], handled: false}}))"""
+    # Real SSE resolves a catalog topic to all mounted catalog reads. The old
+    # selected-detail layout listened to one URL; inline cards use the list too.
+    catalog_change = """urls => window.dispatchEvent(new CustomEvent('sse:data_changed',
+        {detail: {topics: ['catalog'], urls, handled: false}}))"""
+    catalog_urls = [detail, scoped + 'partners/?page=1&page_size=8&status=active&search=Coordinator%20Service']
     call(context, admin_opening, 'patch', {'eligible_program_ids': [], 'category_requirements': []})
-    page.evaluate(catalog_change, detail)
+    page.evaluate(catalog_change, catalog_urls)
     expect(selected.get_by_text('Closed to new placements', exact=False)).to_be_visible()
-    expect(selected.get_by_text('Eligible programs: None', exact=True)).to_be_visible()
+    expect(selected.get_by_text('No eligible programs', exact=True)).to_be_visible()
     expect(selected.get_by_text('manual placement only', exact=False)).to_have_count(0)
-    expect(selected.get_by_role('button', name='Edit Service Records Intern', exact=True)).to_have_count(0)
+    expect(selected.get_by_role('button', name='Edit position Service Records Intern', exact=True)).to_have_count(0)
     call(context, admin_opening, 'patch', {'eligible_program_ids': [program['id']],
          'category_requirements': [{'category_id': category['id'], 'percentage': 50}]})
-    page.evaluate(catalog_change, detail)
-    expect(selected.get_by_role('button', name='Edit Service Records Intern', exact=True)).to_be_visible()
+    page.evaluate(catalog_change, catalog_urls)
+    expect(selected.get_by_role('button', name='Edit position Service Records Intern', exact=True)).to_be_visible()
     checks.append('administrator closes program eligibility; creator sees closed, read-only position until administrator reopens it')
     context.close()
 
@@ -214,23 +219,28 @@ def run(browser):
     setup_services(context)
     open_workspace(page, program)
     page.get_by_role('searchbox', name='Search partners', exact=True).fill('Coordinator Service')
-    page.get_by_role('button', name=re.compile('Coordinator Service Partner Updated')).click()
-    selected = page.get_by_role('region', name='Selected partner', exact=True)
-    expect(selected.get_by_role('button', name='Edit partner', exact=True)).to_have_count(0)
-    expect(selected.get_by_role('button', name='Edit Service Records Intern', exact=True)).to_have_count(0)
-    selected.get_by_role('button', name='Add position', exact=True).click()
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
+    expect(selected.get_by_role('button', name=re.compile('^Edit partner '))).to_be_visible()
+    selected.get_by_role('button', name='Edit position Service Records Intern', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit Position', exact=True)
+    dialog.get_by_label('Position description').fill('Reviewed by another assigned coordinator.')
+    dialog.get_by_role('button', name='Save Changes', exact=True).click()
+    expect(dialog).to_have_count(0)
+    expect(selected.get_by_text('Reviewed by another assigned coordinator.', exact=True)).to_be_visible()
+    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_have_count(0)
+    selected.get_by_role('button', name=re.compile('^Add position to ')).click()
     dialog = opening(page, framework, 'Peer Coordinator Opening')
     assert dialog.evaluate('el => el.contains(document.activeElement)')
     page.screenshot(path=str(OUT / 'coordinator-position-phone-dark.png'), animations='disabled')
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
     dialog.get_by_role('button', name='Add Position', exact=True).click()
     expect(dialog).to_have_count(0)
-    expect(selected.get_by_role('button', name='Edit Peer Coordinator Opening', exact=True)).to_be_visible()
-    assert not call(context, scoped + f'partners/{partner["id"]}/', role='other_instructor')['can_edit']
-    checks.append('same-program peer can reuse organization and create own opening; cannot edit creator records; phone dark layout and focus')
+    expect(selected.get_by_role('button', name='Edit position Peer Coordinator Opening', exact=True)).to_be_visible()
+    assert call(context, scoped + f'partners/{partner["id"]}/', role='other_instructor')['can_edit']
+    checks.append('same-program peer can edit shared partner/position and create own opening; archive authority, phone dark layout and focus retained')
 
     # Revocation while an editor is open must remove restricted controls and cached records.
-    selected.get_by_role('button', name='Edit Peer Coordinator Opening', exact=True).click()
+    selected.get_by_role('button', name='Edit position Peer Coordinator Opening', exact=True).click()
     expect(page.get_by_role('dialog', name='Edit Position', exact=True)).to_be_visible()
     call(context, program_base + f'{program["id"]}/instructors/{grant["id"]}/', 'patch', {'is_active': False})
     page.evaluate("url => window.dispatchEvent(new CustomEvent('sse:data_changed', {detail: {topics: ['scope'], urls: [url], handled: false}}))", scoped)
@@ -246,9 +256,8 @@ def run(browser):
         'source_framework_id': framework['id'], 'request_id': str(uuid.uuid4())}, role='instructor', status=201)
     open_workspace(page, program)
     page.get_by_role('searchbox', name='Search partners', exact=True).fill('Coordinator Service')
-    page.get_by_role('button', name=re.compile('Coordinator Service Partner Updated')).click()
-    selected = page.get_by_role('region', name='Selected partner', exact=True)
-    selected.get_by_role('button', name='Edit Service Records Intern', exact=True).click()
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
+    selected.get_by_role('button', name='Edit position Service Records Intern', exact=True).click()
     dialog = page.get_by_role('dialog', name='Edit Position', exact=True)
     selector = dialog.get_by_role('combobox', name='Program skill set', exact=True)
     expect(selector).to_have_value(str(framework['id']))
@@ -275,13 +284,30 @@ def run(browser):
     dialog.get_by_label('Position title').fill('Separate Program Opening')
     dialog.get_by_role('button', name='Add Position', exact=True).click()
     expect(dialog).to_have_count(0)
-    selected = page.get_by_role('region', name='Selected partner', exact=True)
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
     expect(selected.get_by_text('Separate Program Opening', exact=True)).to_be_visible()
     expect(selected.get_by_text('Service Records Intern', exact=True)).to_have_count(0)
-    expect(selected.get_by_role('button', name='Edit partner', exact=True)).to_have_count(0)
+    expect(selected.get_by_role('button', name=re.compile('^Edit partner '))).to_be_visible()
+    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_have_count(0)
     page.screenshot(path=str(OUT / 'coordinator-reuse-phone-light.png'), full_page=True, animations='disabled')
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
-    checks.append('explicit cross-program organization reuse exposes no foreign openings; distinct scoped opening and administrator-only shared metadata')
+    checks.append('explicit cross-program organization reuse exposes no foreign openings; assigned coordinator can edit shared metadata with archive authority retained')
+    call(context, admin_opening, 'patch', {'eligible_program_ids': [program['id'], foreign['id']],
+         'category_requirements': [{'category_id': category['id'], 'percentage': 50}]})
+    page.reload(wait_until='networkidle')
+    selected = page.get_by_role('article').filter(has=page.get_by_role('heading', name=re.compile('^Coordinator Service Partner')))
+    selected.get_by_role('button', name='Edit position Service Records Intern', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Edit Position', exact=True)
+    expect(dialog.get_by_text('These requirements use another program’s skill set.', exact=False)).to_be_visible()
+    expect(dialog.get_by_role('searchbox', name='Find a skill', exact=True)).to_have_count(0)
+    dialog.get_by_label('Position description').fill('Shared duties reviewed from the other eligible program.')
+    dialog.get_by_role('button', name='Save Changes', exact=True).click()
+    expect(dialog).to_have_count(0)
+    saved = call(context, scoped + f'positions/{position["id"]}/', role='instructor')
+    assert saved['description'] == 'Shared duties reviewed from the other eligible program.'
+    assert saved['category_requirements'][0]['category_id'] == category['id']
+    assert saved['category_requirements'][0]['percentage'] == 50
+    checks.append('another eligible program edits shared position details while the existing foreign-program requirement IDs and minimums are preserved')
     context.close()
 
 

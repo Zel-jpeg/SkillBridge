@@ -1,6 +1,31 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { companyDisclosures, companyLocation, positionDisclosureKey, positionRequirementRows } from './companyCollection.js'
+import { companyDisclosures, companyLocation, coordinatorCompanyCard, coordinatorPositionRequest, positionDisclosureKey, positionRequirementRows } from './companyCollection.js'
+
+test('coordinator cards use structured addresses without changing scope or capabilities', () => {
+  const raw = { id: 4, name: 'Shared partner', address: { street: 'Service Road', city: 'Panabo', province: 'Davao del Norte' },
+    can_edit: true, can_archive: false, positions: [{ id: 7, can_edit: true, can_archive: false }] }
+  const card = coordinatorCompanyCard(raw)
+  assert.equal(card.address, 'Service Road, Panabo, Davao del Norte')
+  assert.equal(companyLocation(card), 'Panabo · Davao del Norte')
+  assert.equal(card.positions, raw.positions)
+  assert.equal(card.can_archive, false)
+  assert.equal(raw.address.street, 'Service Road')
+  assert.equal(coordinatorCompanyCard({ address: null }).address, null)
+})
+
+test('coordinator shared editing preserves the requirement format and excludes authority fields', () => {
+  const values = { title: 'Shared role', description: 'Updated role context', slots: 3, tags: ['Records'],
+    requirements: { Records: 55 }, category_requirements: [], eligible_program_ids: [999], created_by: 123 }
+  const shared = coordinatorPositionRequest(values, { shared_institute: { id: 1 }, eligibility_configured: false, can_edit_requirements: true })
+  assert.deepEqual(shared, { title: values.title, description: values.description, slots: 3, tags: ['Records'], requirements: { Records: 55 } })
+  const otherRubric = coordinatorPositionRequest(values, { can_edit_requirements: false })
+  assert.equal('requirements' in otherRubric, false)
+  assert.equal('category_requirements' in otherRubric, false)
+  assert.deepEqual(coordinatorPositionRequest(values, null, true).category_requirements, [])
+  assert.equal(coordinatorPositionRequest(values, null, true).reuse_existing, true)
+  assert.deepEqual(coordinatorPositionRequest({ ...values, requirements: {} }, { shared_institute: {}, can_edit_requirements: true }).requirements, {})
+})
 
 test('opening details retain shared numerical requirements and prefer exact program rows', () => {
   assert.deepEqual(positionRequirementRows({ requirements: { Programming: 50, 'Web Development': 90 }, category_requirements: [] }),

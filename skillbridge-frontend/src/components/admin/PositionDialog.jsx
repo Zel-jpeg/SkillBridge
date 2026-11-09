@@ -7,6 +7,7 @@ import { useApi } from '../../hooks/useApi'
 import FrameworkSelect from '../assessment/FrameworkSelect'
 import PositionPrograms from './PositionPrograms'
 import ConfirmModal from './ConfirmModal'
+import { positionRequirementRows } from '../../utils/companyCollection'
 import './positionDialog.css'
 
 const LEVELS = [
@@ -70,7 +71,7 @@ export default function PositionDialog(props) {
 }
 
 function PositionForm({ mode = 'add', initialData = null, categories = [], onClose, onSaved, onDirtyChange,
-  onSubmit, saving, setSaving, fixedProgram, defaultProgram, saveBlocked = false, recovery }) {
+  onSubmit, saving, setSaving, fixedProgram, defaultProgram, saveBlocked = false, recovery, requirementsReadOnly = false }) {
   const id = useId()
   const savePending = useRef(false)
   const suggestPending = useRef(false)
@@ -100,7 +101,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
     onDirtyChange(JSON.stringify({ title, description, slots, tags, programId, selectedFrameworkId, reqs, programs }) !== original.current)
   }, [title, description, slots, tags, programId, selectedFrameworkId, reqs, programs, onDirtyChange])
 
-  const catalogUrl = scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
+  const catalogUrl = !requirementsReadOnly && scoped && frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
   const { data: catalog } = useApi(catalogUrl)
   const scopeCategories = catalog?.framework?.id === frameworkId ? catalog?.categories || [] : []
   const skills = scoped ? scopeCategories : [...new Set([...categories, ...Object.keys(reqs)])].map(name => ({ id: name, name }))
@@ -221,7 +222,9 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
 
         <section className="position-editor-section" aria-labelledby={`${id}-programs`}>
           <SectionHeading number="2" id={`${id}-programs`}>Program eligibility</SectionHeading>
-          {fixedProgram ? <p className="position-editor-help">{fixedProgram.institute_code} · {fixedProgram.name}</p> : scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
+          {fixedProgram ? <p className="position-editor-help">{initialData?.shared_institute
+            ? `Shared ${initialData.shared_institute.code} opening. Changes apply in its other program views.`
+            : programs.length > 1 ? `Shared opening: ${programs.map(row => row.name).join(', ')}` : `${fixedProgram.institute_code} · ${fixedProgram.name}`}</p> : scoped ? <PositionPrograms programs={programs} onToggle={toggleProgram} /> : <>
             <p className="position-editor-help">This shared IC opening serves batches without a single program assignment.</p>
             <button type="button" className="position-editor-cancel" onClick={() => { setScoped(true); selectFramework(null, null) }}>Configure program eligibility</button>
             <p className="position-editor-help">Configuring program eligibility replaces the shared requirement list when you save.</p>
@@ -230,6 +233,10 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
 
         <section className="position-editor-section" aria-labelledby={`${id}-skills`}>
           <SectionHeading number="3" id={`${id}-skills`}>Skill requirements</SectionHeading>
+          {requirementsReadOnly ? <>
+            <p className="position-editor-help">These requirements use another program’s skill set. They are preserved when saving. To change them, select that program if assigned, or contact an administrator.</p>
+            <ul>{positionRequirementRows(initialData).map(row => <li key={row.category_id || row.name}>{row.name} ≥ {row.percentage}%</li>)}</ul>
+          </> : <>
           {scoped && programs.length > 0 && <div className="space-y-2">
             {!fixedProgram && <label className="block position-editor-label">Requirement program
               <select className="position-editor-input" value={programId || ''} onChange={event => selectFramework(Number(event.target.value) || null, null)}>
@@ -277,12 +284,13 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
           </div>
           <p className="position-editor-help" role="status">{visibleSkills.length} of {skills.length} skills shown · {selectedCount} selected</p>
           </DataSection>
+          </>}
         </section>
 
         <section className="position-editor-section" aria-labelledby={`${id}-tags-heading`}>
           <div className="position-editor-tags-heading">
             <SectionHeading number="4" id={`${id}-tags-heading`}>Position tags <span className="position-editor-optional">Optional</span></SectionHeading>
-            <button type="button" className="position-editor-suggest" disabled={suggesting} onClick={handleSuggestTags}>
+            <button type="button" className="position-editor-suggest" disabled={suggesting || requirementsReadOnly} onClick={handleSuggestTags}>
               <RefreshIcon size={14} />{suggesting ? 'Suggesting…' : 'Suggest / refresh tags'}
             </button>
           </div>
