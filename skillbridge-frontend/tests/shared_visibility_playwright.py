@@ -67,7 +67,7 @@ with sync_playwright() as p:
                 assert 'Roster scope' in text and 'institute-shared batch records' in text
             print('PASS actual placement PDF/XLSX disclose full shared batch scope without changing eligibility')
         page.goto(BASE + '/admin/dashboard?' + query, wait_until='networkidle')
-        expect(page.get_by_text('Includes 1 shared IC batches', exact=False)).to_be_visible()
+        expect(page.get_by_text('Includes 1 shared-institute batches', exact=False)).to_be_visible()
         expect(page.get_by_role('button', name='Recommendation maintenance', exact=True)).to_have_count(0)
         page.goto(BASE + '/admin/placements?' + query, wait_until='networkidle')
         page.get_by_role('button', name='Recommendation maintenance', exact=True).click()

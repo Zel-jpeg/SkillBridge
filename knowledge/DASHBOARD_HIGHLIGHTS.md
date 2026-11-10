@@ -1,5 +1,12 @@
 # Dashboard highlights and student details
 
+The 10 November [admin dashboard redesign](ADMIN_DASHBOARD_DRILLDOWN.md)
+supersedes the older admin layout below on its local feature branch. Admin now
+uses four summary cards, institute → program → student/skill navigation and a
+student collection in every scope. Institute/program cards reuse saved banners
+as thumbnails. Additional highlight cards scroll with hidden scrollbars and
+accessible arrow controls. The instructor's existing grid stays unchanged.
+
 Updated 25 October 2026. Initial highlight/student-dialog work was frontend only.
 The later approved [analytics implementation](ANALYTICS_IMPLEMENTATION.md) adds a
 shared backend read endpoint, role-specific linked summary cards and Reports &

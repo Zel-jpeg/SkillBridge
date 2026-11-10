@@ -96,8 +96,11 @@ def analytics_payload(user, params):
                'company_id', 'position_id', 'area', 'batch_scope', 'date_from', 'date_to', 'activity_period', 'view', '_t'}
     if set(params) - allowed or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated analytics filter.'})
-    if 'view' in params and params['view'] != 'overview':
+    if 'view' in params and params['view'] not in ('overview', 'dashboard'):
         raise ValidationError({'error': 'Unsupported analytics view.'})
+    dashboard = params.get('view') == 'dashboard'
+    if dashboard and user.role != 'admin':
+        raise PermissionDenied('The school dashboard is admin-only.')
     if params.get('batch_scope', '') not in ('', 'matching'):
         raise ValidationError({'error': 'Invalid batch_scope.'})
     full = 'view' not in params
@@ -158,7 +161,7 @@ def analytics_payload(user, params):
         raise ValidationError({'error': 'Filter text is too long.'})
     enrollments = list(BatchEnrollment.objects.filter(batch_id__in=selected_ids, student__role='student')
         .filter(Q(student__is_active=True) | Q(batch__status='archived')).select_related('student')
-        .only('batch_id', 'enrolled_at', 'profile_review_required', 'student__name', 'student__course', 'student__school_id', 'student__address')
+        .only('batch_id', 'enrolled_at', 'profile_review_required', 'student__name', 'student__course', 'student__school_id', 'student__address', 'student__photo_url')
         .order_by('student_id', '-enrolled_at', '-id'))
     # One latest selected enrollment per student keeps system totals distinct.
     # Explicit batch selection exposes that batch's full roster, even if another
@@ -172,7 +175,7 @@ def analytics_payload(user, params):
                        .order_by('display_order', 'created_at', 'id'))
     if assessment_id and assessment_id not in {assessment.id for assessment in assessments}:
         raise NotFound('Assessment not found in this scope.')
-    states = cohort_states(current, owned_map, assessments, include_skills=full or bool(program_id))
+    states = cohort_states(current, owned_map, assessments, include_skills=full or dashboard or bool(program_id))
     assessment_map = {assessment.id: assessment for assessment in assessments}
     analysis_assessments = [assessment for assessment in assessments if not assessment_id or assessment.id == assessment_id]
     analysis_ids = [assessment.id for assessment in analysis_assessments]
@@ -257,6 +260,21 @@ def analytics_payload(user, params):
             'required_total': state['total_required_count'], 'required_complete': complete,
             'awaiting_review': waiting, 'reasons': reasons,
             'placement_status': 'approved' if placement else 'approved_other_batch' if student_id in other_approved else 'unplaced'}
+        if dashboard:
+            # A bounded projection of the SAME selected enrollment and saved
+            # evidence. Detailed attempt history is fetched only when opened.
+            row.update({
+                'school_id': student.school_id or '', 'course': student.course or '',
+                'photo_url': student.photo_url or '', 'instructor': batch.instructor.name,
+                'institute_id': batch.institute_id, 'program_id': batch.program_id,
+                'batch_status': batch.status, 'recommendations_locked': not unlocked,
+                'competency_locked': state.get('competency_locked', not unlocked),
+                'combined_category_scores': scores,
+                'detail_url': f'/api/instructor/batches/{batch.id}/students/?student_id={student_id}',
+                'top_recommendations': [{**api_fields(top),
+                    'position': top.position.title, 'company': top.position.company.name,
+                    'match_score': top.match_score}] if top else [],
+            })
         if full or program_id:
             row['school_id'] = student.school_id or ''
         if full:
@@ -343,7 +361,7 @@ def analytics_payload(user, params):
         'email_notifications': reminders(selected) if email_ready else [],
         'email_progress': progress_groups([batch for batch in selected if batch.status == 'active']) if email_ready else []}
     if not full:
-        return {'generated_at': now.isoformat(), 'role': user.role, 'view': 'overview',
+        return {'generated_at': now.isoformat(), 'role': user.role, 'view': 'dashboard' if dashboard else 'overview',
             'scope': {'batch_ids': selected_ids, 'institute_id': institute_id, 'program_id': program_id, 'batch_status': status,
                       'shared_batch_ids': [batch.pk for batch in selected if batch.institute_id and not batch.program_id]},
             'summary': summary, 'dashboard_attention': dashboard_attention, **email_payload,

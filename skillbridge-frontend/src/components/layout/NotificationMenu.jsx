@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import { ANALYTICS_OVERVIEW_URL } from '../../utils/analytics'
+import { ADMIN_DASHBOARD_URL } from '../../utils/adminDashboard'
 import { managementNotifications } from '../../utils/notifications'
 import { NOTIFICATION_LABELS, notificationSeverity, unreadSeverity } from '../../utils/notificationReadState'
 import { notificationWasRead, useNotificationReads } from '../../hooks/useNotificationReads'
@@ -14,7 +15,14 @@ import { dismissedEmailGroups, emailProgressDismissalKey, emailProgressStateKey,
 const icons = { assessment: WarnIcon, placement: BriefcaseIcon, approval: UserIcon, deadline: ClockIcon, retake: CheckCircleIcon, results: CheckCircleIcon, email: ClockIcon, email_complete: CheckCircleIcon }
 
 export default function NotificationMenu({ role, ...props }) {
-  const { data, loading, error } = useApi(ANALYTICS_OVERVIEW_URL)
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  // The default admin dashboard already contains this same school-wide reminder
+  // projection. Filtered dashboards still need school-wide header reminders.
+  const defaultDashboard = role === 'admin' && location.pathname === '/admin/dashboard'
+    && !params.get('institute') && !params.get('program') && (!params.get('batch_status') || params.get('batch_status') === 'active')
+  const url = defaultDashboard ? ADMIN_DASHBOARD_URL : ANALYTICS_OVERVIEW_URL
+  const { data, loading, error } = useApi(url)
   const { showToast } = useToast()
   const seen = useRef(new Map())
   const announced = useRef(new Set())
@@ -39,7 +47,7 @@ export default function NotificationMenu({ role, ...props }) {
       seen.current.set(group.id, group.state)
     }
   }, [data, entries, showToast])
-  return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(ANALYTICS_OVERVIEW_URL)} />
+  return <NotificationDropdown {...props} entries={entries} ready={Boolean(data)} loading={loading} error={error} onRetry={() => invalidateCache(url)} />
 }
 
 export function NotificationDropdown({ entries, ready, loading, error, onRetry, open, onToggle, onClose,

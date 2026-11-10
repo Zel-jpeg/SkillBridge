@@ -155,19 +155,30 @@ export function validateApiResponse(response) {
     valid = object(data) && Array.isArray(data.records) && object(data.summary)
   } else if (method === 'get' && path === '/api/management/analytics/') {
     const overview = data?.view === 'overview'
-    const requestedOverview = new URLSearchParams(config.url.split('?')[1]).get('view') === 'overview'
+    const dashboard = data?.view === 'dashboard'
+    const requestedView = new URLSearchParams(config.url.split('?')[1]).get('view')
     valid = object(data) && object(data.summary) && object(data.scope) && object(data.options) &&
       typeof data.generated_at === 'string' && ['admin', 'instructor'].includes(data.role) &&
       ['students', 'required_complete', 'approved', 'unplaced', 'awaiting_review', 'needs_followup', 'slots_remaining'].every(key => Number.isSafeInteger(data.summary[key]) && data.summary[key] >= 0) &&
       Array.isArray(data.students) && Array.isArray(data.skills) && Array.isArray(data.options.batches) &&
       data.students.every(row => object(row) && id(row.id) && id(row.batch_id) && typeof row.name === 'string' && Array.isArray(row.reasons)) &&
-      (overview
-        ? requestedOverview && Array.isArray(data.scope.batch_ids) && data.scope.batch_ids.every(id) &&
+      (overview || dashboard
+        ? requestedView === data.view && Array.isArray(data.scope.batch_ids) && data.scope.batch_ids.every(id) &&
           object(data.dashboard_attention) && (data.role !== 'admin' ||
             Array.isArray(data.dashboard_attention.retake_scopes) && Array.isArray(data.dashboard_attention.batches_without_required)) &&
           data.students.every(row => typeof row.required_complete === 'boolean' && typeof row.awaiting_review === 'boolean' &&
-            ['approved', 'approved_other_batch', 'unplaced'].includes(row.placement_status))
-        : ['placement_students', 'assessments', 'batches', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
+            ['approved', 'approved_other_batch', 'unplaced'].includes(row.placement_status)) &&
+          (!dashboard || data.role === 'admin' && data.students.every(row =>
+            typeof row.school_id === 'string' && typeof row.course === 'string' &&
+            typeof row.competency_locked === 'boolean' && typeof row.recommendations_locked === 'boolean' &&
+            ['active', 'archived'].includes(row.batch_status) && typeof row.batch === 'string' &&
+            (row.institute_id == null || id(row.institute_id)) && (row.program_id == null || id(row.program_id)) &&
+            row.detail_url === `/api/instructor/batches/${row.batch_id}/students/?student_id=${row.id}` &&
+            Array.isArray(row.combined_category_scores) && row.combined_category_scores.every(score =>
+              object(score) && id(score.category_id) && typeof score.category === 'string' && Number.isFinite(score.percentage) && score.percentage >= 0 && score.percentage <= 100) &&
+            Array.isArray(row.top_recommendations) && row.top_recommendations.every(rec => object(rec) &&
+              typeof rec.company === 'string' && typeof rec.position === 'string' && Number.isFinite(rec.match_score))))
+        : requestedView !== 'dashboard' && ['placement_students', 'assessments', 'batches', 'capacity', 'match_bands', 'companies', 'areas', 'geography', 'activity'].every(key => Array.isArray(data[key])) &&
           data.students.every(row => object(row.scores) && object(row.attempt_states)) &&
           ['instructors', 'courses', 'assessments', 'companies', 'positions', 'areas'].every(key => Array.isArray(data.options[key]))) &&
       (data.email_notifications === undefined || (Array.isArray(data.email_notifications) && data.email_notifications.every(row =>

@@ -3,6 +3,25 @@ import assert from 'node:assert/strict'
 import { validateApiResponse } from './responseContract.js'
 import { requestErrorMessage, sanitizeApiError } from './requestErrors.js'
 
+test('dashboard accepts only its admin projection and rejects wrong-view or malformed cached evidence', () => {
+  const config = { method: 'get', url: '/api/management/analytics/?view=dashboard' }
+  const row = { id: 1, batch_id: 2, batch: 'Synthetic batch', name: 'Synthetic student', school_id: '', course: '', reasons: [],
+    required_complete: false, awaiting_review: false, placement_status: 'unplaced', batch_status: 'active',
+    competency_locked: true, recommendations_locked: true, institute_id: null, program_id: null,
+    detail_url: '/api/instructor/batches/2/students/?student_id=1', combined_category_scores: [], top_recommendations: [] }
+  const data = { view: 'dashboard', role: 'admin', generated_at: '2026-11-10T00:00:00Z',
+    scope: { batch_ids: [2] }, options: { batches: [] }, skills: [], students: [row],
+    summary: { students: 1, required_complete: 0, approved: 0, unplaced: 1, awaiting_review: 0, needs_followup: 0, slots_remaining: 0 },
+    dashboard_attention: { retake_scopes: [], batches_without_required: [] } }
+  assert.doesNotThrow(() => validateApiResponse({ config, status: 200, data }))
+  for (const bad of [{ ...data, role: 'instructor' }, { ...data, view: 'overview' },
+    { ...data, students: [{ ...row, combined_category_scores: null }] },
+    { ...data, students: [{ ...row, detail_url: '/api/admin/users/' }] },
+    { ...data, students: [{ ...row, combined_category_scores: [{ category_id: 1, category: 'Test', percentage: 101 }] }] }]) {
+    assert.throws(() => validateApiResponse({ config, status: 200, data: bad }))
+  }
+})
+
 test('scoped assistance rejects foreign framework, malformed vocabulary and invented match envelopes', () => {
   const shared = { method: 'saved-framework-tfidf-v1', framework_id: 7, framework_digest: 'c'.repeat(64) }
   const category = { id: 8, name: 'Saved knowledge', similarity: 0.6 }

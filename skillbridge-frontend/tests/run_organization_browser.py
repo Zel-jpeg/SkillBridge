@@ -44,7 +44,7 @@ if '--admin-navigation' in sys.argv:
 if '--partner-map' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_PARTNER_MAP'] = '1'
-if '--school-dashboard' in sys.argv or '--school-reports' in sys.argv or '--shared-visibility' in sys.argv:
+if '--school-dashboard' in sys.argv or '--school-reports' in sys.argv or '--shared-visibility' in sys.argv or '--dashboard-drilldown' in sys.argv:
     env['SB_ORGANIZATION_SCENARIO'] = 'staff-scope'
     env['SB_SCHOOL_DASHBOARD'] = '1'
 if '--shared-visibility' in sys.argv:
@@ -110,6 +110,7 @@ try:
             ('--admin-navigation', 'admin_scope_navigation_playwright.py'),
             ('--partner-map', 'admin_partner_map_playwright.py'),
             ('--school-dashboard', 'admin_school_dashboard_playwright.py'),
+            ('--dashboard-drilldown', 'admin_dashboard_drilldown_playwright.py'),
             ('--school-reports', 'admin_scoped_reports_playwright.py'),
             ('--sidebar-accordion', 'sidebar_accordion_playwright.py'),
             ('--shared-visibility', 'shared_visibility_playwright.py'),

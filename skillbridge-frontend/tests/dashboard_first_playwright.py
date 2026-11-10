@@ -16,7 +16,8 @@ CORE = {
     'student': ['/api/students/me/', '/api/assessments/', '/api/student/results/combined/'],
 }
 OPTIONAL = {
-    'admin': ['/api/instructor/assessments/', '/api/admin/skills/', '/api/admin/companies/'],
+    # Admin's likely scope-first pages reuse the already-warmed organization options.
+    'admin': [],
     'instructor': ['/api/instructor/batches/', '/api/instructor/assessments/', '/api/instructor/companies/'],
     'student': [],
 }
@@ -52,12 +53,14 @@ class SignIn:
             event['end'] = time.perf_counter()
             if path == '/api/management/analytics/':
                 event['view'] = parse_qs(urlparse(route.request.url).query).get('view', [None])[0]
-                if self.legacy_analytics and event['view'] == 'overview':
+                if self.legacy_analytics and event['view'] == 'dashboard':
                     return await route.fulfill(status=400, json={'error': 'Unsupported or repeated analytics filter.'})
             data = analytics(self.role) if path == '/api/management/analytics/' else (
                 {**self.account, 'placement': None, 'address': {}} if path == '/api/students/me/' else (
                     {'recommendations_locked': True, 'has_required_assessments': False, 'recommendations': [], 'combined_category_scores': []}
                     if path == '/api/student/results/combined/' else payload(path, self.role)))
+            if path == '/api/management/analytics/' and event.get('view') == 'dashboard':
+                data.update({'view': 'dashboard', 'dashboard_attention': {'retake_scopes': [], 'batches_without_required': [], 'pending_retakes': 0, 'unavailable_results': 0}})
             if path == '/api/management/organization-options/':
                 data = {'institutes': [], 'programs': []}
             try:
@@ -126,8 +129,8 @@ async def ready_and_warming(browser, checks, metrics):
             checks.append(role + ': two background GETs overlap after core readiness, third remains bounded')
         else:
             await page.wait_for_timeout(400)
-            assert len(fixture.events) == len(CORE[role]), fixture.events
-            checks.append('student: already-loaded profile/assessments/results need no duplicate warming GETs')
+            assert len([event for event in fixture.events if event['path'] != '/api/auth/me/']) == len(CORE[role]), fixture.events
+            checks.append(role + ': already-loaded destination data needs no duplicate warming GETs')
         for key in CORE[role]:
             assert len([event for event in fixture.events if event['path'] == key]) == 1
         await context.close()
@@ -160,7 +163,7 @@ async def slow_failure_and_cancellation(browser, checks, metrics):
     await fixture.click(page)
     await page.wait_for_url('**/admin/dashboard')
     await expect(page.locator('.sk-route-page')).to_be_visible()
-    await expect(page.get_by_role('heading', name='Admin dashboard', exact=True)).to_be_visible()
+    await expect(page.get_by_role('heading', name='Student performance', exact=True)).to_be_visible()
     await expect(page.locator('.sb-skeleton')).to_have_count(0)
     assert len([event for event in fixture.events if event['path'] in CORE['admin']]) == 2
     checks.append('A slow dashboard module also respects the deadline and hands off to its matching route skeleton')
@@ -184,10 +187,11 @@ async def slow_failure_and_cancellation(browser, checks, metrics):
     context, page = await fixture.context(browser)
     await fixture.click(page)
     await page.wait_for_url('**/admin/dashboard')
-    await expect(page.get_by_role('region', name='Institute overview', exact=True)).to_be_visible()
-    assert [event['view'] for event in fixture.events if event['path'] == '/api/management/analytics/'] == ['overview', None]
+    await expect(page.get_by_text('Could not refresh this dashboard.', exact=True).first).to_be_visible()
+    views = [event['view'] for event in fixture.events if event['path'] == '/api/management/analytics/']
+    assert views and set(views) == {'dashboard'}, views
     assert not fixture.errors, fixture.errors
-    checks.append('Older API fallback keeps the dashboard usable during a staggered release')
+    checks.append('An API without the new dashboard projection shows an explicit retry state without a misleading fallback')
     await context.close()
 
     fixture = SignIn(core_delay=3)

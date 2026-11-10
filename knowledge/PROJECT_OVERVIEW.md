@@ -110,6 +110,11 @@ regrading or altering placement snapshots. See
 
 ## Existing knowledge
 
+- [Admin dashboard drilldown](ADMIN_DASHBOARD_DRILLDOWN.md): Instructor-inspired
+  four-card summaries, institute/program banner carousels without visible
+  scrollbars, scoped student records and protected on-demand evidence. This
+  redesign remains on its local feature branch pending user review.
+
 - [Coordinator catalog screens](COORDINATOR_CATALOG_SCREENS.md) describes the
   F18 program management workspace, reviewed reuse, save recovery and browser checks.
 - [Coordinator catalog authority](COORDINATOR_CATALOG_AUTHORITY.md) describes the

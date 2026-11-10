@@ -1,113 +1,46 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApi, invalidateCache } from '../../hooks/useApi'
 import { useSSE } from '../../hooks/useSSE'
-import { ANALYTICS_URL } from '../../utils/analytics'
 import { ORGANIZATION_OPTIONS } from '../../utils/organizationScope'
-import { schoolDashboardCards, schoolOrganizationRows, schoolReportLink } from '../../utils/schoolOverview'
+import { ADMIN_DASHBOARD_URL, adminDashboardCards, adminDashboardStudents, adminOrganizationHighlights } from '../../utils/adminDashboard'
+import { schoolReportLink } from '../../utils/schoolOverview'
 import TaxonomyCardBanner from '../../components/TaxonomyCardBanner'
 import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
-import CollectionViewToggle from '../../components/CollectionViewToggle'
-import Pagination from '../../components/Pagination'
-import DialogShell from '../../components/DialogShell'
+import DashboardSummary from '../../components/dashboard/DashboardSummary'
+import DashboardHighlights from '../../components/dashboard/DashboardHighlights'
+import DashboardCarousel from '../../components/dashboard/DashboardCarousel'
+import AdminStudentCollection from '../../components/dashboard/AdminStudentCollection'
+import { AttentionCard, AttentionDialog } from '../../components/dashboard/AdminDashboardAttention'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
-import { organizationButton as button, organizationPrimary as primary, organizationField as field, organizationCard } from '../../components/admin/organizationUi'
-import { BriefcaseIcon, CheckCircleIcon, ChevronRightIcon, ReportIcon, UsersIcon, WarnIcon } from '../../components/Icons'
+import { organizationButton as button, organizationField as field } from '../../components/admin/organizationUi'
+import { ChevronRightIcon, ReportIcon } from '../../components/Icons'
 
-const icons = { students: UsersIcon, complete: CheckCircleIcon, review: WarnIcon, approved: BriefcaseIcon, capacity: BriefcaseIcon }
+const StudentDetailModal = lazy(() => import('../../components/StudentDetailModal'))
 const surface = 'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
-const scopeQuery = scope => new URLSearchParams({ ...(scope.institute ? { institute: scope.institute, program: scope.program || 'all' } : {}) })
-const dashboardPath = (scope, changes = {}) => `/admin/dashboard?${new URLSearchParams({ ...(scope.institute ? { institute: scope.institute } : {}), ...(scope.program ? { program: scope.program } : {}), batch_status: scope.status, ...changes })}`
 
-function Summary({ data, scope }) {
-  return <dl aria-label="Dashboard summary" className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-6 xl:[&>div]:col-span-2 xl:[&>div:nth-child(n+4)]:col-span-3">
-    {schoolDashboardCards(data, scope).map(card => { const Icon = icons[card.kind]; return <div key={card.kind} className={`${organizationCard} relative min-w-0 p-4`}>
-      <dt className="mb-4 flex items-start gap-2 text-xs font-semibold"><span aria-hidden="true" className="rounded-lg bg-green-50 p-2 text-green-700 dark:bg-green-950 dark:text-green-300"><Icon size={18} /></span><Link className="break-words before:absolute before:inset-0 before:rounded-2xl focus-visible:before:outline-2 focus-visible:before:outline-green-600" to={card.to}>{card.label}</Link></dt>
-      <dd className="text-2xl font-bold tabular-nums">{card.value}</dd><dd className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{card.description}</dd>
-    </div> })}
-  </dl>
+function OrganizationHighlights({ students, options, scope, onChoose }) {
+  const rows = useMemo(() => adminOrganizationHighlights(students, options, scope.institute), [students, options, scope.institute])
+  const type = scope.institute ? 'program' : 'institute'
+  return <>{['matches', 'skills'].map(kind => <DashboardCarousel key={kind} count={rows.length}
+    title={kind === 'matches' ? `Top matches by ${type}` : `Skill results by ${type}`}
+    description={`Choose ${type === 'institute' ? 'an institute to explore its programs' : 'a program to view its student results'}.`}>
+    {rows.map(row => <li key={row.id}><button type="button" className="dashboard-organization-card text-left" aria-label={`View ${kind === 'matches' ? 'matches' : 'skill results'} for ${row.name}`} onClick={() => onChoose(row.id)}>
+      <span className="flex items-start gap-3"><span className="dashboard-banner-thumbnail" aria-hidden="true"><TaxonomyCardBanner imageUrl={row.image_url} name={row.name} color={taxonomyBannerColor(row.banner_color, row.id)} /></span><span className="min-w-0 flex-1"><strong className="block text-xs">{row.code}</strong><span className="mt-1 block break-words text-xs text-gray-500 dark:text-gray-400">{row.name}</span></span><ChevronRightIcon size={14} /></span>
+      <span className="space-y-1 text-xs text-gray-600 dark:text-gray-300">{kind === 'matches' ? <><span className="block"><strong className="tabular-nums">{row.matches}</strong> students with current matches</span><span className="block">{scope.institute ? `${row.students} students in this view` : `${row.programs} programs`}</span></> : <><span className="block"><strong className="tabular-nums">{row.assessed}</strong> students with skill results</span><span className="block">{row.categories} assessed categories</span></>}</span>
+      {!row.is_active && <span className="text-xs text-gray-500 dark:text-gray-400">Archived</span>}
+      {!!row.shared && <span className="text-xs text-gray-500 dark:text-gray-400">Includes {row.shared} shared-institute students</span>}
+    </button></li>)}
+  </DashboardCarousel>)}</>
 }
 
-function OrganizationCards({ data, options, scope }) {
-  const [search, setSearch] = useState(''), [page, setPage] = useState(1), [view, setView] = useState('grid')
-  const { rows, sharedStudents } = useMemo(() => schoolOrganizationRows(data, options, scope.institute), [data, options, scope.institute])
-  const program = Boolean(scope.institute)
-  const term = search.trim().toLowerCase()
-  const filtered = rows.filter(row => `${row.name} ${row.code}`.toLowerCase().includes(term))
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 9)))
-  return <section aria-label={program ? 'Program overview' : 'Institute overview'} className="space-y-4">
-    <header><h2 className="text-lg font-bold">{program ? 'Programs' : 'Institutes'}</h2><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{program ? 'Open a program for its records and skill highlights.' : 'Open an institute to see its programs and records.'}</p></header>
-    <div className="flex flex-wrap items-end justify-between gap-3"><label className="w-full text-xs font-medium sm:max-w-sm">Search {program ? 'programs' : 'institutes'}<input type="search" className={field} value={search} maxLength={255} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label><CollectionViewToggle view={view} onChange={setView} label="Organization overview view" mobile /></div>
-    {sharedStudents > 0 && <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{sharedStudents} students are included in the totals through {program ? 'shared institute batches without a single program assignment' : 'batches awaiting an institute assignment'}. {program && <span>Program cards count program-owned batches; shared records are also visible within each program. </span>}{program && <Link className="text-green-700 underline dark:text-green-300" to={`/admin/batches?${scopeQuery(scope)}`}>View shared institute batches</Link>}</p>}
-    <p className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} {program ? 'programs' : 'institutes'}</p>
-    {filtered.length ? <ul className={`grid gap-4 ${view === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`}>
-      {filtered.slice((currentPage - 1) * 9, currentPage * 9).map(row => <li key={row.id} className={`${organizationCard} overflow-hidden`}>
-        <Link aria-label={`Open ${row.name} dashboard`} to={dashboardPath(scope, program ? { program: String(row.id) } : { institute: String(row.id), program: '' })} className={`group flex h-full cursor-pointer flex-col rounded-2xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-green-600 ${view === 'list' ? 'sm:grid sm:grid-cols-[200px_minmax(0,1fr)]' : ''}`}>
-          <div className={`relative aspect-[3/1] min-h-24 overflow-hidden ${view === 'list' ? 'sm:aspect-auto sm:h-full' : ''}`}><TaxonomyCardBanner imageUrl={row.image_url} name={row.name} color={taxonomyBannerColor(row.banner_color, row.id)} /><span className="absolute left-3 top-3 max-w-[calc(100%-24px)] truncate rounded-full bg-emerald-950/90 px-2.5 py-1 text-xs font-semibold text-white">{row.code}</span></div>
-          <div className="min-w-0 space-y-4 p-4"><div className="flex items-start justify-between gap-2"><h3 className="break-words text-sm font-semibold group-hover:text-green-700 dark:group-hover:text-green-300">{row.name}</h3><ChevronRightIcon size={16} /></div>{!row.is_active && <p className="text-xs text-gray-500">Archived</p>}
-            <dl className="grid grid-cols-2 gap-3 text-xs min-[480px]:grid-cols-4">{[[program ? row.batches : row.programs, program ? 'batches' : 'programs'], [row.students, program ? 'program-batch students' : 'students'], [row.complete, 'required complete'], [row.approved, 'approved placements']].map(([value, label]) => <div key={label}><dd className="font-bold tabular-nums">{value}</dd><dt className="mt-1 text-gray-500 dark:text-gray-400">{label}</dt></div>)}</dl>
-          </div>
-        </Link></li>)}
-    </ul> : <p className={`${surface} p-6 text-xs text-gray-500`}>No {program ? 'programs' : 'institutes'} match this view.</p>}
-    <Pagination total={filtered.length} page={currentPage} pageSize={9} onPage={setPage} />
-  </section>
-}
-
-function AttentionCard({ rows, available }) {
-  const rowClass = 'flex min-h-14 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-xs hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-600 dark:hover:bg-green-950'
-  return <section aria-label="Needs attention" className={`${surface} min-w-0 p-4`}>
-    <header className="mb-3 flex items-center gap-2">
-      <span aria-hidden="true" className="rounded-lg bg-amber-50 p-2 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><WarnIcon size={18} /></span>
-      <h2 className="text-base font-bold">Needs attention</h2>
-    </header>
-    {rows.length ? <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-      {rows.map(row => {
-        const content = <>
-          <span><strong>{row.label}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.note}</span></span>
-          <span className="flex shrink-0 items-center gap-2 font-semibold tabular-nums">{row.count}<ChevronRightIcon size={16} /></span>
-        </>
-        return <li key={row.label}>{row.to
-          ? <Link className={rowClass} to={row.to}>{content}</Link>
-          : <button type="button" className={`${rowClass} cursor-pointer`} onClick={row.action}>{content}</button>}
-        </li>
-      })}
-    </ul> : <p className="px-2 py-3 text-xs text-gray-500 dark:text-gray-400">
-      {available ? 'No current attention items in this scope.' : 'Attention details are unavailable. Refresh the dashboard to load them.'}
-    </p>}
-  </section>
-}
-
-function AttentionDialog({ kind, data, options, scope, onClose }) {
-  const [search, setSearch] = useState(''), [page, setPage] = useState(1)
-  const attention = data.dashboard_attention
-  const rows = kind === 'retakes' ? attention.retake_scopes.map((row, index) => {
-    const institute = options.institutes.find(item => item.id === row.institute_id)
-    const program = options.programs.find(item => item.id === row.program_id)
-    return { id: index, name: program?.name || (institute ? `${institute.code} shared batches` : 'Institute not assigned'), detail: `${row.count} pending requests`,
-      to: row.institute_id ? `/admin/retake-requests?${new URLSearchParams({ institute: row.institute_id, program: row.program_id || 'all', active_batches: '1' })}` : '/admin/retake-requests' }
-  }) : attention.batches_without_required.map(id => {
-    const batch = data.options.batches.find(row => row.id === id)
-    return { id, name: batch?.name || `Batch ${id}`, detail: 'No published required assessments', to: `/admin/batches?${new URLSearchParams({ ...(batch?.institute_id ? { institute: batch.institute_id, program: batch.program_id || 'all' } : {}), batch_id: id })}` }
-  })
-  const filtered = rows.filter(row => row.name.toLowerCase().includes(search.trim().toLowerCase()))
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 8)))
-  return <DialogShell title={kind === 'retakes' ? 'Pending retake requests' : 'Batches without required assessments'} description="Open the relevant program or batch to review its records." onClose={onClose} size="collection" footer={<button type="button" className={button} onClick={onClose}>Done</button>}>
-    <div className="min-h-0 space-y-4 overflow-y-auto p-5"><label className="block text-xs">Search attention records<input type="search" className={field} value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
-      <ul className="space-y-2">{filtered.slice((currentPage - 1) * 8, currentPage * 8).map(row => <li key={row.id}><Link className={`${organizationCard} flex items-center justify-between gap-3 p-4 text-xs focus-visible:outline-2 focus-visible:outline-green-600`} to={row.to}><span className="min-w-0"><strong className="block break-words">{row.name}</strong><span className="mt-1 block text-gray-500 dark:text-gray-400">{row.detail}</span></span><ChevronRightIcon /></Link></li>)}</ul>
-      {!filtered.length && <p className="text-xs">No attention records match.</p>}<Pagination total={filtered.length} page={currentPage} pageSize={8} onPage={setPage} />
-      <p className="text-xs text-gray-500">Scope: {scope.program ? 'Selected program' : scope.institute ? 'Selected institute' : 'School-wide'}</p>
-    </div>
-  </DialogShell>
-}
-
-function ProgramHighlights({ data, scope }) {
-  return <section aria-label="Program skill highlights" className="space-y-4"><h2 className="text-lg font-bold">Program skill highlights</h2><p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Each saved category keeps its own skill set and version. Missing or locked evidence is excluded from skill results.</p>
-    {data.skills.length ? <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{data.skills.slice(0, 6).map(skill => <li key={skill.id}><Link className={`${organizationCard} block h-full p-4 focus-visible:outline-2 focus-visible:outline-green-600`} to={schoolReportLink(scope, 'skills', `skill:${skill.id}`)}><h3 className="text-sm font-semibold">{skill.name}</h3><p className="mt-2 break-words text-xs text-gray-500 dark:text-gray-400">{skill.framework_label || 'Shared institute skills'}</p><p className="mt-3 text-xs">{skill.sample} with evidence · {skill.missing} missing / locked</p><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Strong {skill.strong} · Fair {skill.fair} · Needs work {skill.needs_work}</p></Link></li>)}</ul> : <p className={`${surface} p-5 text-xs`}>No final skill evidence is available for this program yet.</p>}
-    <Link className={button} to={schoolReportLink(scope, 'skills')}>Open program skill report</Link>
-    <h2 className="pt-3 text-lg font-bold">Students in this program</h2><ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{data.students.slice(0, 6).map(student => <li key={student.id}><Link className={`${organizationCard} block p-4 focus-visible:outline-2 focus-visible:outline-green-600`} to={schoolReportLink(scope, 'assessments', `batch:${student.batch_id}`)}><h3 className="break-words text-sm font-semibold">{student.name}</h3><p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{student.school_id || 'No student ID'} · {student.batch}</p><p className="mt-3 text-xs">{student.required_completed} / {student.required_total} required complete</p><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{student.reasons.join(' · ') || (student.placement_status === 'approved' ? 'Approved placement decision' : 'No current follow-up issue')}</p></Link></li>)}</ul>
-    {!data.students.length && <p className="text-xs text-gray-500">No students in the selected program cohort.</p>}
-    <Link className={button} to={schoolReportLink(scope)}>View all program records</Link>
-  </section>
+function DashboardContent({ data, options, scope, onChoose, onSelectStudent }) {
+  const students = useMemo(() => adminDashboardStudents(data, options), [data, options])
+  return <>
+    <DashboardSummary cards={adminDashboardCards(data, scope)} variant="instructor" />
+    {scope.program ? <DashboardHighlights carousel students={students} onSelectStudent={onSelectStudent} /> : <OrganizationHighlights students={students} options={options} scope={scope} onChoose={onChoose} />}
+    <AdminStudentCollection students={students} onSelectStudent={onSelectStudent} />
+  </>
 }
 
 export default function AdminDashboard() {
@@ -119,13 +52,24 @@ export default function AdminDashboard() {
   const programs = (options?.programs || []).filter(row => String(row.institute_id) === scope.institute)
   const program = programs.find(row => String(row.id) === scope.program)
   const invalid = Boolean(options && (scope.institute && !institute || scope.program && !program || !['active', 'archived', 'all'].includes(scope.status)))
-  const analyticsParams = new URLSearchParams({ view: 'overview', ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
-  const url = options && !invalid ? `${ANALYTICS_URL}?${analyticsParams}` : null
+    || ['institute', 'program', 'batch_status'].some(key => params.getAll(key).length > 1)
+  const analyticsParams = new URLSearchParams({ view: 'dashboard', ...(scope.status !== 'active' ? { batch_status: scope.status } : {}), ...(scope.institute ? { institute_id: scope.institute } : {}), ...(scope.program ? { program_id: scope.program } : {}) })
+  const url = options && !invalid ? `${ADMIN_DASHBOARD_URL.split('?')[0]}?${analyticsParams}` : null
   const { data, error } = useApi(url)
-  const [attention, setAttention] = useState(null)
+  const [attention, setAttention] = useState(null), [selectedStudent, setStudent] = useState(null)
+  const studentTrigger = useRef(null)
+  const heading = useRef(null), focusScope = useRef(false)
+  useEffect(() => {
+    if (focusScope.current && data && !invalid) {
+      focusScope.current = false
+      heading.current?.focus({ preventScroll: true })
+    }
+  }, [data, invalid, scope.institute, scope.program])
+  function selectStudent(student) { studentTrigger.current = document.activeElement; setStudent(student) }
   function change(next) {
-    setAttention(null)
-    setParams({ batch_status: scope.status, ...scope.institute && { institute: scope.institute }, ...scope.program && { program: scope.program }, ...next })
+    setAttention(null); setStudent(null)
+    const updated = { batch_status: scope.status, ...scope.institute && { institute: scope.institute }, ...scope.program && { program: scope.program }, ...next }
+    setParams(Object.fromEntries(Object.entries(updated).filter(([, value]) => value)))
   }
   const attentionRows = data?.dashboard_attention ? [
     { label: 'Pending retake requests', count: data.dashboard_attention.pending_retakes, action: () => setAttention('retakes'), note: 'Active enrolled batches' },
@@ -133,24 +77,38 @@ export default function AdminDashboard() {
     { label: 'Batches without required assessments', count: data.dashboard_attention.batches_without_required.length, action: () => setAttention('setup'), note: 'Active batches without published required work' },
     { label: 'Students whose results need updating', count: data.dashboard_attention.unavailable_results, to: schoolReportLink(scope, 'assessments', 'reason:Final results unavailable'), note: 'Required work complete; final results unavailable' },
   ].filter(row => row.count > 0) : []
-  return <section className="mx-auto min-w-0 max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-xl font-bold">Admin dashboard</h1><p className="mt-2 text-xs text-gray-500 dark:text-gray-400">School overview across institutes and programs.</p></div><div className="flex flex-wrap gap-2"><Link className={button} to="/admin/institutes">Manage institutes</Link><Link className={primary} to={schoolReportLink(scope)}><ReportIcon size={16} />Open reports</Link></div></header>
-    <section aria-label="Dashboard scope" className={`${surface} space-y-4 p-4`}><p className="text-xs font-semibold text-green-800 dark:text-green-300">{program ? `${institute.code} · ${program.name}` : institute ? `${institute.name} · All programs` : 'School-wide overview'}</p><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-medium">Institute<select aria-label="Institute" className={field} value={scope.institute} disabled={!options} onChange={event => change({ institute: event.target.value, program: '' })}><option value="">All institutes</option>{options?.institutes.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label><label className="text-xs font-medium">Program<select aria-label="Program" className={field} value={scope.program} disabled={!institute} onChange={event => change({ program: event.target.value })}><option value="">{institute ? 'All programs' : 'Choose an institute first'}</option>{programs.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label><label className="text-xs font-medium">Batch scope<select aria-label="Batch scope" className={field} value={scope.status} onChange={event => change({ batch_status: event.target.value })}><option value="active">Active batches</option><option value="archived">Archived batches</option><option value="all">All batches</option></select></label></div>
-      {(scope.institute || scope.program || scope.status !== 'active') && <Link className={button} to="/admin/dashboard">School-wide overview</Link>}
-    </section>
-    {invalid && <p role="alert" className="text-xs">This dashboard institute, program or batch scope is unavailable.</p>}
-    {(error || optionsError) && <div role="alert" className={`${surface} space-y-3 p-4 text-xs`}><p>Could not refresh this dashboard.{data ? ' Showing the last loaded data.' : ''}</p><button className={button} onClick={() => { invalidateCache(ORGANIZATION_OPTIONS); if (url) invalidateCache(url) }}>Retry dashboard</button></div>}
-    {!invalid && !error && !optionsError && (!options || !data) && <div className="space-y-6"><ContentSkeleton layout="stats" count={5} label="Loading dashboard overview" /><ContentSkeleton layout="cards" count={3} label="Loading institute overview" /></div>}
-    {!invalid && options && data && <>
-      {scope.program && data.scope.shared_batch_ids?.length > 0 && <p className="rounded-xl bg-green-50 p-4 text-xs leading-5 text-green-900 dark:bg-green-950 dark:text-green-200">Includes {data.scope.shared_batch_ids.length} shared {institute.code} batches with their full mixed-program rosters. Program views can overlap; school and institute totals still count each student once.</p>}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Summary data={data} scope={scope} />
-        <AttentionCard rows={attentionRows} available={Boolean(data.dashboard_attention)} />
+  const scopeKey = `${scope.institute}:${scope.program}:${scope.status}`
+  return <section className="mx-auto flex min-w-0 max-w-7xl flex-col gap-7 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8">
+    <header className="flex flex-wrap items-start justify-between gap-5">
+      <div className="min-w-0"><h1 ref={heading} tabIndex={-1} aria-describedby="admin-dashboard-context" className="text-xl font-bold outline-none">Student performance</h1>
+        <nav aria-label="Dashboard navigation" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <Link to={`/admin/dashboard${scope.status !== 'active' ? `?batch_status=${scope.status}` : ''}`} className="rounded text-green-700 underline focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300">All institutes</Link>
+          {institute && <><ChevronRightIcon size={12} /><button type="button" className="rounded text-green-700 underline focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300" onClick={() => change({ program: '' })}>{institute.code}</button></>}
+          {program && <><ChevronRightIcon size={12} /><span aria-current="page">{program.code}</span></>}
+          {!institute && <span>School-wide overview</span>}
+        </nav>
       </div>
-      <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{scope.institute ? programs.length : options.institutes.length} {scope.institute ? 'programs in this institute' : 'institutes'} · {data.scope.batch_ids.length} selected batches. Each student is counted once using their newest selected enrollment. Approved decisions do not establish OJT completion.</p>
-      {!scope.program ? <OrganizationCards key={`${scope.institute}:${scope.status}`} data={data} options={options} scope={scope} /> : <><nav aria-label="Program workspaces" className="flex flex-wrap gap-2">{[['batches', 'Batches'], ['assessments', 'Assessments'], ['companies', 'OJT Partners'], ['placements', 'Placements']].map(([path, label]) => <Link key={path} className={button} to={`/admin/${path}?${scopeQuery(scope)}`}>{label}</Link>)}</nav><ProgramHighlights data={data} scope={scope} /></>}
-      {!scope.program && <p className="text-xs text-gray-500 dark:text-gray-400">Choose a program to view its student and skill highlights.</p>}
+      <div aria-label="Dashboard scope" className="grid w-full min-w-0 gap-3 sm:w-auto sm:grid-cols-[minmax(180px,230px)_minmax(180px,230px)_auto] sm:items-end">
+        <label className="min-w-0 text-xs font-medium">Institute<select aria-label="Institute" className={field} value={scope.institute} disabled={!options} onChange={event => change({ institute: event.target.value, program: '' })}><option value="">All institutes</option>{options?.institutes.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-medium">Program<select aria-label="Program" className={field} value={scope.program} disabled={!institute} onChange={event => change({ program: event.target.value })}><option value="">All programs</option>{programs.map(row => <option key={row.id} value={row.id}>{row.name}{!row.is_active ? ' (archived)' : ''}</option>)}</select></label>
+        {(scope.institute || scope.program || scope.status !== 'active') && <Link className="inline-flex min-h-10 items-center rounded text-xs font-medium text-green-700 underline focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300" to="/admin/dashboard">Reset filters</Link>}
+      </div>
+    </header>
+    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400"><p id="admin-dashboard-context">{program ? `${institute.name} · ${program.name}` : institute ? `${institute.name} · All programs` : 'All institutes and programs'} · {scope.status === 'all' ? 'All batches' : `${scope.status === 'archived' ? 'Archived' : 'Active'} batches`}</p>
+      <label className="flex items-center gap-2">Batch scope<select aria-label="Batch scope" className={`${field} !mt-0 !w-auto`} value={scope.status} onChange={event => change({ batch_status: event.target.value })}><option value="active">Active batches</option><option value="archived">Archived batches</option><option value="all">All batches</option></select></label></div>
+    {invalid && <p role="alert" className="text-xs">This dashboard institute, program or batch scope is unavailable.</p>}
+    {(error || optionsError) && <div role="alert" className={`${surface} space-y-3 p-4 text-xs`}><p>Could not refresh this dashboard.{data ? ' Showing the last loaded data for this scope.' : ''}</p><button type="button" className={button} onClick={() => { invalidateCache(ORGANIZATION_OPTIONS); if (url) invalidateCache(url) }}>Retry dashboard</button></div>}
+    {!invalid && !error && !optionsError && (!options || !data) && <div className="space-y-6"><ContentSkeleton layout="stats" count={4} label="Loading dashboard overview" /><ContentSkeleton layout="cards" count={4} label="Loading dashboard highlights" /></div>}
+    {!invalid && options && data && <>
+      {!!data.scope.shared_batch_ids?.length && <p className="rounded-xl bg-green-50 p-3 text-xs leading-5 text-green-900 dark:bg-green-950 dark:text-green-200">{scope.program ? 'Includes' : 'Contains'} {data.scope.shared_batch_ids.length} shared-institute batches. Program views include their full mixed-program rosters. Program counts can overlap; school and institute totals count each student once.</p>}
+      <DashboardContent key={scopeKey} data={data} options={options} scope={scope} onChoose={id => { focusScope.current = true; change(scope.institute ? { program: String(id) } : { institute: String(id), program: '' }) }} onSelectStudent={selectStudent} />
+      <details><summary className="cursor-pointer rounded-lg py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-green-600">Attention and administration{attentionRows.length ? ` · ${attentionRows.length} queues` : ''}</summary><div className="mt-3 space-y-4">
+        <AttentionCard rows={attentionRows} available={Boolean(data.dashboard_attention)} />
+        <nav aria-label="Admin dashboard tools" className="flex flex-wrap gap-2"><Link className={button} to={schoolReportLink(scope)}><ReportIcon size={15} />Open reports</Link><Link className={button} to="/admin/institutes">Manage institutes</Link><Link className={button} to={schoolReportLink(scope, 'placements', 'awaiting')}>{data.summary.awaiting_review} awaiting placement review</Link><Link className={button} to={schoolReportLink(scope, 'placements', 'capacity')}>{data.summary.slots_remaining} remaining shared slots</Link></nav>
+      </div></details>
+      <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">{data.scope.batch_ids.length} selected batches. Each student uses their newest enrollment in this scope. Cards summarize that cohort; opening a program includes its program-owned and shared-institute records. Approved decisions do not establish OJT completion.</p>
       {attention && <AttentionDialog key={attention} kind={attention} data={data} options={options} scope={scope} onClose={() => setAttention(null)} />}
     </>}
+    {selectedStudent && <Suspense fallback={<p role="status" className="text-xs">Loading student details…</p>}><StudentDetailModal student={selectedStudent} readOnly isArchived={selectedStudent.archived} restoreFocusRef={studentTrigger} onClose={() => setStudent(null)} /></Suspense>}
   </section>
 }

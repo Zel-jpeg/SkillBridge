@@ -4,6 +4,7 @@ import { preloadPage } from '../router/preloadPage.js'
 import { waitForDashboard } from './dashboardReadiness.js'
 import { adminUsersUrl } from '../utils/collectionQueries.js'
 import { ANALYTICS_OVERVIEW_URL } from '../utils/analytics.js'
+import { ADMIN_DASHBOARD_URL } from '../utils/adminDashboard.js'
 import { ORGANIZATION_OPTIONS } from '../utils/organizationScope.js'
 
 // Safe list/reference GETs only; no operations, reviews, rosters or reports.
@@ -41,12 +42,25 @@ const PAGE_QUERIES = {
   '/instructor/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/admin/assessment/create': ['/api/instructor/batches/', '/api/instructor/assessments/'],
   '/instructor/placements': PLACEMENT_QUERIES,
-  '/admin/dashboard': [ANALYTICS_OVERVIEW_URL, '/api/management/organization-options/'],
+  '/admin/dashboard': [ADMIN_DASHBOARD_URL, '/api/management/organization-options/'],
   '/admin/users': [adminUsersUrl()],
   '/admin/reports': ['/api/management/analytics/'],
 }
 
 function destinationQueries(pathname, search) {
+  if (pathname === '/admin/dashboard') {
+    const params = new URLSearchParams(search)
+    const institute = params.get('institute') || '', program = params.get('program') || ''
+    const status = params.get('batch_status') || 'active'
+    if (['institute', 'program', 'batch_status'].some(key => params.getAll(key).length > 1) ||
+        !['active', 'archived', 'all'].includes(status)) return [ORGANIZATION_OPTIONS]
+    const options = cache.read(ORGANIZATION_OPTIONS)?.data
+    if ((institute && !options?.institutes.some(row => String(row.id) === institute)) ||
+        (program && !options?.programs.some(row => String(row.id) === program && String(row.institute_id) === institute))) return [ORGANIZATION_OPTIONS]
+    const query = new URLSearchParams({ view: 'dashboard', ...(status !== 'active' ? { batch_status: status } : {}),
+      ...(institute ? { institute_id: institute } : {}), ...(program ? { program_id: program } : {}) })
+    return [ORGANIZATION_OPTIONS, `/api/management/analytics/?${query}`]
+  }
   const scoped = {
     '/admin/batches': ['/api/instructor/batches/', '/api/admin/batch-instructors/'],
     '/admin/assessments': ['/api/instructor/assessments/'],
