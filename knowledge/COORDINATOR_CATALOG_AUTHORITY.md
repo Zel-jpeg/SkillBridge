@@ -26,8 +26,11 @@ their programs, including shared and admin-created entries. Shared edits appear
 in the other program views without changing ownership. Original IC requirements
 retain their shared format. Framework minimums are edited through their own
 program context; another eligible program can update details while preserving
-that rubric. Eligibility changes remain administrative. Archive/restore keeps
-the earlier creator/admin authority rather than inheriting editing rights.
+that rubric. Eligibility changes remain administrative. Assigned coordinators
+can archive visible openings; whole-partner archive/delete additionally checks
+that no hidden foreign opening will be affected. Unused records can be deleted
+after revision review and confirmation; any saved recommendation or placement
+blocks deletion. [Current card actions](COORDINATOR_CARD_ACTIONS.md).
 Original shared IC entries appear under both IC programs; configured program
 sharing works in every institute. [Visibility review](SHARED_PARTNER_VISIBILITY_REVIEW.md).
 
@@ -37,13 +40,14 @@ sharing works in every institute. [Visibility review](SHARED_PARTNER_VISIBILITY_
 | --- | --- |
 | `partner-options/` | GET bounded organization identity lookup for reuse |
 | `partners/` | GET paginated program catalog, POST partner |
-| `partners/{partner}/` | GET partner, PATCH reviewed details and image |
+| `partners/{partner}/` | GET partner, PATCH reviewed details/image, DELETE reviewed unused record |
 | `partners/{partner}/positions/` | POST a coordinator-owned program opening |
-| `positions/{position}/` | GET opening, PATCH reviewed position details and requirements |
-| `partners/{partner}/archive/` | POST archive or restore after ownership and revision checks |
-| `positions/{position}/archive/` | POST archive or restore after ownership and revision checks |
+| `positions/{position}/` | GET opening, PATCH reviewed details/requirements, DELETE reviewed unused record |
+| `partners/{partner}/archive/` | POST archive or restore after program-scope and revision checks |
+| `positions/{position}/archive/` | POST archive or restore after program-scope and revision checks |
 
-Detail payloads include `can_edit`, `can_archive`, `can_edit_requirements` for
+Detail payloads include `can_edit`, `can_archive`, `can_delete`, a deletion-block
+reason, `can_edit_requirements` for
 openings, and `revision`. PATCH and archive/restore
 require that revision. A stale review returns 409. Repeated names are flagged
 for review before creating another partner or an identically named opening in

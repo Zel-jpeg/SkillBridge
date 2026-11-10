@@ -72,8 +72,8 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertEqual(view.status_code, 200)
         self.assertTrue(view.data['can_edit'])
         self.assertTrue(view.data['positions'][0]['can_edit'])
-        self.assertFalse(view.data['can_archive'])
-        self.assertFalse(view.data['positions'][0]['can_archive'])
+        self.assertTrue(view.data['can_archive'])
+        self.assertTrue(view.data['positions'][0]['can_archive'])
         self.assertEqual(self.client.patch(detail, {'revision': view.data['revision'], 'name': 'Changed'}, format='json').status_code, 200)
         url = reverse('coordinator_position_detail', args=[self.program.pk, position['id']])
         self.assertEqual(self.client.patch(url, {'revision': position['revision'], 'slots': 3}, format='json').status_code, 200)
@@ -261,7 +261,7 @@ class CoordinatorCatalogTests(CoordinatorFixtures, APITestCase):
         self.assertEqual(edited.status_code, 200, edited.data)
         allowed_upload.assert_called_once()
         self.assertEqual(self.client.post(reverse('coordinator_partner_archive', args=[self.program.pk, partner['id']]),
-            {'revision': edited.data['revision']}, format='json').status_code, 403)
+            {'revision': edited.data['revision']}, format='json').status_code, 200)
 
     def test_archived_program_stays_readable_while_new_writes_are_denied(self):
         partner = self.create_partner()

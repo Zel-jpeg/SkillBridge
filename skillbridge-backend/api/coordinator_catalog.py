@@ -1,6 +1,7 @@
 """Program catalog management with current grants and reviewed shared edits."""
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -12,12 +13,12 @@ from rest_framework.response import Response
 from .catalog_validation import company_fields, position_data, position_scope
 from .change_events import notify_changes
 from .collection_queries import _integer
-from .company_images import CompanyImageChange, company_data, image_fields
+from .company_images import CompanyImageChange, cleanup_image, company_data, image_fields
 from .competencies import context, staff
 from .cycle_lifecycle import lifecycle_lock, release_suggestions
 from .instructor_assignments import program_payload
 from .management_access import record_action
-from .models import Company, Position, PositionRequirement, Recommendation, User
+from .models import Company, OJTPlacement, Position, PositionRequirement, Recommendation, User
 from .opportunity_scope import catalog_position_payload, eligible_recommendations
 from .partner_visibility import original_shared_position, position_visibility_q, position_visible
 from .placement_drafts import digest, lock_state
@@ -54,10 +55,17 @@ def positions_for(company, program):
     return company.positions.filter(position_visibility_q(program)).distinct()
 
 
+def position_rows():
+    return Position.objects.annotate(
+        saved_recommendations=Exists(Recommendation.objects.filter(position_id=OuterRef('pk'))),
+        saved_placements=Exists(OJTPlacement.objects.filter(position_id=OuterRef('pk'))),
+    ).prefetch_related('eligible_programs__institute', 'requirements__skill_category__framework__program')
+
+
 def company_rows():
-    return Company.objects.select_related('management_program').prefetch_related(
-        'positions__eligible_programs__institute',
-        'positions__requirements__skill_category__framework__program')
+    return Company.objects.select_related('management_program').annotate(
+        saved_placements=Exists(OJTPlacement.objects.filter(company_id=OuterRef('pk'))),
+    ).prefetch_related(Prefetch('positions', queryset=position_rows()))
 
 
 def company_revision(company):
@@ -80,19 +88,14 @@ def can_archive_company(user, company, program):
         return False
     if user.role == 'admin':
         return True
-    if company.added_by_id != user.pk or company.management_program_id != program.pk:
-        return False
-    return all(row.management_program_id == program.pk and
-               all(item.pk == program.pk for item in row.eligible_programs.all())
-               for row in company.positions.all())
+    return can_edit_company(user, company, program) and all(
+        position_visible(row, program) for row in company.positions.all())
 
 
 def can_archive_position(user, position, program):
     if not program.is_active or not program.institute.is_active:
         return False
-    return user.role == 'admin' or (
-        position.created_by_id == user.pk and position.management_program_id == program.pk
-        and {item.pk for item in position.eligible_programs.all()} == {program.pk})
+    return user.role == 'admin' or position_visible(position, program)
 
 
 def can_edit_company(user, company, program):
@@ -120,17 +123,44 @@ def can_edit_requirements(user, position, program):
                for row in position.requirements.all())
 
 
+def position_used(position, *, fresh=False):
+    recommendations = (Recommendation.objects.filter(position_id=position.pk).exists()
+                       if fresh or not hasattr(position, 'saved_recommendations') else position.saved_recommendations)
+    placements = (OJTPlacement.objects.filter(position_id=position.pk).exists()
+                  if fresh or not hasattr(position, 'saved_placements') else position.saved_placements)
+    return recommendations or placements
+
+
+def deletion_reason(user, row, program, kind, *, fresh=False):
+    if kind == 'position':
+        if not can_archive_position(user, row, program):
+            return 'Current program access does not allow deleting this opening.'
+        if position_used(row, fresh=fresh):
+            return 'Archive this position instead; saved recommendations or placement records reference it.'
+    else:
+        if not can_archive_company(user, row, program):
+            return 'An administrator must manage this partner because it includes openings outside this program.'
+        placements = (OJTPlacement.objects.filter(company_id=row.pk).exists()
+                      if fresh or not hasattr(row, 'saved_placements') else row.saved_placements)
+        if placements or any(position_used(position, fresh=fresh) for position in row.positions.all()):
+            return 'Archive this partner instead; saved recommendations or placement records reference it.'
+    return ''
+
+
 def partner_payload(company, user, program):
+    blocked = deletion_reason(user, company, program, 'partner')
     return {'id': company.pk, 'name': company.name, 'address': company.address,
         'lat': company.location_lat, 'lng': company.location_lng, **image_fields(company),
         'archived_at': company.archived_at, 'program': program_payload(program),
         'can_edit': can_edit_company(user, company, program),
         'can_archive': can_archive_company(user, company, program), 'revision': company_revision(company),
+        'can_delete': not bool(blocked), 'delete_blocked_reason': blocked,
         'positions': [position_payload(row, user, program) for row in company.positions.all()
                       if position_visible(row, program)]}
 
 
 def position_payload(position, user, program):
+    blocked = deletion_reason(user, position, program, 'position')
     return {**catalog_position_payload(position), 'company_id': position.company_id,
             'shared_institute': ({'id': program.institute_id, 'code': program.institute.code,
                                   'name': program.institute.name}
@@ -138,6 +168,7 @@ def position_payload(position, user, program):
             'can_edit': can_edit_position(user, position, program),
             'can_edit_requirements': can_edit_requirements(user, position, program),
             'can_archive': can_archive_position(user, position, program),
+            'can_delete': not bool(blocked), 'delete_blocked_reason': blocked,
             'revision': position_revision(position)}
 
 
@@ -152,7 +183,7 @@ def require_edit(allowed):
 
 
 def partner_page(rows, params, serialize):
-    if set(params) - {'page', 'page_size', 'search', 'status', '_t'} or any(len(params.getlist(key)) != 1 for key in params):
+    if set(params) - {'page', 'page_size', 'search', 'status', '_t', 'ui_version'} or any(len(params.getlist(key)) != 1 for key in params):
         raise ValidationError({'error': 'Unsupported or repeated catalog filter.'})
     state = params.get('status', 'active')
     if state not in ('active', 'archived', 'all'):
@@ -212,11 +243,13 @@ def partners(request, program_id):
 
 
 @never_cache
-@api_view(['GET', 'PATCH'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
 def partner_detail(request, program_id, company_id):
     program = context(request.user, program_id)
+    if request.method == 'DELETE':
+        return delete_entry(request, program_id, company_id, 'partner')
     if request.method == 'GET':
         company = get_object_or_404(company_rows().filter(pk__in=partners_for(program).values('pk')), pk=company_id)
         return Response(partner_payload(company, request.user, program))
@@ -290,15 +323,17 @@ def positions(request, program_id, company_id):
 
 
 @never_cache
-@api_view(['GET', 'PATCH'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('catalog')
 @lifecycle_lock
 def position_detail(request, program_id, position_id):
     program = context(request.user, program_id)
+    if request.method == 'DELETE':
+        return delete_entry(request, program_id, position_id, 'position')
     if request.method == 'PATCH':
         program = lock_program(request, program_id)
-    position = get_object_or_404(Position.objects.select_related('company').filter(
+    position = get_object_or_404(position_rows().select_related('company').filter(
         position_visibility_q(program)).distinct(), pk=position_id)
     if request.method == 'GET':
         return Response(position_payload(position, request.user, program))
@@ -326,6 +361,40 @@ def position_detail(request, program_id, position_id):
         current.exclude(pk__in=eligible_recommendations(current).values('pk')).update(is_current=False)
     record_action(request.user, 'position.update', 'position', position.pk, program_id=program.pk)
     return Response(position_payload(position, request.user, program))
+
+
+def delete_entry(request, program_id, object_id, kind):
+    fields(request.data, {'revision'})
+    try:
+        with transaction.atomic():
+            lock_state()
+            program = lock_program(request, program_id)
+            if kind == 'partner':
+                company = get_object_or_404(Company.objects.select_for_update().filter(
+                    pk__in=partners_for(program).values('pk')), pk=object_id)
+                # Lock children before rechecking history. New FK references
+                # cannot race the unused-record decision and be cascaded away.
+                list(company.positions.order_by('pk').select_for_update().values_list('pk', flat=True))
+                row = company_rows().get(pk=company.pk)
+                require_edit(can_archive_company(request.user, row, program))
+                revision, image_key = company_revision(row), row.image_key
+            else:
+                visible = Position.objects.filter(position_visibility_q(program)).values('pk')
+                row = get_object_or_404(position_rows().select_related('company').select_for_update(of=('self',))
+                    .filter(pk__in=visible), pk=object_id)
+                require_edit(can_archive_position(request.user, row, program))
+                revision, image_key = position_revision(row), ''
+            reviewed(request.data, revision)
+            blocked = deletion_reason(request.user, row, program, kind, fresh=True)
+            if blocked:
+                raise CatalogConflict({'error': blocked})
+            row.delete()
+            record_action(request.user, f'{kind}.delete', kind, object_id, program_id=program.pk)
+            if image_key:
+                transaction.on_commit(lambda: cleanup_image(image_key), robust=True)
+    except ProtectedError as error:
+        raise CatalogConflict({'error': 'Archive this entry instead; saved records still reference it.'}) from error
+    return Response(status=204)
 
 
 @api_view(['POST'])

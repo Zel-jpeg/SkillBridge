@@ -1,5 +1,8 @@
 # Coordinator editing and consistent partner cards
 
+The later [card action update](COORDINATOR_CARD_ACTIONS.md) supersedes this
+receipt's separate creator-only archive restriction and adds protected deletion.
+
 User clarification, 9 November 2026: assigned instructors/OJT coordinators must
 be able to edit their programs' partners and positions, including existing shared
 IC entries and entries another coordinator or administrator created. The manage
