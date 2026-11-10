@@ -62,10 +62,11 @@ Phase 1 was merged and clean before creating `codex/position-specific-nlp-202611
 
 ## Current checkpoint
 
-The reviewed baseline was merged at `4036e6e`. Local main is now `f77baa1`,
+The reviewed baseline was merged at `4036e6e`. Local main is now `0fb2c1d`,
 including the independently tested shared-partner visibility fix (`4ad1e63`)
-and assigned-coordinator editing with consistent admin/instructor partner cards.
-Main was merged into `codex/position-specific-nlp-20261109` as `c1880ac`, preserving
+assigned-coordinator editing/cards (`f77baa1`), and icon-only actions with reviewed
+unused-record deletion. Main was merged into `codex/position-specific-nlp-20261109`
+as `b706676`, preserving
 the existing NLP feature in the active development checkout. The NLP implementation
 itself remains unmerged into main. Its changes remain confined to matching,
 truthful preview wording, tests, the fictional fixture/verifier and documentation.
@@ -113,6 +114,18 @@ live data edit or migration was performed.
 After the merge, 23 focused coordinator-editing, shared-visibility and NLP-matching
 tests also passed together on disposable in-memory SQLite. The development
 checkout retains both completed catalog updates and the separate NLP feature.
+
+10 November card-action continuation: [receipt](COORDINATOR_CARD_ACTIONS.md).
+The feature branch `codex/coordinator-card-actions-20261109` was tested and merged
+locally into main at `0fb2c1d`. It adds accessible edit/archive/delete icons,
+current-program archive authority, fresh capabilities, deletion confirmation,
+and backend refusal to delete any recommendation/placement evidence. Final
+verification passed 61 PostgreSQL tests, 342 frontend tests, lint/build, fourteen
+coordinator browser groups and nine shared/admin browser groups. Thirty focused
+action/visibility/NLP tests passed together after merging main into the active
+NLP branch. Owned helpers stopped. No live data operation, migration or remote
+push occurred. The separate NLP feature remains unmerged into main, and the
+assessment-average "% Match" proposal remains unimplemented.
 
 Do not push remotely, migrate live data, regenerate real recommendations or alter
 historical placement snapshots. Grade-band/tag-count artifacts remain a distinct
