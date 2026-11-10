@@ -10,7 +10,7 @@ import { taxonomyBannerColor } from '../../utils/taxonomyBannerColors'
 import DashboardSummary from '../../components/dashboard/DashboardSummary'
 import DashboardHighlights from '../../components/dashboard/DashboardHighlights'
 import DashboardCarousel from '../../components/dashboard/DashboardCarousel'
-import AdminStudentCollection from '../../components/dashboard/AdminStudentCollection'
+import DashboardStudentCollection from '../../components/dashboard/DashboardStudentCollection'
 import { AttentionCard, AttentionDialog } from '../../components/dashboard/AdminDashboardAttention'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { organizationButton as button, organizationField as field } from '../../components/admin/organizationUi'
@@ -39,7 +39,7 @@ function DashboardContent({ data, options, scope, onChoose, onSelectStudent }) {
   return <>
     <DashboardSummary cards={adminDashboardCards(data, scope)} variant="instructor" />
     {scope.program ? <DashboardHighlights carousel students={students} onSelectStudent={onSelectStudent} /> : <OrganizationHighlights students={students} options={options} scope={scope} onChoose={onChoose} />}
-    <AdminStudentCollection students={students} onSelectStudent={onSelectStudent} />
+    <DashboardStudentCollection showOrganization students={students} onSelectStudent={onSelectStudent} />
   </>
 }
 

@@ -57,7 +57,4 @@ export function adminOrganizationHighlights(students, options, instituteId = '')
   })
 }
 
-export function averageCategoryScore(student) {
-  const values = Object.values(student.scores).filter(Number.isFinite)
-  return values.length ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length) : null
-}
+export { averageCategoryScore } from './dashboardStudents.js'

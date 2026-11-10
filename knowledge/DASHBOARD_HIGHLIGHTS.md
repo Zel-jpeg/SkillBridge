@@ -7,6 +7,12 @@ student collection in every scope. Institute/program cards reuse saved banners
 as thumbnails. Additional highlight cards scroll with hidden scrollbars and
 accessible arrow controls. The instructor's existing grid stays unchanged.
 
+Both staff dashboards now render the instructor's student table/cards through
+[DashboardStudentCollection](../skillbridge-frontend/src/components/dashboard/DashboardStudentCollection.jsx).
+The separate admin collection has been removed. Toolbar, OJT badges, skill
+pills, company strip, Overall coloring, hover/focus behavior and pagination are
+shared; admin adds institute/program context beneath student identity.
+
 Updated 25 October 2026. Initial highlight/student-dialog work was frontend only.
 The later approved [analytics implementation](ANALYTICS_IMPLEMENTATION.md) adds a
 shared backend read endpoint, role-specific linked summary cards and Reports &

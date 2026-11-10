@@ -16,7 +16,6 @@ import { useApi } from '../useApi'
 import { useSSE } from '../useSSE'
 import { normalizeDashboardStudent } from '../../utils/dashboardStudents'
 
-const PAGE_SIZE  = 6
 const SSE_PATH   = '/api/instructor/events/'
 
 // Dynamic color palette — cycles for any number of categories
@@ -34,12 +33,6 @@ const PALETTE = [
 ]
 export function getPalette(idx) { return PALETTE[idx % PALETTE.length] }
 
-function average(scores) {
-  const vals = Object.values(scores)
-  if (!vals.length) return null
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
-}
-
 export function useInstructorDashboard() {
   // ── Real-time SSE connection ──────────────────────────────────────
   // Singleton — shared with useEnrolledStudents if both are mounted.
@@ -53,13 +46,6 @@ export function useInstructorDashboard() {
     return apiData.map(normalizeDashboardStudent)
   }, [apiData])
 
-  // ── UI state ──────────────────────────────────────────────────────
-  const [search,          setSearch]          = useState('')
-  const [filterStatus,    setFilter]          = useState('all')
-  const [sortBy,          setSortBy]          = useState('name')
-  const [sortDir,         setSortDir]         = useState('asc')
-  const [view,            setView]            = useState('list')
-  const [page,            setPage]            = useState(1)
   const [selectedStudent, setSelectedStudent] = useState(null)
 
   // ── Sync selectedStudent with fresh data ────────────────────────────
@@ -70,70 +56,5 @@ export function useInstructorDashboard() {
     setSelectedStudent(fresh ?? null)
   }, [studentsList]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Derived stats ─────────────────────────────────────────────────
-  const completed = studentsList.filter(s => s.status === 'completed')
-
-  // Derive categories dynamically from actual score keys in completed students
-  // This ensures we always show exactly the skill categories from the assessment.
-  const categories = useMemo(() => {
-    const seen = new Set()
-    for (const s of completed) {
-      Object.keys(s.scores).forEach(k => seen.add(k))
-    }
-    // Fallback: if no one has submitted yet, check pending too
-    if (seen.size === 0) {
-      for (const s of studentsList) {
-        Object.keys(s.scores).forEach(k => seen.add(k))
-      }
-    }
-    return Array.from(seen).sort()
-  }, [completed, studentsList])
-
-  // ── Filtered + sorted ─────────────────────────────────────────────
-  const displayed = useMemo(() => {
-    let list = [...studentsList]
-    if (filterStatus !== 'all') list = list.filter(s => s.status === filterStatus)
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        s.studentId.toLowerCase().includes(q) ||
-        s.course.toLowerCase().includes(q)
-      )
-    }
-    list.sort((a, b) => {
-      if (sortBy === 'name') return sortDir === 'asc'
-        ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-      const av = sortBy === 'overall' ? (average(a.scores) ?? -1) : (a.scores[sortBy] ?? -1)
-      const bv = sortBy === 'overall' ? (average(b.scores) ?? -1) : (b.scores[sortBy] ?? -1)
-      return sortDir === 'asc' ? av - bv : bv - av
-    })
-    return list
-  }, [studentsList, search, filterStatus, sortBy, sortDir])
-
-  const visiblePage = Math.min(page, Math.max(1, Math.ceil(displayed.length / PAGE_SIZE)))
-  const paginated = useMemo(() => {
-    const start = (visiblePage - 1) * PAGE_SIZE
-    return displayed.slice(start, start + PAGE_SIZE)
-  }, [displayed, visiblePage])
-
-  function toggleSort(col) {
-    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortBy(col); setSortDir('asc') }
-  }
-
-  return {
-    studentsList, loading: apiLoading,
-    // UI state
-    search, setSearch: (v) => { setSearch(v); setPage(1) },
-    filterStatus, setFilter: (v) => { setFilter(v); setPage(1) },
-    sortBy, sortDir, toggleSort,
-    view, setView,
-    page: visiblePage, setPage,
-    selectedStudent, setSelectedStudent,
-    // Derived
-    displayed, paginated,
-    PAGE_SIZE, categories,
-    average,
-  }
+  return { studentsList, loading: apiLoading, selectedStudent, setSelectedStudent }
 }

@@ -1,5 +1,11 @@
 // Presentation of evidence already authorized and scoped by the dashboard APIs.
 import { recommendationValue, sortRecommendations } from './recommendationResults.js'
+
+// Display summary shared by both staff dashboards; not an assessment regrade.
+export function averageCategoryScore(student) {
+  const values = Object.values(student.scores).filter(Number.isFinite)
+  return values.length ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length) : null
+}
 export function normalizeDashboardStudent(row) {
   const locked = row.recommendations_locked !== false
   const competencyLocked = (row.competency_locked ?? row.recommendations_locked) !== false

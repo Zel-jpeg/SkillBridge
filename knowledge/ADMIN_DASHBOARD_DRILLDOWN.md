@@ -96,3 +96,35 @@ recommendation refresh occurred. Unrelated checkout changes remain untouched.
 
 Next step: review `/admin/dashboard` locally at school, institute and program
 scope. Main remains `0fb2c1d`; merge/push requires the user's later instruction.
+
+## Shared instructor collection correction · 10 November 2026
+
+The user requested the actual instructor table/card UI instead of a separately
+designed admin collection. Extracted the instructor dashboard's toolbar, cards,
+table, tinted skill pills, OJT badges, company strip, Overall cell, hover/focus
+feedback, score legend and pagination into
+`skillbridge-frontend/src/components/dashboard/DashboardStudentCollection.jsx`.
+Both dashboard routes now render that component; the admin-only collection was
+removed. Admin adds its institute/program/batch context under student identity.
+Instructor data and selected-profile state stay in its role hook; collection
+search/filter/sort/view/page state is owned once by the shared component.
+
+No endpoint, role authorization, grade, Match calculation or scope policy changed.
+Unknown category percentages render a dash, earned zero remains zero, and an
+approval in another batch stays explicit. The existing instructor presentation
+now has keyboard-operable sort controls and a contained narrow-table scroller.
+
+Verification complete: frontend lint, production build and all 360 Node tests
+passed. Seven dedicated browser groups verified both real staff dashboard routes
+use identical table/header/row/card classes, along with keyboard details/focus,
+card hover, shared page slices, sort/filter resets, missing-versus-zero values,
+separate Match/Overall values, approval elsewhere, phone cards and contained
+tablet tables in light/dark modes. Receipt: `work/organization-browser-9p2j55l_/`.
+Seven scoped dashboard regression groups also passed after the replacement,
+including silent event reconciliation with pagination retained:
+`work/organization-browser-6h0p2qmp/`. Desktop screenshots were reviewed for both
+roles. These use synthetic data, not configured school records. Backend tests
+were not repeated because no backend behavior changed in this correction.
+
+Next: user review of the shared table/cards on the same local feature branch.
+Main and GitHub remain unchanged, and unrelated working-tree edits are preserved.
