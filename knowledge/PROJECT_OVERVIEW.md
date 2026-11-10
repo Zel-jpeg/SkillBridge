@@ -35,6 +35,10 @@ using the same collection cards as administrators. Creator history, separate
 archive authority and program-specific requirement boundaries remain preserved.
 [Coordinator editing update](COORDINATOR_SHARED_EDITING.md).
 
+[Card actions](COORDINATOR_CARD_ACTIONS.md) add consistent icon-only controls,
+assigned-coordinator archive authority and protected, reviewed unused-record
+deletion without changing original IC data or recommendation evidence.
+
 ## Architecture
 
 | Area | Implementation | Entry points |

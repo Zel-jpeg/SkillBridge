@@ -43,8 +43,8 @@ class SharedPartnerVisibilityTests(APITestCase):
                 self.assertEqual(opening.data['shared_institute']['id'], self.ic.pk)
                 self.assertTrue(opening.data['can_edit'])
                 self.assertTrue(detail.data['can_edit'])
-                self.assertFalse(opening.data['can_archive'])
-                self.assertFalse(detail.data['can_archive'])
+                self.assertTrue(opening.data['can_archive'])
+                self.assertTrue(detail.data['can_archive'])
                 self.assertFalse(any(q['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for q in queries))
         self.opening.refresh_from_db()
         self.assertIsNone(self.opening.management_program_id)
@@ -83,8 +83,12 @@ class SharedPartnerVisibilityTests(APITestCase):
             position = self.client.get(position_url).data
             self.assertEqual(self.client.patch(partner_url, {'revision': partner['revision'], 'name': 'Updated partner'}, format='json').status_code, 200)
             self.assertEqual(self.client.patch(position_url, {'revision': position['revision'], 'slots': 5}, format='json').status_code, 200)
-            for name, pk, revision in [('partner', self.company.pk, partner['revision']), ('position', self.opening.pk, position['revision'])]:
-                self.assertEqual(self.client.post(reverse(f'coordinator_{name}_archive', args=[program.pk, pk]), {'revision': revision}, format='json').status_code, 403)
+            for name, pk in [('partner', self.company.pk), ('position', self.opening.pk)]:
+                latest = self.client.get(partner_url if name == 'partner' else position_url).data
+                archive = reverse(f'coordinator_{name}_archive', args=[program.pk, pk])
+                self.assertEqual(self.client.post(archive, {'revision': latest['revision']}, format='json').status_code, 200)
+                archived = self.client.get(partner_url if name == 'partner' else position_url).data
+                self.assertEqual(self.client.post(archive, {'revision': archived['revision'], 'restore': True}, format='json').status_code, 200)
             duplicate = self.client.post(reverse('coordinator_positions', args=[program.pk, self.company.pk]),
                 {'title': self.opening.title, 'category_requirements': []}, format='json')
             self.assertEqual(duplicate.status_code, 409, duplicate.data)

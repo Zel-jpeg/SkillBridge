@@ -201,13 +201,13 @@ def run(browser):
     # selected-detail layout listened to one URL; inline cards use the list too.
     catalog_change = """urls => window.dispatchEvent(new CustomEvent('sse:data_changed',
         {detail: {topics: ['catalog'], urls, handled: false}}))"""
-    catalog_urls = [detail, scoped + 'partners/?page=1&page_size=8&status=active&search=Coordinator%20Service']
+    catalog_urls = [detail, scoped + 'partners/?page=1&page_size=8&status=active&search=Coordinator%20Service&ui_version=card-actions-v2']
     call(context, admin_opening, 'patch', {'eligible_program_ids': [], 'category_requirements': []})
     page.evaluate(catalog_change, catalog_urls)
     expect(selected.get_by_text('Closed to new placements', exact=False)).to_be_visible()
     expect(selected.get_by_text('No eligible programs', exact=True)).to_be_visible()
     expect(selected.get_by_text('manual placement only', exact=False)).to_have_count(0)
-    expect(selected.get_by_role('button', name='Edit position Service Records Intern', exact=True)).to_have_count(0)
+    expect(selected.get_by_role('button', name='Edit position Service Records Intern', exact=True)).to_be_disabled()
     call(context, admin_opening, 'patch', {'eligible_program_ids': [program['id']],
          'category_requirements': [{'category_id': category['id'], 'percentage': 50}]})
     page.evaluate(catalog_change, catalog_urls)
@@ -227,7 +227,7 @@ def run(browser):
     dialog.get_by_role('button', name='Save Changes', exact=True).click()
     expect(dialog).to_have_count(0)
     expect(selected.get_by_text('Reviewed by another assigned coordinator.', exact=True)).to_be_visible()
-    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_have_count(0)
+    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_be_enabled()
     selected.get_by_role('button', name=re.compile('^Add position to ')).click()
     dialog = opening(page, framework, 'Peer Coordinator Opening')
     assert dialog.evaluate('el => el.contains(document.activeElement)')
@@ -288,7 +288,7 @@ def run(browser):
     expect(selected.get_by_text('Separate Program Opening', exact=True)).to_be_visible()
     expect(selected.get_by_text('Service Records Intern', exact=True)).to_have_count(0)
     expect(selected.get_by_role('button', name=re.compile('^Edit partner '))).to_be_visible()
-    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_have_count(0)
+    expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_be_disabled()
     page.screenshot(path=str(OUT / 'coordinator-reuse-phone-light.png'), full_page=True, animations='disabled')
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
     checks.append('explicit cross-program organization reuse exposes no foreign openings; assigned coordinator can edit shared metadata with archive authority retained')
@@ -308,6 +308,39 @@ def run(browser):
     assert saved['category_requirements'][0]['category_id'] == category['id']
     assert saved['category_requirements'][0]['percentage'] == 50
     checks.append('another eligible program edits shared position details while the existing foreign-program requirement IDs and minimums are preserved')
+    context.close()
+
+    context, page = session(browser, 'instructor', width=390, dark=True)
+    setup_services(context)
+    open_workspace(page, program)
+    dialog = create_partner(page, 'Unused disposable action partner')
+    dialog.get_by_role('button', name='Create partner', exact=True).click()
+    expect(dialog).to_have_count(0)
+    disposable = page.get_by_role('article', name='Unused disposable action partner', exact=True)
+    for name in ['Edit partner Unused disposable action partner', 'Archive partner', 'Delete partner Unused disposable action partner']:
+        control = disposable.get_by_role('button', name=name, exact=True)
+        expect(control).to_be_enabled()
+        assert control.inner_text().strip() == ''
+        assert control.locator('svg').count() == 1
+    disposable.get_by_role('button', name='Add position to Unused disposable action partner', exact=True).click()
+    dialog = page.get_by_role('dialog', name='Add Position', exact=True)
+    dialog.get_by_label('Position title').fill('Disposable unused position')
+    dialog.get_by_role('button', name='Add Position', exact=True).click()
+    expect(dialog).to_have_count(0)
+    disposable.get_by_role('button', name='Delete position Disposable unused position', exact=True).click()
+    confirmation = page.get_by_role('dialog', name='Delete position?', exact=True)
+    expect(confirmation).to_contain_text('cannot be undone')
+    confirmation.get_by_role('button', name='Cancel', exact=True).click()
+    expect(disposable.get_by_role('heading', name='Disposable unused position', exact=True)).to_be_visible()
+    disposable.get_by_role('button', name='Delete position Disposable unused position', exact=True).click()
+    page.get_by_role('dialog', name='Delete position?', exact=True).get_by_role('button', name='Delete', exact=True).click()
+    expect(page.get_by_role('dialog', name='Delete position?', exact=True)).to_have_count(0)
+    expect(disposable.get_by_role('heading', name='Disposable unused position', exact=True)).to_have_count(0)
+    disposable.get_by_role('button', name='Delete partner Unused disposable action partner', exact=True).click()
+    page.get_by_role('dialog', name='Delete partner?', exact=True).get_by_role('button', name='Delete', exact=True).click()
+    expect(page.get_by_role('dialog', name='Delete partner?', exact=True)).to_have_count(0)
+    expect(disposable).to_have_count(0)
+    checks.append('three accessible icon-only actions; delete confirmation cancellation and real deletion of unused disposable position/partner')
     context.close()
 
 

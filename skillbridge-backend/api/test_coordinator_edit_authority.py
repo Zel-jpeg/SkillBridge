@@ -36,7 +36,7 @@ class AssignedCoordinatorEditingTests(CoordinatorFixtures, APITestCase):
         other = self.client.get(reverse('coordinator_position_detail', args=[self.other.pk, position.pk])).data
         self.assertEqual(other['description'], 'Updated shared work context.')
         self.assertEqual(other['requirements'], {category.name: 65})
-        self.assertFalse(other['can_archive'])
+        self.assertTrue(other['can_archive'])
         self.assertEqual(ManagementAction.objects.filter(action='position.update', actor=self.owner).count(), 1)
         company.refresh_from_db()
         self.assertEqual(company.added_by_id, self.admin.pk)

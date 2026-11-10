@@ -57,21 +57,22 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const pending = useRef(false)
-  const url = `${base}partners/?page=${page}&page_size=8&status=${status}&search=${encodeURIComponent(search)}`
+  const url = `${base}partners/?page=${page}&page_size=8&status=${status}&search=${encodeURIComponent(search)}&ui_version=card-actions-v2`
   const { data } = useApi(url)
   const sharedEditor = editor?.kind === 'position' && editor.row?.shared_institute && !editor.row.eligibility_configured
   const { data: sharedSkills } = useApi('/api/categories/', { skip: !sharedEditor })
   function current() { return scopeCurrent(scopeVersion) }
   function refresh() { applyDataChange({ topics: ['catalog'] }) }
   function close() { setEditor(null); setRecovery(null) }
-  async function open(kind, row, company, archiving = false) {
+  async function open(kind, row, company, operation = 'edit') {
     if (pending.current) return
     pending.current = true; setBusy(true); setError('')
     try {
       const { data: fresh } = await api.get(`${base}${kind === 'partner' ? 'partners' : 'positions'}/${row.id}/`)
       if (!current()) return
-      if (!(archiving ? fresh.can_archive : fresh.can_edit) || !archiving && fresh.archived_at) { refresh(); setError('This entry is no longer editable. Review its current status and authority.'); return }
-      if (archiving) setAction({ kind, row: fresh })
+      const permitted = operation === 'delete' ? fresh.can_delete : operation === 'archive' ? fresh.can_archive : fresh.can_edit
+      if (!permitted || operation === 'edit' && fresh.archived_at) { refresh(); setError(fresh.delete_blocked_reason || 'This action is no longer available. Review current status and permissions.'); return }
+      if (operation !== 'edit') setAction({ kind, row: fresh, operation })
       else { setRecovery(null); setEditor({ kind, row: fresh, company, key: Date.now() }) }
     } catch (failure) { if (current()) setError(requestErrorMessage(failure)) }
     finally { pending.current = false; setBusy(false) }
@@ -136,7 +137,9 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
     if (action.failed) return { ok: false, message: 'Close this confirmation and review the refreshed entry before trying again.' }
     pending.current = true
     try {
-      await api.post(`${base}${action.kind === 'partner' ? 'partners' : 'positions'}/${action.row.id}/archive/`, { revision: action.row.revision, restore: Boolean(action.row.archived_at) })
+      const target = `${base}${action.kind === 'partner' ? 'partners' : 'positions'}/${action.row.id}/`
+      if (action.operation === 'delete') await api.delete(target, { data: { revision: action.row.revision } })
+      else await api.post(`${target}archive/`, { revision: action.row.revision, restore: Boolean(action.row.archived_at) })
       if (current()) { setAction(null); setNotice('Catalog status updated.'); refresh() }
       return { ok: true }
     } catch (failure) {
@@ -170,8 +173,10 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
               onTogglePosition={key => setExpanded(previous => companyDisclosures(previous, { type: 'toggle', key }))}
               onEditCompany={row => open('partner', row)}
               onEditPosition={({ company: row, position }) => open('position', position, row)}
+              onDeleteCompany={row => open('partner', row, null, 'delete')}
+              onDeletePosition={({ company: row, position }) => open('position', position, row, 'delete')}
               onAddPosition={row => { setRecovery(null); setEditor({ kind: 'position', company: row, key: Date.now() }) }}
-              onArchive={({ kind, item }) => open(kind, item, kind === 'position' ? company : null, true)} />
+              onArchive={({ kind, item }) => open(kind, item, kind === 'position' ? company : null, 'archive')} />
           })}
         </div>
         {!data?.count && <p className="rounded-xl border border-dashed border-gray-300 p-6">No partners match this view. You can create a partner before creating a batch.</p>}
@@ -185,9 +190,9 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
         fixedProgram={program} categories={(sharedSkills || []).map(row => row.name)}
         requirementsReadOnly={editor.row?.can_edit_requirements === false}
         confirmDiscard onSubmit={save} onClose={close} saveBlocked={Boolean(recovery)} recovery={recoveryPanel} />}</Suspense>}
-    {action && <ConfirmModal title={`${action.row.archived_at ? 'Restore' : 'Archive'} ${action.kind}?`}
-      message={`${action.row.title || action.row.name}. Current approved placements can prevent archiving. Saved assessment evidence is retained.`}
-      confirmLabel={action.row.archived_at ? 'Restore' : 'Archive'} archive onCancel={() => setAction(null)} onConfirm={archive} />}
+    {action && <ConfirmModal title={`${action.operation === 'delete' ? 'Delete' : action.row.archived_at ? 'Restore' : 'Archive'} ${action.kind}?`}
+      message={action.operation === 'delete' ? `Permanently delete ${action.row.title || action.row.name}? This cannot be undone. Entries referenced by recommendations or placements cannot be deleted; archive them instead.` : `${action.row.title || action.row.name}. Changes apply to all program views sharing this record. Current approved placements can prevent archiving. Saved assessment evidence is retained.`}
+      confirmLabel={action.operation === 'delete' ? 'Delete' : action.row.archived_at ? 'Restore' : 'Archive'} archive={action.operation !== 'delete'} onCancel={() => setAction(null)} onConfirm={archive} />}
   </div>
 }
 

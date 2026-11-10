@@ -42,6 +42,11 @@ with sync_playwright() as p:
 
         page.goto(BASE + '/admin/companies?' + query, wait_until='networkidle')
         expect(page.get_by_text('Synthetic IC legacy partner', exact=True).first).to_be_visible()
+        admin_card = page.get_by_role('article', name='Synthetic IC legacy partner', exact=True)
+        for label in ['Edit partner Synthetic IC legacy partner', 'Archive partner', 'Delete partner Synthetic IC legacy partner']:
+            icon = admin_card.get_by_role('button', name=label, exact=True)
+            expect(icon).to_be_enabled()
+            assert icon.inner_text().strip() == '' and icon.locator('svg').count() == 1
         page.goto(BASE + '/admin/placements?' + query, wait_until='networkidle')
         expect(page.get_by_text('Synthetic IC legacy partner', exact=True).first).to_be_visible()
         history = api(context, f'/api/placements/?institute_id={ic["id"]}&program_id={program["id"]}').json()
@@ -123,10 +128,19 @@ with sync_playwright() as p:
         editor.get_by_role('button', name='Save Changes', exact=True).click()
         expect(editor).to_have_count(0)
         expect(selected.get_by_text(f'≥{60 + index * 5}%', exact=True)).to_be_visible()
-        expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_have_count(0)
+        expect(selected.get_by_role('button', name='Archive partner', exact=True)).to_be_enabled()
+        expect(selected.get_by_role('button', name='Edit partner Synthetic IC legacy partner', exact=True)).to_be_enabled()
+        protected_delete = selected.get_by_role('button', name='Delete partner Synthetic IC legacy partner', exact=True)
+        expect(protected_delete).to_be_disabled()
+        assert 'saved recommendations or placement records' in protected_delete.get_attribute('title')
+        for action_name in ['Edit partner Synthetic IC legacy partner', 'Archive partner', 'Delete partner Synthetic IC legacy partner']:
+            control = selected.get_by_role('button', name=action_name, exact=True)
+            assert control.inner_text().strip() == ''
+            assert control.locator('svg').count() == 1
         page.get_by_role('button', name='List view', exact=True).first.click()
         expect(selected.get_by_role('heading', name='Synthetic IC legacy partner', exact=True)).to_be_visible()
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+        selected.screenshot(path=str(OUT / f'shared-card-actions-{program["code"]}.png'))
         print(f'PASS {program["code"]}: instructor edits shared position description/minimum, other program sees saved change, archive authority retained')
     context.close()
     browser.close()
