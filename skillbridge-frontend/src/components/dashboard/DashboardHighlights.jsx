@@ -45,7 +45,7 @@ export default function DashboardHighlights({ students, onSelectStudent, loading
         const palette = palettes[index % palettes.length]
         return <button type="button" key={category} aria-label={`View ${category} ranking`} aria-haspopup="dialog" onClick={() => setCategory(category)} className={card}>
           <div className="flex items-start justify-between gap-2"><span className={`min-w-0 break-words rounded-full px-2.5 py-1 text-xs font-medium ${palette.pill}`}>{category}</span><ViewIcon /></div>
-          <p className="mt-3 truncate text-xs font-semibold text-gray-900 dark:text-white">{student.name}</p><p className={`mt-0.5 text-lg font-bold ${scoreColor(score)}`}>{score}%</p>
+          <p className="mt-3 truncate text-xs font-semibold text-gray-900 dark:text-white">{tiedCount > 1 ? `${tiedCount} students share the top score` : student.name}</p><p className={`mt-0.5 text-lg font-bold ${scoreColor(score)}`}>{score}%</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Category assessment score</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{tiedCount > 1 ? `${tiedCount} students tied for highest score` : categoryPointsLabel(student, category) || 'View assessment details'}</p>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div className={`h-full rounded-full ${palette.bar}`} style={{ width: barWidth(score) }} /></div>

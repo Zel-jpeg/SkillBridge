@@ -51,9 +51,19 @@ export function skillRankings(students, category) {
   let rank = 0
   return ranked.map((student, index) => {
     const score = student.scores[category]
-    if (index === 0 || score !== ranked[index - 1].scores[category]) rank = index + 1
+    if (index === 0 || score !== ranked[index - 1].scores[category]) rank += 1
     return { student, score, rank }
   })
+}
+
+export function skillScoreGroups(ranked) {
+  const groups = []
+  for (const row of ranked) {
+    const current = groups.at(-1)
+    if (current && current.score === row.score) current.students.push(row.student)
+    else groups.push({ rank: row.rank, score: row.score, students: [row.student] })
+  }
+  return groups
 }
 
 export function categoryPointsLabel(student, category) {

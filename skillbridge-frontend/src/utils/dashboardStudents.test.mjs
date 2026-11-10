@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { categoryPointsLabel, dashboardHighlights, normalizeDashboardStudent, skillRankings } from './dashboardStudents.js'
+import { categoryPointsLabel, dashboardHighlights, normalizeDashboardStudent, skillRankings, skillScoreGroups } from './dashboardStudents.js'
 
 const row = (id, extra = {}) => ({ id, student_name: `Student ${id}`, has_submitted: true,
   recommendations_locked: false, combined_category_scores: [{ category: 'Web', percentage: 80 }],
@@ -57,10 +57,22 @@ test('actual full category marks keep 100%, with raw points and shared ranks for
     row(2, { student_name: 'Alpha', combined_category_scores: [{ category: 'Custom category', percentage: 100, raw_score: 20, max_score: 20 }] }),
     row(3, { combined_category_scores: [{ category: 'Custom category', percentage: 80, raw_score: 8, max_score: 10 }] })].map(normalizeDashboardStudent)
   const ranked = skillRankings(students, 'Custom category')
-  assert.deepEqual(ranked.map(row => [row.student.name, row.score, row.rank]), [['Alpha', 100, 1], ['Zeta', 100, 1], ['Student 3', 80, 3]])
+  assert.deepEqual(ranked.map(row => [row.student.name, row.score, row.rank]), [['Alpha', 100, 1], ['Zeta', 100, 1], ['Student 3', 80, 2]])
   assert.equal(dashboardHighlights(students).leaders[0].tiedCount, 2)
   assert.equal(categoryPointsLabel(students[0], 'Custom category'), '9/9 assessment points')
   assert.equal(categoryPointsLabel(students[1], 'Custom category'), '20/20 assessment points')
+})
+
+test('top three distinct score groups retain every tied student, with later groups kept in remaining rankings', () => {
+  const students = [100, 100, 100, 90, 90, 80, 70].map((percentage, i) => normalizeDashboardStudent(row(i + 1, {
+    combined_category_scores: [{ category: 'Custom category', percentage, raw_score: percentage, max_score: 100 }],
+  })))
+  const ranked = skillRankings(students, 'Custom category')
+  const groups = skillScoreGroups(ranked)
+  assert.deepEqual(groups.map(group => [group.rank, group.score, group.students.length]), [[1, 100, 3], [2, 90, 2], [3, 80, 1], [4, 70, 1]])
+  assert.equal(groups.slice(0, 3).flatMap(group => group.students).length, 6)
+  assert.deepEqual(ranked.filter(row => row.rank > 3).map(row => row.student.id), [7])
+  assert.equal(new Set(groups.flatMap(group => group.students).map(student => student.id)).size, 7)
 })
 
 test('skill cards and rankings retain unlocked category results when only recommendations are stale', () => {

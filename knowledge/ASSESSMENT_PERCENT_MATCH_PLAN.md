@@ -101,8 +101,9 @@ coverage. An actual full-mark category result remains 100%. Cards now label that
 metric, show earned/possible assessment points when available, and identify tied
 leaders. The ranking dialog uses the same competency-evidence gate as the cards,
 so stale recommendations do not hide valid category grades. Equal percentages
-share competition ranks (1, 1, 3); alphabetical names only determine display
-order. No grading, matching, eligibility or database values were changed.
+share a score-group rank (1, 1, 2); alphabetical names only determine list order.
+The shared-score podium below supersedes the earlier competition-rank layout.
+No grading, matching, eligibility or database values were changed.
 
 Missing results are explained in plain language and the breakdown. Following
 the user's request to keep a number visible, the current partial-display rule
@@ -132,9 +133,8 @@ merge, push, migration or live recommendation refresh is part of this change.
   Backend rank, numerical minimum checks, allocation, saved scores and snapshots
   are unchanged. The partial result is a display calculation from saved evidence.
 - When no required categories have results, the headline shows `0/N assessed`.
-- Top skill cards in the ranking dialog use equal-width stretched grid cards,
-  natural rank order and explicit `Tied #1` labels. Mobile cards stack in equal
-  rows; long names no longer change the relative size of tied cards.
+- The earlier equal-sized individual tied cards were replaced by the shared-score
+  podium described below, following the user's clarified UI preference.
 
 Frontend tests: **350 passed**; ESLint and production build passed. Browser
 verification passed for partial/empty results at 390/1440 pixels and nine
@@ -148,3 +148,36 @@ Receipts: `work/partial-match-tests.txt`, `work/partial-match-lint.txt`,
 `work/organization-browser-0hglnh7d/browser.txt`. Implementation is complete;
 save this checkpoint with its feature-branch commit. Review locally; do not
 merge or push without the user's instruction.
+
+## Shared-score podium — 10 November 2026
+
+The user clarified that identical scores should share one card with individual
+profile pictures and clickable names in a scrollable list. Submission time is
+not used to distinguish those students. Ranks now represent distinct stored
+combined category percentages: 100%, 100%, 80% has student ranks 1, 1, 2 and
+two podium cards. No score, answer, timestamp or recommendation is rewritten.
+
+The three highest distinct scores appear as a large center gold card, medium
+left silver card and smaller right bronze card. On narrow screens gold appears
+above silver/bronze. Each card has a bounded scroll area, with all students in
+that score group retained. Every avatar/name row opens the existing student
+information modal. The parent dialog and list scroll/focus survive closing it.
+The outer score card is an article, avoiding nested interactive buttons.
+
+Groups below the third distinct score remain in the paginated ranking list.
+Student counts and pagination offsets include every member of the podium groups.
+Dashboard category previews state the total number sharing the highest score.
+The logic uses scoped assessment evidence and supports any institute/program.
+
+Checks: **351 frontend tests passed**, ESLint and production build passed.
+All nine dashboard browser scenario groups passed. They verify descending
+gold/silver/bronze dimensions, tied-member scrolling, separate avatar/name
+buttons, keyboard selection, nested student modals, restored focus/scroll and
+320/375/768/1024/1366/1920-pixel layouts in light/dark themes. Long-name shared
+cards also pass at 390 and 1440 pixels. Screenshots were visually inspected.
+Synthetic read-only fixtures were used; backend grading and live data were not
+changed. Receipts:
+`work/shared-podium-tests.txt`, `work/shared-podium-lint.txt`,
+`work/shared-podium-build.txt`, `work/shared-podium-browser.txt`, and
+`work/organization-browser-9vn5va_z/browser.txt`. Save this completed checkpoint
+with its feature-branch commit. Main remains `0fb2c1d`; do not merge or push.

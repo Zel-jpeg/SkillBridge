@@ -4,7 +4,7 @@ import Avatar from '../Avatar'
 import Pagination from '../Pagination'
 import { ChevronRightIcon, ClockIcon, ListIcon, SearchIcon, SkillIcon, StarIcon, UserIcon } from '../Icons'
 import { scoreBg, scoreColor } from '../../utils/formatters'
-import { categoryPointsLabel, skillRankings } from '../../utils/dashboardStudents'
+import { categoryPointsLabel, skillRankings, skillScoreGroups } from '../../utils/dashboardStudents'
 import './skillLeaderboard.css'
 
 const PAGE_SIZE = 5
@@ -13,17 +13,21 @@ function ScoreBar({ score }) {
   return <span className="lb-score-track" aria-hidden="true"><span className={scoreBg(score)} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} /></span>
 }
 
-function PodiumCard({ student, rank, score, category, tied, onSelectStudent }) {
-  return <button type="button" className={`lb-podium-card lb-podium-card--${rank}`} data-rank={rank}
-    aria-haspopup="dialog" aria-label={`View ${student.name}'s details`} onClick={() => onSelectStudent(student)}>
-    <span className="lb-podium-rank">{tied ? 'Tied ' : ''}#{rank}</span>
+function PodiumCard({ students, rank, score, category, onSelectStudent }) {
+  return <article className={`lb-podium-card lb-podium-card--${rank}`} data-rank={rank} aria-label={`Rank ${rank}: ${score}% category score`}>
+    <span className="lb-podium-rank">#{rank}</span>
     <span className="lb-medal" aria-hidden="true"><StarIcon size={13} /></span>
-    <Avatar name={student.name} photoUrl={student.photoUrl} tone="neutral" className="lb-avatar h-12 w-12 rounded-full text-sm" />
-    <span className="lb-podium-identity"><strong>{student.name}</strong><span>{student.course || 'Course not provided'}</span><span className="sr-only">{student.studentId || 'No student ID'}</span></span>
     <strong className={`lb-podium-score ${scoreColor(score)}`}>{score}%</strong>
-    <span className="lb-muted">{categoryPointsLabel(student, category) || 'Category assessment score'}</span>
+    <span className="lb-muted">{students.length} {students.length === 1 ? 'student' : 'students share this score'}</span>
+    <ul className="lb-podium-students" aria-label={`Students with rank ${rank}`} tabIndex={0}>
+      {students.map(student => <li key={student.id}><button type="button" className="lb-podium-student"
+        aria-haspopup="dialog" aria-label={`View ${student.name}'s details`} onClick={() => onSelectStudent(student)}>
+        <Avatar name={student.name} photoUrl={student.photoUrl} tone="neutral" className="lb-avatar h-8 w-8 shrink-0 rounded-full text-xs" />
+        <span><strong>{student.name}</strong><span>{student.course || 'Course not provided'}</span><span>{categoryPointsLabel(student, category)}</span></span>
+      </button></li>)}
+    </ul>
     <ScoreBar score={score} />
-  </button>
+  </article>
 }
 
 // Search only this list. Global podium positions are assigned before filtering.
@@ -53,11 +57,11 @@ function ListPagination({ list, summary, label }) {
     : <p className="lb-muted lb-range" role="status">{summary}</p>
 }
 
-function RemainingRankings({ rows, totalRanked, category, onSelectStudent }) {
+function RemainingRankings({ rows, totalRanked, shownAbove, category, onSelectStudent }) {
   const list = useStudentPage(rows)
   const summary = list.query.trim()
     ? `Showing ${list.visible.length ? list.from + 1 : 0}–${list.from + list.visible.length} of ${list.filtered.length} matching students`
-    : list.visible.length ? `Showing students ${list.from + 4}–${list.from + list.visible.length + 3} of ${totalRanked}` : 'No remaining ranked students'
+    : list.visible.length ? `Showing students ${list.from + shownAbove + 1}–${list.from + list.visible.length + shownAbove} of ${totalRanked}` : 'No remaining ranked students'
   return <section className="lb-section" aria-label="Remaining rankings">
     <div className="lb-section-heading"><h3><ListIcon size={19} />Remaining rankings <span className="lb-count" role="status">{list.query.trim() ? `${list.filtered.length} of ${rows.length}` : rows.length} students</span></h3>
       <SearchStudents label="Search remaining students…" value={list.query} onChange={list.search} /></div>
@@ -95,8 +99,8 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
   // Category evidence stays valid when only recommendations need refreshing.
   const ranked = useMemo(() => skillRankings(allStudents, category), [allStudents, category])
   const pending = useMemo(() => allStudents.filter(student => student.status === 'pending').map(student => ({ student })), [allStudents])
-  const top = ranked.slice(0, 3)
-  const rest = useMemo(() => ranked.slice(3), [ranked])
+  const top = useMemo(() => skillScoreGroups(ranked).slice(0, 3), [ranked])
+  const rest = useMemo(() => ranked.filter(row => row.rank > 3), [ranked])
   const unavailable = allStudents.length - ranked.length - pending.length
   const batchNames = [...new Set(allStudents.map(student => student.batch?.name).filter(Boolean))]
   const courses = [...new Set(allStudents.map(student => student.course).filter(Boolean))]
@@ -108,12 +112,12 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
     footer={<p className="lb-footer-hint"><UserIcon size={15} />Select any student to view full assessment details.</p>}>
     <div className="lb-body">
       <div className="lb-summary"><p><strong>{allStudents.length}</strong> students <span><strong>{ranked.length}</strong> ranked</span><span><strong>{pending.length}</strong> not yet assessed</span></p><p className="lb-muted">Ranked by combined category score, highest first.</p></div>
-      <p className="lb-muted mt-3">Category assessment score = earned points ÷ possible points × 100. Equal scores share a rank; names only order tied students. This is separate from a position’s Match percentage.</p>
+      <p className="lb-muted mt-3">Category assessment score = earned points ÷ possible points × 100. Each distinct score has one rank; equal scores share a card. Scroll its student list and select a name for details. Names only control list order. This is separate from a position’s Match percentage.</p>
       {unavailable > 0 && <p className="lb-muted lb-unavailable">{unavailable} other student{unavailable === 1 ? ' has' : 's have'} no current unlocked score in this category.</p>}
       {top.length ? <section className="lb-top" aria-label="Top performers"><h3><StarIcon size={18} />Top performers</h3><div className={`lb-podium lb-podium--${top.length}`}>
-        {top.map(row => <PodiumCard key={row.student.id} {...row} category={category} tied={ranked.filter(item => item.rank === row.rank).length > 1} onSelectStudent={onSelectStudent} />)}
+        {top.map(group => <PodiumCard key={group.rank} {...group} category={category} onSelectStudent={onSelectStudent} />)}
       </div></section> : <div className="lb-empty"><SkillIcon size={32} /><h3>No results yet</h3><p className="lb-muted">No current unlocked category results are available for {category}.</p></div>}
-      {rest.length > 0 && <RemainingRankings key={`remaining-${category}`} rows={rest} totalRanked={ranked.length} category={category} onSelectStudent={onSelectStudent} />}
+      {rest.length > 0 && <RemainingRankings key={`remaining-${category}`} rows={rest} totalRanked={ranked.length} shownAbove={ranked.length - rest.length} category={category} onSelectStudent={onSelectStudent} />}
       {pending.length > 0 && <PendingStudents key={`pending-${category}`} rows={pending} onSelectStudent={onSelectStudent} />}
     </div>
   </DialogShell>
