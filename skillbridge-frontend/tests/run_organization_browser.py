@@ -114,6 +114,7 @@ try:
             ('--sidebar-accordion', 'sidebar_accordion_playwright.py'),
             ('--shared-visibility', 'shared_visibility_playwright.py'),
             ('--dashboard-highlights', 'dashboard_highlights_playwright.py'),
+            ('--missing-match', 'missing_match_playwright.py'),
             ('--dashboard-first', 'dashboard_first_playwright.py'),
             ('--position-dialog', 'position_dialog_playwright.py'),
             ('--numeric-import', 'assessment_numeric_import_playwright.py'),

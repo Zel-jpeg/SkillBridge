@@ -28,7 +28,7 @@ function CandidateMatch({ recommendation, distance }) {
   const band = !available ? 'missing' : numeric >= 80 ? 'strong' : numeric >= 60 ? 'fair' : 'low'
   return <div className={`pl-candidate-match pl-candidate-match--${band}`}>
     <div><strong>{isAssessmentMatch(recommendation) ? recommendationDisplay(recommendation) : available ? coverageDisplay(recommendation) : 'Not available'}</strong>{available && <span className="pl-candidate-match-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, numeric))}%` }} /></span>}</div>
-    <p>{!available ? 'Incomplete or unavailable assessment evidence' : isAssessmentMatch(recommendation) ? 'Assessment-based Match' : isAssessmentLed(recommendation) ? 'Requirement coverage · not confidence' : band === 'strong' ? 'Legacy strong match' : band === 'fair' ? 'Legacy fair match' : 'Legacy low match · review carefully'}</p>
+    <p>{!available ? 'Assessment results missing or unavailable' : isAssessmentMatch(recommendation) ? 'Assessment-based Match' : isAssessmentLed(recommendation) ? 'Requirement coverage · not confidence' : band === 'strong' ? 'Legacy strong match' : band === 'fair' ? 'Legacy fair match' : 'Legacy low match · review carefully'}</p>
     {distance != null && <p className="pl-muted">{distance} km</p>}
     <MatchBreakdown recommendation={recommendation} />
   </div>

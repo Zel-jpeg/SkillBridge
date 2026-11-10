@@ -20,8 +20,8 @@ test('assessment Match shows actual category average while coverage keeps its se
 test('incomplete assessment Match never falls back to a legacy score; assessed zero is a real percentage', () => {
   const missing = assessmentMatch(null, { assessment_details: { required_mean: null, unknown: 1, all_targets_met: false } })
   assert.equal(recommendationValue(missing), null)
-  assert.equal(recommendationDisplay(missing), 'Incomplete evidence')
-  assert.equal(recommendationMetrics(missing)[1][1], 'Incomplete evidence')
+  assert.equal(recommendationDisplay(missing), '—')
+  assert.equal(recommendationMetrics(missing)[1][1], 'Assessment results missing')
   assert.equal(recommendationDisplay(assessmentMatch(0)), '0%')
 })
 

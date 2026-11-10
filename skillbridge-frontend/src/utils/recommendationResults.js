@@ -39,7 +39,7 @@ export function recommendationDisplay(row) {
   const rank = recommendationRank(row)
   if (isAssessmentMatch(row)) {
     const value = recommendationValue(row)
-    return value == null ? 'Incomplete evidence' : `${Number(value.toFixed(1))}%`
+    return value == null ? '—' : `${Number(value.toFixed(1))}%`
   }
   return isAssessmentLed(row) && rank != null ? `#${rank}` : Number.isFinite(row?.match_score) ? `${row.match_score}%` : 'Not available'
 }
@@ -71,7 +71,7 @@ export function componentPercent(value) {
 export function recommendationMetrics(row) {
   return isAssessmentMatch(row) ? [
     ['Match', recommendationDisplay(row)],
-    ['Minimum requirements', recommendationDetails(row).all_targets_met ? 'All met' : recommendationDetails(row).unknown ? 'Incomplete evidence' : 'Not all met'],
+    ['Minimum requirements', recommendationDetails(row).all_targets_met ? 'All met' : recommendationDetails(row).unknown ? 'Assessment results missing' : 'Not all met'],
     ['NLP text similarity', componentPercent(row.nlp_score_component)],
     ['Location score', componentPercent(row.location_score_component)],
   ] : isAssessmentLed(row) ? [

@@ -429,7 +429,7 @@ export default function StudentResults() {
                   </div>
                 )}
 
-                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : r.assessment_details?.unknown ? 'Incomplete assessment evidence' : 'Below one or more category minimums'}</p>}
+                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : r.assessment_details?.unknown ? 'Match unavailable — some required categories have no assessment results yet.' : 'Below one or more category minimums'}</p>}
                 <MatchBreakdown recommendation={r} />
                 <div className="mt-auto pt-3">
                   <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"

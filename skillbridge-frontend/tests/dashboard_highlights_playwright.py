@@ -205,9 +205,13 @@ with sync_playwright() as p:
         page.keyboard.press('Escape')
         expect(top).to_be_focused()
         skill = skills.get_by_role('button', name='View Web ranking', exact=True)
+        expect(skill.get_by_text('Category assessment score', exact=True)).to_be_visible()
+        expect(skill.get_by_text('100/100 assessment points', exact=True)).to_be_visible()
+        expect(skills.get_by_role('button', name='View Zero score ranking', exact=True).get_by_text('10 students tied for highest score', exact=True)).to_be_visible()
         skill.click()
         expect(dialog(page).get_by_role('heading', name='Web Leaderboard', exact=True)).to_be_visible()
         expect(dialog(page).get_by_text('10 assessed · 3 pending', exact=True)).to_be_visible()
+        expect(dialog(page).get_by_text('100/100 assessment points', exact=True)).to_be_visible()
         # Native buttons support keyboard selection from podium and lower ranks.
         podium = dialog(page).get_by_role('button', name="View Synthetic Student 01's details", exact=True)
         podium.focus()
@@ -249,6 +253,7 @@ with sync_playwright() as p:
         skills.get_by_role('button', name='View Zero score ranking', exact=True).click()
         expect(dialog(page).get_by_role('heading', name='Zero score Leaderboard', exact=True)).to_be_visible()
         expect(dialog(page).get_by_text('No results yet', exact=True)).to_have_count(0)
+        assert dialog(page).locator('.lb-podium-rank').all_text_contents() == ['#1', '#1', '#1']
         page.keyboard.press('Escape')
         checks.append(f'{role}: matching highlights, keyboard dialogs, rankings, earned zero and read-only details')
 

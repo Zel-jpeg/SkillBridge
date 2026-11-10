@@ -44,13 +44,32 @@ export function normalizeDashboardStudent(row) {
   }
 }
 
+export function skillRankings(students, category) {
+  const ranked = students.filter(student => student.status === 'completed' &&
+    (student.competencyLocked ?? student.recommendationsLocked) !== true && Number.isFinite(student.scores[category]))
+    .sort((a, b) => b.scores[category] - a.scores[category] || a.name.localeCompare(b.name) || a.id - b.id)
+  let rank = 0
+  return ranked.map((student, index) => {
+    const score = student.scores[category]
+    if (index === 0 || score !== ranked[index - 1].scores[category]) rank = index + 1
+    return { student, score, rank }
+  })
+}
+
+export function categoryPointsLabel(student, category) {
+  const evidence = student.combinedCategoryScores?.find(row => row.category === category)
+  const raw = evidence?.raw_score, maximum = evidence?.max_score
+  return Number.isFinite(raw) && Number.isFinite(maximum) && maximum > 0 && raw >= 0 && raw <= maximum
+    ? `${raw}/${maximum} assessment points` : null
+}
+
 export function dashboardHighlights(students) {
-  const eligible = students.filter(student => student.status === 'completed' && !student.competencyLocked)
+  const eligible = students.filter(student => student.status === 'completed' &&
+    (student.competencyLocked ?? student.recommendationsLocked) !== true)
   const categories = [...new Set(eligible.flatMap(student => Object.keys(student.scores)))].sort()
   const leaders = categories.map(category => {
-    const ranked = eligible.filter(student => Number.isFinite(student.scores[category]))
-      .sort((a, b) => b.scores[category] - a.scores[category] || a.name.localeCompare(b.name) || a.id - b.id)
-    return { category, student: ranked[0], score: ranked[0].scores[category] }
+    const ranked = skillRankings(eligible, category)
+    return { category, ...ranked[0], tiedCount: ranked.filter(row => row.rank === 1).length }
   })
   const topMatches = eligible.filter(student => !student.recommendationsLocked && Number.isFinite(student.match))
     .sort((a, b) => b.match - a.match || a.name.localeCompare(b.name) || a.id - b.id)

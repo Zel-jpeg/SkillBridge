@@ -12,8 +12,9 @@ assessment raw/max points are pooled within each category first. Minimums are
 thresholds, not weights. Unrelated categories, tags, location and NLP do not
 enter this percentage. The result is not a hiring probability.
 
-If any required category is unassessed, display **Incomplete evidence**, with no
-headline percentage. A category actually assessed at zero counts as zero.
+If any required category is unassessed, display **—** beside the Match label,
+with a short note explaining the missing assessment results and no headline
+percentage. A category actually assessed at zero counts as zero.
 Positions without positive requirements remain unavailable as before.
 
 Personal ranking groups all-minimums-met options first, fully assessed but
@@ -89,3 +90,30 @@ Browser fixtures block external map/CDN requests and send no emails. They do not
 establish live Supabase availability, field assessment validity or hiring-success
 accuracy. The 60/25/15 model-comparison benchmark remains an explicitly labelled
 legacy reference; its accuracy is not the new Match percentage.
+
+## Score clarity follow-up — 10 November 2026
+
+The skill-leader cards use combined category assessment grades, not position
+coverage. An actual full-mark category result remains 100%. Cards now label that
+metric, show earned/possible assessment points when available, and identify tied
+leaders. The ranking dialog uses the same competency-evidence gate as the cards,
+so stale recommendations do not hide valid category grades. Equal percentages
+share competition ranks (1, 1, 3); alphabetical names only determine display
+order. No grading, matching, eligibility or database values were changed.
+
+Unavailable Match headlines now use a dash with the same Match label as scored
+cards. Plain-language notes and the breakdown explain unassessed categories;
+missing results never become 0% or a partial average. This formatting is shared
+by the recommendation display helper across screens.
+
+Verification: **348 frontend tests passed**, ESLint and production build passed.
+The dashboard browser regression passed eight scenario groups, including cards,
+raw points, tied ranks, earned zero, keyboard dialogs, recovery states and
+320/375/768/1024/1366/1920-pixel layouts in both themes. The missing-Match check
+passed at 390 and 1440 pixels using synthetic read-only responses. Artifacts:
+`work/score-clarity-tests.txt`, `work/score-clarity-lint.txt`,
+`work/score-clarity-build.txt`, `work/organization-browser-2l24iygi/browser.txt`,
+and `work/organization-browser-0u58n1uu/browser.txt`.
+
+This follow-up stays on the same feature branch. Main remains `0fb2c1d`; no
+merge, push, migration or live recommendation refresh is part of this change.

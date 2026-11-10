@@ -6,7 +6,7 @@ export default function MatchBreakdown({ recommendation }) {
   const rows = details.requirements || []
   return <details className="relative z-10 mt-3 text-xs text-gray-600 dark:text-gray-300">
     <summary className="w-fit cursor-pointer rounded font-semibold text-green-700 focus-visible:outline-2 focus-visible:outline-green-600 dark:text-green-300">View match breakdown</summary>
-    <p className="mt-2 font-medium">{details.all_targets_met ? 'Meets all required category minimums' : details.unknown ? 'Incomplete evidence — some required categories are unassessed' : 'Below one or more category minimums'}</p>
+    <p className="mt-2 font-medium">{details.all_targets_met ? 'Meets all required category minimums' : details.unknown ? 'Some required categories have no assessment results yet.' : 'Below one or more category minimums'}</p>
     <dl className="mt-2 space-y-2">{rows.map((row, index) => <div key={row.category_id || `${row.category}:${index}`} className="flex flex-wrap justify-between gap-x-3 gap-y-1">
       <dt className="min-w-0 break-words">{row.category}</dt>
       <dd>{Number.isFinite(row.assessed_percentage) ? `${Number(row.assessed_percentage.toFixed(1))}%` : 'Unassessed'} · minimum {row.target}%</dd>
