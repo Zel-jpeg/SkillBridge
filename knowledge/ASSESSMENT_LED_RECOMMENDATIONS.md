@@ -1,5 +1,12 @@
 # Assessment-led recommendations
 
+Branch note, 10 November 2026: the isolated
+[`assessment-average-match-v1` feature](ASSESSMENT_PERCENT_MATCH_PLAN.md) changes
+newly generated personal ordering to minimum status, required-category assessment
+average, then NLP/location support. The coverage/demand policy documented here
+still explains older saved suggestions and remains on main until explicitly
+approved for merging. Saved histories retain their original units.
+
 For program-scoped cohorts, opening eligibility and positive requirements from
 the recorded framework determine the candidate set. Scoped evidence and role
 requirements use exact category IDs. The older virtual-equivalence rule

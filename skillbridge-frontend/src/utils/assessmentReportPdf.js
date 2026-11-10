@@ -106,7 +106,7 @@ export function buildAssessmentReportPdf(payload, filters, jsPDF, autoTable) {
       }
       section(`Final ranked recommendations - ${s.recommendationState}`)
       if (s.recommendationState.startsWith('Locked')) paragraph('Recommendations are locked. No current rankings are shown.')
-      else table(['Rank', 'Partner', 'Position', 'Order / legacy match', 'Coverage / legacy category', 'NLP', 'Location'],
+      else table(['Rank', 'Partner', 'Position', 'Match / saved order / legacy', 'Coverage / legacy category', 'NLP', 'Location'],
         s.recommendations.length ? s.recommendations : [['', 'No eligible partner positions', '', '', '', '', '']],
         { columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 58 }, 2: { cellWidth: 80 }, 3: { cellWidth: 24 }, 4: { cellWidth: 30 }, 5: { cellWidth: 30 }, 6: { cellWidth: 36 } } })
     })

@@ -1,4 +1,4 @@
-import { recommendationDisplay, recommendationValue, coverageDisplay, isAssessmentLed, comparePositionCandidates } from '../../utils/recommendationResults'
+import { recommendationDisplay, recommendationValue, recommendationLabel, coverageDisplay, isAssessmentMatch, isAssessmentLed, comparePositionCandidates } from '../../utils/recommendationResults'
 import { ContentSkeleton } from '../../components/loading/Skeletons'
 import { loadLeaflet } from '../../utils/externalServices'
 import { validPin } from '../../utils/recommendationResults'
@@ -292,8 +292,9 @@ function CompanyDetailModal({ company, onClose }) {
                                   </div>
                                   <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{stu.school_id} · {stu.course}</p>
                                 </div>
-                                <div className="shrink-0 text-right">
-                                  <p className={`text-sm font-bold leading-none ${matchColor(recommendationValue(stu))}`}>{isAssessmentLed(stu) ? coverageDisplay(stu) : recommendationDisplay(stu)}</p>
+                                <div className="max-w-24 shrink-0 break-words text-right">
+                                  <p className={`text-sm font-bold leading-none ${matchColor(recommendationValue(stu))}`}>{isAssessmentLed(stu) && !isAssessmentMatch(stu) ? coverageDisplay(stu) : recommendationDisplay(stu)}</p>
+                                  <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">{isAssessmentMatch(stu) ? recommendationLabel(stu) : isAssessmentLed(stu) ? 'Requirement coverage' : 'Legacy match'}</p>
                                   <div className="w-12 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
                                     <div className={`h-full rounded-full ${matchBg(recommendationValue(stu))}`} style={{ width: `${recommendationValue(stu) ?? 0}%` }} />
                                   </div>

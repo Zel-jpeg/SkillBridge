@@ -23,21 +23,28 @@ export function enrichRecommendation(row, studentPin) {
 }
 
 export function recommendationDetails(row) { return row?.assessment_details ?? row?.recommendation_details ?? {} }
-export function isAssessmentLed(row) { return row?.ranking_policy === 'assessment-led-option3' || recommendationDetails(row).policy === 'assessment-led-option3' }
+export function isAssessmentMatch(row) { return row?.ranking_policy === 'assessment-average-match-v1' || recommendationDetails(row).policy === 'assessment-average-match-v1' }
+export function isAssessmentLed(row) { return isAssessmentMatch(row) || row?.ranking_policy === 'assessment-led-option3' || recommendationDetails(row).policy === 'assessment-led-option3' }
+export function recommendationLabel(row) { return isAssessmentMatch(row) ? 'Match' : isAssessmentLed(row) ? 'Recommendation order' : 'Legacy hybrid reference' }
 export function recommendationRank(row) {
   const rank = row?.recommendation_rank ?? row?.assessment_rank
   return Number.isInteger(rank) && rank > 0 ? rank : null
 }
 export function recommendationValue(row) {
-  const value = isAssessmentLed(row) ? row.requirement_coverage ?? recommendationDetails(row).coverage : row?.match_score
+  const value = isAssessmentMatch(row) ? row?.match_percentage ?? recommendationDetails(row).required_mean
+    : isAssessmentLed(row) ? row.requirement_coverage ?? recommendationDetails(row).coverage : row?.match_score
   return Number.isFinite(value) ? value : null
 }
 export function recommendationDisplay(row) {
   const rank = recommendationRank(row)
+  if (isAssessmentMatch(row)) {
+    const value = recommendationValue(row)
+    return value == null ? 'Incomplete evidence' : `${Number(value.toFixed(1))}%`
+  }
   return isAssessmentLed(row) && rank != null ? `#${rank}` : Number.isFinite(row?.match_score) ? `${row.match_score}%` : 'Not available'
 }
 export function coverageDisplay(row) {
-  const value = recommendationValue(row)
+  const value = isAssessmentLed(row) ? row?.requirement_coverage ?? recommendationDetails(row).coverage : recommendationValue(row)
   if (value == null) return 'Unavailable'
   if (isAssessmentLed(row) && value < 100 && value.toFixed(1) === '100.0') return '<100%'
   return `${value.toFixed(1)}%`
@@ -55,13 +62,19 @@ export function placementRecommendation(placement) {
 export function summaryRecommendation(row) {
   return { ranking_policy: row?.top_ranking_policy, assessment_rank: row?.top_recommendation_rank,
     assessment_details: row?.top_recommendation_details, requirement_coverage: row?.top_requirement_coverage,
+    match_percentage: row?.top_match_percentage,
     match_score: row?.top_match ?? row?.top_match_score }
 }
 export function componentPercent(value) {
   return Number.isFinite(value) ? `${value.toFixed(1)}%` : 'Unavailable'
 }
 export function recommendationMetrics(row) {
-  return isAssessmentLed(row) ? [
+  return isAssessmentMatch(row) ? [
+    ['Match', recommendationDisplay(row)],
+    ['Minimum requirements', recommendationDetails(row).all_targets_met ? 'All met' : recommendationDetails(row).unknown ? 'Incomplete evidence' : 'Not all met'],
+    ['NLP text similarity', componentPercent(row.nlp_score_component)],
+    ['Location score', componentPercent(row.location_score_component)],
+  ] : isAssessmentLed(row) ? [
     ['Recommendation order', recommendationDisplay(row)],
     ['Requirement coverage', coverageDisplay(row)],
     ['NLP text similarity', componentPercent(row.nlp_score_component)],

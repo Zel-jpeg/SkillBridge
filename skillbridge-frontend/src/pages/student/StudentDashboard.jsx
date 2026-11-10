@@ -422,7 +422,7 @@ export default function StudentDashboard() {
                     <span className="text-base">📊</span>
                     <div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white">View all matches</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Full hybrid recommendation details</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Assessment match and supporting score details</p>
                     </div>
                   </button>
                 </div>

@@ -1,10 +1,11 @@
 import CompanyImage from './CompanyImage'
 import DataSection from './DataSection'
+import MatchBreakdown from './MatchBreakdown'
 import DialogShell from './DialogShell'
 import PlacementGuidance from './placements/PlacementGuidance'
 import { useApi } from '../hooks/useApi'
 import { matchColor } from '../hooks/student/useStudentResults'
-import { sortCompanyPositions, recommendationDisplay, recommendationValue, isAssessmentLed } from '../utils/recommendationResults'
+import { sortCompanyPositions, recommendationDisplay, recommendationValue, recommendationLabel } from '../utils/recommendationResults'
 import './studentCompanyDetails.css'
 
 const COMPANIES_URL = '/api/student/companies/'
@@ -47,11 +48,12 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
                     <h4 className="text-sm font-semibold wrap-anywhere text-gray-900 dark:text-white">{position.title}</h4>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{position.slots} listed slot{position.slots !== 1 ? 's' : ''}</p>
                   </div>
-                  {position.match_score != null ? <div className="shrink-0 text-right">
+                  {position.match_score != null ? <div className="max-w-28 shrink-0 break-words text-right">
                     <p className={`text-lg font-bold tabular-nums ${matchColor(recommendationValue(position))}`}>{recommendationDisplay(position)}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{isAssessmentLed(position) ? 'Recommendation order' : 'Legacy hybrid reference'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{recommendationLabel(position)}</p>
                   </div> : <span className="text-xs text-gray-500 dark:text-gray-400">No current match score</span>}
                 </div>
+                <MatchBreakdown recommendation={position} />
                 {position.description && <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{position.description}</p>}
                 <p className="mt-4 mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Skills & requirements</p>
                 {tags.length ? <ul className="flex flex-wrap gap-1.5">

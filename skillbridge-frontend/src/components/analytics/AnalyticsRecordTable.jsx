@@ -4,7 +4,7 @@ import { scoreColor } from '../../utils/formatters'
 import { reportTableStyles as styles } from './reportTableStyles'
 
 const compactOrder = ['0', '4', '5', '7', '12', '10']
-const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 8: 'Suggested partner', 10: 'Recommendation order', 12: 'Top recommendation' }
+const compactLabels = { 0: 'Student', 4: 'Instructor', 5: 'Assessment status', 7: 'Placement', 8: 'Suggested partner', 10: 'Match / saved order', 12: 'Top recommendation' }
 const matchSurface = value => value == null ? '' : value >= 80 ? 'bg-green-50/70 dark:bg-green-950/30' : value >= 60 ? 'bg-amber-50/70 dark:bg-amber-950/30' : 'bg-rose-50/70 dark:bg-rose-950/30'
 
 export default function AnalyticsRecordTable({ engine, report, page, pageSize = 10, studentTable, fullColumns, selectionLabel, onStudent }) {

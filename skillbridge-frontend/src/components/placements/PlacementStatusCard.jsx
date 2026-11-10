@@ -1,4 +1,4 @@
-import { placementRecommendation, recommendationDisplay, isAssessmentLed } from '../../utils/recommendationResults'
+import { placementRecommendation, recommendationDisplay, isAssessmentMatch, isAssessmentLed } from '../../utils/recommendationResults'
 import StatusBadge from '../StatusBadge'
 import CompanyImage from '../CompanyImage'
 
@@ -88,7 +88,7 @@ export default function PlacementStatusCard({ placement, audience = 'student', c
             <p className="mt-0.5 text-gray-700 dark:text-gray-300">{company?.address_text || 'Location not provided'}</p>
           </div>
           <div>
-            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{isAssessmentLed(placementRecommendation(placement)) ? 'Recommendation order at approval' : 'Legacy match at assignment'}</p>
+            <p className={`font-medium ${detail ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{isAssessmentMatch(placementRecommendation(placement)) ? 'Assessment-based Match at approval' : isAssessmentLed(placementRecommendation(placement)) ? 'Recommendation order at approval' : 'Legacy match at assignment'}</p>
             <p className="mt-0.5 font-semibold text-gray-800 dark:text-gray-200">{score != null ? recommendationDisplay(placementRecommendation(placement)) : 'Manual assignment'}</p>
           </div>
           <div>

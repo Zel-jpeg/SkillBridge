@@ -58,10 +58,10 @@ class EvidencePolicyTests(SimpleTestCase):
         with self.assertRaisesRegex(ValueError, 'conflicting'):
             position_requirements(position, {1: 1, 2: 1})
 
-    def test_coverage_and_demand_have_strict_precedence_over_support(self):
-        rows = [dict(coverage=100, strength=20, support=0),
-                dict(coverage=99.999, strength=100, support=100),
-                dict(coverage=100, strength=19, support=100)]
+    def test_minimums_then_actual_assessment_average_take_precedence_over_support(self):
+        rows = [dict(all_targets_met=True, required_mean=90, support=0),
+                dict(all_targets_met=False, required_mean=99.999, support=100),
+                dict(all_targets_met=True, required_mean=89, support=100)]
         self.assertEqual(sorted(range(3), key=lambda i: numerical_key(rows[i], i)), [0, 2, 1])
 
     def test_new_custom_category_and_high_unrelated_score_do_not_change_coverage(self):
@@ -228,6 +228,7 @@ class AssessmentLedAPITests(APITestCase):
             learner = next(row for row in response.data if row['id'] == self.student.id)
             self.assertEqual(learner['top_recommendations'][0]['recommendation_rank'], 1)
             self.assertEqual(learner['top_recommendations'][0]['position'], self.positions[1].title)
+            self.assertEqual(learner['top_recommendations'][0]['match_percentage'], 100)
         self.client.force_authenticate(self.student)
         catalog = self.client.get(reverse('student_companies')).data
         positions = {p['id']: p for company in catalog for p in company['positions']}
@@ -235,6 +236,7 @@ class AssessmentLedAPITests(APITestCase):
         saved = Recommendation.objects.get(student=self.student, position=self.positions[1])
         self.assertEqual(positions[self.positions[1].id]['match_score'], saved.match_score)
         self.assertEqual(positions[self.positions[1].id]['requirement_coverage'], 100)
+        self.assertEqual(positions[self.positions[1].id]['match_percentage'], 100)
 
     def test_current_reports_and_analytics_expose_rank_and_separate_numerical_status(self):
         self.generate()
@@ -245,13 +247,14 @@ class AssessmentLedAPITests(APITestCase):
         self.assertEqual(rows[0]['final_recommendations'][0]['recommendation_rank'], 1)
         export = self.client.get(reverse('management_assessment_reports'), {'type': 'student_competency', 'export': 'csv'})
         self.assertEqual(export.status_code, 200)
-        self.assertIn('order #1; requirement coverage 100.0% (not confidence)', export.content.decode('utf-8'))
+        self.assertIn('100.0% assessment-based match; minimums met; order #1', export.content.decode('utf-8'))
         analytics = self.client.get(reverse('management_analytics'))
         self.assertEqual(analytics.status_code, 200, analytics.data)
         learner = next(r for r in analytics.data['students'] if r['id'] == self.student.id)
         self.assertEqual(learner['top_recommendation_rank'], 1)
         self.assertEqual(learner['match_band'], 'Minimums met')
         self.assertEqual(learner['top_requirement_coverage'], 100)
+        self.assertEqual(learner['top_match_percentage'], 100)
 
     def test_shared_draft_excludes_below_target_but_preserves_valid_coordinator_choice(self):
         self.generate()
@@ -326,6 +329,7 @@ class AssessmentSubmissionPolicyTests(APITestCase):
         self.assertEqual(len(result.data['combined_category_scores']), 2)
         self.assertEqual(result.data['recommendations'][0]['position_id'], preferred.id)
         self.assertEqual(result.data['recommendations'][0]['requirement_coverage'], 100)
+        self.assertEqual(result.data['recommendations'][0]['match_percentage'], 80)
         self.assertEqual(result.data['recommendations'][0]['ranking_policy'], POLICY)
         self.assertEqual(Recommendation.objects.filter(student=student, batch=batch, is_current=True).count(), 2)
         self.assertEqual(OJTPlacement.objects.filter(student=student, status='approved').count(), 0)

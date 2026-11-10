@@ -1,4 +1,4 @@
-import { placementRecommendation, recommendationDisplay, recommendationValue } from './recommendationResults.js'
+import { placementRecommendation, recommendationDisplay, recommendationValue, isAssessmentMatch, recommendationDetails } from './recommendationResults.js'
 import api from '../api/axios'
 
 const REPORT_META = {
@@ -248,7 +248,7 @@ function addHistoryTable(doc, autoTable, records, startY) {
       STATUS_LABELS[record.status] || record.status,
       `Assigned: ${person(record.assigned_by)}\nApproved: ${person(record.approved_by)}\nRemoved: ${person(record.removed_by)}\nRejected: ${person(record.rejected_by)}`,
       `Created: ${dateTime(record.created_at)}\nUpdated: ${dateTime(record.updated_at)}\nApproved: ${dateTime(record.approved_at)}\nRemoved: ${dateTime(record.removed_at)}\nRejected: ${dateTime(record.rejected_at)}`,
-      `Recommendation order / legacy match: ${recommendationDisplay(placementRecommendation(record))}\nCategory fit: ${percent(record.category_score_component_at_assignment)}\nNLP fit: ${percent(record.nlp_score_component_at_assignment)}\nLocation fit: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
+      `Assessment match / saved order / legacy reference: ${recommendationDisplay(placementRecommendation(record))}\nLegacy category component: ${percent(record.category_score_component_at_assignment)}\nNLP similarity: ${percent(record.nlp_score_component_at_assignment)}\nLocation score: ${percent(record.location_score_component_at_assignment)}\nDistance: ${distance(record.distance_km_at_assignment)}`,
       clean(record.remarks),
     ]) : [['—', 'No placement records match the selected filters.']],
     columnStyles: {
@@ -334,7 +334,8 @@ function spreadsheetRows(payload) {
     'Remaining Slots': record.position.remaining_slots,
     Status: STATUS_LABELS[record.status] || record.status,
     'Recommendation order': record.recommendation_evidence?.recommendation_rank ?? null,
-    'Requirement coverage': recommendationValue(placementRecommendation(record)),
+    'Assessment-based Match': isAssessmentMatch(placementRecommendation(record)) ? recommendationValue(placementRecommendation(record)) : null,
+    'Requirement coverage': recommendationDetails(placementRecommendation(record)).coverage ?? null,
     'Legacy hybrid reference': record.match_score_at_assignment,
     'Category fit': record.category_score_component_at_assignment,
     'NLP fit': record.nlp_score_component_at_assignment,

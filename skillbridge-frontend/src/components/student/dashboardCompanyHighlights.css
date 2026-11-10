@@ -16,6 +16,7 @@
 .student-company-metric { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .is-ranked .student-company-metric { width: 56px; gap: 2px; }
 .student-company-score { font-size: 12px; font-weight: 600; line-height: 1.35; }
+.student-company-score.score-unavailable { max-width: 80px; white-space: normal; font-size: 10px; }
 .score-strong { color: #15803d; }
 .score-fair { color: #b45309; }
 .score-low { color: #be3451; }

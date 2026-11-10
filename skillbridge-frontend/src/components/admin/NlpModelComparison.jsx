@@ -50,7 +50,7 @@ export default function NlpModelComparison() {
     </div>
     <p className="text-xs text-gray-500 dark:text-gray-400">{mode === 'evaluation_dataset'
       ? 'Production prepared dataset: 60 synthetic cases, 6 positions, current neutral text and curated tags applied in memory. The original scores and labels are fixed. This is not exact notebook reproduction or an independent accuracy study.'
-      : 'Evaluates the full 60% category / 25% NLP / 15% location ranking against approved position IDs. Needs at least 5 eligible approved placements and 3 positions with requirements. Uses up to 100 newest eligible approvals.'}</p>
+      : 'Evaluates the legacy 60% category / 25% NLP / 15% location reference ranking against approved position IDs. This benchmark does not evaluate the assessment-based Match percentage or current order. Needs at least 5 eligible approved placements and 3 positions with requirements. Uses up to 100 newest eligible approvals.'}</p>
     <p className="text-xs text-gray-500 dark:text-gray-400">Comparison does not save recommendation scores or change the active model. Use Save Model and the separate Re-run Recommendations action above when needed.</p>
     <TaxonomyQuality />
     <div aria-live="polite" aria-busy={busy}>

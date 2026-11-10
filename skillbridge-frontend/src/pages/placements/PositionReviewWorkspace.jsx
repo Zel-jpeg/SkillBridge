@@ -1,6 +1,7 @@
-import { recommendationValue, recommendationDisplay, placementRecommendation, coverageDisplay, isAssessmentLed } from '../../utils/recommendationResults'
+import { recommendationValue, recommendationDisplay, placementRecommendation, coverageDisplay, isAssessmentMatch, isAssessmentLed } from '../../utils/recommendationResults'
 import CompanyImage from '../../components/CompanyImage'
 import ScoreLabel from '../../components/ScoreLabel'
+import MatchBreakdown from '../../components/MatchBreakdown'
 import { BriefcaseIcon, UserIcon, WarnIcon } from '../../components/Icons'
 import { CollectionPagination, PlacementIdentity } from './PlacementCollections'
 
@@ -26,9 +27,10 @@ function CandidateMatch({ recommendation, distance }) {
   const numeric = available ? Number(value) : null
   const band = !available ? 'missing' : numeric >= 80 ? 'strong' : numeric >= 60 ? 'fair' : 'low'
   return <div className={`pl-candidate-match pl-candidate-match--${band}`}>
-    <div><strong>{available ? coverageDisplay(recommendation) : 'Not available'}</strong>{available && <span className="pl-candidate-match-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, numeric))}%` }} /></span>}</div>
-    <p>{!available ? 'No current match score' : isAssessmentLed(recommendation) ? 'Requirement coverage · not confidence' : band === 'strong' ? 'Legacy strong match' : band === 'fair' ? 'Legacy fair match' : 'Legacy low match · review carefully'}</p>
+    <div><strong>{isAssessmentMatch(recommendation) ? recommendationDisplay(recommendation) : available ? coverageDisplay(recommendation) : 'Not available'}</strong>{available && <span className="pl-candidate-match-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, numeric))}%` }} /></span>}</div>
+    <p>{!available ? 'Incomplete or unavailable assessment evidence' : isAssessmentMatch(recommendation) ? 'Assessment-based Match' : isAssessmentLed(recommendation) ? 'Requirement coverage · not confidence' : band === 'strong' ? 'Legacy strong match' : band === 'fair' ? 'Legacy fair match' : 'Legacy low match · review carefully'}</p>
     {distance != null && <p className="pl-muted">{distance} km</p>}
+    <MatchBreakdown recommendation={recommendation} />
   </div>
 }
 
@@ -61,14 +63,14 @@ export default function PositionReviewWorkspace({ company, position, counts, pro
         <p className="pl-muted pl-list-note">{approvedView ? 'Confirmed assignments. Suggestion updates do not move these students.' : view === 'proposed' ? 'One provisional position per student. Review each suggestion before approval.' : 'Ranked for this position. Students may already be suggested to another position.'}</p>
         {current.length ? <table className={`pl-candidate-table ${approvedView ? 'pl-candidate-table--approved' : ''}`}>
           <caption className="sr-only">{approvedView ? 'Approved students and their saved assignment scores' : `Candidates for ${position.title}. Position ranks are preserved across filters${role === 'instructor' ? ' within your roster' : ''}.`}</caption>
-          <thead><tr>{!approvedView && <th scope="col" className="pl-candidate-rank">Rank</th>}<th scope="col">Student</th><th scope="col">{approvedView ? 'Score at approval' : <ScoreLabel label="Requirement coverage" />}</th><th scope="col">{approvedView ? 'Placement' : 'Current suggestion'}</th><th scope="col">{approvedView ? 'Action' : 'Review'}</th></tr></thead>
+          <thead><tr>{!approvedView && <th scope="col" className="pl-candidate-rank">Rank</th>}<th scope="col">Student</th><th scope="col">{approvedView ? 'Score at approval' : <ScoreLabel label="Match" />}</th><th scope="col">{approvedView ? 'Placement' : 'Current suggestion'}</th><th scope="col">{approvedView ? 'Action' : 'Review'}</th></tr></thead>
           <tbody>{current.map(item => {
             const proposal = studentById.get(item.student.id)?.proposal
             const rank = rankByRecommendation.get(item.recommendation_id)
             return <tr className="pl-candidate-row" key={approvedView ? item.id : item.recommendation_id}>
               {!approvedView && <td className="pl-candidate-rank" data-label="Position rank">{rank != null ? `#${rank}` : '—'}</td>}
               <td data-label="Student"><PlacementIdentity student={item.student} batch={item.batch} /></td>
-              <td data-label={approvedView ? 'Score at approval' : 'Requirement coverage'}>{approvedView ? <div className="pl-approved-score"><strong>{item.match_score_at_assignment == null ? 'Manual / no score' : recommendationDisplay(placementRecommendation(item))}</strong><p className="pl-muted">Saved at approval</p></div> : <CandidateMatch recommendation={item} distance={item.distance_km} />}</td>
+              <td data-label={approvedView ? 'Score at approval' : 'Match'}>{approvedView ? <div className="pl-approved-score"><strong>{item.match_score_at_assignment == null ? 'Manual / no score' : recommendationDisplay(placementRecommendation(item))}</strong><p className="pl-muted">Saved at approval</p></div> : <CandidateMatch recommendation={item} distance={item.distance_km} />}</td>
               <td data-label={approvedView ? 'Placement' : 'Current suggestion'}>{approvedView ? <span className="pl-status pl-decision-status pl-decision-status--approved">Approved</span> : proposal ? <div className="pl-current-position"><strong>{proposal.position}</strong><p className="pl-muted">{proposal.company || 'Partner not provided'}</p>{proposal.position_id === position.id && <span className="pl-muted">This position</span>}</div> : <span className="pl-muted">No current suggestion</span>}</td>
               <td className="pl-candidate-action">{approvedView ? <button type="button" className="pl-button pl-danger" onClick={() => onRemove(item)}>Remove placement</button> : <button type="button" className="pl-button pl-primary" onClick={() => onReview(item.recommendation_id)}>Review candidate</button>}</td>
             </tr>

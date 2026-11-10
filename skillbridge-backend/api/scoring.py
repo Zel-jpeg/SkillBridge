@@ -3,8 +3,8 @@
 api/scoring.py — SkillBridge NLP & Scoring Engine
 ================================================================================
 
-Current recommendation order is assessment-led: requirement coverage, then
-declared requirement-demand alignment, then NLP/location support. The old cosine
+Current recommendation order is assessment-led: minimum requirements, then
+the equal-weight required-category assessment average, then NLP/location support. The old cosine
 and 60/25/15 calculations below are retained as reference components, not the
 ordering policy. Assessment grading and NLP inputs/model remain unchanged.
 
@@ -322,7 +322,7 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
     from .recommendation_nlp import (build_position_description, location_similarity,
                                      company_address_text, valid_coordinates, TEXT_GENERATION_VERSION)
     from .recommendation_matching import position_specific_similarity, MATCHING_INPUT_VERSION
-    from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key
+    from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key, api_fields
     from .nlp_explanations import explain_overlap
 
     categories = list(categories)
@@ -438,9 +438,8 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
     for position, values in pending:
         values['assessment_rank'] = by_position[position.id]
     for row in results:
-        row.update(assessment_rank=by_position[row['position_id']],
-                   recommendation_rank=by_position[row['position_id']], ranking_policy='assessment-led-option3',
-                   requirement_coverage=row['assessment_details']['coverage'])
+        row['assessment_rank'] = by_position[row['position_id']]
+        row.update(api_fields(row))
 
     # A batch has a unique (student, batch, position) key. Update in place so
     # placement links keep the same recommendation IDs, without one savepoint

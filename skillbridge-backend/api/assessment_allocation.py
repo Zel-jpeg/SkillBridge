@@ -1,19 +1,19 @@
 """Shared capacity uses assessed minimums and actual performance, not the demand ratio."""
 import math
-from .recommendation_policy import POLICY
+from .recommendation_policy import is_assessment_led
 
 
 def allocate_assessment_led(edges, capacities):
     from .placement_allocator import allocate
     # Explicit compatibility for historical/unversioned fixtures; new generation
     # always persists versioned details and old real profiles fail freshness.
-    if not any(e.get('assessment_details', {}).get('policy') == POLICY for e in edges):
+    if not any(is_assessment_led(e) for e in edges):
         return allocate(edges, capacities)
     usable = []
     for edge in edges:
         details = edge.get('assessment_details', {})
         mean = details.get('required_mean')
-        if (details.get('policy') != POLICY or not details.get('all_targets_met')
+        if (not is_assessment_led(edge) or not details.get('all_targets_met')
                 or not isinstance(mean, (int, float)) or not math.isfinite(mean)
                 or capacities.get(edge['position_id'], 0) <= 0):
             continue

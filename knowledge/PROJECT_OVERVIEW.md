@@ -48,7 +48,7 @@ deletion without changing original IC data or recommendation evidence.
 | Persistence | PostgreSQL; Django models and migrations | [Models](../skillbridge-backend/api/models.py), [settings](../skillbridge-backend/core/settings.py) |
 | Assessment scoring | MCQ, true/false and identification; per-category raw, maximum and percentage scores | [Scoring](../skillbridge-backend/api/scoring.py) |
 | Combined competency | Batch-scoped totals from eligible assessment evidence and required completion gates | [Combined competency](../skillbridge-backend/api/combined_competency.py), [progress rules](../skillbridge-backend/api/assessment_progress.py) |
-| Recommendations | Assessment-led coverage and demand alignment, with supporting NLP/location; legacy hybrid reference retained | [Ordering contract](ASSESSMENT_LED_RECOMMENDATIONS.md), [ranking](../skillbridge-backend/api/scoring.py), [NLP helpers](../skillbridge-backend/api/recommendation_nlp.py) |
+| Recommendations | Assessment-led minimum checks and required-category average Match, with NLP/location tie-breakers; previous saved units retained | [Percentage branch contract](ASSESSMENT_PERCENT_MATCH_PLAN.md), [previous ordering contract](ASSESSMENT_LED_RECOMMENDATIONS.md), [ranking](../skillbridge-backend/api/scoring.py), [NLP helpers](../skillbridge-backend/api/recommendation_nlp.py) |
 
 Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 [requirements.txt](../skillbridge-backend/requirements.txt) and
@@ -64,10 +64,12 @@ Dependency manifests are [package.json](../skillbridge-frontend/package.json),
 4. Combined competency aggregates eligible category raw and maximum totals across assessments; it does not simply average percentages.
 5. Required completion and active-batch gates control finalization and recommendation visibility.
 6. For program-scoped batches, openings must be eligible and have positive
-   requirements from the matching framework. Personal ordering uses numerical
-   coverage, demand alignment and NLP/location support. Stale suggestions become
+   requirements from the matching framework. Personal ordering checks minimums,
+   then uses the equal-weight required-category assessment average and
+   NLP/location tie-breakers. Stale suggestions become
    unavailable while valid category evidence remains readable.
-   [Assessment-led contract](ASSESSMENT_LED_RECOMMENDATIONS.md)
+   [Percentage match branch contract](ASSESSMENT_PERCENT_MATCH_PLAN.md).
+   This feature remains on its experimental branch; main has not been merged.
 7. Placement approval applies additional rules and saves snapshots. A high recommendation score alone does not establish approval eligibility.
 
 ## Frontend data freshness
