@@ -13,10 +13,10 @@ function ScoreBar({ score }) {
   return <span className="lb-score-track" aria-hidden="true"><span className={scoreBg(score)} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} /></span>
 }
 
-function PodiumCard({ student, rank, score, category, onSelectStudent }) {
+function PodiumCard({ student, rank, score, category, tied, onSelectStudent }) {
   return <button type="button" className={`lb-podium-card lb-podium-card--${rank}`} data-rank={rank}
     aria-haspopup="dialog" aria-label={`View ${student.name}'s details`} onClick={() => onSelectStudent(student)}>
-    <span className="lb-podium-rank">#{rank}</span>
+    <span className="lb-podium-rank">{tied ? 'Tied ' : ''}#{rank}</span>
     <span className="lb-medal" aria-hidden="true"><StarIcon size={13} /></span>
     <Avatar name={student.name} photoUrl={student.photoUrl} tone="neutral" className="lb-avatar h-12 w-12 rounded-full text-sm" />
     <span className="lb-podium-identity"><strong>{student.name}</strong><span>{student.course || 'Course not provided'}</span><span className="sr-only">{student.studentId || 'No student ID'}</span></span>
@@ -96,7 +96,6 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
   const ranked = useMemo(() => skillRankings(allStudents, category), [allStudents, category])
   const pending = useMemo(() => allStudents.filter(student => student.status === 'pending').map(student => ({ student })), [allStudents])
   const top = ranked.slice(0, 3)
-  const podium = top.length === 3 ? [top[1], top[0], top[2]] : top.length === 2 ? [top[1], top[0]] : top
   const rest = useMemo(() => ranked.slice(3), [ranked])
   const unavailable = allStudents.length - ranked.length - pending.length
   const batchNames = [...new Set(allStudents.map(student => student.batch?.name).filter(Boolean))]
@@ -112,7 +111,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
       <p className="lb-muted mt-3">Category assessment score = earned points ÷ possible points × 100. Equal scores share a rank; names only order tied students. This is separate from a position’s Match percentage.</p>
       {unavailable > 0 && <p className="lb-muted lb-unavailable">{unavailable} other student{unavailable === 1 ? ' has' : 's have'} no current unlocked score in this category.</p>}
       {top.length ? <section className="lb-top" aria-label="Top performers"><h3><StarIcon size={18} />Top performers</h3><div className={`lb-podium lb-podium--${top.length}`}>
-        {podium.map(row => <PodiumCard key={row.student.id} {...row} category={category} onSelectStudent={onSelectStudent} />)}
+        {top.map(row => <PodiumCard key={row.student.id} {...row} category={category} tied={ranked.filter(item => item.rank === row.rank).length > 1} onSelectStudent={onSelectStudent} />)}
       </div></section> : <div className="lb-empty"><SkillIcon size={32} /><h3>No results yet</h3><p className="lb-muted">No current unlocked category results are available for {category}.</p></div>}
       {rest.length > 0 && <RemainingRankings key={`remaining-${category}`} rows={rest} totalRanked={ranked.length} category={category} onSelectStudent={onSelectStudent} />}
       {pending.length > 0 && <PendingStudents key={`pending-${category}`} rows={pending} onSelectStudent={onSelectStudent} />}

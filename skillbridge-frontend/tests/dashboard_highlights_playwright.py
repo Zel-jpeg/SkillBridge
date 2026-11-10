@@ -253,7 +253,13 @@ with sync_playwright() as p:
         skills.get_by_role('button', name='View Zero score ranking', exact=True).click()
         expect(dialog(page).get_by_role('heading', name='Zero score Leaderboard', exact=True)).to_be_visible()
         expect(dialog(page).get_by_text('No results yet', exact=True)).to_have_count(0)
-        assert dialog(page).locator('.lb-podium-rank').all_text_contents() == ['#1', '#1', '#1']
+        assert dialog(page).locator('.lb-podium-rank').all_text_contents() == ['Tied #1', 'Tied #1', 'Tied #1']
+        cards = dialog(page).locator('.lb-podium-card')
+        boxes = [cards.nth(index).bounding_box() for index in range(3)]
+        assert max(box['width'] for box in boxes) - min(box['width'] for box in boxes) <= 1
+        assert max(box['height'] for box in boxes) - min(box['height'] for box in boxes) <= 1
+        assert cards.nth(0).get_by_text('Synthetic Student 01', exact=True).is_visible()
+        dialog(page).screenshot(path=str(ARTIFACTS / 'tied-leaderboard-equal-cards.png'))
         page.keyboard.press('Escape')
         checks.append(f'{role}: matching highlights, keyboard dialogs, rankings, earned zero and read-only details')
 
@@ -379,6 +385,28 @@ with sync_playwright() as p:
             expect(page.get_by_text("You're all caught up", exact=True)).to_be_visible()
             fixture.close()
             checks.append('admin: failed summary API shows retry instead of zero counts')
+    fixture = Fixture(browser, 'instructor', 'two_students')
+    fixture.rows[0]['student_name'] = 'Synthetic Learner With Several Longer Names'
+    fixture.rows[1]['student_name'] = 'Synthetic Short'
+    for row in fixture.rows:
+        score = next(item for item in row['combined_category_scores'] if item['category'] == 'Web')
+        score.update(percentage=100, raw_score=100, max_score=100)
+    page = fixture.open()
+    page.get_by_role('region', name='Top performers by skill', exact=True).get_by_role('button', name='View Web ranking', exact=True).click()
+    for width in (1440, 390):
+        page.set_viewport_size({'width': width, 'height': 1000})
+        tied_cards = dialog(page).locator('.lb-podium-card')
+        expect(tied_cards).to_have_count(2)
+        assert dialog(page).locator('.lb-podium-rank').all_text_contents() == ['Tied #1', 'Tied #1']
+        boxes = [tied_cards.nth(index).bounding_box() for index in range(2)]
+        assert abs(boxes[0]['width'] - boxes[1]['width']) <= 1
+        assert abs(boxes[0]['height'] - boxes[1]['height']) <= 1
+        score_boxes = [tied_cards.nth(index).locator('.lb-podium-score').bounding_box() for index in range(2)]
+        assert abs((score_boxes[0]['y'] - boxes[0]['y']) - (score_boxes[1]['y'] - boxes[1]['y'])) <= 1
+        geometry(page)
+        dialog(page).screenshot(path=str(ARTIFACTS / f'tied-long-names-{width}.png'))
+    fixture.close()
+    checks.append('tied leaders with different name lengths use equal-width/equal-height cards on desktop and phone')
     browser.close()
 
 (ARTIFACTS / 'checks.json').write_text(json.dumps({'checks': checks}, indent=2), encoding='utf-8')

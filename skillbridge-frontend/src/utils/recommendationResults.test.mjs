@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { validPin, haversineKm, enrichRecommendation, sortRecommendations, groupRecommendationsByCompany, sortCompanyPositions } from './recommendationResults.js'
 import { recommendationDisplay, recommendationValue, recommendationLabel, coverageDisplay,
-  recommendationMetrics, summaryRecommendation, placementRecommendation } from './recommendationResults.js'
+  recommendationMetrics, summaryRecommendation, placementRecommendation, assessmentMatchProgress, assessmentProgressLabel } from './recommendationResults.js'
 
 const assessmentMatch = (mean, overrides = {}) => ({ match_score: 12, ranking_policy: 'assessment-average-match-v1',
   assessment_rank: 1, requirement_coverage: 100, match_percentage: mean,
@@ -20,9 +20,35 @@ test('assessment Match shows actual category average while coverage keeps its se
 test('incomplete assessment Match never falls back to a legacy score; assessed zero is a real percentage', () => {
   const missing = assessmentMatch(null, { assessment_details: { required_mean: null, unknown: 1, all_targets_met: false } })
   assert.equal(recommendationValue(missing), null)
-  assert.equal(recommendationDisplay(missing), '—')
+  assert.equal(recommendationDisplay(missing), '0 assessed')
   assert.equal(recommendationMetrics(missing)[1][1], 'Assessment results missing')
   assert.equal(recommendationDisplay(assessmentMatch(0)), '0%')
+})
+
+test('partial percentages average only observed required categories, and cannot become final ranking values', () => {
+  const partial = assessmentMatch(null, { assessment_rank: 2, assessment_details: {
+    unknown: 1, all_targets_met: false, required_mean: null, requirements: [
+      { target: 90, assessed_percentage: 100 }, { target: 20, assessed_percentage: 60 },
+      { target: 50, assessed_percentage: null, state: 'unassessed' }, { target: 0, assessed_percentage: 5 }] } })
+  const before = structuredClone(partial)
+  assert.deepEqual(assessmentMatchProgress(partial), { assessed: 2, required: 3, partial: true, percentage: 80 })
+  assert.equal(assessmentProgressLabel(partial), '2 of 3 required categories assessed')
+  assert.equal(recommendationDisplay(partial), '80% partial')
+  assert.equal(recommendationValue(partial), null)
+  const complete = assessmentMatch(70, { assessment_rank: 1, position_id: 1 })
+  assert.equal(sortRecommendations([partial, complete])[0], complete)
+  assert.deepEqual(partial, before)
+})
+
+test('zero observed marks produce a real partial zero; no observed marks produce a count, never invented percentages', () => {
+  const partial = assessmentMatch(null, { assessment_details: { required_mean: null, unknown: 1,
+    requirements: [{ target: 50, assessed_percentage: 0 }, { target: 50, assessed_percentage: null }] } })
+  assert.equal(recommendationDisplay(partial), '0% partial')
+  partial.assessment_details.requirements[0].assessed_percentage = null
+  assert.equal(recommendationDisplay(partial), '0/2 assessed')
+  partial.assessment_details.requirements[0].assessed_percentage = NaN
+  assert.equal(assessmentMatchProgress(partial).percentage, null)
+  assert.equal(recommendationDisplay({ match_score: 77 }), '77%')
 })
 
 test('old rank/coverage and hybrid history retain saved meanings', () => {

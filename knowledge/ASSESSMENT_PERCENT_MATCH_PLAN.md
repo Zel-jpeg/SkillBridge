@@ -12,9 +12,12 @@ assessment raw/max points are pooled within each category first. Minimums are
 thresholds, not weights. Unrelated categories, tags, location and NLP do not
 enter this percentage. The result is not a hiring probability.
 
-If any required category is unassessed, display **—** beside the Match label,
-with a short note explaining the missing assessment results and no headline
-percentage. A category actually assessed at zero counts as zero.
+If any required category is unassessed, the final Match remains unavailable.
+Show a supplemental **partial** percentage averaging only assessed required
+categories, with the assessed/required count. If none are assessed, show the
+count (for example `0/3 assessed`), not an invented percentage. A category
+actually assessed at zero counts as zero. Partial display values do not become
+final ranking, filtering, eligibility or stored Match values.
 Positions without positive requirements remain unavailable as before.
 
 Personal ranking groups all-minimums-met options first, fully assessed but
@@ -101,10 +104,11 @@ so stale recommendations do not hide valid category grades. Equal percentages
 share competition ranks (1, 1, 3); alphabetical names only determine display
 order. No grading, matching, eligibility or database values were changed.
 
-Unavailable Match headlines now use a dash with the same Match label as scored
-cards. Plain-language notes and the breakdown explain unassessed categories;
-missing results never become 0% or a partial average. This formatting is shared
-by the recommendation display helper across screens.
+Missing results are explained in plain language and the breakdown. Following
+the user's request to keep a number visible, the current partial-display rule
+above replaces the earlier dash. Missing grades never become zero, and a
+partial average never replaces the final Match or changes eligibility. The
+recommendation display helper shares this formatting across screens.
 
 Verification: **348 frontend tests passed**, ESLint and production build passed.
 The dashboard browser regression passed eight scenario groups, including cards,
@@ -117,3 +121,30 @@ and `work/organization-browser-0u58n1uu/browser.txt`.
 
 This follow-up stays on the same feature branch. Main remains `0fb2c1d`; no
 merge, push, migration or live recommendation refresh is part of this change.
+
+## Partial numbers and tied-card layout — 10 November 2026
+
+- `80% partial` means the equal-weight average of observed required-category
+  grades, with a count such as `2 of 3 required categories assessed`. Positive
+  requirements only; actual zero grades count. Unrelated categories, thresholds,
+  NLP and location do not contribute. No full percentage is fabricated.
+- `recommendationValue` still returns null for these incomplete positions.
+  Backend rank, numerical minimum checks, allocation, saved scores and snapshots
+  are unchanged. The partial result is a display calculation from saved evidence.
+- When no required categories have results, the headline shows `0/N assessed`.
+- Top skill cards in the ranking dialog use equal-width stretched grid cards,
+  natural rank order and explicit `Tied #1` labels. Mobile cards stack in equal
+  rows; long names no longer change the relative size of tied cards.
+
+Frontend tests: **350 passed**; ESLint and production build passed. Browser
+verification passed for partial/empty results at 390/1440 pixels and nine
+dashboard scenario groups, including long-name ties with equal card widths,
+equal heights and aligned score rows on desktop and phone. Screenshots were
+visually reviewed. Synthetic read-only responses were used; no live writes.
+Receipts: `work/partial-match-tests.txt`, `work/partial-match-lint.txt`,
+`work/partial-match-build.txt`, `work/partial-match-browser.txt`,
+`work/tied-cards-browser.txt`. Detailed browser receipts:
+`work/organization-browser-vzoss2gg/browser.txt` and
+`work/organization-browser-0hglnh7d/browser.txt`. Implementation is complete;
+save this checkpoint with its feature-branch commit. Review locally; do not
+merge or push without the user's instruction.

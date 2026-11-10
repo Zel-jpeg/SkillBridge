@@ -35,11 +35,31 @@ export function recommendationValue(row) {
     : isAssessmentLed(row) ? row.requirement_coverage ?? recommendationDetails(row).coverage : row?.match_score
   return Number.isFinite(value) ? value : null
 }
+// Display-only partial results never become a final match, sorting value or
+// eligibility input. Missing categories are excluded, not assigned zero marks.
+export function assessmentMatchProgress(row) {
+  if (!isAssessmentMatch(row)) return { assessed: 0, required: 0, partial: false, percentage: null }
+  const details = recommendationDetails(row)
+  const requirements = isAssessmentMatch(row) ? (details.requirements || []).filter(item => Number.isFinite(item.target) && item.target > 0) : []
+  const assessed = requirements.filter(item => item.state !== 'unassessed' && Number.isFinite(item.assessed_percentage) && item.assessed_percentage >= 0 && item.assessed_percentage <= 100)
+  const declared = details.requirement_counts?.required
+  const required = Math.max(requirements.length, Number.isInteger(declared) && declared > 0 ? declared : 0)
+  const final = isAssessmentMatch(row) ? recommendationValue(row) : null
+  return { assessed: assessed.length, required, partial: final == null,
+    percentage: final ?? (assessed.length ? assessed.reduce((sum, item) => sum + item.assessed_percentage, 0) / assessed.length : null) }
+}
+export function assessmentProgressLabel(row) {
+  const { assessed, required } = assessmentMatchProgress(row)
+  return `${assessed} of ${required} required categories assessed`
+}
 export function recommendationDisplay(row) {
   const rank = recommendationRank(row)
   if (isAssessmentMatch(row)) {
     const value = recommendationValue(row)
-    return value == null ? '—' : `${Number(value.toFixed(1))}%`
+    if (value != null) return `${Number(value.toFixed(1))}%`
+    const progress = assessmentMatchProgress(row)
+    return progress.percentage != null ? `${Number(progress.percentage.toFixed(1))}% partial`
+      : progress.required ? `0/${progress.required} assessed` : '0 assessed'
   }
   return isAssessmentLed(row) && rank != null ? `#${rank}` : Number.isFinite(row?.match_score) ? `${row.match_score}%` : 'Not available'
 }

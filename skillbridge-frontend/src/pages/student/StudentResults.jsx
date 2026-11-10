@@ -22,7 +22,7 @@ import CompetencyInsights, { HighestScoringAreas } from '../../components/Compet
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import PlacementGuidance from '../../components/placements/PlacementGuidance'
 import StudentCompanyDetails from '../../components/StudentCompanyDetails'
-import { sortCompanyPositions, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
+import { assessmentMatchProgress, assessmentProgressLabel, sortCompanyPositions, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
 
 
 
@@ -408,10 +408,12 @@ export default function StudentResults() {
                 {/* Score bar */}
                 <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   {(() => {
-                    const pct = sortMode === 'combined' ? r.combined
+                    const original = sortMode === 'combined' ? r.combined
                               : sortMode === 'distance' && r.distKm != null ? r.proximityPct
                               : r.match
+                    const pct = original ?? (isAssessmentMatch(r) ? assessmentMatchProgress(r).percentage : null)
                     const col = sortMode === 'distance' ? 'bg-blue-500'
+                              : recommendationValue(r) == null ? 'bg-gray-400'
                               : pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-gray-400'
                     return <div className={`h-full rounded-full transition-all duration-700 ease-out ${col}`}
                       style={{ width: animated && Number.isFinite(pct) ? `${pct}%` : '0%' }} />
@@ -429,7 +431,7 @@ export default function StudentResults() {
                   </div>
                 )}
 
-                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : r.assessment_details?.unknown ? 'Match unavailable — some required categories have no assessment results yet.' : 'Below one or more category minimums'}</p>}
+                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : r.assessment_details?.unknown ? `${assessmentProgressLabel(r)} · some categories are not assessed yet.` : 'Below one or more category minimums'}</p>}
                 <MatchBreakdown recommendation={r} />
                 <div className="mt-auto pt-3">
                   <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"

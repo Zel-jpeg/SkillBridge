@@ -1,5 +1,6 @@
 """Production UI formatting for missing match scores; synthetic GET fixtures only."""
 from urllib.parse import urlparse
+from copy import deepcopy
 
 from playwright.sync_api import expect, sync_playwright
 from organization_playwright import BASE, OUT, checks, errors, session
@@ -28,6 +29,7 @@ with sync_playwright() as playwright:
     try:
         for width in (390, 1440):
             context, page = session(browser, 'student', width=width, dark=width == 390)
+            payload = deepcopy(RESULT)
             def fixture(route):
                 path = urlparse(route.request.url).path
                 if not path.startswith('/api/'):
@@ -36,14 +38,14 @@ with sync_playwright() as playwright:
                 if path in ('/api/students/me/', '/api/auth/me/'):
                     return route.fulfill(json=USER)
                 if path == '/api/student/results/combined/':
-                    return route.fulfill(json=RESULT)
+                    return route.fulfill(json=payload)
                 return route.fulfill(json=[])
             context.route('**/api/**', fixture)
             page.goto(BASE + '/student/results', wait_until='networkidle')
             card = page.locator('article').filter(has=page.get_by_text('Synthetic partner', exact=True))
-            expect(card.get_by_text('—', exact=True)).to_be_visible()
+            expect(card.get_by_text('80% partial', exact=True)).to_be_visible()
             expect(card.get_by_role('button', name='Match: explanation', exact=True)).to_be_visible()
-            expect(card.get_by_text('Match unavailable — some required categories have no assessment results yet.', exact=True)).to_be_visible()
+            expect(card.get_by_text('1 of 2 required categories assessed · some categories are not assessed yet.', exact=True)).to_be_visible()
             expect(card.get_by_text('0%', exact=True)).to_have_count(0)
             expect(page.get_by_text('Incomplete evidence', exact=True)).to_have_count(0)
             card.get_by_text('View match breakdown', exact=True).click()
@@ -51,8 +53,15 @@ with sync_playwright() as playwright:
             expect(card.get_by_text('Unassessed category', exact=True).last).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
             page.screenshot(path=str(OUT / f'missing-match-{width}.png'), full_page=True, animations='disabled')
+            payload['recommendations'][0]['assessment_details']['requirements'][0]['assessed_percentage'] = None
+            payload['recommendations'][0]['assessment_details']['unknown'] = 2
+            # This is a new static fixture, not a simulated realtime event.
+            page.evaluate('sessionStorage.clear()')
+            page.reload(wait_until='networkidle')
+            expect(card.get_by_text('0/2 assessed', exact=True)).to_be_visible()
+            expect(card.get_by_text('0%', exact=True)).to_have_count(0)
             context.close()
-            checks.append(f'{width}px: missing Match uses a dash, preserves its label and explains missing categories without a fake percentage')
+            checks.append(f'{width}px: partial Match shows assessed-only percentage/counts; no assessed categories show counts without an invented percentage')
     finally:
         browser.close()
 assert not errors, errors
