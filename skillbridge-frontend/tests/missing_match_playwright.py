@@ -8,14 +8,14 @@ from organization_playwright import BASE, OUT, checks, errors, session
 
 USER = {'id': 1, 'name': 'Synthetic learner', 'role': 'student', 'is_approved': True,
         'phone': 'synthetic', 'profile_completed': True, 'school_id': 'SYN', 'course': 'Custom program'}
-DETAILS = {'policy': 'assessment-average-match-v1', 'required_mean': None, 'coverage': 50,
+DETAILS = {'policy': 'assessment-evidence-match-v2', 'match_percentage': 40, 'required_mean': None, 'coverage': 50,
            'all_targets_met': False, 'unknown': 1, 'requirements': [
                {'category': 'Assessed category', 'assessed_percentage': 80, 'target': 70},
                {'category': 'Unassessed category', 'assessed_percentage': None, 'target': 60}]}
 RECOMMENDATION = {'id': 1, 'position_id': 1, 'company_id': 1, 'company': 'Synthetic partner',
     'position': 'Synthetic opening', 'tags': ['Assessed category', 'Unassessed category'], 'slots': 2,
     'assessment_rank': 1, 'recommendation_rank': 1, 'ranking_policy': DETAILS['policy'],
-    'match_percentage': None, 'assessment_details': DETAILS, 'requirement_coverage': 50,
+    'match_percentage': 40, 'assessment_details': DETAILS, 'requirement_coverage': 50,
     'match_score': 77, 'nlp_score_component': 60, 'location_score_component': 50}
 RESULT = {'recommendations_locked': False, 'competency_locked': False, 'all_required_completed': True,
     'is_finalized': True, 'has_submitted': True, 'completed_required_count': 1, 'total_required_count': 1,
@@ -43,9 +43,12 @@ with sync_playwright() as playwright:
             context.route('**/api/**', fixture)
             page.goto(BASE + '/student/results', wait_until='networkidle')
             card = page.locator('article').filter(has=page.get_by_text('Synthetic partner', exact=True))
-            expect(card.get_by_text('80% partial', exact=True)).to_be_visible()
+            score = card.get_by_text('40%', exact=True)
+            expect(score).to_be_visible()
+            assert 'text-gray-' in score.get_attribute('class')
+            expect(card.get_by_text('80% partial', exact=True)).to_have_count(0)
             expect(card.get_by_role('button', name='Match: explanation', exact=True)).to_be_visible()
-            expect(card.get_by_text('1 of 2 required categories assessed · some categories are not assessed yet.', exact=True)).to_be_visible()
+            expect(card.get_by_text('1 of 2 required categories assessed · unassessed categories earn no match credit.', exact=True)).to_be_visible()
             expect(card.get_by_text('0%', exact=True)).to_have_count(0)
             expect(page.get_by_text('Incomplete evidence', exact=True)).to_have_count(0)
             card.get_by_text('View match breakdown', exact=True).click()
@@ -55,13 +58,15 @@ with sync_playwright() as playwright:
             page.screenshot(path=str(OUT / f'missing-match-{width}.png'), full_page=True, animations='disabled')
             payload['recommendations'][0]['assessment_details']['requirements'][0]['assessed_percentage'] = None
             payload['recommendations'][0]['assessment_details']['unknown'] = 2
+            payload['recommendations'][0]['assessment_details']['match_percentage'] = 0
+            payload['recommendations'][0]['match_percentage'] = 0
             # This is a new static fixture, not a simulated realtime event.
             page.evaluate('sessionStorage.clear()')
             page.reload(wait_until='networkidle')
-            expect(card.get_by_text('0/2 assessed', exact=True)).to_be_visible()
-            expect(card.get_by_text('0%', exact=True)).to_have_count(0)
+            expect(card.get_by_text('0%', exact=True)).to_be_visible()
+            expect(card.get_by_text('0 of 2 required categories assessed · unassessed categories earn no match credit.', exact=True)).to_be_visible()
             context.close()
-            checks.append(f'{width}px: partial Match shows assessed-only percentage/counts; no assessed categories show counts without an invented percentage')
+            checks.append(f'{width}px: one evidence-based percentage uses all required categories, with grey incomplete state, counts and unassessed grades retained')
     finally:
         browser.close()
 assert not errors, errors

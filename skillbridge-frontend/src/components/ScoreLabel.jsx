@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const explanations = {
-  'Match': 'Average assessment score across this position’s required categories, with equal weight per category. A value marked partial averages only the assessed required categories; it is not a complete match or eligibility result. Minimums are checked separately. NLP and location break assessment ties and are excluded from the percentage. This is not a probability of being hired.',
+  'Match': 'Sum of assessed required-category percentages divided by all required categories. Unassessed categories earn no demonstrated match credit and remain unassessed, not graded zero. Positions meeting every minimum rank first; then Match and supporting NLP/location decide order. NLP/location are excluded from this percentage. This is not a probability of being hired. Older saved calculations keep their own breakdown.',
   'Minimum requirements': 'Each required category is checked against its own minimum. A high average cannot cancel a below-minimum or unassessed category.',
   'Recommendation order': 'Positions are ordered by numerical requirement coverage, declared requirement-demand alignment, then supporting text similarity and location. Rank is not confidence or placement approval.',
   'Requirement coverage': 'Average capped attainment of the listed numerical minimums. 100% means these minimums are met, not 100% assessment grades or certainty of workplace suitability. Unassessed requirements stay explicit.',

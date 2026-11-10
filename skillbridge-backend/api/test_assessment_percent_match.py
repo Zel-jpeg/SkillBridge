@@ -4,7 +4,7 @@ from types import SimpleNamespace as Obj
 
 from django.test import SimpleTestCase
 
-from .recommendation_policy import (POLICY, PREVIOUS_POLICY, VERSION, api_fields,
+from .recommendation_policy import (POLICY, PREVIOUS_POLICY, AVERAGE_POLICY, VERSION, api_fields,
     approval_snapshot, describe, numerical_key, pooled_evidence, report_label,
     top_api_fields)
 
@@ -34,10 +34,14 @@ class AssessmentPercentMatchTests(SimpleTestCase):
         self.assertEqual(scores[1], 75)
         self.assertEqual(details['match_percentage'], 87.5)
 
-    def test_missing_category_has_no_percentage_but_assessed_zero_counts(self):
+    def test_missing_category_earns_no_match_credit_but_is_not_a_zero_grade(self):
         missing = self.details({1: 80}, {1: 50, 2: 50})
         zero = self.details({1: 80, 2: 0}, {1: 50, 2: 50})
-        self.assertIsNone(missing['match_percentage'])
+        self.assertEqual(missing['match_percentage'], 40)
+        self.assertIsNone(missing['required_mean'])
+        self.assertIsNone(missing['requirements'][1]['assessed_percentage'])
+        self.assertEqual(missing['requirements'][1]['state'], 'unassessed')
+        self.assertEqual(zero['requirements'][1]['assessed_percentage'], 0)
         self.assertFalse(missing['match_calculation']['complete'])
         self.assertEqual(missing['match_calculation']['assessed_category_count'], 1)
         self.assertEqual(zero['match_percentage'], 40)
@@ -80,7 +84,7 @@ class AssessmentPercentMatchTests(SimpleTestCase):
         self.assertEqual(api_fields(dict(match_score=75))['ranking_policy'], 'legacy-hybrid')
 
     def test_approval_snapshot_freezes_original_policy_and_evidence(self):
-        for policy, version in [(POLICY, VERSION), (PREVIOUS_POLICY, 'saved-original-version')]:
+        for policy, version in [(POLICY, VERSION), (AVERAGE_POLICY, 'saved-average-version'), (PREVIOUS_POLICY, 'saved-original-version')]:
             details = self.details({1: 80}, {1: 50})
             details.update(policy=policy, version=version)
             saved = approval_snapshot(Obj(assessment_rank=1, assessment_details=details))
@@ -88,3 +92,25 @@ class AssessmentPercentMatchTests(SimpleTestCase):
             self.assertEqual(saved['assessment_details']['required_mean'], 80)
             self.assertEqual(saved['ranking_policy'], policy)
             self.assertEqual(saved['version'], version)
+
+    def test_screenshot_examples_and_non_round_percentages_use_one_denominator(self):
+        for scores, required, expected in [({1: 90, 2: 90}, 3, 60), ({1: 80, 2: 90, 3: 100}, 5, 54),
+                                         ({1: 82, 2: 90}, 2, 86), ({1: 74, 2: 80}, 2, 77), ({}, 3, 0)]:
+            details = self.details(scores, {key: 50 for key in range(1, required + 1)})
+            self.assertEqual(details['match_percentage'], expected)
+            self.assertEqual(details['match_calculation']['category_count'], required)
+        self.assertAlmostEqual(self.details({1: 80, 2: 90, 3: 90}, {1: 50, 2: 50, 3: 50})['match_percentage'], 86.6666666667)
+
+    def test_review_options_use_the_same_percentage_instead_of_completeness_tiers(self):
+        incomplete = self.details({1: 90, 2: 90}, {1: 50, 2: 50, 3: 50})
+        below = self.details({1: 50, 2: 50}, {1: 80, 2: 80})
+        incomplete['support'], below['support'] = 0, 100
+        self.assertEqual(incomplete['match_percentage'], 60)
+        self.assertEqual(below['match_percentage'], 50)
+        self.assertLess(numerical_key(incomplete, 2), numerical_key(below, 1))
+
+    def test_previous_average_policy_does_not_inherit_current_missing_credit_rule(self):
+        old = dict(assessment_rank=1, match_score=99, assessment_details=self.details({1: 80}, {1: 50, 2: 50}))
+        old['assessment_details']['policy'] = AVERAGE_POLICY
+        self.assertIsNone(api_fields(old)['match_percentage'])
+        self.assertEqual(api_fields(old)['ranking_policy'], AVERAGE_POLICY)

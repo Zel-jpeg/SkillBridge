@@ -2,11 +2,46 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { validPin, haversineKm, enrichRecommendation, sortRecommendations, groupRecommendationsByCompany, sortCompanyPositions } from './recommendationResults.js'
 import { recommendationDisplay, recommendationValue, recommendationLabel, coverageDisplay,
-  recommendationMetrics, summaryRecommendation, placementRecommendation, assessmentMatchProgress, assessmentProgressLabel } from './recommendationResults.js'
+  recommendationMetrics, summaryRecommendation, placementRecommendation, assessmentMatchProgress, assessmentProgressLabel, hasUnassessedRequirements, comparePositionCandidates } from './recommendationResults.js'
 
 const assessmentMatch = (mean, overrides = {}) => ({ match_score: 12, ranking_policy: 'assessment-average-match-v1',
   assessment_rank: 1, requirement_coverage: 100, match_percentage: mean,
   assessment_details: { policy: 'assessment-average-match-v1', required_mean: mean, all_targets_met: true, unknown: 0 }, ...overrides })
+
+const evidenceMatch = (value, overrides = {}) => ({ match_score: 99, ranking_policy: 'assessment-evidence-match-v2',
+  assessment_rank: 1, match_percentage: value,
+  assessment_details: { policy: 'assessment-evidence-match-v2', match_percentage: value, required_mean: null,
+    all_targets_met: false, unknown: 1, requirements: [
+      { target: 50, assessed_percentage: 90 }, { target: 50, assessed_percentage: 90 }, { target: 50, assessed_percentage: null }] }, ...overrides })
+
+test('new policy uses one saved evidence-based percentage and does not display the old partial average', () => {
+  const row = evidenceMatch(60)
+  assert.equal(recommendationValue(row), 60)
+  assert.equal(recommendationDisplay(row), '60%')
+  assert.equal(assessmentMatchProgress(row).percentage, 60)
+  assert.equal(assessmentProgressLabel(row), '2 of 3 required categories assessed')
+  assert.equal(hasUnassessedRequirements(row), true)
+  assert.equal(recommendationMetrics(row)[0][1], '60%')
+  assert.equal(recommendationDisplay(evidenceMatch(0)), '0%')
+  assert.equal(recommendationDisplay(evidenceMatch(null, { match_percentage: null, assessment_details: { policy: 'assessment-evidence-match-v2' } })), 'Not available')
+})
+
+test('new cross-student ordering uses demonstrated Match within minimum status, not complete-only mean or legacy reference', () => {
+  const incomplete = evidenceMatch(60, { student_id: 1, match_score: 1 })
+  const below = evidenceMatch(50, { student_id: 2, match_score: 99, assessment_details: { policy: 'assessment-evidence-match-v2', all_targets_met: false, required_mean: 50, support: 100 } })
+  assert.ok(comparePositionCandidates(incomplete, below) < 0)
+  const summary = summaryRecommendation({ top_ranking_policy: 'assessment-evidence-match-v2', top_match_percentage: 54, top_match: 99 })
+  assert.equal(recommendationValue(summary), 54)
+  assert.equal(recommendationDisplay(summary), '54%')
+})
+
+test('saved old average and new evidence snapshots retain distinct units for incomplete evidence', () => {
+  const old = assessmentMatch(null, { assessment_details: { policy: 'assessment-average-match-v1', required_mean: null, unknown: 1,
+    requirements: [{ target: 50, assessed_percentage: 90 }, { target: 50, assessed_percentage: 90 }, { target: 50, assessed_percentage: null }] } })
+  assert.equal(recommendationDisplay(old), '90% partial')
+  assert.equal(recommendationDisplay(placementRecommendation({ recommendation_evidence: evidenceMatch(60), match_score_at_assignment: 99 })), '60%')
+  assert.equal(recommendationValue(old), null)
+})
 
 test('assessment Match shows actual category average while coverage keeps its separate units', () => {
   const row = assessmentMatch(80)

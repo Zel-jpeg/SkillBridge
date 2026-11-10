@@ -98,3 +98,6 @@
   .pl-candidate-table .pl-candidate-row { grid-template-columns:minmax(0,1fr); }
   .pl-candidate-table td:nth-child(2),.pl-candidate-table td.pl-candidate-rank,.pl-candidate-table td.pl-candidate-action { grid-column:1; }
 }
+.pl-candidate-match--missing strong { color:#64748b; }
+.pl-candidate-match--missing .pl-candidate-match-track > span { background:#94a3b8; }
+.dark .pl-candidate-match--missing strong { color:#a8b5c7; }

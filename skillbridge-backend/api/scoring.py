@@ -4,7 +4,7 @@ api/scoring.py — SkillBridge NLP & Scoring Engine
 ================================================================================
 
 Current recommendation order is assessment-led: minimum requirements, then
-the equal-weight required-category assessment average, then NLP/location support. The old cosine
+the assessed percentage total divided by all required categories, then NLP/location support. The old cosine
 and 60/25/15 calculations below are retained as reference components, not the
 ordering policy. Assessment grading and NLP inputs/model remain unchanged.
 

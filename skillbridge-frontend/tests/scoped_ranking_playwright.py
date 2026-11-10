@@ -29,12 +29,12 @@ def run(browser):
         assert len(result['recommendations']) == 1 and result['recommendations'][0]['position_id'] == scenario['position_id']
         assert result['recommendations'][0]['assessment_details']['ranking_inputs']['framework_version'] == 1
         recommendation = result['recommendations'][0]
-        assert recommendation['ranking_policy'] == 'assessment-average-match-v1'
+        assert recommendation['ranking_policy'] == 'assessment-evidence-match-v2'
         assert recommendation['match_percentage'] == recommendation['assessment_details']['required_mean'] == 80
         card = page.locator('article').filter(has=page.get_by_text('View match breakdown', exact=True))
         expect(card.get_by_text('80%', exact=True)).to_be_visible()
         card.get_by_text('View match breakdown', exact=True).click()
-        expect(card.get_by_text('Average of 2 required categories = 80% Match.', exact=True)).to_be_visible()
+        expect(card.get_by_text('2 of 2 required categories assessed. 160 assessed percentage points ÷ 2 required categories = 80% Match.', exact=True)).to_be_visible()
         expect(page.get_by_text('Meets all required category minimums', exact=True)).to_be_visible()
         page.screenshot(path=str(OUT / ('assessment-match-phone-dark.png' if scenario == second else 'assessment-match-desktop.png')), animations='disabled', full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
@@ -42,7 +42,7 @@ def run(browser):
         dialog = page.get_by_role('dialog')
         expect(dialog.get_by_text('80%', exact=True)).to_be_visible()
         dialog.get_by_text('View match breakdown', exact=True).click()
-        expect(dialog.get_by_text('Average of 2 required categories = 80% Match.', exact=True)).to_be_visible()
+        expect(dialog.get_by_text('2 of 2 required categories assessed. 160 assessed percentage points ÷ 2 required categories = 80% Match.', exact=True)).to_be_visible()
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
         page.keyboard.press('Escape')
         page.goto(BASE + '/student/dashboard', wait_until='networkidle')

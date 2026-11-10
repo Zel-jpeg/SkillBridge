@@ -117,6 +117,38 @@ def controlled_preprocess(texts, requested, **kwargs):
 
 
 class AssessmentLedAPITests(APITestCase):
+    def test_unassessed_requirement_has_no_credit_without_creating_a_zero_grade(self):
+        category = SkillCategory.objects.create(name='Synthetic unassessed category', tags=[])
+        PositionRequirement.objects.create(position=self.positions[0], skill_category=category, required_percentage=50)
+        before = list(SkillScore.objects.order_by('id').values('id', 'raw_score', 'max_score', 'percentage'))
+        self.generate()
+        self.client.force_authenticate(self.student)
+        response = self.client.get(reverse('student_combined_results'))
+        self.assertEqual(response.status_code, 200, response.data)
+        row = next(item for item in response.data['recommendations'] if item['position_id'] == self.positions[0].id)
+        self.assertEqual(row['match_percentage'], 40)
+        self.assertIsNone(row['assessment_details']['required_mean'])
+        self.assertEqual(row['assessment_details']['unknown'], 1)
+        missing = next(item for item in row['assessment_details']['requirements'] if item['category'] == category.name)
+        self.assertIsNone(missing['assessed_percentage'])
+        self.assertFalse(SkillScore.objects.filter(skill_category=category).exists())
+        self.assertEqual(before, list(SkillScore.objects.order_by('id').values('id', 'raw_score', 'max_score', 'percentage')))
+        self.client.force_authenticate(self.admin)
+        export = self.client.get(reverse('management_assessment_reports'), {'type': 'student_competency', 'export': 'csv'})
+        self.assertEqual(export.status_code, 200)
+        self.assertIn('40.0% assessment-based match', export.content.decode('utf-8'))
+        self.assertIn('1/2 categories assessed', export.content.decode('utf-8'))
+
+    def test_candidate_order_uses_saved_evidence_percentage_and_not_legacy_hybrid_ties(self):
+        from .recommendation_policy import candidate_order_fields
+        learners = [User.objects.create_user(email=f'candidate-sort-{i}@local.invalid', role='student', is_approved=True) for i in range(3)]
+        for learner, value, mean, support, legacy in zip(learners, [60, 50, 60], [None, 50, None], [0, 100, 0], [1, 99, 99]):
+            Recommendation.objects.create(student=learner, batch=self.batch, position=self.positions[0], match_score=legacy,
+                assessment_rank=1, assessment_details=dict(policy=POLICY, match_percentage=value,
+                    required_mean=mean, all_targets_met=False, support=support))
+        ordered = list(Recommendation.objects.filter(student__in=learners).order_by(*candidate_order_fields()).values_list('student_id', flat=True))
+        self.assertEqual(ordered, [learners[0].id, learners[2].id, learners[1].id])
+
     def setUp(self):
         self.admin = User.objects.create_user(email='policy-admin@local.invalid', name='Synthetic Admin', role='admin', is_approved=True)
         self.teacher = User.objects.create_user(email='policy-teacher@local.invalid', name='Synthetic Instructor', role='instructor', is_approved=True)

@@ -1,5 +1,11 @@
 # Assessment percentage match — isolated feature branch
 
+Current-policy note: the user approved the subsequent
+[evidence-based Match](EVIDENCE_BASED_MATCH_PLAN.md), which replaces the current
+full/partial display with one percentage over all required categories. This
+document preserves earlier feature decisions and validation history; previous
+saved policies and placement snapshots retain their original meanings.
+
 User instruction: implement on a branch; **do not merge to main or push**.
 Branch: `codex/assessment-percent-match-20261110`, based on `ee3d84a` (the
 position-specific NLP branch). Main remains `0fb2c1d`. No migration is needed.

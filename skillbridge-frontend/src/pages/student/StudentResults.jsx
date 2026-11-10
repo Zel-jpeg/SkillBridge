@@ -22,7 +22,7 @@ import CompetencyInsights, { HighestScoringAreas } from '../../components/Compet
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import PlacementGuidance from '../../components/placements/PlacementGuidance'
 import StudentCompanyDetails from '../../components/StudentCompanyDetails'
-import { assessmentMatchProgress, assessmentProgressLabel, sortCompanyPositions, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
+import { assessmentMatchProgress, assessmentProgressLabel, hasUnassessedRequirements, isEvidenceMatch, sortCompanyPositions, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
 
 
 
@@ -259,7 +259,7 @@ export default function StudentResults() {
           {companyTab === 'recommended' && sortMode === 'combined' && (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p className="text-xs text-blue-700 dark:text-blue-300">Match is your average assessment score in the position’s required categories. Minimums are checked first; NLP and location break assessment ties. This is not a hiring probability.</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Match adds assessed required-category scores and divides by all required categories. Unassessed categories earn no match credit. Positions meeting every minimum rank first; then Match and supporting NLP/location decide order. This is not a hiring probability.</p>
             </div>
           )}
 
@@ -309,7 +309,7 @@ export default function StudentResults() {
                         <div className="shrink-0 text-right">
                           {pos.match_score != null ? (
                             <>
-                              <p className={`text-sm font-bold ${matchColor(recommendationValue(pos))}`}>{recommendationDisplay(pos)}</p>
+                              <p className={`text-sm font-bold ${hasUnassessedRequirements(pos) ? 'text-gray-500 dark:text-gray-400' : matchColor(recommendationValue(pos))}`}>{recommendationDisplay(pos)}</p>
                               <p className="text-[10px] text-gray-400 dark:text-gray-500">match</p>
                             </>
                           ) : (
@@ -364,7 +364,7 @@ export default function StudentResults() {
                   <div className="relative z-10 max-w-28 break-words text-right shrink-0">
                     {sortMode === 'combined' ? (
                       <>
-                        <p className={`text-lg font-bold ${matchColor(r.combined)}`}>{recommendationDisplay(r)}</p>
+                        <p className={`text-lg font-bold ${hasUnassessedRequirements(r) ? 'text-gray-500 dark:text-gray-400' : matchColor(r.combined)}`}>{recommendationDisplay(r)}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label={recommendationLabel(r)} /></p>
                       </>
                     ) : sortMode === 'distance' && r.distKm != null ? (
@@ -374,7 +374,7 @@ export default function StudentResults() {
                       </>
                     ) : (
                       <>
-                        <p className={`text-lg font-bold ${matchColor(r.match)}`}>{recommendationDisplay(r)}</p>
+                        <p className={`text-lg font-bold ${hasUnassessedRequirements(r) ? 'text-gray-500 dark:text-gray-400' : matchColor(r.match)}`}>{recommendationDisplay(r)}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label={recommendationLabel(r)} /></p>
                       </>
                     )}
@@ -413,7 +413,7 @@ export default function StudentResults() {
                               : r.match
                     const pct = original ?? (isAssessmentMatch(r) ? assessmentMatchProgress(r).percentage : null)
                     const col = sortMode === 'distance' ? 'bg-blue-500'
-                              : recommendationValue(r) == null ? 'bg-gray-400'
+                              : hasUnassessedRequirements(r) || recommendationValue(r) == null ? 'bg-gray-400'
                               : pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-gray-400'
                     return <div className={`h-full rounded-full transition-all duration-700 ease-out ${col}`}
                       style={{ width: animated && Number.isFinite(pct) ? `${pct}%` : '0%' }} />
@@ -431,7 +431,7 @@ export default function StudentResults() {
                   </div>
                 )}
 
-                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : r.assessment_details?.unknown ? `${assessmentProgressLabel(r)} · some categories are not assessed yet.` : 'Below one or more category minimums'}</p>}
+                {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : hasUnassessedRequirements(r) ? `${assessmentProgressLabel(r)} · ${isEvidenceMatch(r) ? 'unassessed categories earn no match credit.' : 'some categories are not assessed yet.'}` : 'Below one or more category minimums'}</p>}
                 <MatchBreakdown recommendation={r} />
                 <div className="mt-auto pt-3">
                   <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"

@@ -1,14 +1,14 @@
 import CompanyImage from '../CompanyImage'
 import { ChevronRightIcon, PinIcon } from '../Icons'
 import './dashboardCompanyHighlights.css'
-import { isAssessmentMatch, isAssessmentLed, recommendationDisplay, recommendationValue } from '../../utils/recommendationResults'
+import { hasUnassessedRequirements, isAssessmentMatch, isAssessmentLed, recommendationDisplay, recommendationValue } from '../../utils/recommendationResults'
 
 export default function DashboardCompanyHighlights({ companies, nearest = false, onSelect, onSeeAll }) {
   return <div className={`student-company-highlights ${nearest ? 'is-nearest' : 'is-ranked'}`}>
     {companies.length ? <ol className="student-company-list">{companies.map((company, index) => {
       const score = recommendationValue(company)
       const hasScore = Number.isFinite(score)
-      const tone = !hasScore ? 'unavailable' : score >= 80 ? 'strong' : score >= 60 ? 'fair' : 'low'
+      const tone = !hasScore || hasUnassessedRequirements(company) ? 'unavailable' : score >= 80 ? 'strong' : score >= 60 ? 'fair' : 'low'
       return <li key={company.companyKey}>
         <button type="button" className={`student-company-row ${index === 0 ? 'is-first' : ''}`}
           onClick={() => onSelect(company.company_id != null ? { companyId: company.company_id } : { positionId: company.position_id })}

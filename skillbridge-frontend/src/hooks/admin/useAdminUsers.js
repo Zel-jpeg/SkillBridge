@@ -1,4 +1,5 @@
 import { filterAdminUsers } from '../../utils/adminUserCollection'
+import { recommendationValue, summaryRecommendation } from '../../utils/recommendationResults'
 import { useToast } from '../../context/ToastContext'
 // src/hooks/admin/useAdminUsers.js
 //
@@ -43,8 +44,8 @@ function normalizeUsers(usersData) {
       isFlagged:        !!s.is_flagged,
       stoppedReason:    s.stopped_reason_display || '',
       violationCount:   s.violation_count ?? 0,
-      match:            s.top_ranking_policy === "assessment-average-match-v1" ? s.top_match_percentage ?? s.top_recommendation_details?.required_mean ?? null : s.top_ranking_policy === "assessment-led-option3" ? s.top_requirement_coverage : s.top_match_score ?? null,
-      topRecommendation: { match_score: s.top_match_score, assessment_rank: s.top_recommendation_rank, ranking_policy: s.top_ranking_policy, requirement_coverage: s.top_requirement_coverage, match_percentage: s.top_match_percentage, assessment_details: s.top_recommendation_details },
+      match:            recommendationValue(summaryRecommendation(s)),
+      topRecommendation: summaryRecommendation(s),
       position:         s.top_position_name ?? null,
       company:          s.top_company_name  ?? null,
       archived:         s.is_active === false,

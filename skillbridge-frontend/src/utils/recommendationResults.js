@@ -23,7 +23,9 @@ export function enrichRecommendation(row, studentPin) {
 }
 
 export function recommendationDetails(row) { return row?.assessment_details ?? row?.recommendation_details ?? {} }
-export function isAssessmentMatch(row) { return row?.ranking_policy === 'assessment-average-match-v1' || recommendationDetails(row).policy === 'assessment-average-match-v1' }
+export function isEvidenceMatch(row) { return row?.ranking_policy === 'assessment-evidence-match-v2' || recommendationDetails(row).policy === 'assessment-evidence-match-v2' }
+export function isAssessmentMatch(row) { return isEvidenceMatch(row) || row?.ranking_policy === 'assessment-average-match-v1' || recommendationDetails(row).policy === 'assessment-average-match-v1' }
+export function hasUnassessedRequirements(row) { return isAssessmentMatch(row) && (recommendationDetails(row).unknown > 0 || recommendationDetails(row).requirement_counts?.unassessed > 0) }
 export function isAssessmentLed(row) { return isAssessmentMatch(row) || row?.ranking_policy === 'assessment-led-option3' || recommendationDetails(row).policy === 'assessment-led-option3' }
 export function recommendationLabel(row) { return isAssessmentMatch(row) ? 'Match' : isAssessmentLed(row) ? 'Recommendation order' : 'Legacy hybrid reference' }
 export function recommendationRank(row) {
@@ -31,12 +33,13 @@ export function recommendationRank(row) {
   return Number.isInteger(rank) && rank > 0 ? rank : null
 }
 export function recommendationValue(row) {
-  const value = isAssessmentMatch(row) ? row?.match_percentage ?? recommendationDetails(row).required_mean
+  const value = isEvidenceMatch(row) ? row?.match_percentage ?? recommendationDetails(row).match_percentage
+    : isAssessmentMatch(row) ? row?.match_percentage ?? recommendationDetails(row).required_mean
     : isAssessmentLed(row) ? row.requirement_coverage ?? recommendationDetails(row).coverage : row?.match_score
   return Number.isFinite(value) ? value : null
 }
-// Display-only partial results never become a final match, sorting value or
-// eligibility input. Missing categories are excluded, not assigned zero marks.
+// Old average-policy snapshots retain their display-only partial metric. The
+// current evidence policy always reads the saved server-calculated percentage.
 export function assessmentMatchProgress(row) {
   if (!isAssessmentMatch(row)) return { assessed: 0, required: 0, partial: false, percentage: null }
   const details = recommendationDetails(row)
@@ -45,8 +48,8 @@ export function assessmentMatchProgress(row) {
   const declared = details.requirement_counts?.required
   const required = Math.max(requirements.length, Number.isInteger(declared) && declared > 0 ? declared : 0)
   const final = isAssessmentMatch(row) ? recommendationValue(row) : null
-  return { assessed: assessed.length, required, partial: final == null,
-    percentage: final ?? (assessed.length ? assessed.reduce((sum, item) => sum + item.assessed_percentage, 0) / assessed.length : null) }
+  return { assessed: assessed.length, required, partial: isEvidenceMatch(row) ? hasUnassessedRequirements(row) : final == null,
+    percentage: final ?? (!isEvidenceMatch(row) && assessed.length ? assessed.reduce((sum, item) => sum + item.assessed_percentage, 0) / assessed.length : null) }
 }
 export function assessmentProgressLabel(row) {
   const { assessed, required } = assessmentMatchProgress(row)
@@ -57,6 +60,7 @@ export function recommendationDisplay(row) {
   if (isAssessmentMatch(row)) {
     const value = recommendationValue(row)
     if (value != null) return `${Number(value.toFixed(1))}%`
+    if (isEvidenceMatch(row)) return 'Not available'
     const progress = assessmentMatchProgress(row)
     return progress.percentage != null ? `${Number(progress.percentage.toFixed(1))}% partial`
       : progress.required ? `0/${progress.required} assessed` : '0 assessed'
@@ -120,7 +124,7 @@ export function comparePositionCandidates(left, right) {
   const b = recommendationDetails(right)
   if (isAssessmentLed(left) || isAssessmentLed(right)) {
     return Number(Boolean(b.all_targets_met)) - Number(Boolean(a.all_targets_met)) ||
-      (b.required_mean ?? -Infinity) - (a.required_mean ?? -Infinity) ||
+      ((isEvidenceMatch(right) ? recommendationValue(right) : b.required_mean) ?? -Infinity) - ((isEvidenceMatch(left) ? recommendationValue(left) : a.required_mean) ?? -Infinity) ||
       (b.support ?? -Infinity) - (a.support ?? -Infinity) ||
       (left.student_id ?? left.student?.id ?? left.id) - (right.student_id ?? right.student?.id ?? right.id)
   }

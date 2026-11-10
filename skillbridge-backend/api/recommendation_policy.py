@@ -11,8 +11,9 @@ import math
 from .recommendation_nlp import canonical_category, normalize_tags
 
 PREVIOUS_POLICY = 'assessment-led-option3'
-POLICY = 'assessment-average-match-v1'
-VERSION = 'assessment-average-match-20261110-v1'
+AVERAGE_POLICY = 'assessment-average-match-v1'
+POLICY = 'assessment-evidence-match-v2'
+VERSION = 'assessment-evidence-match-20261110-v2'
 SNAPSHOT_ACTION = 'placement.recommendation.snapshot'
 
 
@@ -93,15 +94,18 @@ def describe(scores, totals, names, requirements):
         required_mean=(sum(scores[key] for key in requirements) / len(requirements)
                        if requirements and all(key in scores for key in requirements) else None),
         text_similarity_is_confidence=False)
-    details['match_percentage'] = details['required_mean']
+    observed_total = sum(scores[key] for key in requirements if key in scores)
+    details['match_percentage'] = observed_total / len(requirements) if requirements else None
     details['demand_alignment'].update(used_for_ranking=False,
         meaning='Historical demand-priority diagnostic, retained for explanation compatibility. '
                 'It does not contribute to this policy’s percentage or ordering.')
-    details['match_calculation'] = dict(method='equal-required-category-average-v1',
+    details['match_calculation'] = dict(method='observed-credit-over-all-required-categories-v2',
         label='Assessment-based Match', category_count=len(requirements),
+        assessed_percentage_total=observed_total,
         assessed_category_count=len(requirements) - details['unknown'],
         complete=bool(requirements) and details['unknown'] == 0,
-        meaning='Equal-weight average of assessment percentages in this position’s required categories. '
+        meaning='Sum of assessed required-category percentages divided by all positive required categories. '
+                'Unassessed categories earn no demonstrated match credit and remain unassessed, not graded zero. '
                 'Minimum requirements are checked separately. NLP and location are tie-breakers, not part of this percentage.')
     return details
 
@@ -111,11 +115,16 @@ def row_details(row):
 
 
 def is_assessment_led(row):
-    return row_details(row).get('policy') in (POLICY, PREVIOUS_POLICY)
+    return row_details(row).get('policy') in (POLICY, AVERAGE_POLICY, PREVIOUS_POLICY)
 
 
 def is_percentage_match(row):
-    return row_details(row).get('policy') == POLICY
+    return row_details(row).get('policy') in (POLICY, AVERAGE_POLICY)
+
+
+def percentage_value(row):
+    details = row_details(row)
+    return details.get('match_percentage') if details.get('policy') == POLICY else details.get('required_mean')
 
 
 def api_fields(recommendation):
@@ -125,7 +134,7 @@ def api_fields(recommendation):
     current = is_assessment_led(recommendation)
     return dict(assessment_rank=rank, recommendation_rank=rank,
                 assessment_details=details, ranking_policy=details.get('policy') if current else 'legacy-hybrid',
-                match_percentage=details.get('required_mean') if is_percentage_match(recommendation) else None,
+                match_percentage=percentage_value(recommendation) if is_percentage_match(recommendation) else None,
                 requirement_coverage=details.get('coverage') if current else None)
 
 
@@ -139,6 +148,11 @@ def rank_key(row):
 
 
 def numerical_key(details, position_id):
+    if details.get('policy') == POLICY:
+        value = details.get('match_percentage')
+        available = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+        return (0 if details.get('all_targets_met') else 1, not available,
+                -round(value if available else 0, 8), -round(details.get('support') or 0, 8), position_id)
     mean = details.get('required_mean')
     complete = isinstance(mean, (int, float)) and math.isfinite(mean)
     tier = 0 if complete and details.get('all_targets_met') else 1 if complete else 2
@@ -155,15 +169,18 @@ def order_fields(*prefix):
 
 def candidate_order_fields():
     """Actual required-category evidence, not a personal rank, compares learners."""
-    from django.db.models import Case, FloatField, IntegerField, Value, When
+    from django.db.models import Case, F, FloatField, IntegerField, Value, When
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
     met = Case(When(assessment_details__all_targets_met=True, then=Value(1)),
                default=Value(0), output_field=IntegerField())
     mean = Cast(KeyTextTransform('required_mean', 'assessment_details'), FloatField())
+    evidence = Cast(KeyTextTransform('match_percentage', 'assessment_details'), FloatField())
+    score = Case(When(assessment_details__policy=POLICY, then=evidence), default=mean, output_field=FloatField())
+    reference = Case(When(assessment_details__policy=POLICY, then=Value(0.0)), default=F('match_score'), output_field=FloatField())
     support = Cast(KeyTextTransform('support', 'assessment_details'), FloatField())
-    return ('position_id', met.desc(), mean.desc(nulls_last=True),
-            support.desc(nulls_last=True), '-match_score', 'student_id', 'id')
+    return ('position_id', met.desc(), score.desc(nulls_last=True),
+            support.desc(nulls_last=True), reference.desc(), 'student_id', 'id')
 
 
 def top_api_fields(recommendation):
@@ -182,7 +199,10 @@ def report_label(row):
         value = fields['match_percentage']
         label = 'incomplete assessment evidence' if value is None else f'{value:.1f}% assessment-based match'
         status = 'minimums met' if row_details(row).get('all_targets_met') else 'minimums not all met'
-        return f"{label}; {status}; order #{fields['recommendation_rank']}"
+        count = row_details(row).get('match_calculation', {})
+        assessed = (f"; {count['assessed_category_count']}/{count['category_count']} categories assessed"
+                    if row_details(row).get('policy') == POLICY and count else '')
+        return f"{label}; {status}; order #{fields['recommendation_rank']}{assessed}"
     if is_assessment_led(row):
         coverage = fields['requirement_coverage']
         label = 'unavailable' if coverage is None else ('<100%' if coverage < 100 and round(coverage, 1) == 100 else f'{coverage:.1f}%')
@@ -193,7 +213,7 @@ def report_label(row):
 def coverage_or_legacy(row):
     """Policy-specific headline value for collection sorting; never relabel units."""
     if is_percentage_match(row):
-        return row_details(row).get('required_mean')
+        return percentage_value(row)
     if is_assessment_led(row):
         return row_details(row).get('coverage')
     return row.get('match_score') if isinstance(row, dict) else row.match_score

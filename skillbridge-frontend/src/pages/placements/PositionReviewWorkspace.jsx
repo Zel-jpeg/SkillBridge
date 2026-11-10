@@ -1,4 +1,4 @@
-import { recommendationValue, recommendationDisplay, placementRecommendation, coverageDisplay, isAssessmentMatch, isAssessmentLed } from '../../utils/recommendationResults'
+import { hasUnassessedRequirements, recommendationValue, recommendationDisplay, placementRecommendation, coverageDisplay, isAssessmentMatch, isAssessmentLed } from '../../utils/recommendationResults'
 import CompanyImage from '../../components/CompanyImage'
 import ScoreLabel from '../../components/ScoreLabel'
 import MatchBreakdown from '../../components/MatchBreakdown'
@@ -25,7 +25,7 @@ function CandidateMatch({ recommendation, distance }) {
   const value = recommendationValue(recommendation)
   const available = value != null && Number.isFinite(Number(value))
   const numeric = available ? Number(value) : null
-  const band = !available ? 'missing' : numeric >= 80 ? 'strong' : numeric >= 60 ? 'fair' : 'low'
+  const band = !available || hasUnassessedRequirements(recommendation) ? 'missing' : numeric >= 80 ? 'strong' : numeric >= 60 ? 'fair' : 'low'
   return <div className={`pl-candidate-match pl-candidate-match--${band}`}>
     <div><strong>{isAssessmentMatch(recommendation) ? recommendationDisplay(recommendation) : available ? coverageDisplay(recommendation) : 'Not available'}</strong>{available && <span className="pl-candidate-match-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, numeric))}%` }} /></span>}</div>
     <p>{!available ? 'Assessment results missing or unavailable' : isAssessmentMatch(recommendation) ? 'Assessment-based Match' : isAssessmentLed(recommendation) ? 'Requirement coverage · not confidence' : band === 'strong' ? 'Legacy strong match' : band === 'fair' ? 'Legacy fair match' : 'Legacy low match · review carefully'}</p>

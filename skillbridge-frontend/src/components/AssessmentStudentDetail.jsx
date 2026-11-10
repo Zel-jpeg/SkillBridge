@@ -1,5 +1,5 @@
 import MatchBreakdown from './MatchBreakdown'
-import { isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../utils/recommendationResults'
+import { isEvidenceMatch, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../utils/recommendationResults'
 import CompetencyInsights from './CompetencyInsights'
 import GrantExtraTime from './assessment/GrantExtraTime'
 import { assessmentSummary, categoryPercentage, scorePercentage } from '../utils/assessmentSummary'
@@ -165,7 +165,7 @@ function Recommendations({ student, state }) {
         <MatchBreakdown recommendation={rec} />
         {rec.distance_km != null && <p className="sb-detail-muted mt-3">Distance: {Number(rec.distance_km).toFixed(1)} km</p>}
       </div>
-    </li>)}</ol><details className="sb-detail-disclosure mt-4"><summary>How scores work<ChevronRightIcon size={16} /></summary><div><p>{state.recommendations.some(isAssessmentMatch) ? "Match averages the required category assessment scores equally. Minimums are checked first; NLP/location break assessment ties." : state.recommendations.some(isAssessmentLed) ? "Requirement coverage leads, followed by requirement-demand alignment and supporting NLP/location." : "Legacy hybrid combines 60% category fit, 25% NLP fit and 15% location fit."}</p><p className="sb-detail-muted mt-2">Match scores measure fit, not the probability of placement.</p></div></details>
+    </li>)}</ol><details className="sb-detail-disclosure mt-4"><summary>How scores work<ChevronRightIcon size={16} /></summary><div><p>{state.recommendations.some(isEvidenceMatch) ? "Match divides the assessed required-category score total by all required categories. Unassessed categories earn no match credit and are not graded zero. Positions meeting every minimum rank first, followed by Match and supporting NLP/location." : state.recommendations.some(isAssessmentMatch) ? "Match averages the required category assessment scores equally. Minimums are checked first; NLP/location break assessment ties." : state.recommendations.some(isAssessmentLed) ? "Requirement coverage leads, followed by requirement-demand alignment and supporting NLP/location." : "Legacy hybrid combines 60% category fit, 25% NLP fit and 15% location fit."}</p><p className="sb-detail-muted mt-2">Match scores measure fit, not the probability of placement.</p></div></details>
   </div>
 }
 
