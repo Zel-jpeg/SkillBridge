@@ -89,7 +89,7 @@ function Workspace({ program, scopeVersion, scopeCurrent }) {
     try {
       const { data: saved } = await api[initial ? 'patch' : 'post'](path, editor.kind === 'partner' ? companyRequest(details, image) : details)
       if (!current()) return { ok: false, message: 'Program access changed. Review your assignments.' }
-      if (editor.kind === 'partner' && !initial) { setPage(1); setSearch(saved.name) }
+      if (editor.kind === 'partner' && !initial) setPage(1)
       if (editor.kind === 'position') setExpanded(previous => new Set([...previous, `${saved.company_id}:${saved.id}`]))
       setNotice('Saved. The program catalog is up to date.'); refresh()
       return { ok: true }

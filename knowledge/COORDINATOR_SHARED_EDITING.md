@@ -80,6 +80,10 @@ fix. The separate position-specific NLP feature remains independently unmerged
 into main. No real company, position, score, recommendation or placement snapshot
 was edited by these isolated tests. Do not push to GitHub without instruction.
 
+Creating a partner refreshes the catalog and returns to the first page while
+keeping the coordinator's search and status filters. Use Search partners to
+find a new entry that falls on a later page.
+
 ## Importing a partner pin
 
 The coordinator partner editor accepts full Google Maps links with an explicit

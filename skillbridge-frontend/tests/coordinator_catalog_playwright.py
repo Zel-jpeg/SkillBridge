@@ -318,6 +318,10 @@ def run(browser):
     dialog = create_partner(page, 'Unused disposable action partner')
     dialog.get_by_role('button', name='Create partner', exact=True).click()
     expect(dialog).to_have_count(0)
+    search = page.get_by_role('searchbox', name='Search partners', exact=True)
+    expect(search).to_have_value('')
+    expect(page.get_by_role('article', name='Coordinator Service Partner Updated', exact=True)).to_be_visible()
+    search.fill('Unused disposable action partner')
     disposable = page.get_by_role('article', name='Unused disposable action partner', exact=True)
     for name in ['Edit partner Unused disposable action partner', 'Archive partner', 'Delete partner Unused disposable action partner']:
         control = disposable.get_by_role('button', name=name, exact=True)
