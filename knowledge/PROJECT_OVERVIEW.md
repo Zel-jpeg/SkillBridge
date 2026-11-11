@@ -110,6 +110,12 @@ regrading or altering placement snapshots. See
 
 ## Existing knowledge
 
+- [Advanced recommendation tools](ADVANCED_RECOMMENDATION_TOOLS_PLAN.md):
+  Content-sized model settings/comparison dialogs, strict runtime checks,
+  explicit batch/whole-system recommendation refresh and the read-only
+  200-scenario multi-program evaluation. This work remains on its local feature
+  branch; hosted verification is still a release gate.
+
 - [Admin dashboard drilldown](ADMIN_DASHBOARD_DRILLDOWN.md): Instructor-inspired
   four-card summaries, institute/program banner carousels without visible
   scrollbars, scoped student records and protected on-demand evidence. This

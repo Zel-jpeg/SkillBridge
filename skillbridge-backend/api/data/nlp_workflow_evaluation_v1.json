@@ -1,0 +1,1329 @@
+{
+  "version": "workflow-synthetic-200-v1",
+  "method": "current-assessment-led-position-specific-v1",
+  "description": "200 fictional student scenarios across four isolated program frameworks. Each program has ten fixed evidence patterns, repeated over five location variants. Results test software behavior and reference-label agreement, not population accuracy or placement success.",
+  "sources": {
+    "DNSC": {
+      "title": "DNSC program offerings",
+      "url": "https://dnsc.edu.ph/program-offerings/",
+      "use": "Program/institute names and general program context; not numeric thresholds."
+    },
+    "WEB": {
+      "title": "O*NET Web Developers 15-1254.00",
+      "url": "https://www.onetonline.org/link/summary/15-1254.00",
+      "use": "Web development, code review, browser compatibility and interface duties."
+    },
+    "NETWORK": {
+      "title": "O*NET Network and Computer Systems Administrators 15-1244.00",
+      "url": "https://www.onetonline.org/link/summary/15-1244.00",
+      "use": "Networks, troubleshooting, records, backups and access/security duties."
+    },
+    "SOCIAL": {
+      "title": "O*NET Social and Human Service Assistants 21-1093.00",
+      "url": "https://www.onetonline.org/link/summary/21-1093.00",
+      "use": "Supervised intake, service referral, group support, documentation and monitoring examples."
+    },
+    "FRONT": {
+      "title": "TESDA Front Office Services NC II",
+      "url": "https://www.tesda.gov.ph/Downloadables/TR%20Front%20Office%20Services%20NC%20II.pdf",
+      "use": "Reservations, reception, customer service and workplace communication examples; 2013 amended document."
+    },
+    "TRAVEL": {
+      "title": "TESDA Travel Services NC II Revision 01",
+      "url": "https://tesda.gov.ph/Downloadables/Travel%20Services%20NC%20II.pdf",
+      "use": "Travel requests, reservations/transactions, documentation and related records; promulgated 2019."
+    }
+  },
+  "notes": [
+    "All students, answers, partners and internship openings are fictional.",
+    "Skills and duties are adapted from referenced occupational/training material; question wording is newly authored for software testing.",
+    "Numeric minima, scores and expected-role labels are developer-authored test assumptions, not official DNSC, TESDA or O*NET thresholds.",
+    "No real student records, questions, answers or placements are read or changed.",
+    "Each observed category combines two synthetic assessment point totals (maximum 30 and 70), not an average of percentages. Missing categories remain absent.",
+    "Five location variants repeat each evidence pattern; these are 200 student scenarios, not 200 independent proficiency samples.",
+    "Expected roles were authored before model inference. The equal-score reference case uses role 0 as a reviewable label; NLP/location may legitimately prefer another role.",
+    "All-zero evidence expects no recommendation. Gate agreement is included in overall agreement and disclosed separately.",
+    "Synthetic categories and minima are examples for testing; they do not prescribe live program curricula."
+  ],
+  "location_variants": [
+    {
+      "id": "near-panabo",
+      "lat": 7.299,
+      "lng": 125.677
+    },
+    {
+      "id": "north",
+      "lat": 7.44,
+      "lng": 125.809
+    },
+    {
+      "id": "south",
+      "lat": 7.108,
+      "lng": 125.615
+    },
+    {
+      "id": "missing",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": "near-role-four",
+      "lat": 7.348,
+      "lng": 125.711
+    }
+  ],
+  "programs": [
+    {
+      "id": "IT",
+      "code": "BSIT",
+      "name": "Information Technology",
+      "institute": "IC",
+      "framework_id": 1,
+      "categories": [
+        {
+          "name": "Web interface development",
+          "description": "Build accessible browser pages, responsive layouts and interactive web interface behavior.",
+          "tags": [
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "DOM",
+            "responsive layout",
+            "accessibility",
+            "browser compatibility",
+            "web forms"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "name": "Programming and testing",
+          "description": "Implement clear application logic, investigate code faults and verify expected outputs.",
+          "tags": [
+            "functions",
+            "control flow",
+            "algorithms",
+            "debugging",
+            "unit tests",
+            "input validation",
+            "code review",
+            "program logic"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "name": "Network connectivity",
+          "description": "Investigate network addressing, name resolution and communication between connected devices.",
+          "tags": [
+            "IP addressing",
+            "DNS",
+            "DHCP",
+            "routing",
+            "switching",
+            "connectivity",
+            "network diagnostics",
+            "LAN"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "User technical support",
+          "description": "Clarify reported faults, perform authorized checks and record supervised troubleshooting actions.",
+          "tags": [
+            "helpdesk",
+            "fault diagnosis",
+            "support records",
+            "user communication",
+            "hardware checks",
+            "escalation",
+            "resolution testing",
+            "software support"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "Database records",
+          "description": "Retrieve structured records carefully and maintain accurate authorized data updates.",
+          "tags": [
+            "SQL",
+            "queries",
+            "tables",
+            "record accuracy",
+            "data validation",
+            "backup",
+            "relational records",
+            "parameterized queries"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "Systems access and protection",
+          "description": "Support controlled access, backups and appropriate handling of system security concerns.",
+          "tags": [
+            "access control",
+            "least privilege",
+            "backups",
+            "authentication",
+            "security reports",
+            "system logs",
+            "recovery",
+            "user permissions"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        }
+      ],
+      "positions": [
+        {
+          "title": "Web Development Intern",
+          "requirements": {
+            "0": 70,
+            "1": 60
+          },
+          "description": "Under supervision, implement web page changes, check browser behavior and test application logic.",
+          "tags": [
+            "web pages",
+            "browser testing",
+            "application code"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "title": "Network Support Intern",
+          "requirements": {
+            "2": 70,
+            "3": 60
+          },
+          "description": "Assist with connectivity checks, user support records and supervised network troubleshooting.",
+          "tags": [
+            "connectivity",
+            "support records",
+            "network diagnostics"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Database Support Intern",
+          "requirements": {
+            "1": 50,
+            "4": 70
+          },
+          "description": "Assist authorized record queries, validate routine data changes and test supporting scripts.",
+          "tags": [
+            "queries",
+            "record accuracy",
+            "data checks"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Systems Protection Support Intern",
+          "requirements": {
+            "2": 60,
+            "5": 70
+          },
+          "description": "Support access reviews, backup verification and recording network security concerns.",
+          "tags": [
+            "user access",
+            "backups",
+            "system records"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "S01",
+          "category_percentages": [
+            90,
+            80,
+            30,
+            40,
+            45,
+            35
+          ],
+          "expected_role": 0,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S02",
+          "category_percentages": [
+            30,
+            35,
+            90,
+            80,
+            40,
+            65
+          ],
+          "expected_role": 1,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S03",
+          "category_percentages": [
+            35,
+            75,
+            40,
+            35,
+            95,
+            45
+          ],
+          "expected_role": 2,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S04",
+          "category_percentages": [
+            35,
+            40,
+            80,
+            40,
+            35,
+            95
+          ],
+          "expected_role": 3,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S05",
+          "category_percentages": [
+            69,
+            99,
+            70,
+            75,
+            60,
+            45
+          ],
+          "expected_role": 1,
+          "coverage": "minimum_gate"
+        },
+        {
+          "id": "S06",
+          "category_percentages": [
+            90,
+            80,
+            null,
+            null,
+            null,
+            null
+          ],
+          "expected_role": 0,
+          "coverage": "missing_categories"
+        },
+        {
+          "id": "S07",
+          "category_percentages": [
+            0,
+            85,
+            80,
+            70,
+            75,
+            90
+          ],
+          "expected_role": 3,
+          "coverage": "assessed_zero"
+        },
+        {
+          "id": "S08",
+          "category_percentages": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "numeric_tie"
+        },
+        {
+          "id": "S09",
+          "category_percentages": [
+            null,
+            80,
+            90,
+            90,
+            null,
+            null
+          ],
+          "expected_role": 1,
+          "coverage": "partial_evidence"
+        },
+        {
+          "id": "S10",
+          "category_percentages": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "expected_role": null,
+          "coverage": "no_positive_evidence"
+        }
+      ]
+    },
+    {
+      "id": "IS",
+      "code": "BSIS",
+      "name": "Information Systems",
+      "institute": "IC",
+      "framework_id": 2,
+      "categories": [
+        {
+          "name": "Web interface development",
+          "description": "Build accessible browser pages, responsive layouts and interactive web interface behavior.",
+          "tags": [
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "DOM",
+            "responsive layout",
+            "accessibility",
+            "browser compatibility",
+            "web forms"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "name": "Programming and testing",
+          "description": "Implement clear application logic, investigate code faults and verify expected outputs.",
+          "tags": [
+            "functions",
+            "control flow",
+            "algorithms",
+            "debugging",
+            "unit tests",
+            "input validation",
+            "code review",
+            "program logic"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "name": "Network connectivity",
+          "description": "Investigate network addressing, name resolution and communication between connected devices.",
+          "tags": [
+            "IP addressing",
+            "DNS",
+            "DHCP",
+            "routing",
+            "switching",
+            "connectivity",
+            "network diagnostics",
+            "LAN"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "User technical support",
+          "description": "Clarify reported faults, perform authorized checks and record supervised troubleshooting actions.",
+          "tags": [
+            "helpdesk",
+            "fault diagnosis",
+            "support records",
+            "user communication",
+            "hardware checks",
+            "escalation",
+            "resolution testing",
+            "software support"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "Database records",
+          "description": "Retrieve structured records carefully and maintain accurate authorized data updates.",
+          "tags": [
+            "SQL",
+            "queries",
+            "tables",
+            "record accuracy",
+            "data validation",
+            "backup",
+            "relational records",
+            "parameterized queries"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ]
+        },
+        {
+          "name": "Systems access and protection",
+          "description": "Support controlled access, backups and appropriate handling of system security concerns.",
+          "tags": [
+            "access control",
+            "least privilege",
+            "backups",
+            "authentication",
+            "security reports",
+            "system logs",
+            "recovery",
+            "user permissions"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        }
+      ],
+      "positions": [
+        {
+          "title": "Web Development Intern",
+          "requirements": {
+            "0": 70,
+            "1": 60
+          },
+          "description": "Under supervision, implement web page changes, check browser behavior and test application logic.",
+          "tags": [
+            "web pages",
+            "browser testing",
+            "application code"
+          ],
+          "sources": [
+            "WEB"
+          ]
+        },
+        {
+          "title": "Network Support Intern",
+          "requirements": {
+            "2": 70,
+            "3": 60
+          },
+          "description": "Assist with connectivity checks, user support records and supervised network troubleshooting.",
+          "tags": [
+            "connectivity",
+            "support records",
+            "network diagnostics"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Database Support Intern",
+          "requirements": {
+            "1": 50,
+            "4": 70
+          },
+          "description": "Assist authorized record queries, validate routine data changes and test supporting scripts.",
+          "tags": [
+            "queries",
+            "record accuracy",
+            "data checks"
+          ],
+          "sources": [
+            "WEB",
+            "NETWORK"
+          ]
+        },
+        {
+          "title": "Systems Protection Support Intern",
+          "requirements": {
+            "2": 60,
+            "5": 70
+          },
+          "description": "Support access reviews, backup verification and recording network security concerns.",
+          "tags": [
+            "user access",
+            "backups",
+            "system records"
+          ],
+          "sources": [
+            "NETWORK"
+          ]
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "S01",
+          "category_percentages": [
+            90,
+            80,
+            30,
+            40,
+            45,
+            35
+          ],
+          "expected_role": 0,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S02",
+          "category_percentages": [
+            30,
+            35,
+            90,
+            80,
+            40,
+            65
+          ],
+          "expected_role": 1,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S03",
+          "category_percentages": [
+            35,
+            75,
+            40,
+            35,
+            95,
+            45
+          ],
+          "expected_role": 2,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S04",
+          "category_percentages": [
+            35,
+            40,
+            80,
+            40,
+            35,
+            95
+          ],
+          "expected_role": 3,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S05",
+          "category_percentages": [
+            69,
+            99,
+            70,
+            75,
+            60,
+            45
+          ],
+          "expected_role": 1,
+          "coverage": "minimum_gate"
+        },
+        {
+          "id": "S06",
+          "category_percentages": [
+            90,
+            80,
+            null,
+            null,
+            null,
+            null
+          ],
+          "expected_role": 0,
+          "coverage": "missing_categories"
+        },
+        {
+          "id": "S07",
+          "category_percentages": [
+            0,
+            85,
+            80,
+            70,
+            75,
+            90
+          ],
+          "expected_role": 3,
+          "coverage": "assessed_zero"
+        },
+        {
+          "id": "S08",
+          "category_percentages": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "numeric_tie"
+        },
+        {
+          "id": "S09",
+          "category_percentages": [
+            null,
+            80,
+            90,
+            90,
+            null,
+            null
+          ],
+          "expected_role": 1,
+          "coverage": "partial_evidence"
+        },
+        {
+          "id": "S10",
+          "category_percentages": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "expected_role": null,
+          "coverage": "no_positive_evidence"
+        }
+      ]
+    },
+    {
+      "id": "SW",
+      "code": "BSSW",
+      "name": "Social Work",
+      "institute": "Synthetic institute",
+      "framework_id": 3,
+      "categories": [
+        {
+          "name": "Client intake and listening",
+          "description": "Gather relevant client information respectfully under supervision using attentive communication.",
+          "tags": [
+            "client interview",
+            "active listening",
+            "needs information",
+            "intake records",
+            "clarifying questions",
+            "respectful communication",
+            "supervision",
+            "service request"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        },
+        {
+          "name": "Case documentation",
+          "description": "Record factual service information and maintain careful confidential case documentation.",
+          "tags": [
+            "case notes",
+            "confidential records",
+            "factual reporting",
+            "service history",
+            "record accuracy",
+            "authorized access",
+            "documentation",
+            "secure storage"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "name": "Community resources and referral",
+          "description": "Identify relevant services and assist supervised referrals to appropriate community resources.",
+          "tags": [
+            "service directory",
+            "community resources",
+            "referral",
+            "agency contact",
+            "client needs",
+            "service availability",
+            "follow up",
+            "resource information"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        },
+        {
+          "name": "Group and outreach support",
+          "description": "Assist supervised group activities and communicate community participation arrangements clearly.",
+          "tags": [
+            "group activities",
+            "outreach",
+            "participation",
+            "coordination",
+            "community information",
+            "activity schedule",
+            "inclusive communication",
+            "attendance"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        },
+        {
+          "name": "Program monitoring and reporting",
+          "description": "Record service activities and summarize program information accurately for supervisors.",
+          "tags": [
+            "activity records",
+            "monitoring",
+            "service counts",
+            "progress reporting",
+            "data accuracy",
+            "follow up",
+            "program summaries",
+            "record review"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "name": "Professional boundaries and supervision",
+          "description": "Recognize trainee limits, protect respectful practice and consult the designated supervisor.",
+          "tags": [
+            "supervision",
+            "professional boundaries",
+            "respect",
+            "confidentiality",
+            "authorized role",
+            "accountability",
+            "ethical concerns",
+            "consultation"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        }
+      ],
+      "positions": [
+        {
+          "title": "Supervised Casework Support Intern",
+          "requirements": {
+            "0": 70,
+            "1": 70,
+            "5": 60
+          },
+          "description": "Assist intake interviews, prepare factual case notes and consult the assigned supervisor.",
+          "tags": [
+            "intake information",
+            "case notes",
+            "supervised service"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "title": "Community Outreach Support Intern",
+          "requirements": {
+            "2": 70,
+            "3": 70,
+            "5": 60
+          },
+          "description": "Assist resource referrals, communicate community activity arrangements and report to supervisors.",
+          "tags": [
+            "community resources",
+            "outreach",
+            "participation records"
+          ],
+          "sources": [
+            "SOCIAL",
+            "DNSC"
+          ]
+        },
+        {
+          "title": "Social Program Monitoring Intern",
+          "requirements": {
+            "1": 60,
+            "4": 75
+          },
+          "description": "Check service activity records and prepare factual monitoring summaries for review.",
+          "tags": [
+            "service counts",
+            "monitoring records",
+            "report summaries"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        },
+        {
+          "title": "Group Activity Support Intern",
+          "requirements": {
+            "0": 65,
+            "3": 75
+          },
+          "description": "Help organize supervised group sessions and communicate with participating clients.",
+          "tags": [
+            "group activities",
+            "client communication",
+            "activity schedule"
+          ],
+          "sources": [
+            "SOCIAL"
+          ]
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "S01",
+          "category_percentages": [
+            90,
+            90,
+            40,
+            30,
+            35,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S02",
+          "category_percentages": [
+            40,
+            40,
+            90,
+            90,
+            35,
+            80
+          ],
+          "expected_role": 1,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S03",
+          "category_percentages": [
+            40,
+            85,
+            45,
+            30,
+            95,
+            35
+          ],
+          "expected_role": 2,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S04",
+          "category_percentages": [
+            80,
+            40,
+            40,
+            95,
+            35,
+            40
+          ],
+          "expected_role": 3,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S05",
+          "category_percentages": [
+            69,
+            100,
+            70,
+            70,
+            60,
+            60
+          ],
+          "expected_role": 1,
+          "coverage": "minimum_gate"
+        },
+        {
+          "id": "S06",
+          "category_percentages": [
+            90,
+            90,
+            null,
+            null,
+            null,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "missing_categories"
+        },
+        {
+          "id": "S07",
+          "category_percentages": [
+            0,
+            80,
+            85,
+            90,
+            70,
+            90
+          ],
+          "expected_role": 1,
+          "coverage": "assessed_zero"
+        },
+        {
+          "id": "S08",
+          "category_percentages": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "numeric_tie"
+        },
+        {
+          "id": "S09",
+          "category_percentages": [
+            null,
+            80,
+            90,
+            90,
+            null,
+            80
+          ],
+          "expected_role": 1,
+          "coverage": "partial_evidence"
+        },
+        {
+          "id": "S10",
+          "category_percentages": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "expected_role": null,
+          "coverage": "no_positive_evidence"
+        }
+      ]
+    },
+    {
+      "id": "TOURISM",
+      "code": "BSTM",
+      "name": "Tourism Management",
+      "institute": "IBPA",
+      "framework_id": 4,
+      "categories": [
+        {
+          "name": "Accommodation reservations",
+          "description": "Capture accurate accommodation booking details and verify reservation availability and confirmation.",
+          "tags": [
+            "reservations",
+            "room availability",
+            "booking details",
+            "confirmation",
+            "guest requests",
+            "dates",
+            "reservation changes",
+            "record accuracy"
+          ],
+          "sources": [
+            "FRONT"
+          ]
+        },
+        {
+          "name": "Accommodation reception",
+          "description": "Support guest arrival and departure procedures using accurate approved reception records.",
+          "tags": [
+            "guest reception",
+            "check in",
+            "check out",
+            "arrival records",
+            "room information",
+            "reception procedures",
+            "guest assistance",
+            "handover"
+          ],
+          "sources": [
+            "FRONT"
+          ]
+        },
+        {
+          "name": "Customer service communication",
+          "description": "Clarify visitor requests and communicate verified service information professionally.",
+          "tags": [
+            "customer service",
+            "active listening",
+            "clear communication",
+            "service requests",
+            "complaint handling",
+            "verified information",
+            "courtesy",
+            "follow up"
+          ],
+          "sources": [
+            "FRONT",
+            "TRAVEL"
+          ]
+        },
+        {
+          "name": "Travel documentation assistance",
+          "description": "Check travel-document information for completeness and refer uncertain requirements for verification.",
+          "tags": [
+            "travel documents",
+            "document checklist",
+            "traveler details",
+            "completeness checks",
+            "verification",
+            "application assistance",
+            "secure records",
+            "authorized guidance"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "name": "Travel reservations and transactions",
+          "description": "Prepare accurate travel bookings and record confirmed supplier transaction information.",
+          "tags": [
+            "travel booking",
+            "supplier confirmation",
+            "travel dates",
+            "booking reference",
+            "transactions",
+            "service availability",
+            "itinerary details",
+            "payment record"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "name": "Travel request records",
+          "description": "Capture traveler requirements and communicate accurately about requested travel services.",
+          "tags": [
+            "travel requests",
+            "traveler needs",
+            "service records",
+            "inquiries",
+            "request clarification",
+            "supplier information",
+            "response records",
+            "follow up"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        }
+      ],
+      "positions": [
+        {
+          "title": "Front Office Services Intern",
+          "requirements": {
+            "0": 70,
+            "1": 70,
+            "2": 60
+          },
+          "description": "Assist room reservations, arrival reception and professional guest communication under supervision.",
+          "tags": [
+            "room bookings",
+            "reception",
+            "guest service"
+          ],
+          "sources": [
+            "FRONT"
+          ]
+        },
+        {
+          "title": "Travel Reservations Support Intern",
+          "requirements": {
+            "2": 60,
+            "4": 75,
+            "5": 70
+          },
+          "description": "Help capture travel needs, arrange verified bookings and communicate supplier confirmations.",
+          "tags": [
+            "travel reservations",
+            "service requests",
+            "supplier confirmations"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "title": "Travel Documentation Support Intern",
+          "requirements": {
+            "3": 75,
+            "5": 60
+          },
+          "description": "Assist document completeness checks and record verified traveler service requirements.",
+          "tags": [
+            "travel documents",
+            "checklists",
+            "traveler information"
+          ],
+          "sources": [
+            "TRAVEL"
+          ]
+        },
+        {
+          "title": "Guest Relations Support Intern",
+          "requirements": {
+            "1": 60,
+            "2": 80,
+            "5": 65
+          },
+          "description": "Help clarify guest inquiries, communicate reception information and record service follow-up.",
+          "tags": [
+            "guest inquiries",
+            "service communication",
+            "reception support"
+          ],
+          "sources": [
+            "FRONT",
+            "TRAVEL"
+          ]
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "S01",
+          "category_percentages": [
+            95,
+            90,
+            80,
+            35,
+            40,
+            45
+          ],
+          "expected_role": 0,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S02",
+          "category_percentages": [
+            40,
+            40,
+            80,
+            45,
+            95,
+            90
+          ],
+          "expected_role": 1,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S03",
+          "category_percentages": [
+            30,
+            35,
+            60,
+            95,
+            40,
+            85
+          ],
+          "expected_role": 2,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S04",
+          "category_percentages": [
+            35,
+            90,
+            95,
+            40,
+            60,
+            80
+          ],
+          "expected_role": 3,
+          "coverage": "role_specialization"
+        },
+        {
+          "id": "S05",
+          "category_percentages": [
+            69,
+            99,
+            79,
+            75,
+            50,
+            65
+          ],
+          "expected_role": 2,
+          "coverage": "minimum_gate"
+        },
+        {
+          "id": "S06",
+          "category_percentages": [
+            90,
+            85,
+            80,
+            null,
+            null,
+            null
+          ],
+          "expected_role": 0,
+          "coverage": "missing_categories"
+        },
+        {
+          "id": "S07",
+          "category_percentages": [
+            0,
+            90,
+            90,
+            80,
+            50,
+            80
+          ],
+          "expected_role": 3,
+          "coverage": "assessed_zero"
+        },
+        {
+          "id": "S08",
+          "category_percentages": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "expected_role": 0,
+          "coverage": "numeric_tie"
+        },
+        {
+          "id": "S09",
+          "category_percentages": [
+            null,
+            null,
+            80,
+            85,
+            null,
+            90
+          ],
+          "expected_role": 2,
+          "coverage": "partial_evidence"
+        },
+        {
+          "id": "S10",
+          "category_percentages": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "expected_role": null,
+          "coverage": "no_positive_evidence"
+        }
+      ]
+    }
+  ]
+}

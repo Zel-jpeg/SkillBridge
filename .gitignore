@@ -6,6 +6,7 @@ build/
 # Local verification runtimes, disposable databases, dumps and scratch artifacts.
 /work/
 /tmp/
+/skillbridge-backend/.nlp/
 __pycache__/
 *.py[cod]
 

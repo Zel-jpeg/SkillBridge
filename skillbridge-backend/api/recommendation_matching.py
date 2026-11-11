@@ -46,7 +46,8 @@ class PositionTextSimilarity:
 
 
 def position_specific_similarity(profile_text, skill_scores, positions,
-                                 category_mapping, requested_model, *, position_texts=None):
+                                 category_mapping, requested_model, *, position_texts=None,
+                                 allow_fallback=True):
     """Return per-role cosine values and the actual fitted vectors for explanations.
 
     Callers supply the existing numerical category mapping: exact IDs for scoped
@@ -86,9 +87,13 @@ def position_specific_similarity(profile_text, skill_scores, positions,
                                       tuple(texts), tuple(identities), tuple(positive))
 
     count = len(positions)
-    processed, model_used, fallback_reason = nlp.preprocess_texts(
-        [profile_text] + position_texts + texts, requested_model,
-    )
+    inputs = [profile_text] + position_texts + texts
+    # Keep production callers compatible; read-only comparison explicitly opts
+    # into strict execution so one model cannot borrow another model's metrics.
+    if allow_fallback:
+        processed, model_used, fallback_reason = nlp.preprocess_texts(inputs, requested_model)
+    else:
+        processed, model_used, fallback_reason = nlp.preprocess_texts(inputs, requested_model, allow_fallback=False)
     if len(processed) != 1 + count * 2:
         raise ValueError('Preprocessed matching documents do not match the candidate set.')
     vectorizer = TfidfVectorizer(ngram_range=(1, 3), min_df=1, sublinear_tf=True)

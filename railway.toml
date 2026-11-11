@@ -2,7 +2,7 @@
 # existing /skillbridge-backend service root. Publishing is owner-controlled.
 [build]
 builder = "RAILPACK"
-buildCommand = "python -m pip install -r requirements-production.txt && python manage.py collectstatic --noinput"
+buildCommand = "python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0 && python -m pip install -r requirements-production.txt && python scripts/prepare_nlp.py --download && python manage.py collectstatic --noinput"
 
 [deploy]
 preDeployCommand = ["python manage.py migrate --noinput"]

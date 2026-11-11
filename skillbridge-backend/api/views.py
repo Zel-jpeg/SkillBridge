@@ -1030,12 +1030,12 @@ def suggest_tags_view(request):
     return Response({'error': 'type must be skill or position'}, status=400)
 
 
-def _nlp_config_payload(config, include_status=False):
+def _nlp_config_payload(config, include_status=False, verify=False):
     options = []
     for model_id, metadata in MODEL_OPTIONS.items():
         option = {'id': model_id, **metadata}
         if include_status:
-            option.update(model_status(model_id))
+            option.update(model_status(model_id, verify=verify))
         options.append(option)
     return {
         'active_model': config.active_model,
@@ -1052,18 +1052,25 @@ def _nlp_config_payload(config, include_status=False):
 def admin_nlp_configuration(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admins only'}, status=403)
-    config = RecommendationConfiguration.get_active()
+    # Merely inspecting model availability must not create configuration rows.
+    config = RecommendationConfiguration.objects.filter(pk=1).first() or RecommendationConfiguration(active_model='spacy_md')
     if request.method == 'GET':
-        return Response(_nlp_config_payload(config, include_status=True))
+        return Response(_nlp_config_payload(config, include_status=True,
+            verify=request.query_params.get('verify') == '1'))
 
-    model_id = request.data.get('active_model')
-    if model_id not in MODEL_OPTIONS:
+    model_id = request.data.get('active_model') if isinstance(request.data, dict) else None
+    if not isinstance(model_id, str) or model_id not in MODEL_OPTIONS:
         return Response({'error': 'Unsupported NLP model.'}, status=400)
+    readiness = model_status(model_id, verify=True)
+    if not readiness['verified']:
+        return Response({'error': readiness['error'], 'model': model_id}, status=409)
+    config = RecommendationConfiguration.get_active()
     config.active_model = model_id
     config.updated_by = request.user
     config.save(update_fields=['active_model', 'updated_by', 'updated_at'])
     payload = _nlp_config_payload(config, include_status=True)
-    payload['message'] = 'Active NLP model updated. Re-run recommendations to refresh saved scores.'
+    next(option for option in payload['models'] if option['id'] == model_id).update(readiness)
+    payload['message'] = 'Active NLP model updated. Refresh saved recommendations in OJT Placements when ready.'
     return Response(payload)
 
 

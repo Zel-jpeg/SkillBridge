@@ -1,106 +1,114 @@
+import { useEffect, useId, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../context/ToastContext'
-import DataSection from '../../components/DataSection'
 import NlpModelComparison from '../../components/admin/NlpModelComparison'
-import { useEffect, useRef, useState } from 'react'
 import { updateCachedData, useApi, invalidateCache } from '../../hooks/useApi'
 import api from '../../api/axios'
-import { readBrowserSession } from '../../api/sessionRenewal'
-import { rerunRecommendations, RECOMMENDATION_REFRESH_URLS } from '../../api/recommendationRerun'
+import { RefreshIcon, CheckCircleIcon, WarnIcon } from '../../components/Icons'
+import '../../components/admin/recommendationTools.css'
 
-function SectionCard({ title, subtitle, children }) {
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{subtitle}</p>}
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  )
-}
+const CONFIG = '/api/admin/nlp-configuration/'
 
 function NlpConfigurationCard() {
+  const navigate = useNavigate()
   const { showToast } = useToast()
-  const { data: config, error: configError } = useApi('/api/admin/nlp-configuration/')
-  const { data: batches } = useApi('/api/instructor/batches/')
-  const [selected, setSelected] = useState('spacy_md')
-  const selectedSeeded = useRef(false)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [batchId, setBatchId] = useState('')
-  const activeBatches = (batches || []).filter(batch => batch.status === 'active')
+  const { data: config, error: configError, loading } = useApi(CONFIG)
+  const [choice, setChoice] = useState(null)
+  const [busy, setBusy] = useState('')
+  const [message, setMessage] = useState(null)
+  const pending = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const selected = choice ?? config?.active_model ?? 'spacy_md'
 
-  useEffect(() => {
-    if (config && !selectedSeeded.current) {
-      selectedSeeded.current = true
-      setSelected(config.active_model)
-    }
-  }, [config])
-  useEffect(() => {
-    if (configError && !config) setMessage('Could not load NLP model configuration.')
-  }, [configError, config])
-
-  async function saveModel() {
-    setBusy(true)
+  async function action(kind) {
+    if (pending.current) return
+    pending.current = true
+    setBusy(kind)
+    setMessage(null)
     try {
-      const { data } = await api.patch('/api/admin/nlp-configuration/', { active_model: selected })
-      updateCachedData('/api/admin/nlp-configuration/', data)
-      invalidateCache('/api/admin/reports/')
-      invalidateCache('/api/admin/students/recommendations/')
-      setMessage(data.message)
-      showToast(data.message || 'Active model updated.')
+      const { data } = kind === 'save'
+        ? await api.patch(CONFIG, { active_model: selected }, { timeout: 120000 })
+        : await api.get(`${CONFIG}?verify=1`, { timeout: 120000 })
+      if (!mounted.current) return
+      updateCachedData(CONFIG, data)
+      if (kind === 'save') {
+        setChoice(null)
+        invalidateCache('/api/admin/reports/')
+        invalidateCache('/api/admin/students/recommendations/')
+        showToast(data.message || 'Active model updated.')
+      }
+      setMessage({ text: kind === 'save' ? data.message || 'Active model updated. Saved recommendations have not been refreshed.' : 'Runtime checks finished. Review each model’s status below.', error: false })
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Could not update the active model.')
-      showToast(err.response?.data?.error || 'Could not update the active model.', 'error')
-    } finally { setBusy(false) }
+      if (!mounted.current || err.staleIdentity) return
+      const text = err.response?.data?.error || (kind === 'save' ? 'Could not confirm the model change. Recheck the active model before retrying.' : 'Could not complete the runtime checks. Try again.')
+      setMessage({ text, error: true })
+      if (kind === 'save') invalidateCache(CONFIG)
+    } finally {
+      pending.current = false
+      if (mounted.current) setBusy('')
+    }
   }
 
-  async function rerun() {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await rerunRecommendations(api, readBrowserSession().id, batchId ? { batch_id: Number(batchId) } : {})
-      if (result.state === 'cancelled') return
-      if (result.refresh) RECOMMENDATION_REFRESH_URLS.forEach(invalidateCache)
-      setMessage(result.message)
-      showToast(result.message, result.type)
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <SectionCard title="Recommendation NLP Model" subtitle="The active model supplies supporting text similarity. Assessment evidence leads the recommendation order.">
-      <DataSection url="/api/admin/nlp-configuration/" layout="panel" count={1}><div className="flex flex-col lg:flex-row lg:items-end gap-3">
-        <div className="flex-1">
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">Current active model: {config?.active_model_label || 'Loading…'}</label>
-          <select aria-label="Recommendation model" value={selected} onChange={e => setSelected(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-            {(config?.models || []).map(model => (
-              <option key={model.id} value={model.id}>{model.label}{model.available ? '' : ' (fallback will be used)'}</option>
-            ))}
-          </select>
-        </div>
-        <button onClick={saveModel} disabled={busy || !config || selected === config?.active_model}
-          className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 text-white disabled:opacity-50">Save Model</button>
-        <label className="block min-w-0 text-xs font-medium text-gray-600 dark:text-gray-300">Rerun scope
-          <select aria-label="Rerun scope" value={batchId} disabled={busy} onChange={event => setBatchId(event.target.value)}
-            className="mt-1 min-h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800">
-            <option value="">All active batches</option>
-            {activeBatches.map(batch => <option key={batch.id} value={batch.id}>{batch.name}{batch.program?.name ? ` · ${batch.program.name}` : ''}</option>)}
+  return <div>
+    <section className="rt-section">
+      <h3 className="rt-heading">Recommendation model</h3>
+      <p className="rt-note">Assessment results lead; NLP supplies supporting text similarity.</p>
+      <p className="mt-2 text-green-800 dark:text-green-300">Applies across all institutes and programs.</p>
+      {loading && !config && <p className="mt-4 rt-note" role="status">Loading model settings…</p>}
+      {configError && <div className="rt-message rt-message--error" role="alert"><p>Could not load the latest model settings.</p><button className="rt-button mt-2" type="button" onClick={() => invalidateCache(CONFIG)}>Retry settings</button></div>}
+      <div className="rt-toolbar mt-5">
+        <label>Active model
+          <select className="rt-field" aria-label="Recommendation model" value={selected} disabled={!config || Boolean(busy)} onChange={event => setChoice(event.target.value)}>
+            {(config?.models || []).map(model => <option key={model.id} value={model.id}>{model.label}{model.available ? '' : ' — unavailable'}</option>)}
           </select>
         </label>
-        <button onClick={rerun} disabled={busy || (!!batchId && !activeBatches.some(batch => String(batch.id) === batchId))}
-          className="px-4 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white disabled:opacity-50">Re-run Recommendations</button>
-      </div></DataSection>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(config?.models || []).map(model => (
-          <span key={model.id} title={model.error || ''} className={`text-[11px] px-2 py-1 rounded-full ${model.available ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'}`}>
-            {model.label}: {model.available ? 'available' : 'offline fallback'}
-          </span>
-        ))}
+        <button type="button" className="rt-button rt-button--primary" disabled={!config || Boolean(busy) || selected === config.active_model} aria-busy={busy === 'save'} onClick={() => action('save')}>
+          {busy === 'save' && <span className="rt-busy-icon" aria-hidden="true"><RefreshIcon size={15} /></span>}{busy === 'save' ? 'Saving model…' : 'Save model'}
+        </button>
       </div>
-      {message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">{message}</p>}
-    </SectionCard>
-  )
+    </section>
+    <section className="rt-section">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="rt-subheading">Model availability</h3><button className="rt-button" type="button" disabled={!config || Boolean(busy)} aria-busy={busy === 'verify'} onClick={() => action('verify')}><span className={busy === 'verify' ? 'rt-busy-icon' : ''} aria-hidden="true"><RefreshIcon size={15} /></span>{busy === 'verify' ? 'Checking models…' : 'Recheck models'}</button></div>
+      <div className="rt-models" aria-live="polite" aria-busy={busy === 'verify'}>
+        {(config?.models || []).map(model => <div className="rt-model" key={model.id} data-ready={model.verified ? 'verified' : model.available ? 'installed' : 'unavailable'}>
+          <strong>{model.label}</strong>
+          <div className="rt-model-status">{model.verified ? <CheckCircleIcon size={16} /> : !model.available ? <WarnIcon size={16} /> : null}<span>{model.verified ? 'Verified in this runtime' : model.available ? 'Installed · not yet verified' : 'Unavailable'}{config.active_model === model.id ? ' · Active' : ''}</span></div>
+          {model.error && <p className="rt-note mt-2">{model.error}</p>}
+        </div>)}
+      </div>
+      <p className="rt-note mt-3">Recheck runs each model without fallback. Local availability does not establish hosted availability.</p>
+      {message && <p role={message.error ? 'alert' : 'status'} className={`rt-message${message.error ? ' rt-message--error' : ''}`}>{message.text}</p>}
+    </section>
+    <section className="rt-section">
+      <h3 className="rt-subheading">Saved recommendations</h3>
+      <p className="rt-note mt-1 mb-3">Refresh from OJT Placements after choosing a batch or the whole system. Saving a model does not start a refresh.</p>
+      <button type="button" className="rt-button" disabled={Boolean(busy)} onClick={() => navigate('/admin/placements?refresh=recommendations')}><RefreshIcon size={16} />Refresh saved recommendations</button>
+    </section>
+  </div>
 }
 
-export default function AdminRecommendationTools() { return <div className="space-y-5"><NlpConfigurationCard /><NlpModelComparison /></div> }
+export default function AdminRecommendationTools() {
+  const [tab, setTab] = useState('settings')
+  const id = useId()
+  const tabs = useRef([])
+  function move(event, index) {
+    let next
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = 1 - index
+    if (event.key === 'Home') next = 0
+    if (event.key === 'End') next = 1
+    if (next == null) return
+    event.preventDefault()
+    setTab(next === 0 ? 'settings' : 'comparison')
+    tabs.current[next]?.focus()
+  }
+  return <div className="rt-workspace">
+    <div role="tablist" aria-label="Recommendation tools" className="rt-tabs">
+      {[['settings', 'Model settings'], ['comparison', 'Model comparison']].map(([key, label], index) => <button type="button" key={key} id={`${id}-${key}-tab`} ref={node => { tabs.current[index] = node }} role="tab" aria-selected={tab === key} aria-controls={`${id}-${key}`} tabIndex={tab === key ? 0 : -1} className="rt-tab" onClick={() => setTab(key)} onKeyDown={event => move(event, index)}>{label}</button>)}
+    </div>
+    <div className="rt-scroll">
+      <div id={`${id}-settings`} role="tabpanel" aria-labelledby={`${id}-settings-tab`} tabIndex={0} hidden={tab !== 'settings'} className="rt-panel"><NlpConfigurationCard /></div>
+      <div id={`${id}-comparison`} role="tabpanel" aria-labelledby={`${id}-comparison-tab`} tabIndex={0} hidden={tab !== 'comparison'} className="rt-panel"><NlpModelComparison /></div>
+    </div>
+  </div>
+}

@@ -90,7 +90,7 @@ class EvaluationAPITests(APITestCase):
     @patch('api.nlp_evaluation.DATASET_PATH')
     def test_bad_dataset_returns_clear_error(self, path):
         path.read_bytes.side_effect = OSError('missing')
-        response = self.client.post(self.url)
+        response = self.client.post(self.url, {'mode': 'evaluation_dataset'})
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data['status'], 'dataset_error')
 
@@ -106,7 +106,7 @@ class EvaluationAPITests(APITestCase):
     @patch('api.nlp_evaluation.preprocess_texts', side_effect=fake_preprocess)
     def test_prepared_endpoint_performs_no_database_writes(self, preprocess, load):
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.post(self.url)
+            response = self.client.post(self.url, {'mode': 'evaluation_dataset'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['case_count'], 60)
         self.assertFalse(any(q['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for q in queries))

@@ -1,5 +1,75 @@
 # NLP evaluation dataset and methodology
 
+## Current system workflow simulation (default)
+
+`nlp_workflow_evaluation_v1.json` defines 200 fictional student scenarios: 50
+each for IT, IS, Social Work and Tourism, with distinct category/framework IDs
+and four eligible positions per program. Categories, tags and role descriptions
+reuse the source-attributed synthetic examples in
+`position_matching_synthetic_v1.json`; no school records, questions or answers
+are queried. Scores/minimums/reference labels are authored test assumptions,
+not official curriculum thresholds.
+
+Each program has ten fixed evidence patterns repeated over five location
+variants. Thus there are **40 independent evidence patterns**, not 200
+independent proficiency samples. Patterns cover role specialization, a minimum
+gate that overrides a higher mean, absent categories, assessed zero, equal
+numerical scores, partial evidence and no-positive-evidence gating. IT and IS
+reuse category descriptions as separate editable-copy frameworks. Expected
+position IDs are fixed before inference and never enter generated student text.
+The equal-score reference label is reviewable: supporting NLP/location can
+legitimately prefer another tied role.
+
+The evaluator calls the current pure production helpers for raw/max pooling,
+generated category/position text, required-category student views in one common
+per-student TF-IDF space, minimum checks, assessment-based Match, supporting
+NLP/location and stable ordering. Evidence combines two unequal assessment
+maxima (30 and 70); missing categories stay absent. Candidates are confined to
+the exact program/framework; foreign-framework requirements fail closed.
+No-positive-evidence cases expect no recommendations, consistent with production.
+
+`GET /api/admin/nlp-model-comparison/` returns inspectable coverage metadata,
+source/input hashes and bounded fictional text samples without loading models.
+`POST` with `{"mode":"workflow_simulation","program_scope":"all"}` evaluates
+all 200 scenarios; scope can also be `IT`, `IS`, `SW` or `TOURISM` (50 cases).
+Omitting mode selects this workflow, replacing the old prepared-mode default.
+Both methods require an authenticated administrator. Comparison reads model
+configuration but creates no configuration, student profile or recommendation.
+
+The current UI is **Reports & Analytics → Advanced tools → Model comparison**.
+Use **Test data & coverage** to inspect the fixture, select a test program or
+all programs, then **Run comparison**. **Metrics & case results** opens measured
+per-program results, NLP-only diagnostics and searchable/paginated predictions
+in a separate dialog, without inline expanding panels.
+
+The **Model settings** tab distinguishes installed files from verified execution.
+**Recheck models** strictly processes text; **Save model** verifies the selected
+engine before changing configuration. This never starts a recommendation refresh.
+The **Refresh saved recommendations** button opens OJT Placements' explicit
+selected-batch/whole-system chooser and review confirmation. An unselected batch
+does not imply the whole system. Shared institute batches retain their full scope.
+
+Top-1 agreement/Top-3 hit rate include the 20 no-positive-evidence gate cases;
+ranked-only agreement and gate agreement are also returned explicitly. Macro
+precision, recall and F1 use expected/predicted position classes plus the
+no-recommendation class. Separate **NLP-only** Top-1/Top-3 diagnostics exclude
+the gate cases (180 cases when all programs are selected). These metrics are
+synthetic reference agreement, not a student's Match percentage, real-world
+accuracy or placement-success probability. All-zero/missing evidence is never
+claimed as a language-model success merely because other cases ranked well.
+
+Every model processes identical fixed inputs with fallback disabled. Missing
+resources produce null metrics and `unavailable`; processing failures produce
+`error`. Other models continue. Processing timing includes strict preprocessing,
+per-student TF-IDF fitting and current ranking; model loading is separately
+timed. Dataset reads, text generation and metrics are excluded. Cached documents,
+repeated patterns, model order and hardware affect time: this is not a controlled
+independent performance benchmark. No network download is attempted.
+
+The sections below describe retained **historical reference modes** explicitly
+selected with `evaluation_dataset` or `real_placement_data`. Their formulas,
+timing and manual UI instructions do not describe the default current workflow.
+
 Current input-quality changes, measured before/after results, preview permissions
 and the updated manual checklist are documented in [INPUT_QUALITY_UPDATE.md](INPUT_QUALITY_UPDATE.md).
 Prepared runs now use the **Production prepared dataset** variant: curated tags
@@ -97,7 +167,8 @@ names or addresses are included.
 
 `POST /api/admin/nlp-model-comparison/` with JSON
 `{"mode":"evaluation_dataset"}` or `{"mode":"real_placement_data"}`.
-Defaults to prepared mode. Authentication and the `admin` role are required;
+These historical modes require an explicit mode; the default is the current
+workflow above. Authentication and the `admin` role are required;
 instructor/student access is denied in this first release, consistent with the
 existing NLP configuration endpoint.
 
@@ -115,7 +186,7 @@ regenerate saved scores. Only an explicit **Re-run Recommendations** click calls
 `POST /api/admin/rerun-recommendations/`. Assessment submission retains its
 existing generation flow. No migration or additional dependency is needed.
 
-## Manual acceptance checks
+## Historical acceptance notes (archived UI/reference method)
 
 Use a development account/database for actions that submit assessments or change
 configuration; comparison itself is read-only.

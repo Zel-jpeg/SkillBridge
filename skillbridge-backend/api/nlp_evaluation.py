@@ -1,8 +1,8 @@
-"""Read-only evaluation. Never call generate_recommendations or persist profiles.
+"""Read-only evaluation. Never generate or persist real recommendations.
 
-Prepared mode follows the rich NLP notebook's corpus-wide TF-IDF experiment.
-Real mode fits TF-IDF per student, exactly as production does, then applies the
-unchanged hybrid weights. See data/README.md for sampling and limitations.
+Current workflow mode lives in nlp_workflow_evaluation. The two explicit legacy
+modes retain their original NLP-only / 60/25/15 hybrid reference methods; neither
+is a measurement of today's assessment-led order.
 """
 import hashlib
 import json
@@ -166,13 +166,18 @@ def ranking_diagnostics(predictions):
                     'Inspect category evidence and label ambiguity; do not change labels to match predictions.'}
 
 
-def run_comparison(mode):
+def run_comparison(mode='workflow_simulation', program_scope='all'):
+    if mode == 'workflow_simulation':
+        from .nlp_workflow_evaluation import run_workflow_comparison
+        return run_workflow_comparison(program_scope)
     if mode not in ('evaluation_dataset', 'real_placement_data'):
-        raise ValueError('mode must be evaluation_dataset or real_placement_data')
+        raise ValueError('mode must be workflow_simulation, evaluation_dataset or real_placement_data')
+    if program_scope != 'all':
+        raise ValueError('Program scope is supported only by workflow_simulation')
     cases, positions, metadata = prepared_data() if mode == 'evaluation_dataset' else real_data()
     result = {'mode': mode, 'status': 'complete', 'case_count': len(cases),
         'position_count': len(positions), 'dataset': metadata,
-        'ranking': 'NLP text similarity' if mode == 'evaluation_dataset' else 'Hybrid 60/25/15',
+        'ranking': 'Historical NLP-only reference' if mode == 'evaluation_dataset' else 'Historical hybrid 60/25/15 reference',
         'positions': [{'id': p.id, 'title': p.title, 'company': p.company.name} for p in positions],
         'models': [], 'metric_note': 'Precision, recall and F1 are macro averages of Top-1 predictions over the union of expected and predicted classes; undefined values are zero.',
         'text_generation_version': TEXT_GENERATION_VERSION, 'taxonomy_version': TAXONOMY_VERSION,

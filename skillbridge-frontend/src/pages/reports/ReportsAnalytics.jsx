@@ -284,7 +284,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
       </>}
     </section>
     {role === 'admin' && <button type="button" className={button} onClick={() => setAdvanced(true)}>Advanced tools</button>}
-    {advanced && role === 'admin' && <DialogShell title="Advanced recommendation tools" onClose={() => setAdvanced(false)}><Suspense fallback={<p>Loading tools…</p>}><AdminRecommendationTools /></Suspense></DialogShell>}
+    {advanced && role === 'admin' && <DialogShell size="recommendation-tools" title="Advanced recommendation tools" onClose={() => setAdvanced(false)} footer={<div className="flex justify-end"><button type="button" className={button} onClick={() => setAdvanced(false)}>Done</button></div>}><Suspense fallback={<p className="p-6 text-xs" role="status">Loading tools…</p>}><AdminRecommendationTools /></Suspense></DialogShell>}
     {exportsOpen && <DialogShell title="Individual assessment reports" onClose={() => setExportsOpen(false)}><Suspense fallback={<p>Loading assessment reports…</p>}><AssessmentReportPanel embedded /></Suspense></DialogShell>}
     {filtersOpen && <DialogShell title="Report filters" onClose={() => setFiltersOpen(false)}><div className="space-y-5"><fieldset disabled={!source} className="mt-4 grid gap-5 sm:grid-cols-2">
         {role === 'admin' && <SelectFilter label="Instructor" value={params.get('instructor_id') || ''} onChange={value => update({ instructor_id: value, batch_id: '', assessment_id: '' }, true)}><option value="">All instructors</option>{options.instructors.filter(owner => scopedBatches.some(batch => batch.instructor_id === owner.id)).map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</SelectFilter>}

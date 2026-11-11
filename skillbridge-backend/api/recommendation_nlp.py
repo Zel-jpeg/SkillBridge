@@ -300,9 +300,31 @@ def _load_model(model_id):
         import stanza
         return stanza.Pipeline(
             'en', processors='tokenize,lemma', tokenize_no_ssplit=True,
+            dir=str(stanza_resources_dir()),
             use_gpu=False, verbose=False, download_method=None,
         )
     raise ValueError(f'Unsupported NLP model: {model_id}')
+
+
+def stanza_resources_dir():
+    """Use the installed Stanza version's default, or one explicit override.
+
+    Older Stanza used ~/stanza_resources; newer releases use a versioned platform
+    cache. Status, runtime and build-time provisioning must use the same path.
+    This function never creates directories or downloads resources.
+    """
+    configured = os.environ.get('STANZA_RESOURCES_DIR', '').strip()
+    if configured:
+        return Path(configured).expanduser()
+    packaged = Path(__file__).resolve().parents[1] / '.nlp' / 'stanza'
+    if (packaged / 'resources.json').is_file():
+        return packaged
+    from stanza.resources.common import DEFAULT_MODEL_DIR
+    current = Path(DEFAULT_MODEL_DIR).expanduser()
+    previous = Path.home() / 'stanza_resources'
+    if not (current / 'resources.json').is_file() and (previous / 'resources.json').is_file():
+        return previous
+    return current
 
 
 # Cache only successful document lemmas, never corpus TF-IDF or match scores.
@@ -311,6 +333,7 @@ _PREPROCESS_CACHE_LIMIT = 512
 _PREPROCESS_TEXT_LIMIT = 16384
 _preprocess_cache = OrderedDict()
 _preprocess_cache_lock = RLock()
+_stanza_inference_lock = RLock()
 
 
 def clear_preprocessing_cache():
@@ -365,16 +388,33 @@ def preprocess_texts(texts, model_id, *, allow_fallback=True):
         if model_id.startswith('spacy_'):
             return _spacy_texts(texts, model_id, model), model_id, None
 
+        # The same bounded successful-document cache is used for both engines.
+        # Load before checking it so strict errors cannot be hidden by old text.
         output = []
-        for text in texts:
-            doc = model(text)
-            tokens = []
-            for sentence in doc.sentences:
-                for word in sentence.words:
-                    lemma = (word.lemma or word.text).casefold().strip()
-                    if lemma and lemma.isalpha() and lemma not in STOP_WORDS:
-                        tokens.append(lemma)
-            output.append(' '.join(tokens))
+        with _stanza_inference_lock:
+            for text in texts:
+                key = (model_id, id(model), text)
+                with _preprocess_cache_lock:
+                    entry = _preprocess_cache.get(key)
+                    if entry is not None and entry[0] is model:
+                        _preprocess_cache.move_to_end(key)
+                        output.append(entry[1])
+                        continue
+                doc = model(text)
+                tokens = []
+                for sentence in doc.sentences:
+                    for word in sentence.words:
+                        lemma = (word.lemma or word.text).casefold().strip()
+                        if lemma and lemma.isalpha() and lemma not in STOP_WORDS:
+                            tokens.append(lemma)
+                processed = ' '.join(tokens)
+                output.append(processed)
+                if len(text) <= _PREPROCESS_TEXT_LIMIT and len(processed) <= _PREPROCESS_TEXT_LIMIT:
+                    with _preprocess_cache_lock:
+                        _preprocess_cache[key] = (model, processed)
+                        _preprocess_cache.move_to_end(key)
+                        while len(_preprocess_cache) > _PREPROCESS_CACHE_LIMIT:
+                            _preprocess_cache.popitem(last=False)
         return output, model_id, None
     except Exception as exc:
         if not allow_fallback:
@@ -388,22 +428,47 @@ def preprocess_texts(texts, model_id, *, allow_fallback=True):
         return _simple_preprocess(texts), 'simple_fallback', f'spacy_sm unavailable: {exc}'
 
 
-def model_status(model_id):
+def model_status(model_id, *, verify=False):
+    """Separate installed resources from strict execution on this server.
+
+    A normal GET avoids expensive cold model loads. An explicit admin recheck,
+    model save or build smoke check processes a small input without fallback.
+    """
+    if model_id not in MODEL_OPTIONS:
+        return {'available': False, 'verified': False, 'readiness': 'unavailable', 'error': 'Unsupported NLP model.'}
+    if verify:
+        try:
+            documents, actual, reason = preprocess_texts(
+                ['Students maintain accurate records and communicate with visitors.'], model_id, allow_fallback=False)
+            if actual != model_id or reason or len(documents) != 1 or not documents[0].strip():
+                raise ValueError('Strict processing did not produce valid text with the requested model.')
+            return {'available': True, 'verified': True, 'readiness': 'verified', 'error': None}
+        except Exception as exc:
+            # Do not expose server filesystem paths or tracebacks in the API.
+            return {'available': False, 'verified': False, 'readiness': 'unavailable',
+                    'error': f'{MODEL_OPTIONS[model_id]["label"]} could not process text ({type(exc).__name__}). Check installed resources and server configuration.'}
     if model_id in ('spacy_sm', 'spacy_md'):
         package = MODEL_OPTIONS[model_id]['package']
         available = importlib.util.find_spec('spacy') is not None and importlib.util.find_spec(package) is not None
         return {
             'available': available,
+            'verified': False, 'readiness': 'installed' if available else 'unavailable',
             'error': None if available else f'{package} is not installed.',
         }
     if model_id == 'stanza_en':
-        resources_root = Path(os.environ.get('STANZA_RESOURCES_DIR', Path.home() / 'stanza_resources'))
-        available = importlib.util.find_spec('stanza') is not None and (resources_root / 'en').exists()
+        try:
+            installed = importlib.util.find_spec('stanza') is not None
+            resources_root = stanza_resources_dir() if installed else None
+            available = bool(resources_root and (resources_root / 'resources.json').is_file()
+                and any((resources_root / 'en' / 'tokenize').glob('*.pt'))
+                and any((resources_root / 'en' / 'lemma').glob('*.pt')))
+        except (ImportError, OSError, ValueError):
+            available = False
         return {
             'available': available,
-            'error': None if available else 'Stanza or its English resources are not installed.',
+            'verified': False, 'readiness': 'installed' if available else 'unavailable',
+            'error': None if available else 'Stanza English tokenize/lemma resources were not found. Check STANZA_RESOURCES_DIR on this server.',
         }
-    return {'available': False, 'error': 'Unsupported NLP model.'}
 
 
 def valid_coordinates(lat, lng):

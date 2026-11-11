@@ -28,7 +28,7 @@ with sync_playwright() as p:
     expect(page.get_by_label('Program', exact=True)).to_be_disabled()
     page.get_by_text('Attention and administration', exact=False).click()
     expect(page.get_by_role('region', name='Needs attention', exact=True)).to_be_visible()
-    expect(page.get_by_role('button', name='Recommendation maintenance', exact=True)).to_have_count(0)
+    expect(page.get_by_role('button', name='Refresh saved recommendations', exact=True)).to_have_count(0)
     assert [{key: value for key, value in params.items() if key != '_t'} for params in analytics_requests] == [
         {'view': ['dashboard']},
     ], analytics_requests
@@ -66,17 +66,22 @@ with sync_playwright() as p:
 
     page.route('**/api/admin/rerun-recommendations/', lambda route: route.fulfill(json={'ok': True, 'students_processed': 1, 'errors': 0}))
     page.goto(BASE + '/admin/placements', wait_until='networkidle')
-    maintenance = page.get_by_role('button', name='Recommendation maintenance', exact=True)
+    maintenance = page.get_by_role('button', name='Refresh saved recommendations', exact=True)
     maintenance.press('Enter')
-    picker = page.get_by_role('dialog', name='Recommendation maintenance', exact=True)
+    picker = page.get_by_role('dialog', name='Refresh saved recommendations', exact=True)
     expect(picker.get_by_role('combobox', name='Program', exact=True)).to_be_disabled()
     picker.get_by_role('combobox', name='Institute', exact=True).select_option(str(tourism['institute_id']))
-    expect(picker.get_by_role('combobox', name='Program', exact=True).locator('option').filter(has_text='Empty program')).to_have_attribute('disabled', '')
+    expect(picker.get_by_role('radio', name='Selected batch', exact=False)).to_be_checked()
+    expect(picker.get_by_role('button', name='Review refresh', exact=True)).to_be_disabled()
     picker.get_by_role('combobox', name='Program', exact=True).select_option(str(tourism['program_id']))
+    expect(picker.get_by_role('button', name='Review refresh', exact=True)).to_be_disabled()
+    picker.get_by_role('combobox', name='Batch', exact=True).select_option(str(tourism['batch_id']))
     picker.get_by_role('combobox', name='Institute', exact=True).select_option(str(third['institute_id']))
     expect(picker.get_by_role('combobox', name='Program', exact=True)).to_have_value('')
+    expect(picker.get_by_role('combobox', name='Batch', exact=True)).to_have_value('')
     picker.get_by_role('combobox', name='Institute', exact=True).select_option(str(tourism['institute_id']))
     picker.get_by_role('combobox', name='Program', exact=True).select_option(str(tourism['program_id']))
+    picker.get_by_role('combobox', name='Batch', exact=True).select_option(str(tourism['batch_id']))
     picker.get_by_role('button', name='Review refresh', exact=True).click()
     confirmation = page.get_by_role('dialog', name='Refresh recommendations?', exact=True)
     expect(confirmation).to_contain_text('Tourism Management')
@@ -85,7 +90,7 @@ with sync_playwright() as p:
     picker.get_by_role('button', name='Review refresh', exact=True).click()
     confirmation.get_by_role('button', name='Refresh recommendations', exact=True).click()
     expect(page.get_by_role('status').filter(has_text='Recommendations refreshed for 1 student.')).to_be_visible()
-    assert [request.post_data_json for request in writes] == [{'institute_id': tourism['institute_id'], 'program_id': tourism['program_id']}]
+    assert [request.post_data_json for request in writes] == [{'batch_id': tourism['batch_id']}]
     expect(maintenance).to_be_focused()
     page.set_viewport_size({'width': 390, 'height': 844})
     maintenance.click()
@@ -102,13 +107,13 @@ with sync_playwright() as p:
     page.route('**/api/admin/rerun-recommendations/', lambda route: route.fulfill(status=503, json={'error': 'Synthetic outage'}))
     maintenance.click()
     picker.get_by_role('combobox', name='Institute', exact=True).select_option(str(ic['id']))
-    picker.get_by_role('combobox', name='Program', exact=True).select_option('all')
+    picker.get_by_role('radio', name='Whole system', exact=False).check()
     picker.get_by_role('button', name='Review refresh', exact=True).click()
-    expect(confirmation).to_contain_text('All programs and shared batches')
+    expect(confirmation).to_contain_text('Whole system · All institutes and programs')
     confirmation.get_by_role('button', name='Refresh recommendations', exact=True).click()
     expect(page.get_by_role('status').filter(has_text='Could not confirm that the rerun completed.')).to_be_visible()
-    assert len(writes) == 2 and writes[-1].post_data_json == {'institute_id': ic['id']}
-    print('PASS explicit institute-wide shared-batch payload and uncertain completion feedback')
+    assert len(writes) == 2 and writes[-1].post_data_json == {}
+    print('PASS explicit whole-system payload and uncertain completion feedback')
 
     page.goto(BASE + '/admin/dashboard', wait_until='networkidle')
     page.get_by_text('Attention and administration', exact=False).click()

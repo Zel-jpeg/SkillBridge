@@ -428,7 +428,8 @@ class HybridRecommendationTests(APITestCase):
         self.assertIsNone(recommendation.distance_km)
         self.assertEqual(recommendation.match_score, 92.5)
 
-    def test_admin_can_select_model_and_request_non_persisting_tag_suggestions(self):
+    @patch('api.views.model_status', return_value={'available': True, 'verified': True, 'readiness': 'verified', 'error': None})
+    def test_admin_can_select_model_and_request_non_persisting_tag_suggestions(self, readiness):
         self.client.force_authenticate(self.admin)
         suggestion = self.client.post(
             reverse('suggest_tags'), {'type': 'skill', 'name': 'Database'}, format='json',
