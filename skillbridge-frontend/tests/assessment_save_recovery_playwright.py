@@ -1,6 +1,7 @@
 """Actual instructor editor sends one transactional save and retains failed drafts."""
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
@@ -46,6 +47,7 @@ with sync_playwright() as p:
             questions[0]['question_text'] = payload['question_changes']['update'][0]['question_text']
             assessment['title'] = payload['title']
             fail_list[0] = True
+            time.sleep(31)  # Cross the default Axios deadline without waiting two minutes.
             return route.fulfill(json={**assessment, 'questions': questions})
         return route.fulfill(json=[])
     context.route('**/*', route_request)
@@ -76,11 +78,11 @@ with sync_playwright() as p:
         checks.append('Failed complete save retains title/question draft and performs one PATCH, no separate question writes')
         page.get_by_role('button', name='Save All Changes', exact=True).click()
         page.get_by_role('button', name='Confirm Save', exact=True).click()
-        expect(page.get_by_role('status').filter(has_text='Assessment saved successfully.')).to_be_visible()
+        expect(page.get_by_role('status').filter(has_text='Assessment saved successfully.')).to_be_visible(timeout=55000)
         expect(page.get_by_text('Updated question retained on failure', exact=True)).to_be_visible()
         assert len(writes) == 2 and all(method == 'PATCH' and path == '/api/instructor/assessments/1/' for method, path, _ in writes)
         assert len(reads) == 1
-        checks.append('Confirmed response supplies canonical question state despite failed list refresh; no follow-up question fetch or replay')
+        checks.append('A save response after 31 seconds still confirms despite a failed list refresh, with one PATCH and no replay')
         page.screenshot(path=str(ARTIFACTS / 'confirmed.png'), full_page=True)
         assert not errors, errors
     finally:

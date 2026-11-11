@@ -1,5 +1,7 @@
 """Plan and apply a complete authoring save under its assessment row lock."""
-from django.db.models import Max
+from functools import cache
+
+from django.db.models import Max, Prefetch
 from rest_framework.exceptions import APIException, ValidationError
 from .change_events import category_created
 from .models import AnswerChoice, Question, SkillCategory, StudentResponse
@@ -28,6 +30,18 @@ def authoring_questions(assessment):
             for question in assessment.questions.select_related('skill_category').prefetch_related('choices').order_by('question_order', 'id')]
 
 
+def missing_category_error(categories):
+    missing = [number for number, category in enumerate(categories, 1) if not (category or '').strip()]
+    if not missing:
+        return None
+    if len(missing) == 1:
+        return f'Question {missing[0]} is missing a skill category.'
+    numbers = ', '.join(str(number) for number in missing[:8])
+    if len(missing) > 8:
+        numbers += f' and {len(missing) - 8} more'
+    return f'{len(missing)} questions are missing a skill category: {numbers}.'
+
+
 def prepare_changes(assessment, changes, category_name, question_error):
     def invalid(message):
         raise ValidationError({'error': message, 'field': 'questions'})
@@ -36,7 +50,12 @@ def prepare_changes(assessment, changes, category_name, question_error):
     deletes, updates, additions = (changes.get(key, []) for key in ('delete_ids', 'update', 'add'))
     if not all(isinstance(value, list) for value in [deletes, updates, additions]):
         invalid('Question changes must be lists.')
-    current = {question.id: question for question in assessment.questions.select_related('skill_category').prefetch_related('choices')}
+    current = {question.id: question for question in assessment.questions.select_related('skill_category')
+               .prefetch_related(Prefetch('choices', queryset=AnswerChoice.objects.order_by('id')))
+               .order_by('question_order', 'id')}
+    framework = assessment.framework
+    category_cache = {category.id: category for category in framework.categories.all()} if framework else None
+    validate_name = cache(category_name)
     if any(type(pk) is not int or pk not in current for pk in deletes) or len(deletes) != len(set(deletes)):
         invalid('Deleted question IDs must be unique and belong to this assessment.')
     planned, seen = [], set()
@@ -54,22 +73,30 @@ def prepare_changes(assessment, changes, category_name, question_error):
             merged = {**state, **fields}
             if 'category_id' in fields and 'category' not in fields:
                 merged['category'] = ''
-            category_fields(merged, assessment.framework, category_name)
+            category_fields(merged, framework, validate_name, category_cache=category_cache)
             planned.append((current[pk], merged))
         for row in additions:
             fields = parse_question_fields(row)
-            category_fields(fields, assessment.framework, category_name)
+            category_fields(fields, framework, validate_name, category_cache=category_cache)
             planned.append((None, fields))
     except ValueError as exc:
         invalid(str(exc))
     if (deletes or updates or additions) and StudentResponse.objects.filter(assessment=assessment).exists():
         raise AuthoringConflict()
-    final = [question_state(question) for pk, question in current.items() if pk not in deletes and pk not in seen]
-    final.extend(fields for _, fields in planned)
-    for row in final:
-        category_fields(row, assessment.framework, category_name)
+    updated = {question.id: fields for question, fields in planned if question is not None}
+    final = []
+    for pk, question in current.items():
+        if pk in deletes:
+            continue
+        if pk in updated:
+            final.append(updated[pk])
+        else:
+            final.append(category_fields(question_state(question), framework, validate_name, category_cache=category_cache))
+    final.extend(fields for question, fields in planned if question is None)
     if assessment.publication_status == 'published':
         if not final: invalid('Add at least one question before publishing.')
+        if error := missing_category_error(row['category'] for row in final):
+            invalid(error)
         for row in final:
             error = question_error(row)
             if error: invalid(error)
@@ -88,13 +115,18 @@ def apply_changes(assessment, plan, user):
             category, created = SkillCategory.objects.filter(framework__isnull=True).get_or_create(name__iexact=fields['category'],
                 defaults={'name': fields['category'], 'created_by': user})
             category_created(created)
+        choices = ([{'text': fields['correct_answer'], 'is_correct': True}] if fields['correct_answer'] else []) if fields['question_type'] == 'identification' else fields['choices']
+        desired_choices = [(choice['text'].strip(), choice['is_correct']) for choice in choices if choice['text'].strip()]
         if question is None:
             order += 1
             question = Question(assessment=assessment, question_order=order)
+            saved_choices = []
+        else:
+            saved_choices = [(choice.choice_text, choice.is_correct) for choice in question.choices.all()]
         question.question_text, question.question_type, question.skill_category = fields['question_text'], fields['question_type'], category
         question.save()
-        question.choices.all().delete()
-        choices = ([{'text': fields['correct_answer'], 'is_correct': True}] if fields['correct_answer'] else []) if question.question_type == 'identification' else fields['choices']
-        for choice in choices:
-            if choice['text'].strip():
-                AnswerChoice.objects.create(question=question, choice_text=choice['text'].strip(), is_correct=choice['is_correct'])
+        if saved_choices != desired_choices:
+            if saved_choices:
+                question.choices.all().delete()
+            for text, correct in desired_choices:
+                AnswerChoice.objects.create(question=question, choice_text=text, is_correct=correct)

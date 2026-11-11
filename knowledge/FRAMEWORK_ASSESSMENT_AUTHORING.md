@@ -45,6 +45,12 @@ new program recommendations are complete.
 
 ## Editing, imports, publication and copies
 
+The editor gives the atomic save request up to two minutes for larger question
+sets. Changing a category preserves existing answer choice IDs when the key
+and choices stay the same. Drafts can be saved for later editing. Publication
+checks every question and reports missing category numbers in editor order.
+Grouped publication includes the affected draft title in the existing error.
+
 Both instructor editing and the admin authoring dialog load the authorized
 version's categories. Requests use `category_id`, resolved inside that framework.
 Names alone cannot assign a scoped question; conflicting names/IDs, categories

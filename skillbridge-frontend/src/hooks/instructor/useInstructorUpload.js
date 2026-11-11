@@ -451,7 +451,7 @@ export function useInstructorUpload() {
 
     if (publicationStatus === 'published') questions.forEach(q => {
       if (!q.text.trim()) e[`q_${q.id}_text`] = 'Question text is required'
-      if (q.categoryId === null) e[`q_${q.id}_categoryId`] = 'Tag a skill category'
+      if (!categories.some(category => category.id === q.categoryId)) e[`q_${q.id}_categoryId`] = 'Tag a skill category'
 
       if (q.type === 'mcq') {
         if (q.choices.filter(c => c.trim()).length < 2) e[`q_${q.id}_choices`] = 'Enter at least 2 answer choices'

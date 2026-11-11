@@ -360,7 +360,7 @@ export function useInstructorAssessments({ role = 'instructor' } = {}) {
         include_in_competency: editSettings.include_in_competency,
         display_order: Number(editSettings.display_order),
         ...assessmentDatePayload(selected, editSettings),
-      })
+      }, { timeout: 120000 })
 
       // 7 ── Invalidate list cache + re-fetch so question/submission counts refresh on next visit
       const changedUrls = ['/api/instructor/assessments/', '/api/instructor/dashboard/',

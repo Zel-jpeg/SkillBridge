@@ -151,9 +151,13 @@ def _stored_question_error(assessment):
     scope_error = stored_scope_error(assessment)
     if scope_error:
         return scope_error
-    questions = list(assessment.questions.prefetch_related('choices'))
+    from .assessment_authoring import missing_category_error
+    questions = list(assessment.questions.select_related('skill_category').prefetch_related('choices')
+                     .order_by('question_order', 'id'))
     if not questions:
         return 'Add at least one question before publishing.'
+    if error := missing_category_error(question.skill_category.name if question.skill_category else '' for question in questions):
+        return error
     for question in questions:
         error = _question_error({
             'question_text': question.question_text,
@@ -1826,6 +1830,9 @@ def instructor_assessments(request):
             return Response({'error': 'Choose a batch before publishing.', 'field': 'batch_id'}, status=400)
         if not questions_data:
             return Response({'error': 'Add at least one question before publishing.', 'field': 'questions'}, status=400)
+        from .assessment_authoring import missing_category_error
+        if error := missing_category_error(question['category'] for question in questions_data):
+            return Response({'error': error, 'field': 'questions'}, status=400)
         for index, question in enumerate(questions_data):
             error = _question_error(question)
             if error:

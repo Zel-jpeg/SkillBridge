@@ -49,8 +49,11 @@ function PublishDialog({ assessments, onClose }) {
       showToast(`${selected.length} assessment${selected.length === 1 ? '' : 's'} published.`)
       onClose()
     } catch (failure) {
-      const message = failure.response?.data?.error
-      setError(typeof message === 'string' ? message : 'Publication could not be confirmed. Your selection is kept. You can retry safely.')
+      const detail = failure.response?.data
+      const draft = detail?.field === 'questions' && selected.find(item => item.id === detail.assessment_id)
+      const message = detail?.error
+      setError(typeof message === 'string' ? (draft ? `${draft.title}: ${message}` : message)
+        : 'Publication could not be confirmed. Your selection is kept. You can retry safely.')
     } finally {
       pending.current = false
       setSaving(false)
@@ -88,7 +91,7 @@ function PublishDialog({ assessments, onClose }) {
           </label>)}</div>
         </fieldset>}
       </> : <>
-        <div className="publication-batch-summary"><span className="publication-heading-icon" aria-hidden="true"><UsersIcon size={20} /></span><div className="min-w-0 break-words"><p className="font-semibold text-gray-900 dark:text-white">Batch: {batches.find(([id]) => id === batch)?.[1]}</p><p className="mt-1 text-gray-500 dark:text-gray-400">{selected.length} assessment{selected.length === 1 ? '' : 's'} ready to publish</p></div></div>
+        <div className="publication-batch-summary"><span className="publication-heading-icon" aria-hidden="true"><UsersIcon size={20} /></span><div className="min-w-0 break-words"><p className="font-semibold text-gray-900 dark:text-white">Batch: {batches.find(([id]) => id === batch)?.[1]}</p><p className="mt-1 text-gray-500 dark:text-gray-400">{selected.length} assessment{selected.length === 1 ? '' : 's'} selected for publication</p></div></div>
         <section aria-label="Assessments to publish"><h3 className="mb-3 font-semibold text-gray-900 dark:text-white">Assessments to publish</h3><ul className="publication-review-list">{selected.map(item => <li key={item.id}><span className="shrink-0 text-green-700 dark:text-green-400" aria-hidden="true"><CheckCircleIcon size={17} /></span><span className="min-w-0 break-words">{item.title}</span></li>)}</ul></section>
         <div className="publication-notice"><span aria-hidden="true"><ReportIcon size={18} /></span><p>These assessments will become visible to enrolled students together. Each keeps its configured opening time, deadline, duration, required status and competency inclusion.</p></div>
         <div className="publication-notice publication-notice--warning"><span aria-hidden="true"><WarnIcon size={18} /></span><p>Publishing required work can lock final results until that work is completed.</p></div>

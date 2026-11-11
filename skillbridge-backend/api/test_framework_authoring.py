@@ -156,6 +156,39 @@ class FrameworkAuthoringTests(APITestCase):
         result = self.client.patch(f'/api/instructor/assessments/{second}/', {'publication_status': 'published'}, format='json')
         self.assertEqual(result.status_code, 400)
 
+    def test_repair_categories_preserves_answer_keys_and_requires_complete_publication(self):
+        complete = self.create().data['id']
+        draft = self.create(questions=[self.question(category_id=None) for _ in range(30)]).data['id']
+        ordered = list(Question.objects.filter(assessment_id=draft).order_by('question_order', 'id'))
+        choices = AnswerChoice.objects.filter(question__assessment_id=draft).order_by('id')
+        original_keys = list(choices.values_list('id', 'question_id', 'choice_text', 'is_correct'))
+        edit_url = f'/api/instructor/assessments/{draft}/'
+        release_url = f'/api/instructor/batches/{self.batch.id}/publish-assessments/'
+        payload = {'assessment_ids': [complete, draft]}
+
+        result = self.client.patch(edit_url, {'question_changes': {'update': [
+            {'id': question.id, 'category_id': self.category.id}
+            for index, question in enumerate(ordered, 1) if index != 6
+        ]}}, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(list(choices.values_list('id', 'question_id', 'choice_text', 'is_correct')), original_keys)
+
+        for blocked in (self.client.post(release_url, payload, format='json'),
+                        self.client.patch(edit_url, {'publication_status': 'published', 'question_changes': {}}, format='json')):
+            self.assertEqual(blocked.status_code, 400, blocked.data)
+            self.assertEqual(str(blocked.data['error']), 'Question 6 is missing a skill category.')
+        self.assertFalse(Assessment.objects.filter(pk__in=payload['assessment_ids'], publication_status='published').exists())
+
+        repaired = self.client.patch(edit_url, {'question_changes': {'update': [
+            {'id': ordered[5].id, 'category_id': self.category.id}
+        ]}}, format='json')
+        self.assertEqual(repaired.status_code, 200, repaired.data)
+        self.assertEqual(repaired.data['questions'][5]['category']['id'], self.category.id)
+        self.assertEqual(list(choices.values_list('id', 'question_id', 'choice_text', 'is_correct')), original_keys)
+        released = self.client.post(release_url, payload, format='json')
+        self.assertEqual(released.status_code, 200, released.data)
+        self.assertEqual(released.data['published_count'], 2)
+
     def test_copy_retains_ids_and_never_crosses_program_or_version_even_with_same_name(self):
         pk = self.create().data['id']
         other_batch = Batch.objects.create(name='Next cohort', instructor=self.owner, program=self.program,

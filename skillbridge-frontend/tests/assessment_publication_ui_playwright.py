@@ -4,6 +4,7 @@ Run against a local frontend with SKILLBRIDGE_TEST_BASE (default port 5189).
 """
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -21,7 +22,7 @@ class Fixture:
             batch_name='Second batch' if multiple and i == count - 1 else 'Batch 2026-2027',
             publication_status='draft', duration_minutes=60, question_count=10,
             is_required=i % 2 == 0, include_in_competency=i % 2 == 0,
-            categories=[], created_at='2026-10-01T00:00:00Z', display_order=i,
+            institute_id=1, categories=[], created_at='2026-10-01T00:00:00Z', display_order=i,
             assigned_count=0, submission_count=0, completion_count=0, completion_rate=0)
             for i in range(count)]
         user = dict(id=1, role=role, name='Synthetic Staff', is_approved=True)
@@ -33,7 +34,8 @@ class Fixture:
         self.context.route('**/*', self.route)
         self.page = self.context.new_page()
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
-        self.page.goto(BASE + f'/{role}/assessments', wait_until='networkidle')
+        scope = '?institute=1&program=all' if role == 'admin' else ''
+        self.page.goto(BASE + f'/{role}/assessments' + scope, wait_until='networkidle')
 
     def route(self, route):
         url = urlparse(route.request.url)
@@ -42,6 +44,8 @@ class Fixture:
                 return route.fulfill(status=204)
             if url.path == '/api/auth/me/':
                 return route.fulfill(json=self.user)
+            if url.path == '/api/management/organization-options/':
+                return route.fulfill(json={'institutes': [{'id': 1, 'code': 'IC', 'name': 'Synthetic Institute'}], 'programs': []})
             if url.path == '/api/instructor/assessments/':
                 return route.fulfill(json=self.records)
             if url.path == '/api/management/analytics/':
@@ -59,6 +63,13 @@ class Fixture:
                 return route.fulfill(json=[dict(id=1, name='Batch 2026-2027', status='active'), dict(id=2, name='Second batch', status='active')])
             return route.fulfill(json=[])
         return route.continue_() if url.hostname in ('127.0.0.1', 'localhost') else route.abort()
+
+    def wait_for_posts(self, count):
+        # The button enters its pending state before Playwright dispatches the route.
+        deadline = time.monotonic() + 5
+        while len(self.posts) < count and time.monotonic() < deadline:
+            self.page.wait_for_timeout(25)
+        assert len(self.posts) == count, self.posts
 
     def open(self):
         self.page.get_by_role('button', name='Publish drafts together', exact=True).click()
@@ -144,6 +155,7 @@ with sync_playwright() as p:
             page.keyboard.press('Escape')
             expect(dialog).to_be_visible()
             busy.evaluate('n => n.click()')
+            f.wait_for_posts(1)
             assert f.posts == [('/api/instructor/batches/1/publish-assessments/', {'assessment_ids': [1, 2, 3, 4, 5, 6]})]
             page.screenshot(path=str(OUT / f'{role}-publishing.png'))
             f.pending.fulfill(status=503, json={'error': 'Synthetic publication failure. Please retry.'})
@@ -151,7 +163,17 @@ with sync_playwright() as p:
             expect(page.get_by_role('status').filter(has_text='6 assessments published.')).to_have_count(0)
             dialog.get_by_role('button', name='Publish 6 assessments', exact=True).click()
             expect(busy).to_be_disabled()
-            assert len(f.posts) == 2 and f.posts[0] == f.posts[1]
+            f.wait_for_posts(2)
+            assert f.posts[0] == f.posts[1]
+            f.pending.fulfill(status=400, json={'error': 'Question 6 is missing a skill category.',
+                                                'assessment_id': 2, 'field': 'questions'})
+            affected = next(item['title'] for item in f.records if item['id'] == 2)
+            expect(dialog.locator('.publication-body').get_by_role('alert')).to_have_text(
+                f'{affected}: Question 6 is missing a skill category.')
+            dialog.get_by_role('button', name='Publish 6 assessments', exact=True).click()
+            expect(busy).to_be_disabled()
+            f.wait_for_posts(3)
+            assert f.posts[0] == f.posts[2]
             for item in f.records:
                 item['publication_status'] = 'published'
             f.pending.fulfill(json={'published_count': 6})
