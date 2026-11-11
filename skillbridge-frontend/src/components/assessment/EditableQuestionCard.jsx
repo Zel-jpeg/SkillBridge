@@ -21,18 +21,17 @@ const ChevronIcon = ({ open }) => (
     <path d="M6 9l6 6 6-6"/>
   </svg>
 )
-export default function EditableQuestionCard({ q, index, categories, framework, onUpdate, onChangeType, onUpdateChoice, onSetCorrect, onRemove }) {
+export default function EditableQuestionCard({ q, index, previewText = q.question_text, categories, framework, onUpdate, onChangeType, onUpdateChoice, onSetCorrect, onRemove, autoSuggest = true, categoryActions }) {
   const typeMeta = TYPE_META[q.question_type] || TYPE_META.mcq
 
-  const preview = q.question_text
-    ? (q.question_text.length > 70 ? q.question_text.slice(0, 70) + '…' : q.question_text)
+  const preview = previewText
+    ? (previewText.length > 70 ? previewText.slice(0, 70) + '…' : previewText)
     : 'No question text yet…'
 
   const [suggestedCategory, setSuggestedCategory] = useState(null)
 
   useEffect(() => {
-    if (framework || !q.question_text || q.question_text.trim() === '') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!autoSuggest || framework || !q.question_text || q.question_text.trim() === '') {
       setSuggestedCategory(null)
       return
     }
@@ -54,7 +53,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
       }
     }, 1000)
     return () => clearTimeout(timer)
-  }, [q.question_text, q.category?.name, framework])
+  }, [q.question_text, q.category?.name, framework, autoSuggest])
 
   return (
     <div
@@ -81,7 +80,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
         className="flex items-center gap-3 px-4 py-3.5 bg-white dark:bg-gray-900 cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/20 select-none transition-colors focus-visible:outline-2 focus-visible:outline-green-600"
       >
         {/* Index */}
-        <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
+        <div className="min-w-6 h-6 px-1 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold tabular-nums text-gray-600 dark:text-gray-400 shrink-0">
           {index + 1}
         </div>
 
@@ -93,7 +92,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
 
         {/* Category pill — hidden on smallest screens */}
         {q.category && (
-          <span className="hidden sm:inline text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shrink-0">
+          <span className="hidden max-w-[30%] truncate sm:inline text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" title={q.category.name}>
             {q.category.name}
           </span>
         )}
@@ -105,13 +104,14 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
 
         {/* Actions */}
         <div className="flex items-center gap-0.5 shrink-0">
-          <button
+          {onRemove && <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onRemove(q._tempId) }}
             className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
             title="Remove question"
           >
             <TrashIcon />
-          </button>
+          </button>}
           <div className="p-1.5 text-gray-400 dark:text-gray-600">
             <ChevronIcon open={q._expanded} />
           </div>
@@ -129,6 +129,8 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
               {QUESTION_TYPES.map(t => (
                 <button
                   key={t.key}
+                  type="button"
+                  aria-pressed={q.question_type === t.key}
                   onClick={() => onChangeType(q._tempId, t.key)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
                     q.question_type === t.key
@@ -146,6 +148,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Question</p>
             <textarea
+              aria-label="Question text"
               value={q.question_text}
               onChange={e => onUpdate(q._tempId, { question_text: e.target.value })}
               onClick={e => e.stopPropagation()}
@@ -166,6 +169,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                 {q.choices.map((choice, ci) => (
                   <div key={ci} className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => onSetCorrect(q._tempId, ci)}
                       aria-label={`Mark choice ${CHOICE_LABELS[ci] || ci + 1} as correct`}
                       aria-pressed={choice.is_correct}
@@ -184,7 +188,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                       value={choice.text}
                       onChange={e => onUpdateChoice(q._tempId, ci, 'text', e.target.value)}
                       placeholder={`Choice ${CHOICE_LABELS[ci]}`}
-                      className={`flex-1 px-3 py-2.5 rounded-xl border text-sm outline-none transition-colors text-gray-900 dark:text-white ${
+                      className={`min-w-0 flex-1 px-3 py-2.5 rounded-xl border text-sm outline-none transition-colors text-gray-900 dark:text-white ${
                         choice.is_correct
                           ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950/50'
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-green-500'
@@ -204,6 +208,8 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                 {[0, 1].map(ci => (
                   <button
                     key={ci}
+                    type="button"
+                    aria-pressed={Boolean(q.choices[ci]?.is_correct)}
                     onClick={() => onSetCorrect(q._tempId, ci)}
                     className={`flex-1 py-3 rounded-xl text-sm font-semibold border transition-colors ${
                       q.choices[ci]?.is_correct
@@ -224,6 +230,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
               <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Correct Answer</p>
               <input
                 type="text"
+                aria-label="Correct answer"
                 value={q.identAnswer || ''}
                 onChange={e => onUpdate(q._tempId, { identAnswer: e.target.value })}
                 placeholder="Type the exact correct answer..."
@@ -244,6 +251,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                   {categories.map(cat => (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => onUpdate(q._tempId, { category: { id: cat.id, name: cat.name } })}
                       aria-pressed={q.category?.id === cat.id}
                       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
@@ -262,6 +270,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Suggested:</span>
                     <button
+                      type="button"
                       onClick={() => {
                         const catObj = categories.find(c => c.name.toLowerCase() === suggestedCategory.toLowerCase())
                         if (catObj) {
@@ -277,6 +286,7 @@ export default function EditableQuestionCard({ q, index, categories, framework, 
                 )}
               </div>
             )}
+            {categoryActions}
           </div>
         </div>
       )}

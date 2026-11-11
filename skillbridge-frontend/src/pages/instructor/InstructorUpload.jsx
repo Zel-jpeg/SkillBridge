@@ -1,7 +1,7 @@
 import QuestionImportPanel from '../../components/assessment/QuestionImportPanel'
 import DataSection from '../../components/DataSection'
 import AssessmentDurationSuggestions from '../../components/assessment/AssessmentDurationSuggestions'
-import ProgramSelect from '../../components/ProgramSelect'
+import AssessmentProgramSelect from '../../components/assessment/AssessmentProgramSelect'
 import FrameworkSelect from '../../components/assessment/FrameworkSelect'
 import ScopedQuestionSuggestion from '../../components/assessment/ScopedQuestionSuggestion'
 // src/pages/instructor/InstructorUpload.jsx
@@ -48,7 +48,8 @@ export default function InstructorUpload({ role = 'instructor' }) {
   const {
     // Batches
     batches, loadingBatches, selectedBatchId, setSelectedBatchId,
-    draftProgramId, setDraftProgramId, programId, frameworkId, scoped, scopedFramework, catalogUrl, catalogError, chooseFramework, refreshCatalog,
+    draftProgramId, setDraftProgramId, programId, frameworkId, scoped, scopedFramework, catalogError, catalogNeedsReload,
+    categoryUrl, usesSharedCategories, chooseFramework, refreshCatalog,
     // Metadata
     title, setTitle, duration, setDuration,
     publicationStatus, setPublicationStatus, isRequired, setIsRequired,
@@ -61,7 +62,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
     suggestions, applySuggestion, dismissSuggestion,
     // Questions
     questions, questionMode, setQuestionMode,
-    addQuestion, removeQuestion, toggleExpand,
+    addQuestion, removeQuestion, toggleExpand, collapseQuestions,
     updateQuestion, updateIdentAnswer, updateChoice, setCorrect,
     changeQuestionType,
     importUploadedQuestions,
@@ -75,6 +76,9 @@ export default function InstructorUpload({ role = 'instructor' }) {
     countPerCat, totalTagged, totalAnswered, countByType,
   } = useInstructorUpload()
   const recoveredQuestionCount = draftBanner?.questions.filter(questionHasContent).length || 0
+  const categoryHelp = scoped ? 'Choose a program skill set to see its categories.'
+    : 'Choose a batch or program to see its skill categories.'
+  const boundSkillSet = Boolean(batches.find(batch => batch.id === selectedBatchId)?.framework_id)
 
   // ── Published success screen ──────────────────────────────────
   if (published) {
@@ -254,47 +258,53 @@ export default function InstructorUpload({ role = 'instructor' }) {
 
 
         {/* ── SECTION 2: Skill Categories ── */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-          {!selectedBatchId && <div className="space-y-3"><p className="text-xs">For a program draft, choose its program and framework before assigning categories.</p><ProgramSelect value={draftProgramId} onChange={setDraftProgramId} endpoint="/api/management/competency-programs/" />{draftProgramId && <button type="button" className="text-xs underline" onClick={() => setDraftProgramId('')}>Clear program selection</button>}</div>}
-          {scoped && <FrameworkSelect key={programId} programId={programId} value={frameworkId} onChange={chooseFramework} disabled={Boolean(batches.find(batch => batch.id === selectedBatchId)?.framework_id)} />}
-          {scoped && <p className="text-xs text-gray-500">Categories come from this program’s saved skill set. Manage definitions in Skill taxonomy. Changing the batch, program or skill set clears category assignments for review and keeps question text and answer keys.</p>}
-          {catalogError && <p role="alert" className="text-xs text-rose-700">Could not load the selected framework. Your question draft is preserved.</p>}
-          {scoped && catalogUrl && <button type="button" className="self-start text-xs underline" onClick={refreshCatalog}>Refresh framework definitions</button>}
-          <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Skill categories</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              Choose the skill areas this assessment will measure. Review any suggested category before accepting it.
-            </p>
-          </div>
-          <DataSection url={scoped ? catalogUrl : '/api/categories/'} layout="category-editor" label="Loading skill categories">
-          {!scoped && <div className="flex gap-2">
-            <input ref={catRef} type="text" value={catInput}
-              onChange={e => { setCatInput(e.target.value); setErrors(er => ({ ...er, catDupe: '', categories: '' })) }}
-              onKeyDown={e => e.key === 'Enter' && addCategory()}
-              placeholder="e.g. Web Development"
-              className={`flex-1 px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${errors.catDupe ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`} />
-            <button onClick={addCategory} className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0">Add</button>
+        <section aria-labelledby="assessment-program-and-skills" className="min-w-0 rounded-2xl border border-gray-100 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
+          <h2 id="assessment-program-and-skills" className="py-4 text-base font-semibold text-gray-900 dark:text-white">Program and skills</h2>
+          {(!selectedBatchId || scoped) && <div className="border-t border-gray-100 py-4 dark:border-gray-800">
+            <AssessmentProgramSelect value={selectedBatchId ? programId : draftProgramId} onChange={setDraftProgramId} readOnly={Boolean(selectedBatchId)} />
           </div>}
-          {errors.catDupe    && <p className="text-xs text-red-500 -mt-2">{errors.catDupe}</p>}
-          {errors.categories && <p className="text-xs text-red-500 -mt-2">{errors.categories}</p>}
-          {categories.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {categories.map(cat => {
-                const count = questions.filter(q => q.categoryId === cat.id).length
-                return (
-                  <div key={cat.id} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full">
-                    <span>{cat.name}</span>
-                    {count > 0 && <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-1.5 py-0.5 rounded-full">{count}</span>}
-                    {!scoped && <button onClick={() => removeCategory(cat.id)} className="ml-0.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors leading-none">×</button>}
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-600 italic">No categories yet. Add at least one before publishing.</p>
-          )}
-          </DataSection>
-        </div>
+          {scoped && <div className="border-t border-gray-100 py-4 dark:border-gray-800">
+            <FrameworkSelect key={programId} programId={programId} value={frameworkId} onChange={chooseFramework} disabled={boundSkillSet} compact
+              help={boundSkillSet ? 'This batch keeps the skills already used for its assessments and results.'
+                : 'Changing the skill set clears the categories assigned to your draft questions.'} />
+          </div>}
+          <div className="space-y-3 border-t border-gray-100 py-4 dark:border-gray-800">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Skill categories</h3>
+            {!categoryUrl && <p className="text-xs text-gray-600 dark:text-gray-300">{categoryHelp}</p>}
+            {(catalogError || catalogNeedsReload) && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+              <p>{catalogError ? 'Could not load skill categories. Your draft is preserved.' : 'Skill definitions changed. Reload the categories before saving your draft.'}</p>
+              <button type="button" onClick={refreshCatalog} className="min-h-10 cursor-pointer rounded-lg border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-amber-700 dark:border-amber-800 dark:bg-gray-900 dark:hover:bg-amber-950">Reload skill categories</button>
+            </div>}
+            {errors.categories && <p className="text-xs text-red-600 dark:text-red-400">{errors.categories}</p>}
+            {categoryUrl && (!catalogError || categories.length > 0) && <DataSection url={catalogError ? null : categoryUrl} layout="category-editor" label="Loading skill categories">
+              {usesSharedCategories && <div className="flex gap-2">
+                <input ref={catRef} type="text" value={catInput}
+                  onChange={e => { setCatInput(e.target.value); setErrors(er => ({ ...er, catDupe: '', categories: '' })) }}
+                  onKeyDown={e => e.key === 'Enter' && addCategory()}
+                  placeholder="e.g. Web Development"
+                  className={`flex-1 px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${errors.catDupe ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`} />
+                <button onClick={addCategory} className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0">Add</button>
+              </div>}
+              {errors.catDupe    && <p className="text-xs text-red-500 -mt-2">{errors.catDupe}</p>}
+              {categories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {categories.map(cat => {
+                    const count = questions.filter(q => q.categoryId === cat.id).length
+                    return (
+                      <div key={cat.id} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full">
+                        <span>{cat.name}</span>
+                        {count > 0 && <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-1.5 py-0.5 rounded-full">{count}</span>}
+                        {usesSharedCategories && <button onClick={() => removeCategory(cat.id)} className="ml-0.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors leading-none">×</button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 dark:text-gray-600 italic">{scoped ? 'Add skills for this program in Skill taxonomy.' : 'Add at least one skill category before publishing.'}</p>
+              )}
+            </DataSection>}
+          </div>
+        </section>
 
         {/* ── SECTION 3: Questions ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
@@ -336,17 +346,17 @@ export default function InstructorUpload({ role = 'instructor' }) {
 
           {/* ── UPLOAD PANEL ── */}
           {questionMode === 'upload' && (
-            <QuestionImportPanel key={`${selectedBatchId}:${frameworkId}`} categories={categories} scoped={scoped}
+            <QuestionImportPanel key={`${selectedBatchId}:${programId}:${frameworkId}`} categories={categories} scoped={!usesSharedCategories}
               onStage={importUploadedQuestions} onCancel={() => setQuestionMode('manual')} />
           )}
 
           {/* ── QUESTION CARDS ── */}
           {questions.map((q, idx) => {
-            const hasError   = Object.keys(errors).some(k => k.startsWith(`q_${q.id}_`))
+            const hasError   = Object.entries(errors).some(([key, message]) => message && key.startsWith(`q_${q.id}_`))
             const catName    = categories.find(c => c.id === q.categoryId)?.name
             const suggestion = suggestions[q.id]
             // Don't show suggestion if already tagged with that category
-            const showSuggestion = !scoped && suggestion && !catName
+            const showSuggestion = usesSharedCategories && suggestion && !catName
 
             return (
               <div key={q.id}
@@ -509,7 +519,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
                       <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Skill category</label>
                         {categories.length === 0 ? (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 italic py-2">Add skill categories above first.</p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 italic py-2">{categoryUrl ? 'Skill categories are unavailable.' : categoryHelp}</p>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
                             {categories.map(cat => (
@@ -550,7 +560,7 @@ export default function InstructorUpload({ role = 'instructor' }) {
 
           {questions.length > 2 && (
             <button
-              onClick={() => questions.forEach(q => { q.expanded = false; })}
+              onClick={collapseQuestions}
               className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors self-end">
               Collapse all
             </button>

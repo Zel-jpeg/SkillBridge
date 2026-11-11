@@ -80,9 +80,12 @@ def open_editor(page, role, title):
 def import_file(page, dialog, role, filename, content, mime, text=False):
     dialog.get_by_role('button', name='Import questions', exact=True).click()
     panel = page.get_by_role('region', name='Import questions', exact=True)
-    panel.get_by_label('Question import format', exact=True).select_option('native' if text else 'excel')
+    if not text:
+        panel.get_by_role('button', name='Excel / CSV', exact=True).click()
     panel.get_by_label('Question import file', exact=True).set_input_files({'name': filename, 'mimeType': mime, 'buffer': content})
-    panel.get_by_role('button', name='Select all valid', exact=True).click()
+    expect(panel.get_by_role('button', name=re.compile(r'^(Review questions|Done reviewing)$'))).to_be_visible()
+    if panel.get_by_role('button', name='Done reviewing', exact=True).is_visible():
+        panel.get_by_role('button', name='Select all valid', exact=True).click()
     button = panel.get_by_role('button', name='Add 1 question to draft', exact=True)
     expect(button).to_be_enabled()
     button.click()
@@ -117,8 +120,9 @@ def exercise_imports(browser, role, identity):
     dialog.get_by_role('button', name='Import questions', exact=True).click()
     stale_csv = b'question,type,correct,category\nCanceled delayed import,identification,A,Synthetic Programming'
     panel = page.get_by_role('region', name='Import questions', exact=True)
-    panel.get_by_label('Question import format', exact=True).select_option('excel')
+    panel.get_by_role('button', name='Excel / CSV', exact=True).click()
     panel.get_by_label('Question import file', exact=True).set_input_files({'name': 'canceled.csv', 'mimeType': 'text/csv', 'buffer': stale_csv})
+    panel.get_by_role('button', name='Review questions', exact=True).click()
     with page.expect_request('**/api/categories/suggest/'):
         panel.get_by_role('button', name='Suggest category', exact=True).click()
     panel.get_by_role('button', name='Cancel import', exact=True).click()

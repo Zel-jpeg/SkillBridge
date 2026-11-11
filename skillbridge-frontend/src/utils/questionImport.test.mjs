@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseAikenQuestions, parseNativeQuestions, parseSpreadsheetQuestions,
+import { detectQuestionTextFormat, parseAikenQuestions, parseNativeQuestions, parseSpreadsheetQuestions,
   questionImportPayload, QUESTION_IMPORT_TEMPLATES } from './questionImport.js'
 
 test('AIKEN keeps all twenty synthetic question stems, choices and keys in file order', () => {
@@ -68,7 +68,9 @@ test('AIKEN accepts another question immediately after a finished answer', () =>
 })
 
 test('native text handles comments, separators, categories and all three types', () => {
-  const { rows, errs } = parseNativeQuestions(QUESTION_IMPORT_TEMPLATES.native[1].replaceAll('\n', '\r\n'))
+  const text = '\ufeff' + QUESTION_IMPORT_TEMPLATES.native[1].replaceAll('\n', '\r\n')
+  assert.equal(detectQuestionTextFormat(text), 'native')
+  const { rows, errs } = parseNativeQuestions(text)
   assert.deepEqual(errs, [])
   assert.deepEqual(rows.map(row => row.type), ['mcq', 'truefalse', 'identification'])
   assert.deepEqual(rows.map(row => row.category), ['Records', 'Records', 'Records'])
@@ -77,11 +79,27 @@ test('native text handles comments, separators, categories and all three types',
 
 test('native export blocks preserve embedded line breaks and reject malformed encoded fields', () => {
   const content = 'TYPE: mcq\nENCODING: JSON\nQUESTION: "Read the log:\\n---\\nprint(0)"\nA: "1"\nB: "0"\nCORRECT: "B"\nCATEGORY: "Records"'
+  assert.equal(detectQuestionTextFormat(content), 'native')
   const { rows, errs } = parseNativeQuestions(content)
   assert.deepEqual(errs, [])
   assert.equal(rows[0].question, 'Read the log:\n---\nprint(0)')
   assert.deepEqual(questionImportPayload(rows)[0].choices, [{ text: '1', is_correct: false }, { text: '0', is_correct: true }])
   assert.equal(parseNativeQuestions(content.replace('A: "1"', 'A: 1')).errs.length, 1)
+})
+
+test('text format detection preserves AIKEN and does not reinterpret mixed files', () => {
+  const aiken = 'QUESTION: Which record is current?\nA. First\nB. Second\nANSWER: B'
+  assert.equal(detectQuestionTextFormat(aiken), 'aiken')
+  assert.equal(detectQuestionTextFormat(QUESTION_IMPORT_TEMPLATES.native[1] + '\n' + aiken), 'aiken')
+  assert.equal(detectQuestionTextFormat(aiken.replace('ANSWER: B', 'ANSWER: b')), 'aiken')
+})
+
+test('older SkillBridge text is detected when its fields appear in a different order', () => {
+  const text = 'CATEGORY: Records\nB: Second\nA: First\nQUESTION: Which record is current?\nCORRECT: B'
+  assert.equal(detectQuestionTextFormat(text), 'native')
+  const { rows, errs } = parseNativeQuestions(text)
+  assert.deepEqual(errs, [])
+  assert.equal(rows[0].correctIdx, 1)
 })
 
 test('spreadsheet numeric zero and boolean false survive normalization and stage payloads', () => {

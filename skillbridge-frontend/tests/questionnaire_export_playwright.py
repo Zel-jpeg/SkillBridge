@@ -77,7 +77,6 @@ def run(browser):
     panel = page.get_by_role('region', name='Import questions', exact=True)
     panel.get_by_label('Question import file', exact=True).set_input_files(str(aiken))
     expect(panel.get_by_text('1 reviewed · 1 valid · 0 with errors', exact=False)).to_be_visible()
-    panel.get_by_label('Question import format', exact=True).select_option('native')
     panel.get_by_label('Question import file', exact=True).set_input_files(str(native))
     expect(panel.get_by_text('4 reviewed · 4 valid · 0 with errors', exact=False)).to_be_visible()
     panel.get_by_role('button', name='Add 4 questions to draft', exact=True).click()

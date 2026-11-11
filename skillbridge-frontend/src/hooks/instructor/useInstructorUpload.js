@@ -15,7 +15,7 @@ import { useToast } from '../../context/ToastContext'
 import { useState, useRef, useEffect } from 'react'
 import api from '../../api/axios'
 import { useApi, invalidateCache } from '../useApi'
-import { authoringDraftKey, readAuthoringDraft, authoringDraftSignature, isRecoverableAuthoringDraft, writeAuthoringDraft } from '../../utils/authoringDraft'
+import { authoringDraftKey, readAuthoringDraft, authoringDraftSignature, isRecoverableAuthoringDraft, questionHasContent, writeAuthoringDraft } from '../../utils/authoringDraft'
 import { requestErrorMessage } from '../../api/requestErrors'
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
@@ -99,6 +99,7 @@ export function useInstructorUpload() {
   const programId = selectedBatch?.program_id || (!selectedBatchId ? draftProgramId : null)
   const frameworkId = selectedBatch?.framework_id || (programId ? selectedFrameworkId : null)
   const scoped = Boolean(programId)
+  const usesSharedCategories = Boolean(selectedBatch && !scoped)
   const catalogUrl = frameworkId ? `/api/management/programs/${programId}/frameworks/${frameworkId}/authoring/` : null
   const { data: catalog, error: catalogError } = useApi(catalogUrl)
   const scopedFramework = catalog?.framework
@@ -131,24 +132,28 @@ export function useInstructorUpload() {
     orderSeededForBatch.current = selectedBatchId
   }, [selectedBatchId, existingAssessments])
 
-  // Skill categories — pre-populated from the global admin-managed list
+  const [pendingDraft, setDraftBanner] = useState(() => readAuthoringDraft(draftKey))
+  const needsLegacyDraftCheck = Boolean(pendingDraft?.version !== 2 && pendingDraft?.categories.length)
+  const sharedCategoryUrl = usesSharedCategories ? '/api/categories/' : null
+  const categoryUrl = scoped ? catalogUrl : sharedCategoryUrl
   const [manualCategories, setCategories] = useState([])
-  const categories = scoped ? catalog?.categories || EMPTY_CATEGORIES : manualCategories
+  const categories = scoped ? catalog?.categories || EMPTY_CATEGORIES
+    : usesSharedCategories ? manualCategories : EMPTY_CATEGORIES
   const [catInput,   setCatInput]   = useState('')
   const catRef = useRef(null)
-  const { data: sharedCategories } = useApi(scoped || selectedBatchId && !selectedBatch ? null : '/api/categories/')
+  const { data: sharedCategories } = useApi(needsLegacyDraftCheck ? '/api/categories/' : sharedCategoryUrl)
   const categoriesSeeded = useRef(false)
 
-  // Pre-load global skill categories so instructors see the shared list
+  // A selected shared batch uses the shared IC taxonomy.
   useEffect(() => {
-    if (categoriesSeeded.current || categories.length || !Array.isArray(sharedCategories) || !sharedCategories.length) return
+    if (!usesSharedCategories || categoriesSeeded.current || categories.length || !Array.isArray(sharedCategories) || !sharedCategories.length) return
     categoriesSeeded.current = true
     const defaults = sharedCategories.map(c => makeCategory(c.id, c.name))
     pristineDraft.current.categories = defaults
     setCategories(defaults)
     const maxId = Math.max(...sharedCategories.map(c => c.id))
     _cid = Math.max(_cid, maxId + 1)
-  }, [sharedCategories, categories.length])
+  }, [usesSharedCategories, sharedCategories, categories.length])
 
   // Questions
   const [questions,    setQuestions]    = useState(() => [makeQuestion(nextQid(), 'mcq')])
@@ -175,9 +180,11 @@ export function useInstructorUpload() {
   const [publishedId,  setPublishedId]  = useState(null)
   const [publishing,   setPublishing]   = useState(false)
   const [publishError, setPublishError] = useState('')
+  const [catalogConflict, setCatalogConflict] = useState(null)
+  const catalogNeedsReload = Boolean(catalogConflict && catalogConflict.url === catalogUrl
+    && catalogConflict.digest === scopedFramework?.digest)
 
   // Draft
-  const [pendingDraft, setDraftBanner] = useState(() => readAuthoringDraft(draftKey))
   const draftBanner = isRecoverableAuthoringDraft(pendingDraft, sharedCategories) ? pendingDraft : null
   const [lastSaved, setLastSaved] = useState(null)
   const saveTimer = useRef(null)
@@ -190,9 +197,10 @@ export function useInstructorUpload() {
     if (published || draftBanner) return
     const data = { title, duration, categories, questions, selectedBatchId, draftProgramId, selectedFrameworkId: frameworkId,
       publicationStatus, isRequired, includeInCompetency, displayOrder, availableAt, dueAt }
-    if (authoringDraftSignature(data) === authoringDraftSignature(pristineDraft.current)) {
+    const pristine = usesSharedCategories ? pristineDraft.current : { ...pristineDraft.current, categories: EMPTY_CATEGORIES }
+    if (authoringDraftSignature(data) === authoringDraftSignature(pristine)) {
       // Do not remove an unclassified legacy save until shared categories arrive.
-      if (!pendingDraft || Array.isArray(sharedCategories)) clearDraft(draftKey)
+      if (!needsLegacyDraftCheck || Array.isArray(sharedCategories)) clearDraft(draftKey)
       setLastSaved(null)
       return
     }
@@ -206,7 +214,7 @@ export function useInstructorUpload() {
     return () => clearTimeout(saveTimer.current)
   }, [title, duration, categories, questions, selectedBatchId, draftProgramId, frameworkId, publicationStatus,
     isRequired, includeInCompetency, displayOrder, availableAt, dueAt, published, draftKey,
-    draftBanner, pendingDraft, sharedCategories])
+    draftBanner, needsLegacyDraftCheck, sharedCategories, usesSharedCategories])
 
   useEffect(() => {
     const flush = () => {
@@ -241,7 +249,7 @@ export function useInstructorUpload() {
     setDisplayOrder(String(draftBanner.displayOrder ?? 0))
     setAvailableAt(draftBanner.availableAt || '')
     setDueAt(draftBanner.dueAt || '')
-    if (draftBanner.categories) {
+    if (!draftBanner.draftProgramId && !draftBanner.selectedFrameworkId && draftBanner.categories.length) {
       categoriesSeeded.current = true
       setCategories(draftBanner.categories)
       _cid = Math.max(_cid, ...draftBanner.categories.map(c => c.id + 1))
@@ -289,7 +297,7 @@ export function useInstructorUpload() {
   function requestCategorySuggestion(qid, text) {
     dismissSuggestion(qid)
     const revision = suggestionRevisions.current[qid]
-    if (scoped || text.trim().length < 8) {
+    if (!usesSharedCategories || text.trim().length < 8) {
       setSuggestions(prev => { const n = { ...prev }; delete n[qid]; return n })
       return
     }
@@ -398,13 +406,13 @@ export function useInstructorUpload() {
     const catMap = new Map(updatedCategories.map(category => [category.name.toLowerCase(), category.id]))
     uniqueCatNames.forEach(name => {
       const key = name.toLowerCase()
-      if (!catMap.has(key) && !scoped) {
+      if (!catMap.has(key) && usesSharedCategories) {
         const newCat = makeCategory(nextCid(), name)
         updatedCategories.push(newCat)
         catMap.set(key, newCat.id)
       }
     })
-    if (!scoped) setCategories(updatedCategories)
+    if (usesSharedCategories) setCategories(updatedCategories)
 
     const newQuestions = sourceRows.map(r => ({
       id:          nextQid(),
@@ -419,7 +427,8 @@ export function useInstructorUpload() {
     }))
 
     setQuestions(prev => {
-      const isPlaceholder = prev.length === 1 && !prev[0].text && prev[0].source === 'manual'
+      const first = prev[0]
+      const isPlaceholder = prev.length === 1 && first.source === 'manual' && first.type === 'mcq' && !questionHasContent(first)
       const base = isPlaceholder ? [] : prev.map(q => ({ ...q, expanded: false }))
       return [...base, ...newQuestions]
     })
@@ -473,6 +482,7 @@ export function useInstructorUpload() {
     publishingRef.current = true
     setPublishing(true)
     setPublishError('')
+    setCatalogConflict(null)
 
     const payload = {
       title:            title.trim(),
@@ -538,6 +548,9 @@ export function useInstructorUpload() {
       showToast(publicationStatus === 'published' ? 'Assessment published successfully.' : 'Assessment draft saved successfully.')
     } catch (err) {
       const msg = requestErrorMessage(err, { mutation: true })
+      if (catalogUrl && err.response?.data?.code === 'definition_changed') {
+        setCatalogConflict({ url: catalogUrl, digest: payload.framework_digest })
+      }
       setPublishError(msg)
       showToast(msg, 'error')
     } finally {
@@ -559,12 +572,12 @@ export function useInstructorUpload() {
     setDisplayOrder('0'); setAvailableAt(''); setDueAt('')
     setCategories(pristineDraft.current.categories); setCatInput('')
     setQuestions([makeQuestion(nextQid(), 'mcq')]); setQuestionMode('manual')
-    setErrors({}); setPublished(false); setPublishedId(null); setPublishError('')
+    setErrors({}); setPublished(false); setPublishedId(null); setPublishError(''); setCatalogConflict(null)
   }
 
   // ── Derived counts ────────────────────────────────────────────
   const countPerCat   = categories.map(cat => ({ ...cat, count: questions.filter(q => q.categoryId === cat.id).length }))
-  const totalTagged   = questions.filter(q => q.categoryId !== null).length
+  const totalTagged   = questions.filter(q => categories.some(category => category.id === q.categoryId)).length
   const totalAnswered = questions.filter(q => {
     if (q.type === 'mcq' || q.type === 'truefalse') return q.correct !== null
     return q.identAnswer.trim().length > 0
@@ -587,7 +600,7 @@ export function useInstructorUpload() {
       Object.keys(suggestionTimers.current).forEach(dismissSuggestion)
       setQuestions(previous => previous.map(question => ({ ...question, categoryId: null })))
     },
-    programId, frameworkId, scoped, scopedFramework, catalogUrl, catalogError,
+    programId, frameworkId, scoped, scopedFramework, catalogError, catalogNeedsReload, categoryUrl, usesSharedCategories,
     refreshCatalog: () => catalogUrl && invalidateCache(catalogUrl),
     chooseFramework: value => {
       if (value === frameworkId) return
@@ -607,6 +620,7 @@ export function useInstructorUpload() {
     // Questions
     questions, questionMode, setQuestionMode,
     addQuestion, removeQuestion, toggleExpand,
+    collapseQuestions: () => setQuestions(previous => previous.map(question => question.expanded ? { ...question, expanded: false } : question)),
     updateQuestion, updateIdentAnswer, updateChoice, setCorrect,
     changeQuestionType,
     importUploadedQuestions,
@@ -615,7 +629,7 @@ export function useInstructorUpload() {
     formatDraftAge,
     // Validation / publish
     errors, setErrors,
-    published, publishedId, publishing, publishError,
+    published, publishedId, publishing, publishError: catalogConflict && !catalogNeedsReload ? '' : publishError,
     handlePublish, resetForm, validate,
     // Derived counts
     countPerCat, totalTagged, totalAnswered, countByType,

@@ -7,7 +7,7 @@ import { organizationField as field } from '../admin/organizationUi'
 export default function FrameworkSelect({ programId, value, onChange, onAutoSelect = onChange, disabled = false,
   help = disabled ? 'This batch keeps the skills already used for its assessments and results.'
     : 'Use current program skills for new work. Changing the selection clears draft category assignments.',
-  earlierHelp }) {
+  earlierHelp, compact = false }) {
   const [page, setPage] = useState(1)
   const base = programId ? `/api/management/programs/${programId}/frameworks/` : null
   const url = base ? `${base}?status=active&page=${page}&page_size=8` : null
@@ -19,18 +19,27 @@ export default function FrameworkSelect({ programId, value, onChange, onAutoSele
   const { data: versions } = useApi(base && !value && !disabled ? `${base}?status=all&page_size=1` : null)
   const candidate = versions?.count === 1 ? versions.results[0] : null
   const automaticId = !value && !disabled && candidate?.is_active && candidate.category_count > 0 ? candidate.id : null
+  const showVersions = (data?.count ?? 0) + Number(Boolean(saved && !saved.is_active)) > 1
+  function optionLabel(row, savedOption = false) {
+    const current = row.id === currentId
+    if (compact) {
+      const version = showVersions ? ` · Version ${row.version}` : ''
+      return `${row.name}${version} · ${current ? 'Current' : savedOption ? 'Saved' : 'Earlier'}`
+    }
+    return `${current ? 'Current' : savedOption ? 'Saved' : 'Earlier'} program skills · ${row.name} · v${row.version}`
+  }
   useEffect(() => {
     if (automaticId) onAutoSelect(automaticId)
   }, [automaticId, onAutoSelect])
   if (!programId) return null
   return <DataSection url={url} layout="control"><div className="space-y-3 text-xs">
-    <label className="block space-y-2 font-semibold">Program skill set<select aria-label="Program skill set" className={field} value={value || ''} disabled={disabled} onChange={event => onChange(event.target.value ? Number(event.target.value) : null)}>
+    <label className="block space-y-2 font-semibold">{compact ? 'Skill set' : 'Program skill set'}<select aria-label="Program skill set" className={compact ? `${field} min-h-11 cursor-pointer disabled:cursor-default` : field} value={value || ''} disabled={disabled} onChange={event => onChange(event.target.value ? Number(event.target.value) : null)}>
       <option value="">Choose a skill set</option>
       {data?.results.map(row => <option key={row.id} value={row.id} disabled={row.category_count === 0}>
-        {row.id === currentId ? 'Current program skills' : 'Earlier program skills'} · {row.name} · v{row.version}
+        {optionLabel(row)}
       </option>)}
       {value && !listed && <option value={value}>{saved?.id === value
-        ? `${value === currentId ? 'Current' : 'Saved'} program skills · ${saved.name} · v${saved.version}`
+        ? optionLabel(saved, true)
         : `Saved program skills #${value}`}</option>}
     </select></label>
     {data && <Pagination total={data.count} page={data.page} pageSize={data.page_size} onPage={setPage} />}

@@ -44,6 +44,7 @@ subprocess.run([shutil.which('node'), '-e',
 
 checks, errors = [], []
 ASSESSMENT = {'id': 1, 'title': 'Synthetic zero import', 'batch_id': 1, 'batch_name': 'Synthetic Batch',
+    'institute_id': 1, 'program_id': None,
     'publication_status': 'draft', 'is_required': True, 'include_in_competency': True,
     'duration_minutes': 30, 'question_count': 0, 'categories': [], 'display_order': 0,
     'availability_status': 'draft', 'questions_locked': False, 'attempt_count': 0,
@@ -80,6 +81,12 @@ with sync_playwright() as p:
                     def route_request(route):
                         url = urlparse(route.request.url)
                         if url.path.startswith('/api/'):
+                            if url.path == '/api/realtime/session/':
+                                return route.fulfill(json={'transport': 'sse'})
+                            if url.path == '/api/management/organization-options/':
+                                return route.fulfill(json={'institutes': [
+                                    {'id': 1, 'code': 'IC', 'name': 'Synthetic Institute', 'is_active': True},
+                                ], 'programs': []})
                             if url.path.endswith('/events/'):
                                 return route.fulfill(status=204)
                             if url.path in ('/api/auth/me/', '/api/students/me/'):
@@ -111,10 +118,11 @@ with sync_playwright() as p:
                     page.set_default_timeout(15000)
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     if flow == 'create':
-                        page.goto(BASE + f'/{role}/assessment/create', wait_until='networkidle')
+                        page.goto(BASE + f'/{role}/assessment/create?batch_id=1', wait_until='networkidle')
+                        expect(page.get_by_role('button', name='Programming', exact=True)).to_be_visible()
                         page.get_by_role('button', name='Upload file', exact=True).click()
                         panel = page.get_by_role('region', name='Import questions', exact=True)
-                        panel.get_by_label('Question import format', exact=True).select_option('excel')
+                        panel.get_by_role('button', name='Excel / CSV', exact=True).click()
                         upload = panel.get_by_label('Question import file', exact=True)
                         if file == csv_path:
                             with page.expect_download() as download:
@@ -136,14 +144,15 @@ with sync_playwright() as p:
                         assert len(writes) == 1
                         verify_payload(writes[0]['questions'])
                     else:
-                        page.goto(BASE + f'/{role}/assessments', wait_until='networkidle')
+                        scope = '?institute=1&program=all' if role == 'admin' else ''
+                        page.goto(BASE + f'/{role}/assessments{scope}', wait_until='networkidle')
                         page.get_by_role('button', name=('Open assessment ' if role == 'instructor' else 'View details for ') + ASSESSMENT['title'], exact=True).click()
                         if role == 'admin':
                             page.get_by_role('tab', name='Questions', exact=True).click()
                             page.get_by_role('button', name='Edit assessment and questions', exact=True).click()
                         page.get_by_role('button', name='Import questions', exact=True).click()
                         panel = page.get_by_role('region', name='Import questions', exact=True)
-                        panel.get_by_label('Question import format', exact=True).select_option('excel')
+                        panel.get_by_role('button', name='Excel / CSV', exact=True).click()
                         panel.get_by_label('Question import file', exact=True).set_input_files(str(file))
                         expect(panel.get_by_text('10 reviewed · 8 valid · 2 with errors', exact=False)).to_be_visible()
                         panel.get_by_role('button', name='Select all valid', exact=True).click()

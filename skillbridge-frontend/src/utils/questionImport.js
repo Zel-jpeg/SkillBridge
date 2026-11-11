@@ -6,6 +6,15 @@ const answerStart = /^ANSWER\s*:/i
 const optionStart = /^[A-Z][.)](?:\s|$)/i
 const richContent = /!\[[^\]]*\]\(|<(?:img|svg|picture|audio|video|iframe|table|object|math|script)\b|\[\[(?:image|file):/i
 
+export function detectQuestionTextFormat(content) {
+  const lines = content.replace(/^\uFEFF/, '').split(/\r\n|\n|\r/).map(line => line.trim())
+  const structured = lines.some(line => /^QUESTION\s*:/i.test(line))
+    && lines.some(line => /^CORRECT\s*:/i.test(line))
+    && lines.some(line => /^(?:CATEGORY|TYPE|ENCODING)\s*:/i.test(line))
+    && !lines.some(line => answerStart.test(line))
+  return structured ? 'native' : 'aiken'
+}
+
 export function parseAikenQuestions(content) {
   const rows = []
   const errs = []

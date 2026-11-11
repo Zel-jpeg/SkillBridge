@@ -142,7 +142,6 @@ with sync_playwright() as p:
             expect(page.get_by_placeholder('e.g. 60')).to_have_value('12')
             page.get_by_placeholder('e.g. 60').fill('')
             page.get_by_role('button', name='Upload file', exact=True).click()
-            page.get_by_label('Question import format', exact=True).select_option('native')
             page.locator('input[type=file][accept=".txt"]').set_input_files({
                 'name': 'synthetic.txt', 'mimeType': 'text/plain',
                 'buffer': b'QUESTION: Synthetic import?\nTYPE: mcq\nA: Yes\nB: No\nCORRECT: A\nCATEGORY: Programming\n'

@@ -14,6 +14,14 @@ new program recommendations are complete.
 - In New assessment, choose a program batch. If its framework is already bound,
   that version is fixed. Otherwise choose a reviewed version from that program.
   An unassigned program draft can instead select its program and framework first.
+- **Program and skills** shows the selected program, skill set, and available
+  categories. Use **Choose program** or **Change program** to open the searchable
+  picker for an unassigned draft. The skill set shows version numbers when
+  multiple sets are available to distinguish.
+- With no batch or program selected, the creator keeps questions editable and
+  prompts for a selection before showing skill categories. Imports staged at
+  that point remain uncategorized. Selecting an existing shared IC batch opens
+  its shared skills. Selecting a program opens only the chosen program skill set.
 - Categories come only from that saved version. Manage names/descriptions/tags
   in the program catalog. Review category definitions before assigning questions.
   Optional saved-definition suggestions use [F06](SCOPED_COMPETENCY_ASSISTANCE.md)
@@ -29,7 +37,8 @@ new program recommendations are complete.
 - Switching unsaved batch/program/framework choices preserves question text and
   keys but clears category assignments for review. A first save requires the
   current definition digest; a concurrent catalog edit rejects it without binding
-  or saving partial data. **Refresh framework definitions**, review, and retry.
+  or saving partial data. Use **Reload skill categories** when the editor reports
+  a definition change or load failure, then review and retry.
 - Local device draft recovery retains program/framework identity along with
   category IDs. A revoked or unavailable context cannot be saved merely because
   an old draft is still stored on that device.

@@ -173,7 +173,6 @@ def run_checks(browser):
     editor.get_by_role('button', name=re.compile('^Question 1:')).click()
     editor.get_by_placeholder('Type the question here...', exact=True).fill('Changed through shared editor')
     editor.get_by_role('button', name='Import questions', exact=True).click()
-    editor.get_by_label('Question import format', exact=True).select_option('native')
     # Current parser format is the same one used by the instructor.
     fixture = TESTS / 'artifacts/admin-management/import.txt'
     fixture.write_text('QUESTION: What is the synthetic key?\nTYPE: identification\nCORRECT: Synthetic key\nCATEGORY: Synthetic Programming\n', encoding='utf-8')
@@ -196,7 +195,7 @@ def run_checks(browser):
     editor = open_authoring(page, title)
     for source in [csv_file, xlsx_file]:
         editor.get_by_role('button', name='Import questions', exact=True).click()
-        editor.get_by_label('Question import format', exact=True).select_option('excel')
+        editor.get_by_role('button', name='Excel / CSV', exact=True).click()
         editor.get_by_label('Question import file', exact=True).set_input_files(str(source.resolve()))
         expect(editor.get_by_role('button', name='Add 1 question to draft', exact=True)).to_be_enabled()
         editor.get_by_role('button', name='Add 1 question to draft', exact=True).click()

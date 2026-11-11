@@ -63,6 +63,12 @@ export const ReportIcon = ({ size = 20 }) => (
   </svg>
 )
 
+export const BookOpenIcon = ({ size = 18 }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 7v13M3 5h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v13h-4a6 6 0 0 0-5 2 6 6 0 0 0-5-2H3Z" />
+  </svg>
+)
+
 export const SkillIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" />
