@@ -87,6 +87,18 @@ Hosted limitations: actual Linux image installation, memory under two workers,
 hosted timeout behavior and deployed authenticated model execution still require
 release verification. A successful Windows/local comparison is not a hosted pass.
 
+### Social Work institute label correction · 11 November 2026
+
+The user confirmed replacing Social Work's temporary institute label with
+**IBPA → BSSW**, verified against
+[DNSC's current program offerings](https://dnsc.edu.ph/program-offerings/).
+Only synthetic dataset metadata changed. All 17 workflow evaluation tests passed;
+coverage still returns 200 scenarios overall and 50 for Social Work. A direct
+before/after comparison confirmed identical matching-input fingerprints and an
+updated dataset fingerprint. No category evidence, reference labels, ranking
+calculations or live institute/program records were changed. This correction
+remains on the same unmerged local feature branch.
+
 ## Review checkpoint · 10 November 2026
 
 Current branch: `codex/admin-dashboard-drilldown-20261110`, application HEAD

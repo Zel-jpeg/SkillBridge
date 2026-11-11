@@ -10,6 +10,11 @@ reuse the source-attributed synthetic examples in
 are queried. Scores/minimums/reference labels are authored test assumptions,
 not official curriculum thresholds.
 
+The Social Work (BSSW) and Tourism (BSTM) test programs are labeled **IBPA**,
+matching [DNSC's current program offerings](https://dnsc.edu.ph/program-offerings/)
+(checked 11 November 2026). These institute labels describe the fictional test
+programs; they do not create or reassign school database records.
+
 Each program has ten fixed evidence patterns repeated over five location
 variants. Thus there are **40 independent evidence patterns**, not 200
 independent proficiency samples. Patterns cover role specialization, a minimum
