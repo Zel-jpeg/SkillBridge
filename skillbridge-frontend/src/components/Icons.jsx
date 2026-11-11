@@ -175,6 +175,11 @@ export const ArchiveIcon = ({ size = 14 }) => (
 
 // ── Status / Indicators ───────────────────────────────────────────
 
+export const InfoCircleIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>
+  </svg>
+)
 export const CheckCircleIcon = ({ size = 15 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/>
