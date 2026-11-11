@@ -85,12 +85,12 @@ with sync_playwright() as p:
                 staff_page.get_by_role('region', name='Institutes', exact=True).get_by_role('link', name='Institute of Computing', exact=True).click()
                 staff_page.get_by_role('region', name='Programs', exact=True).get_by_role('link', name='All IC programs', exact=True).click()
             staff_page.get_by_role('button', name='Enroll students', exact=True).click()
-            enrollment = staff_page.get_by_role('dialog', name='Enroll students', exact=True)
+            enrollment = staff_page.locator('.enrollment-dialog:not(.enrollment-review-dialog)')
             enrollment.get_by_role('button', name='Manual entry', exact=True).click()
             email, name = f'browser-{role}@dnsc.edu.ph', f'Synthetic Browser {role.title()}'
-            enrollment.get_by_placeholder('e.g. villanueva.azel@dnsc.edu.ph').fill(email)
-            enrollment.get_by_placeholder('e.g. Azel Villanueva').fill(name)
-            enrollment.get_by_placeholder('e.g. 2026-01982').fill('2098-00401' if role == 'instructor' else '2098-00402')
+            enrollment.get_by_label('DNSC Email', exact=True).fill(email)
+            enrollment.get_by_label('Full Name', exact=True).fill(name)
+            enrollment.get_by_label('Student ID', exact=True).fill('2098-00401' if role == 'instructor' else '2098-00402')
             enrollment.get_by_role('button', name='BSIT', exact=True).click()
             enrollment.get_by_role('button', name='Preview student', exact=True).click()
             try:
@@ -101,9 +101,9 @@ with sync_playwright() as p:
                 raise
             enrollment.get_by_label('Enrollment email timing').select_option(mode)
             enrollment.get_by_role('checkbox').check()
-            enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True).click()
+            enrollment.get_by_role('button', name='Enroll student', exact=True).click()
             if role == 'admin':
-                staff_page.get_by_role('dialog', name='Confirm student enrollment?', exact=True).get_by_role('button', name='Enroll students', exact=True).click()
+                staff_page.get_by_role('dialog', name='Confirm student enrollment?', exact=True).get_by_role('button', name='Enroll student', exact=True).click()
             expect(enrollment.get_by_text('1 enrolled; 0 already enrolled', exact=False)).to_be_visible()
             enrollment.get_by_role('button', name='Done', exact=True).click()
             checked(f'{role}: reviewed UI enrollment saved with email mode {mode}')

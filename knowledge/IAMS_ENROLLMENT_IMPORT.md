@@ -77,7 +77,12 @@ lists, ambiguous headers and unreadable files produce explicit errors.
    640px, the review automatically uses the full
    card layout and hides the view switcher. Both views avoid horizontal scrolling.
    The source is labeled clearly as `Row 9`, while the worksheet name remains
-   metadata. Manual review stays compact.
+   metadata. Manual entry uses a separate step in the compact dialog. It suggests
+   an editable full name for recognizable DNSC email addresses and preserves
+   manual corrections. The batch supplies its program when assigned. After
+   inline field validation, Preview student opens a single identity card with
+   the server's review status. Back to edit retains the form and resets identity
+   verification. Staff verify the name, Student ID and email before enrolling.
 2. `POST /api/instructor/batches/{id}/enroll/preview/` receives `students`.
 3. The backend normalizes, generates emails, checks identities/enrollments and
    returns `rows`, `summary` and a signed `review_token`. Preview creates no

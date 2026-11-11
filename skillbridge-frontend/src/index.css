@@ -83,9 +83,28 @@
 .enrollment-drop small { color: #9ca3af; font-size: 12px; }
 .enrollment-drop input[type=file] { display: none; }
 .enrollment-manual { display: flex; flex-direction: column; gap: 16px; }
-.enrollment-course-options { display: flex; gap: 8px; }
-.enrollment-course-options button { flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 12px; color: #4b5563; font-size: 14px; font-weight: 600; }
-.enrollment-course-options button[aria-pressed=true], .enrollment-primary { color: #fff; background: #16a34a; border-color: #16a34a; }
+.enrollment-manual-dialog .enrollment-content { min-height: 0; }
+.enrollment-manual-dialog .enrollment-header h2 { font-size: 18px; }
+.enrollment-manual-hint, .enrollment-manual-field-error { font-size: 12px; line-height: 1.5; font-weight: 400; }
+.enrollment-manual-hint, .enrollment-student-review dt { color: #4b5563; }
+.enrollment-manual-field-error { color: #be123c; }
+.enrollment-manual [aria-invalid=true] { border-color: #fb7185; }
+.enrollment-manual-program { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.enrollment-manual-program dt { font-weight: 600; }
+.enrollment-program-choice[aria-pressed=true] { border-color: #15803d; background: #f0fdf4; color: #166534; }
+.enrollment-student-review { display: grid; gap: 14px; min-width: 0; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; overflow-wrap: anywhere; }
+.enrollment-student-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.enrollment-student-heading h3 { min-width: 0; font-size: 16px; font-weight: 700; }
+.enrollment-student-heading .enrollment-status { font-size: 12px; }
+.enrollment-student-review dl { display: grid; gap: 10px; }
+.enrollment-student-review dt { font-size: 12px; }
+.enrollment-student-review dd { font-weight: 500; }
+.enrollment-student-review > p, .enrollment-student-issues { font-size: 12px; }
+.enrollment-student-issues { color: #be123c; }
+.enrollment-manual-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.enrollment-footer > p + .enrollment-manual-actions { justify-content: flex-end; margin-top: 10px; }
+.enrollment-manual-actions .enrollment-primary { width: auto; max-width: 100%; }
+.enrollment-primary { color: #fff; background: #16a34a; border-color: #16a34a; }
 .enrollment-primary { min-height: 42px; width: 100%; padding: 10px 16px; border: 1px solid #16a34a; border-radius: 12px; box-shadow: 0 1px 2px #0000000d; font-size: 14px; font-weight: 650; transition: background .15s, border-color .15s, box-shadow .15s, transform .15s; }
 .enrollment-primary:hover:not(:disabled) { background: #15803d; border-color: #15803d; box-shadow: 0 5px 12px #16a34a33; transform: translateY(-1px); }
 .enrollment-review { min-width: 0; }
@@ -164,7 +183,10 @@
 .dark .enrollment-drop { border-color: #374151; }
 .dark .enrollment-drop:hover { background: #052e16; }
 .dark .enrollment-drop p, .dark .enrollment-verify { color: #d1d5db; }
-.dark .enrollment-course-options button { border-color: #1f2937; }
+.dark .enrollment-student-review { border-color: #374151; }
+.dark .enrollment-program-choice[aria-pressed=true] { border-color: #4ade80; background: #052e16; color: #bbf7d0; }
+.dark .enrollment-manual-hint, .dark .enrollment-student-review dt { color: #cbd5e1; }
+.dark .enrollment-manual-field-error, .dark .enrollment-student-issues { color: #fda4af; }
 .dark .enrollment-button { color: #d1d5db; border-color: #374151; background: #1f2937; }
 .dark .enrollment-button:hover:not(:disabled) { color: #86efac; border-color: #166534; background: #052e16; }
 .dark .enrollment-button-danger { color: #fda4af; border-color: #881337; background: #4c0519; }

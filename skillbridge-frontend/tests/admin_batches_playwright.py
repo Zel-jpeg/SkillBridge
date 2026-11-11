@@ -32,7 +32,7 @@ students = [{'id': i, 'name': f'Sample Student {i:02d}', 'school_id': f'SYN-{i:0
         'retake_allowed': False, 'category_scores': [], 'prior_attempts': []}]} for i in range(1, 22)]
 checks, errors, writes = [], [], []
 fail_action = {'unenroll': True, 'archive': True}
-review_row = {'school_id': 'SYN-100', 'name': 'New Sample Student', 'email': 'new.sample@dnsc.edu.ph',
+review_row = {'school_id': '2099-00100', 'name': 'New Sample Student', 'email': 'new.sample@dnsc.edu.ph',
     'course': 'BSIT', 'source_row': 1, 'status': 'ready', 'email_source': 'Provided', 'issues': []}
 summary = {key: 0 for key in ['total','ready','existing_students','already_enrolled','unsupported','duplicate','invalid','conflict','enrolled','notifications_queued']}
 summary.update(total=1, ready=1)
@@ -204,21 +204,22 @@ with sync_playwright() as p:
     expect(page.get_by_text('Responsible instructor · Sam Cruz',exact=True)).to_be_visible()
     checks.append('Manage batch review identifies both instructors, cancel preserves draft, confirmed change refreshes responsible instructor')
     page.get_by_role('button',name='Enroll students',exact=True).click()
-    enrollment=page.get_by_role('dialog',name='Enroll students',exact=True)
+    enrollment=page.locator('.enrollment-dialog:not(.enrollment-review-dialog)')
     enrollment.get_by_role('button',name='Manual entry',exact=True).click()
     enrollment.get_by_label('DNSC Email',exact=True).fill(review_row['email'])
     enrollment.get_by_label('Full Name',exact=True).fill(review_row['name'])
     enrollment.get_by_label('Student ID',exact=True).fill(review_row['school_id'])
+    enrollment.get_by_role('button',name='BSIT',exact=True).click()
     enrollment.get_by_role('button',name='Preview student',exact=True).click()
     enrollment.get_by_role('checkbox').check()
     before=len(writes)
-    enrollment.get_by_role('button',name='Confirm 1 enrollments',exact=True).click()
+    enrollment.get_by_role('button',name='Enroll student',exact=True).click()
     dialog=confirmation('Confirm student enrollment?'); expect(dialog).to_contain_text('BSIT 4A with Sam Cruz')
     assert len(writes)==before
     dialog.get_by_role('button',name='Cancel',exact=True).click()
     expect(enrollment.get_by_role('checkbox')).to_be_checked()
-    enrollment.get_by_role('button',name='Confirm 1 enrollments',exact=True).click()
-    dialog=confirmation('Confirm student enrollment?'); dialog.get_by_role('button',name='Enroll students',exact=True).click()
+    enrollment.get_by_role('button',name='Enroll student',exact=True).click()
+    dialog=confirmation('Confirm student enrollment?'); dialog.get_by_role('button',name='Enroll student',exact=True).click()
     enrollment.get_by_role('button',name='Done',exact=True).click()
     assert writes[-1][1]=='/api/instructor/batches/1/enroll/' and writes[-1][2]['review_token']=='synthetic-review'
     checks.append('Enrollment retains preview/verification token, adds centered named final confirmation, cancel preserves review, exactly one confirmed write')

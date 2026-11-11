@@ -171,7 +171,7 @@ with patch('api.views.send_instructor_email', return_value=False), sync_playwrig
                 page.screenshot(path=str(OUT / f'{role}-previous-{width}.png'), full_page=True)
             # Alex sorts before the synthetic Previous students in both views.
             panel.get_by_role('button', name='Re-enroll in this batch', exact=True).first.click()
-            enrollment = page.get_by_role('dialog', name='Enroll students', exact=True)
+            enrollment = page.locator('.enrollment-dialog:not(.enrollment-review-dialog)')
             expect(enrollment.get_by_label('DNSC Email', exact=True)).to_have_value(student.email)
             if role == 'admin':
                 page.recovery_faults['preview'] = True
@@ -179,23 +179,23 @@ with patch('api.views.send_instructor_email', return_value=False), sync_playwrig
                 expect(enrollment.locator('.enrollment-error')).to_be_visible()
                 page.recovery_faults['preview'] = False
             enrollment.get_by_role('button', name='Preview student', exact=True).click()
-            enrollment.get_by_role('checkbox', name='I verified the Student IDs and final DNSC email addresses.').check()
-            enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True).click()
+            enrollment.get_by_role('checkbox', name='I verified the name, Student ID, and DNSC email.').check()
+            enrollment.get_by_role('button', name='Re-enroll student', exact=True).click()
             confirm = page.get_by_role('dialog', name='Re-enroll student?', exact=True)
             expect(confirm).to_contain_text('Alex Recovery')
             if role == 'admin':
                 confirm.get_by_role('button', name='Cancel', exact=True).click()
                 assert not BatchEnrollment.objects.filter(student=student, batch=fixture.batch).exists()
-                enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True).click()
+                enrollment.get_by_role('button', name='Re-enroll student', exact=True).click()
                 page.recovery_faults['confirm'] = True
                 confirm.get_by_role('button', name='Re-enroll student', exact=True).click()
                 expect(confirm).to_have_count(0)
                 expect(enrollment.locator('.enrollment-error')).to_be_visible()
                 assert not BatchEnrollment.objects.filter(student=student, batch=fixture.batch).exists()
                 page.recovery_faults['confirm'] = False
-                enrollment.get_by_role('button', name='Preview student', exact=True).click()
-                enrollment.get_by_role('checkbox', name='I verified the Student IDs and final DNSC email addresses.').check()
-                enrollment.get_by_role('button', name='Confirm 1 enrollments', exact=True).click()
+                enrollment.get_by_role('button', name='Refresh review', exact=True).click()
+                enrollment.get_by_role('checkbox', name='I verified the name, Student ID, and DNSC email.').check()
+                enrollment.get_by_role('button', name='Re-enroll student', exact=True).click()
                 page.recovery_faults['previous'] = True
             confirm.get_by_role('button', name='Re-enroll student', exact=True).evaluate('(button)=>{button.click();button.click()}')
             expect(confirm).to_have_count(0)
