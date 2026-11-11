@@ -57,6 +57,39 @@ class RecommendationContractTests(APITestCase):
     def rank(self):
         return recalculate_combined(self.student, self.batch)
 
+    def test_nationwide_setup_keeps_home_distance_but_removes_local_tie_advantage(self):
+        self.company.location_lat, self.company.location_lng = 14.60, 120.98
+        self.company.save()
+        nearby_company = Company.objects.create(name='Synthetic Panabo employer', location_lat=7.30, location_lng=125.68)
+        nearby = Position.objects.create(company=nearby_company, title=self.position.title)
+        PositionRequirement.objects.create(position=nearby, skill_category=self.category, required_percentage=50)
+        self.student.address = {'pinLat': 7.30, 'pinLng': 125.68, 'travelWilling': 'anywhere'}
+        self.student.save(update_fields=['address'])
+        _, _, original = self.rank()
+        self.assertEqual([row['position_id'] for row in original], [nearby.id, self.position.id])
+
+        self.client.force_authenticate(self.student)
+        response = self.client.patch(reverse('student_profile'), {'travelWilling': 'nationwide'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['address']['travelWilling'], 'nationwide')
+        self.student.refresh_from_db()
+        result = self.client.get(reverse('student_combined_results'))
+        rows = result.data['recommendations']
+        self.assertFalse(result.data['recommendations_stale'])
+        self.assertEqual([row['position_id'] for row in rows], [self.position.id, nearby.id])
+        self.assertEqual([row['match_percentage'] for row in rows], [50, 50])
+        self.assertEqual(rows[0]['nlp_score_component'], rows[1]['nlp_score_component'])
+        self.assertEqual(rows[0]['location_score_component'], 0)
+        self.assertEqual(rows[1]['location_score_component'], 100)
+        self.assertGreater(rows[0]['distance_km'], 80)
+        self.assertEqual(response.data['address']['pinLat'], 7.30)
+
+        response = self.client.patch(reverse('student_profile'), {'travelWilling': 'anywhere'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.student.refresh_from_db()
+        restored = self.client.get(reverse('student_combined_results')).data['recommendations']
+        self.assertEqual([row['position_id'] for row in restored], [nearby.id, self.position.id])
+
     def test_legacy_string_address_and_invalid_coordinates_are_safe_in_ranking_and_api(self):
         self.company.address = 'Legacy synthetic address'
         self.company.location_lat, self.company.location_lng = 95, 125

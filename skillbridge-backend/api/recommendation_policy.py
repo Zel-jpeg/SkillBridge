@@ -15,6 +15,11 @@ AVERAGE_POLICY = 'assessment-average-match-v1'
 POLICY = 'assessment-evidence-match-v2'
 VERSION = 'assessment-evidence-match-20261110-v2'
 SNAPSHOT_ACTION = 'placement.recommendation.snapshot'
+NATIONWIDE_TRAVEL = 'nationwide'
+
+
+def is_nationwide_travel(address):
+    return isinstance(address, dict) and address.get('travelWilling') == NATIONWIDE_TRAVEL
 
 
 def canonical_context(categories):
@@ -151,8 +156,9 @@ def numerical_key(details, position_id):
     if details.get('policy') == POLICY:
         value = details.get('match_percentage')
         available = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+        support = details.get('personal_support', details.get('support'))
         return (0 if details.get('all_targets_met') else 1, not available,
-                -round(value if available else 0, 8), -round(details.get('support') or 0, 8), position_id)
+                -round(value if available else 0, 8), -round(support or 0, 8), position_id)
     mean = details.get('required_mean')
     complete = isinstance(mean, (int, float)) and math.isfinite(mean)
     tier = 0 if complete and details.get('all_targets_met') else 1 if complete else 2

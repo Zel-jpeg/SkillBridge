@@ -28,6 +28,7 @@ const TRAVEL_OPTIONS = [
   { value: 'davao-norte',  label: 'Anywhere in Davao del Norte' },
   { value: 'davao-region', label: 'Anywhere in Davao Region (incl. Davao City)' },
   { value: 'anywhere',     label: 'Open to anywhere in Mindanao' },
+  { value: 'nationwide',    label: 'Open to OJT placements anywhere in the Philippines' },
 ]
 // ================================================================
 

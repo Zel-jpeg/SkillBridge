@@ -9,7 +9,7 @@ from django.db.models import Prefetch
 from .models import PositionRequirement, RecommendationConfiguration, SkillCategory
 from .recommendation_nlp import (TEXT_GENERATION_VERSION, build_position_description, category_definition,
                                  extract_coordinates, position_role_context, valid_coordinates)
-from .recommendation_policy import VERSION as RANKING_POLICY_VERSION
+from .recommendation_policy import VERSION as RANKING_POLICY_VERSION, NATIONWIDE_TRAVEL, is_nationwide_travel
 from .recommendation_matching import MATCHING_INPUT_VERSION
 from .opportunity_scope import active_positions, for_programs, legacy_positions
 
@@ -98,9 +98,12 @@ def cached_catalog_fingerprint(batch, cache):
 
 
 def input_fingerprint(student, catalog=None, *, batch=None):
-    return _digest({'ranking_policy': RANKING_POLICY_VERSION,
-                    'catalog': catalog if catalog is not None else catalog_fingerprint(batch),
-                    'student_coordinates': extract_coordinates(student.address)})
+    inputs = {'ranking_policy': RANKING_POLICY_VERSION,
+              'catalog': catalog if catalog is not None else catalog_fingerprint(batch),
+              'student_coordinates': extract_coordinates(student.address)}
+    if is_nationwide_travel(student.address):
+        inputs['travel_preference'] = NATIONWIDE_TRAVEL
+    return _digest(inputs)
 
 
 def recommendations_stale(profile, student, catalog=None, *, batch=None):

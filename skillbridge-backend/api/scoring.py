@@ -322,7 +322,8 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
     from .recommendation_nlp import (build_position_description, location_similarity,
                                      company_address_text, valid_coordinates, TEXT_GENERATION_VERSION)
     from .recommendation_matching import position_specific_similarity, MATCHING_INPUT_VERSION
-    from .recommendation_policy import pooled_evidence, position_requirements, describe, numerical_key, api_fields
+    from .recommendation_policy import (pooled_evidence, position_requirements, describe,
+                                       numerical_key, api_fields, is_nationwide_travel)
     from .nlp_explanations import explain_overlap
 
     categories = list(categories)
@@ -364,6 +365,7 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
     )
     model_used = text_match.model_used
     nlp_scores = text_match.scores
+    nationwide = is_nationwide_travel(student.address)
 
     results = []
     pending = []
@@ -411,6 +413,10 @@ def _rank_recommendations(student, skill_scores, categories, insights, batch, *,
                        nlp_evidence={**explain_overlap(text_match.vectorizer, text_match.overlap_matrix(index), 0),
                                      **text_match.input_metadata(index),
                                      'similarity_percent': component_values['nlp_score_component']})
+        if nationwide:
+            # Equal location support across the student's eligible positions.
+            # Keep the geographic score and shared candidate support for their existing uses.
+            details['personal_support'] = (25 * component_values['nlp_score_component'] + 15 * 50) / 40
         component_values.update(assessment_rank=None, assessment_details=details)
         pending.append((position, component_values))
         coordinates = valid_coordinates(position.company.location_lat, position.company.location_lng)

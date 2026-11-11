@@ -24,6 +24,16 @@ places unknown distances last, then uses score and position ID. Student map pins
 come only from the authenticated profile; an older account's browser fallback pin
 is not used while a profile loads or fails.
 
+## Nationwide travel preference
+
+Student Setup offers a separate nationwide choice. Existing Mindanao preferences
+keep their original value. Nationwide gives eligible positions equal proximity
+support in personal recommendation order, so assessment ties use NLP similarity
+without a local-distance advantage. The assessment Match and minimums retain
+priority. Distances, the geographic component, Nearest sorting and shared
+candidate support keep their existing meaning. Only the nationwide value changes
+the fingerprint. The choice uses the existing student address JSON field.
+
 ## Isolated evidence, 18 October 2026
 
 - `api.test_recommendation_contract`: eight cases; before fixes, five failures and

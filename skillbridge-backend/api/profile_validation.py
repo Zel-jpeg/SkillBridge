@@ -4,6 +4,7 @@ import re
 from rest_framework.exceptions import ValidationError
 from .models import User
 from .recommendation_nlp import valid_coordinates
+from .recommendation_policy import NATIONWIDE_TRAVEL
 
 
 def invalid(field, message):
@@ -50,7 +51,7 @@ def profile_data(data, user):
     address = deepcopy(user.address) if isinstance(user.address, dict) else {}
     changed = False
     for field, allowed in [('stayingAt', ('home', 'boarding', 'open')),
-                           ('travelWilling', ('panabo', 'davao-norte', 'davao-region', 'anywhere'))]:
+                           ('travelWilling', ('panabo', 'davao-norte', 'davao-region', 'anywhere', NATIONWIDE_TRAVEL))]:
         if field in data:
             if not isinstance(data[field], str) or data[field] not in allowed:
                 invalid(field, f'Choose a valid {field} option.')
