@@ -19,7 +19,7 @@ function PodiumCard({ students, rank, score, category, onSelectStudent }) {
     <span className="lb-medal" aria-hidden="true"><StarIcon size={13} /></span>
     <strong className={`lb-podium-score ${scoreColor(score)}`}>{score}%</strong>
     <span className="lb-muted">{students.length} {students.length === 1 ? 'student' : 'students share this score'}</span>
-    <ul className="lb-podium-students" aria-label={`Students with rank ${rank}`} tabIndex={0}>
+    <ul className={`lb-podium-students${students.length === 1 ? ' lb-podium-students--single' : ''}`} aria-label={`Students with rank ${rank}`} tabIndex={0}>
       {students.map(student => <li key={student.id}><button type="button" className="lb-podium-student"
         aria-haspopup="dialog" aria-label={`View ${student.name}'s details`} onClick={() => onSelectStudent(student)}>
         <Avatar name={student.name} photoUrl={student.photoUrl} tone="neutral" className="lb-avatar h-8 w-8 shrink-0 rounded-full text-xs" />
@@ -114,7 +114,7 @@ export default function SkillLeaderboardModal({ skill, allStudents, onClose, onS
       <div className="lb-summary"><p><strong>{allStudents.length}</strong> students <span><strong>{ranked.length}</strong> ranked</span><span><strong>{pending.length}</strong> not yet assessed</span></p><p className="lb-muted">Ranked by combined category score, highest first.</p></div>
       <p className="lb-muted mt-3">Category assessment score = earned points ÷ possible points × 100. Each distinct score has one rank; equal scores share a card. Scroll its student list and select a name for details. Names only control list order. This is separate from a position’s Match percentage.</p>
       {unavailable > 0 && <p className="lb-muted lb-unavailable">{unavailable} other student{unavailable === 1 ? ' has' : 's have'} no current unlocked score in this category.</p>}
-      {top.length ? <section className="lb-top" aria-label="Top performers"><h3><StarIcon size={18} />Top performers</h3><div className={`lb-podium lb-podium--${top.length}`}>
+      {top.length ? <section className="lb-top" aria-label="Top performers"><h3><StarIcon size={18} />Top performers</h3><div className={`lb-podium lb-podium--${top.length}`} style={{ '--lb-podium-base-height': `${top.some(group => group.students.length > 1) ? 286 : 236}px` }}>
         {top.map(group => <PodiumCard key={group.rank} {...group} category={category} onSelectStudent={onSelectStudent} />)}
       </div></section> : <div className="lb-empty"><SkillIcon size={32} /><h3>No results yet</h3><p className="lb-muted">No current unlocked category results are available for {category}.</p></div>}
       {rest.length > 0 && <RemainingRankings key={`remaining-${category}`} rows={rest} totalRanked={ranked.length} shownAbove={ranked.length - rest.length} category={category} onSelectStudent={onSelectStudent} />}

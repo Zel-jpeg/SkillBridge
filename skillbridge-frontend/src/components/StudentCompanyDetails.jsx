@@ -54,7 +54,7 @@ export default function StudentCompanyDetails({ companyId, positionId, onClose }
                   </div> : <span className="text-xs text-gray-500 dark:text-gray-400">No current match score</span>}
                 </div>
                 {isEvidenceMatch(position) && hasUnassessedRequirements(position) && <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{assessmentProgressLabel(position)} · unassessed categories earn no match credit.</p>}
-                <MatchBreakdown recommendation={position} />
+                <MatchBreakdown recommendation={position} partnerName={company.name} />
                 {position.description && <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-gray-600 dark:text-gray-300">{position.description}</p>}
                 <p className="mt-4 mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Skills & requirements</p>
                 {tags.length ? <ul className="flex flex-wrap gap-1.5">

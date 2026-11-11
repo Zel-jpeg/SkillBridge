@@ -1007,6 +1007,8 @@ def suggest_category_view(request):
 @permission_classes([IsAuthenticated])
 def suggest_tags_view(request):
     """Suggest editable tags without persisting or overwriting saved tags."""
+    from .competency_assistance import TAG_SUGGESTION_LIMIT, description_tags, skill_tag_suggestions
+
     if request.user.role not in ('instructor', 'admin'):
         return Response({'error': 'Forbidden'}, status=403)
 
@@ -1016,17 +1018,24 @@ def suggest_tags_view(request):
     for field in ('name', 'description', 'title'):
         if field in request.data and not isinstance(request.data[field], str):
             return Response({'error': f'{field} must be text.', 'field': field}, status=400)
+    description = request.data.get('description', '').strip()
+    if len(description) > 2000:
+        return Response({'error': 'Description must contain at most 2000 characters.', 'field': 'description'}, status=400)
     if tag_type == 'skill':
-        return Response({'suggested_tags': suggest_skill_tags(
-            request.data.get('name', ''), request.data.get('description', '')
-        )})
+        name = request.data.get('name', '').strip()
+        categories = SkillCategory.objects.filter(framework__isnull=True) if request.user.role == 'admin' else ()
+        extracted, reused = skill_tag_suggestions(name, description, categories)
+        return Response({'suggested_tags': normalize_tags(extracted + reused + suggest_skill_tags(name),
+                                                         limit=TAG_SUGGESTION_LIMIT)})
     if tag_type == 'position':
+        title = request.data.get('title', '').strip()
+        extracted = description_tags(title, description)
+        if request.data.get('description_only') is True:
+            return Response({'suggested_tags': extracted})
         from .catalog_validation import requirements_value
         requirements = [{'name': category.name, 'percentage': percentage, 'tags': category.tags}
                         for category, percentage in requirements_value(request.data.get('requirements', {}))]
-        return Response({'suggested_tags': suggest_position_tags(
-            request.data.get('title', ''), requirements
-        )})
+        return Response({'suggested_tags': normalize_tags(extracted + suggest_position_tags(title, requirements), limit=16)})
     return Response({'error': 'type must be skill or position'}, status=400)
 
 

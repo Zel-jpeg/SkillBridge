@@ -13,7 +13,7 @@ import DataSection from '../../components/DataSection'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ScoreLabel from '../../components/ScoreLabel'
-import MatchBreakdown from '../../components/MatchBreakdown'
+import ScoreDetailsCard from '../../components/student/ScoreDetailsCard'
 import CompanyImage from '../../components/CompanyImage'
 import SkillCategoryList from '../../components/SkillCategoryList'
 import { useApi } from '../../hooks/useApi'
@@ -22,7 +22,7 @@ import CompetencyInsights, { HighestScoringAreas } from '../../components/Compet
 import PlacementStatusCard from '../../components/placements/PlacementStatusCard'
 import PlacementGuidance from '../../components/placements/PlacementGuidance'
 import StudentCompanyDetails from '../../components/StudentCompanyDetails'
-import { assessmentMatchProgress, assessmentProgressLabel, hasUnassessedRequirements, isEvidenceMatch, sortCompanyPositions, isAssessmentMatch, recommendationLabel, isAssessmentLed, recommendationDisplay, recommendationValue, coverageDisplay } from '../../utils/recommendationResults'
+import { assessmentMatchProgress, assessmentProgressLabel, hasUnassessedRequirements, isEvidenceMatch, sortCompanyPositions, isAssessmentMatch, recommendationLabel, recommendationDisplay, recommendationValue } from '../../utils/recommendationResults'
 
 
 
@@ -228,7 +228,7 @@ export default function StudentResults() {
 
             {/* Sort toggle — only for recommended tab */}
             {companyTab === 'recommended' && (
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 self-start sm:self-auto">
+            <div className="flex max-w-full flex-wrap items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 self-start sm:self-auto">
               {[
                 { key: 'match',    label: 'Recommendation Order' },
                 { key: 'distance', label: 'Nearest',    disabled: !hasPin },
@@ -336,7 +336,10 @@ export default function StudentResults() {
                 <button onClick={() => setCompanyTab('all')} className="mt-3 text-xs font-medium text-green-600 dark:text-green-400 hover:underline">Browse all partners →</button>
               </div>
             )}
-            {sorted.map((r, idx) => (
+            {sorted.map((r, idx) => sortMode === 'combined' ? (
+              <ScoreDetailsCard key={r.companyKey} recommendation={r} rank={idx + 1}
+                onViewPartner={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} />
+            ) : (
               <article key={r.companyKey}
                 className="relative flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 sm:p-5 hover:shadow-md hover:border-green-300 dark:hover:border-green-700 hover:ring-2 hover:ring-green-200 dark:hover:ring-green-900 focus-within:ring-2 focus-within:ring-green-500 transition-all">
 
@@ -362,12 +365,7 @@ export default function StudentResults() {
 
                   {/* Score column */}
                   <div className="relative z-10 max-w-28 break-words text-right shrink-0">
-                    {sortMode === 'combined' ? (
-                      <>
-                        <p className={`text-lg font-bold ${hasUnassessedRequirements(r) ? 'text-gray-500 dark:text-gray-400' : matchColor(r.combined)}`}>{recommendationDisplay(r)}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400"><ScoreLabel label={recommendationLabel(r)} /></p>
-                      </>
-                    ) : sortMode === 'distance' && r.distKm != null ? (
+                    {sortMode === 'distance' && r.distKm != null ? (
                       <>
                         <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{r.distKm.toFixed(1)} km</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500">straight-line</p>
@@ -408,8 +406,7 @@ export default function StudentResults() {
                 {/* Score bar */}
                 <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   {(() => {
-                    const original = sortMode === 'combined' ? r.combined
-                              : sortMode === 'distance' && r.distKm != null ? r.proximityPct
+                    const original = sortMode === 'distance' && r.distKm != null ? r.proximityPct
                               : r.match
                     const pct = original ?? (isAssessmentMatch(r) ? assessmentMatchProgress(r).percentage : null)
                     const col = sortMode === 'distance' ? 'bg-blue-500'
@@ -420,19 +417,7 @@ export default function StudentResults() {
                   })()}
                 </div>
 
-                {/* Sub-scores if combined */}
-                {sortMode === 'combined' && !isAssessmentMatch(r) && (
-                  <div className="relative z-10 mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600 dark:text-green-400 font-medium"><ScoreLabel label={isAssessmentLed(r) ? 'Requirement coverage' : 'Category fit'} /> {isAssessmentLed(r) ? coverageDisplay(r) : `${Math.round(r.category_score_component ?? 0)}%`}</span>
-                    <span>· <ScoreLabel label="NLP text similarity" /> {r.nlp_score_component?.toFixed(1) ?? '—'}%</span>
-                    <span>· <ScoreLabel label="Location score" /> {r.location_score_component?.toFixed(1) ?? '—'}%</span>
-                    {r.distKm != null && <span>· {r.distKm.toFixed(1)} km straight-line</span>}
-                    <span className="text-gray-400">· {r.model_used || 'fallback'} model</span>
-                  </div>
-                )}
-
                 {isAssessmentMatch(r) && <p className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-300">{r.assessment_details?.all_targets_met ? 'Meets all category minimums' : hasUnassessedRequirements(r) ? `${assessmentProgressLabel(r)} · ${isEvidenceMatch(r) ? 'unassessed categories earn no match credit.' : 'some categories are not assessed yet.'}` : 'Below one or more category minimums'}</p>}
-                <MatchBreakdown recommendation={r} />
                 <div className="mt-auto pt-3">
                   <button type="button" onClick={() => setCompanySelection(r.company_id != null ? { companyId: r.company_id } : { positionId: r.position_id })} aria-label={`View partner details for ${r.company}, ${r.position}`} aria-haspopup="dialog"
                     className="min-h-10 text-xs font-semibold text-green-700 dark:text-green-400 after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none">View partner details <span aria-hidden="true">→</span></button>

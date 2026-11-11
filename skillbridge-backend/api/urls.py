@@ -41,6 +41,7 @@ urlpatterns = [
     path('management/organization-options/', competencies.organization_options, name='staff_organization_options'),
     path('management/shared-ic-skills/', competencies.shared_ic_skills, name='staff_shared_ic_skills'),
     path('management/institutes/<int:institute_id>/skills/', competencies.institute_skills, name='institute_skills'),
+    path('management/institutes/<int:institute_id>/skills/suggest-tags/', competency_assistance.suggest_institute_tags, name='institute_suggest_tags'),
     path('management/institutes/<int:institute_id>/skills/<int:skill_id>/', competencies.institute_skills, name='institute_skill_detail'),
     path('management/competency-programs/<int:program_id>/', competencies.catalog_programs, name='competency_program_detail'),
     path('management/programs/<int:program_id>/frameworks/', competencies.frameworks, name='program_frameworks'),

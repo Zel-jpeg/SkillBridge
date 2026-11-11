@@ -8,7 +8,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
-from .models import (Assessment, Batch, ChangeEvent, CompetencyFramework, Institute,
+from .models import (Assessment, Batch, ChangeEvent, CompetencyFramework, Institute, InstituteSkill,
                      InstructorAssignment, ManagementAction, Program, Question, SkillCategory, SkillScore, User)
 
 
@@ -405,8 +405,9 @@ class CompetencyCatalogTests(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.assertTrue(SkillCategory.objects.filter(pk=row['id']).exists())
 
-    def test_generic_suggestions_use_only_description_and_require_program_access(self):
+    def test_generic_suggestions_work_without_a_catalog_and_require_program_access(self):
         url = f'/api/management/programs/{self.program.id}/suggest-tags/'
+        CompetencyFramework.objects.filter(pk=self.framework['id']).delete()
         before = (SkillCategory.objects.count(), ManagementAction.objects.count(), ChangeEvent.objects.count())
         data = {'name': 'Programming', 'description': 'Guest relations, itinerary planning, reservation handling.'}
         response = self.client.post(url, data, format='json')
@@ -417,6 +418,80 @@ class CompetencyCatalogTests(APITestCase):
         self.assertEqual(self.client.post(url, data, format='json').status_code, 404)
         self.client.force_authenticate(self.student)
         self.assertEqual(self.client.post(url, data, format='json').status_code, 403)
+
+    def test_suggestions_extract_keywords_from_full_tourism_and_social_work_descriptions(self):
+        url = reverse('program_suggest_tags', args=[self.program.id])
+        examples = (
+            ('Accommodation Reservations',
+             'Capture accurate accommodation booking details and verify reservation availability and confirmation.',
+             ['booking details', 'reservation availability', 'confirmation']),
+            ('Client Intake',
+             'Collect relevant intake information and document client concerns before identifying referral needs.',
+             ['relevant intake information', 'client concerns', 'identifying referral needs']),
+        )
+        for name, description, expected in examples:
+            with self.subTest(name=name):
+                result = self.client.post(url, {'name': name, 'description': description}, format='json')
+                self.assertEqual(result.status_code, 200, result.data)
+                self.assertEqual(result.data['suggested_tags'], expected)
+
+    def test_institute_suggestions_use_only_its_shared_skills_and_require_admin_access(self):
+        url = reverse('institute_suggest_tags', args=[self.program.institute_id])
+        payload = {'name': 'Web Development', 'description': 'Capture accurate accommodation booking details.'}
+        definition = {'name': 'Booking records', 'description': 'Capture accommodation booking details.'}
+        InstituteSkill.objects.create(institute=self.other_program.institute, **definition, tags=['Foreign shared tag'])
+        SkillCategory.objects.create(framework_id=self.framework['id'], **definition, tags=['Private program tag'])
+        SkillCategory.objects.create(**definition, tags=['Shared IC tag'])
+
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        self.client.force_authenticate(self.admin)
+        empty = self.client.post(url, payload, format='json')
+        self.assertEqual(empty.status_code, 200, empty.data)
+        self.assertEqual(empty.data['suggested_tags'], ['accommodation booking details'])
+
+        saved = InstituteSkill.objects.create(institute=self.program.institute, **definition, tags=['Guest requests'])
+        result = self.client.post(url, payload, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(result.data['suggested_tags'], ['accommodation booking details', 'Guest requests'])
+        saved.refresh_from_db()
+        self.assertEqual(saved.tags, ['Guest requests'])
+
+    def test_suggestions_reuse_relevant_tags_only_from_latest_active_program_library(self):
+        name = 'Accommodation Reservations'
+        description = 'Capture accurate accommodation booking details and verify reservation availability.'
+        related = {'name': 'Booking records', 'description': 'Verify reservation availability and booking details.'}
+        current = self.create().data['id']
+        retired = self.create().data['id']
+        CompetencyFramework.objects.filter(pk=retired).update(is_active=False)
+        sibling = Program.objects.create(institute=self.program.institute, code='SIB', name='Sibling program')
+        for framework_id, tags in (
+            (self.framework['id'], ['Older revision keyword']),
+            (retired, ['Retired keyword']),
+            (current, ['Booking Details', 'guest requests', 'booking amendments', 'room inventory', 'check-in time', 'extra tag']),
+        ):
+            SkillCategory.objects.create(framework_id=framework_id, **related, tags=tags)
+        for program in (sibling, self.other_program):
+            framework = CompetencyFramework.objects.create(program=program, name='Other skills', version=1)
+            SkillCategory.objects.create(framework=framework, **related, tags=['Other program keyword'])
+        SkillCategory.objects.create(**related, tags=['Shared taxonomy keyword'])
+        SkillCategory.objects.create(framework_id=current, name=name, description=description, tags=['Same skill keyword'])
+        SkillCategory.objects.create(framework_id=current, name='Food hygiene',
+                                     description='Check food storage temperature.', tags=['Food safety'])
+
+        self.client.force_authenticate(self.peer)
+        url = reverse('program_suggest_tags', args=[self.program.id])
+        result = self.client.post(url, {'name': name, 'description': description}, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(result.data['suggested_tags'], [
+            'booking details', 'reservation availability', 'guest requests', 'booking amendments',
+            'room inventory', 'check-in time',
+        ])
+
+        SkillCategory.objects.create(framework_id=current, name='Booking notes',
+                                     description=related['description'], tags=['Uncertain alternative'])
+        result = self.client.post(url, {'name': name, 'description': description}, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(result.data['suggested_tags'], ['booking details', 'reservation availability'])
 
     def test_revision_and_removal_roll_back_when_audit_fails(self):
         row = self.add().data

@@ -44,19 +44,27 @@ export default function SkillDefinitionFields({ name, setName, description, setD
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor={`${id}-tags`} className="font-semibold">Skill tags <span className="ml-1 font-normal text-gray-500">{values.length} / 30</span></label>
         <button type="button" className={`${button} min-h-9`} onClick={suggest} disabled={disabled || current?.loading || !name.trim() || !description.trim()}>{current?.loading ? 'Suggesting…' : 'Suggest tags'}</button></div>
-      <div className="rounded-xl border border-gray-300 bg-white p-2 focus-within:ring-2 focus-within:ring-green-600 dark:border-gray-600 dark:bg-gray-900">
-        {values.length > 0 && <ul aria-label="Selected skill tags" className="mb-2 flex flex-wrap gap-1.5">
+      <div className="rounded-xl border border-gray-300 bg-white px-3 has-[input:focus]:border-green-700 dark:border-gray-600 dark:bg-gray-900 dark:has-[input:focus]:border-green-400">
+        {values.length > 0 && <ul aria-label="Selected skill tags" className="flex flex-wrap gap-1.5 pt-3 pb-2.5">
           {values.map((tag, index) => <li key={`${index}:${tag}`} className="inline-flex max-w-full items-center rounded-lg bg-green-50 pl-2.5 text-green-900 dark:bg-green-950 dark:text-green-200">
             <span className="break-words [overflow-wrap:anywhere]">{tag}</span><button type="button" aria-label={`Remove tag ${tag}`} title={`Remove ${tag}`} disabled={disabled}
               onClick={() => { setTags(values.filter((_, item) => item !== index).join(', ')); setIssue('') }}
               className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-green-700 disabled:opacity-50 dark:hover:bg-green-900"><XIcon size={13} /></button>
           </li>)}
         </ul>}
-        <input id={`${id}-tags`} aria-label="Tags" aria-describedby={`${id}-tags-help`} aria-invalid={Boolean(issue)} disabled={disabled} value={draft}
-          onChange={event => { setDraft(event.target.value); setIssue('') }}
-          onKeyDown={event => { if ((event.key === 'Enter' || event.key === ',') && !event.nativeEvent.isComposing) { event.preventDefault(); commit() } }}
-          placeholder="Type a tag and press Enter" className="min-h-10 w-full min-w-0 border-0 bg-transparent px-1 outline-none placeholder:text-gray-400" />
+        <div className={values.length ? 'border-t border-gray-200 dark:border-gray-700' : undefined}>
+          <input id={`${id}-tags`} aria-label="Tags" aria-describedby={`${id}-tags-help ${id}-tags-entry`} aria-invalid={Boolean(issue)} disabled={disabled} value={draft}
+            onChange={event => { setDraft(event.target.value); setIssue('') }}
+            onKeyDown={event => {
+              if ((event.key === 'Enter' || event.key === ',') && !event.nativeEvent.isComposing) {
+                event.preventDefault()
+                commit()
+              }
+            }}
+            placeholder="Type a tag" className="min-h-11 w-full min-w-0 border-0 bg-transparent focus:outline-hidden! placeholder:text-gray-500 dark:placeholder:text-gray-400" />
+        </div>
       </div>
+      <span id={`${id}-tags-entry`} className="sr-only">Press Enter or comma to add a tag.</span>
       <p id={`${id}-tags-help`} className="leading-5 text-gray-500 dark:text-gray-400">Keywords that describe this skill. Tags are not scored separately.</p>
       {issue && <p role="alert" className="text-rose-700 dark:text-rose-300">{issue}</p>}
       {current?.error && <p role="alert" className="text-rose-700 dark:text-rose-300">{current.error}</p>}

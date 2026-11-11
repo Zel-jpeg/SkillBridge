@@ -12,6 +12,7 @@ export function analyticsCardRecommendation(row, suggested = false) {
   return {
     label, available, display,
     company: (suggested ? row.company : row.top_company) || 'Partner not provided',
+    imageUrl: (suggested ? row.company_image_url : row.top_company_image_url) || null,
     position: (suggested ? row.position : row.top_position) || 'Position not provided',
     state: row.recommendations_locked ? 'Locked / unavailable' : 'Unavailable',
   }

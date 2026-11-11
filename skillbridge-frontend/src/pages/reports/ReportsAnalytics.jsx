@@ -146,7 +146,7 @@ export default function ReportsAnalytics({ role = 'admin' }) {
   const selectionLabel = data ? analyticsSelectionLabel(data, group) : ''
   const tableGroups = ['capacity', 'assessments', 'skills', 'activity', 'geography', 'organizations']
   const studentTable = !tableGroups.includes(group)
-  const pageSize = studentTable ? 8 : 10
+  const pageSize = studentTable ? 9 : 10
   const visiblePage = Math.min(page, Math.max(1, Math.ceil((table?.rows.length ?? 0) / pageSize)))
   if (page > visiblePage && data && !updating) setPage(visiblePage)
   const section = sections.find(section => section.key === tab)

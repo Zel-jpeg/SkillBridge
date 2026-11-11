@@ -48,8 +48,9 @@ def opening(page, framework, title):
     dialog.get_by_label('Available slots').fill('3')
     expect(dialog.get_by_role('combobox', name='Program skill set', exact=True)).to_have_value(str(framework['id']))
     dialog.get_by_label('Minimum level for Service knowledge', exact=True).select_option('50')
+    dialog.get_by_label('Position tags', exact=True).fill('Manual keyword')
     dialog.get_by_role('button', name='Suggest / refresh tags', exact=True).click()
-    expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Client records')
+    expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Manual keyword, intake records, service log, Client records')
     return dialog
 
 
@@ -126,7 +127,8 @@ def run(browser):
     position = partner['positions'][0]
     assert position['description'] == 'Review intake records and maintain the service log.'
     expect(selected.get_by_text(position['description'], exact=True)).to_be_visible()
-    assert position['category_requirements'][0]['category_id'] == category['id'] and position['tags'] == ['Client records']
+    assert position['category_requirements'][0]['category_id'] == category['id']
+    assert position['tags'] == ['Manual keyword', 'intake records', 'service log', 'Client records']
     checks.append('real partner create with validated manual pin; fixed program opening with numerical framework requirements and saved tags')
 
     selected.get_by_role('button', name=re.compile('^Edit partner ')).click()

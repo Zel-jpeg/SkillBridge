@@ -4,9 +4,10 @@ import DialogShell from '../DialogShell'
 import ConfirmModal from './ConfirmModal'
 import SkillDefinitionFields from '../SkillDefinitionFields'
 import { skillTagValues } from '../../utils/skillTagEditor'
+import { instituteSkillsUrl } from '../../utils/organizationScope'
 import { organizationButton as button, organizationPrimary as primary } from './organizationUi'
 
-export default function SharedSkillEditor({ skill, onClose, onSave, saving }) {
+export default function SharedSkillEditor({ skill, instituteId, onClose, onSave, saving }) {
   const id = useId()
   const [name, setName] = useState(skill?.name || '')
   const [description, setDescription] = useState(skill?.description || '')
@@ -34,8 +35,11 @@ export default function SharedSkillEditor({ skill, onClose, onSave, saving }) {
       {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
       <SkillDefinitionFields name={name} setName={setName} description={description} setDescription={setDescription}
         tags={tags} setTags={setTags} draft={draft} setDraft={setDraft} disabled={saving}
-        suggestionKey={JSON.stringify([name, description])}
-        onSuggest={async () => (await api.post('/api/tags/suggest/', { type: 'skill', name, description })).data.suggested_tags} />
+        suggestionKey={JSON.stringify([instituteId, name, description])}
+        onSuggest={async () => (await api.post(
+          instituteId ? `${instituteSkillsUrl(instituteId)}suggest-tags/` : '/api/tags/suggest/',
+          instituteId ? { name, description } : { type: 'skill', name, description },
+        )).data.suggested_tags} />
     </form>
     {discard && <ConfirmModal title="Discard skill changes?" message="Your unsaved skill changes will be discarded." confirmLabel="Discard changes" onCancel={() => setDiscard(false)} onConfirm={onClose} />}
   </DialogShell>

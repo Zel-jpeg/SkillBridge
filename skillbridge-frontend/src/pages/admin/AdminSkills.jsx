@@ -36,6 +36,7 @@ export default function AdminSkills({ embedded = false, readOnly = false, instit
       {showModal && (
         <SkillModal
           skill={selectedSkill}
+          instituteId={institute?.id}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
           saving={saving}

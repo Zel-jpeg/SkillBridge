@@ -89,3 +89,17 @@ class PositionTagRelevanceAPITests(APITestCase):
         self.assertEqual(response.data['suggested_tags'], ['TCP/IP', 'routing', 'switching', 'subnetting'])
         bad = {**unknown, 'requirements': {'Unregistered Category': 75}}
         self.assertEqual(self.client.post(reverse('suggest_tags'), bad, format='json').status_code, 400)
+
+    def test_position_description_suggests_tags_across_both_editors(self):
+        self.client.force_authenticate(self.admin)
+        payload = {**self.payload, 'description': 'Capture accurate accommodation booking details.'}
+        result = self.client.post(reverse('suggest_tags'), payload, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertIn('accommodation booking details', result.data['suggested_tags'])
+        self.assertIn('network monitoring', result.data['suggested_tags'])
+
+        result = self.client.post(reverse('suggest_tags'), {
+            'type': 'position', 'title': payload['title'], 'description': payload['description'], 'description_only': True,
+        }, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(result.data['suggested_tags'], ['accommodation booking details'])

@@ -1,5 +1,101 @@
 # Vercel and Railway release handoff
 
+## Current release and environment settings
+
+The 11 November release review covered the generalized SkillBridge workflows,
+the advanced recommendation tools, and the Supabase Realtime rollout. Build
+the frontend and backend from the same reviewed release commit on `main`.
+
+For the Railway **SkillBridge web service** in the production environment, check
+the following variable names against the service's existing settings. Preserve
+the existing database credentials, Django `SECRET_KEY`, and OAuth client for
+the same production project. The web app reads separate `DB_*` settings.
+
+| Variables | Value or source |
+|---|---|
+| `SECRET_KEY` | Existing backend signing secret |
+| `DEBUG`, `ALLOWED_HOSTS` | `False` and `skillbridge-production-1e3c.up.railway.app,healthcheck.railway.app` |
+| `FRONTEND_URL`, `GOOGLE_OAUTH_CLIENT_ID` | `https://skillbridge-ic.vercel.app` and the existing Google Web OAuth client ID |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Existing production Supabase connection settings from the project Connect panel |
+| `DB_SSLMODE`, `DB_CONNECT_TIMEOUT` | `require` or the existing stronger TLS configuration, and `5` seconds unless the service has a verified override |
+| `SUPABASE_STORAGE_URL`, `SUPABASE_STORAGE_SERVICE_KEY` | `https://xlkyxnljcvpkdwnqaskc.supabase.co` and the existing backend Storage service credential |
+| `COMPANY_IMAGE_BUCKET`, `RETAKE_EVIDENCE_BUCKET` | `company-branding` and `retake-evidence`, respectively. These are also the code defaults |
+| `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_WEBHOOK_SECRET` | Existing key and verified sender for email, and the matching secret if the delivery webhook is used |
+| `ENROLLMENT_SMTP_FALLBACK` | `False` on Railway |
+| `REALTIME_PILOT_ENABLED`, `REALTIME_PILOT_PUBLISH_ENABLED` | Both `True` for a Realtime rollout. The default is `False` |
+| `REALTIME_ROLLOUT_MODE` | `eligible` enables automatic account eligibility. `allowlist` limits access to the configured pilot accounts |
+| `STANZA_RESOURCES_DIR` | Leave unset to use the image's `.nlp/stanza` directory. The Railway build prepares and probes this directory |
+
+Vercel uses `VITE_API_URL=https://skillbridge-production-1e3c.up.railway.app`,
+`VITE_GOOGLE_CLIENT_ID` with the same public Google client ID, and
+`VITE_SUPABASE_REALTIME_PILOT=true` for a Realtime rollout. Google OAuth uses
+the Vercel HTTPS origin as an authorized JavaScript origin. In `allowlist` mode,
+set `REALTIME_PILOT_USER_IDS` to at most two Django account IDs. In `eligible`
+mode, leave that list blank. Add the following settings on the web service:
+
+| Realtime variable | Value or source |
+|---|---|
+| `SUPABASE_REALTIME_URL` | `https://xlkyxnljcvpkdwnqaskc.supabase.co` |
+| `SUPABASE_REALTIME_PUBLISHABLE_KEY` | Supabase project's `sb_publishable_*` key |
+| `SUPABASE_REALTIME_SIGNING_KEY`, `SUPABASE_REALTIME_SIGNING_KID` | Dedicated imported P-256 private PEM and its matching key ID |
+| `SUPABASE_REALTIME_TOPIC_SECRET` | One stable random value of at least 32 characters across web replicas |
+| `SUPABASE_REALTIME_PUBLISH_KEY` | Backend-only Supabase `sb_secret_*` publisher key tested by the pilot |
+
+Enable both backend pilot switches and build the pilot frontend with
+`VITE_SUPABASE_REALTIME_PILOT=true` when ready to run that pilot. Keep the
+signer, topic secret and publisher key on Railway.
+[Realtime configuration](SUPABASE_REALTIME_PILOT.md#configuration-and-signing-trust)
+
+Check the active Railway build command against [railway.toml](../railway.toml).
+The older native dashboard build installed requirements and collected static
+files. The current web build also installs CPU PyTorch, downloads Stanza model
+resources, and verifies spaCy Small, spaCy Medium, and Stanza before collecting
+static files. For the native service, use the command below in Build Command.
+
+```sh
+python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0 && python -m pip install -r requirements-production.txt && python scripts/prepare_nlp.py --download && python manage.py collectstatic --noinput
+```
+
+The backend root is `/skillbridge-backend`, pre-deploy runs
+`python manage.py migrate --noinput`, and the web health path is `/api/health/`.
+The start command in the repository binds Gunicorn to Railway's injected `PORT`.
+The separate email worker runs `python manage.py process_email_outbox` and uses
+the database and Brevo settings for that same environment. Keep the active web
+and worker build commands aligned with their respective service settings.
+[Railway build configuration](https://docs.railway.com/builds/build-configuration) ·
+[Railway variables](https://docs.railway.com/variables)
+
+Repository migrations now end at `0043_institute_shared_skills`. Migration
+`0042` adds position descriptions and seeds selected legacy descriptions.
+Migration `0043` creates the shared institute skills table with RLS on PostgreSQL.
+The [configured database checkpoint](GENERALIZED_SYSTEM_FIX_PLAN.md#configured-database-checkpoint)
+records both migrations applied on the previously checked database. Verify the
+Railway target with `python manage.py showmigrations api` and
+`python manage.py migrate --plan` before release. Check that the database and
+Storage backup cover the chosen release target.
+
+Verify the Linux image build and model execution, then rehearse the matched
+frontend and backend against staging. Include staff and student sign-in,
+assessment submission, scoring and placement, public branding, private retake
+evidence, and mail delivery through the worker. Measure the real comparison
+endpoint and memory with both Gunicorn workers before releasing the model tools.
+The [Realtime pilot report](SUPABASE_REALTIME_PILOT.md#real-channel-local-application-results)
+records a passing real-channel local workflow and leaves matched load timing open.
+
+Fresh local checks for this review passed 921 PostgreSQL tests, 360 frontend
+tests, lint, the production-mode Vite build, all three strict NLP model probes
+and the advanced recommendation, multi-institute, coordinator and scoped reports
+browser journeys. The reports fixture now uses the current filter dialog, scope
+selectors and Advanced tools button. Evidence is in `work/branch-review-postgres-3qvkdi0j/tests.txt`,
+`work/advanced-tools-browser-_4wd4abm/browser.txt`,
+`work/organization-browser-e2q8ziy1/browser.txt`,
+`work/organization-browser-4nwwrnjb/browser.txt` and
+`work/organization-browser-u63_u8cb/browser.txt`. Django's deployment check
+reported only `security.W021` for optional browser HSTS preload. The public
+Vercel and Railway health checks returned HTTP 200 for the live deployment.
+
+## Earlier release history
+
 The owner authorized Git publication and post-merge local verification on
 29 October 2026; Railway subscription reactivation remains with the owner.
 Pushing main can trigger connected hosts' automatic deployments. Direct provider,
@@ -127,7 +223,7 @@ python manage.py showmigrations api
 python manage.py migrate --plan
 ```
 
-Repository latest is `0029_recommendation_cycle_scope`. Review the actual pending
+At the October checkpoint, the repository ended at `0029_recommendation_cycle_scope`. Review the actual pending
 plan; it can include experimental-field/table removal in 0019 and guarded
 reversals in 0028/0029. Preserve database and storage backups. An image rollback
 does not reverse schema or reconstruct removed data. After the owner reviews

@@ -23,10 +23,10 @@ those integrations remain F07 and F10 in the
    it does not save a question, choose a grading category or change evidence.
 
 Saved-tag suggestions require **Add suggested tags** before they enter the draft.
-The separate visible **Suggest tags** button now adds short phrases from the
-typed description directly to editable draft chips, preserving existing tags.
-It uses no IC dictionary, external search or invented discipline vocabulary.
-See the [skill editor update](PROGRAM_SKILL_EDITOR.md) for its separate endpoint.
+The visible **Suggest tags** button extracts keywords from the typed description
+and can add tags from a clearly related skill in the program's latest active
+library. It adds editable draft chips alongside existing tags. See the
+[skill editor update](PROGRAM_SKILL_EDITOR.md) for the endpoint and its limits.
 Neither action saves without form submission.
 Cancel/discard preserves saved records. Editing the request text, switching
 program/version or closing the editor invalidates pending/previous responses.

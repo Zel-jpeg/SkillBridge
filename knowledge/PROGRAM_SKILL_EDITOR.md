@@ -9,6 +9,10 @@ green actions, light/dark themes, a scrolling form and visible header/footer.
 The skill-dialog variant is up to 560px wide on desktop, remains inset on phones,
 and does not change other detail or confirmation dialog layouts.
 
+The tag field uses one focus border around the chips and typing row. A divider
+appears when the field contains tags. Pressing Enter or comma adds the draft as
+a tag chip. The remove buttons retain their own keyboard focus indicator.
+
 ## Staff workflow
 
 - Assigned, approved instructors/OJT coordinators can add, edit and remove skills
@@ -21,20 +25,22 @@ and does not change other detail or confirmation dialog layouts.
   Limits remain 30 tags and 80 characters per tag. Cancel/discard preserves saved
   definitions, and failed saves retain the draft.
 - **Suggest tags** adds editable draft keywords after an explicit click. For
-  programs, it conservatively extracts up to 12 short phrases from the supplied
-  description. It does not research online, infer skills from the program name,
-  use the IC vocabulary dictionary, or claim academic validation. Empty results
-  and failures leave manual entry and saving available. Results for changed
-  inputs or an unmounted editor cannot change the next draft. Manual chips added
-  while a request is pending remain in the result.
+  programs, it extracts phrases from the description, trimming instructional
+  wording such as “capture accurate” to retain the subject. A new program can
+  get suggestions before it has any saved skills. If a different skill in the
+  latest active program library is a clear text match, the button adds up to
+  four of that skill's distinct saved tags within the 12-suggestion limit.
+  Empty results and failures leave manual entry and saving available. Results
+  for changed inputs or an unmounted editor cannot change the next draft.
+  Manual chips added while a request is pending remain in the result.
 - **Reuse saved tags**, collapsed by default, finds vocabulary already saved in
   that program skill-set version. **Add suggested tags** explicitly merges it.
-  It remains separate from description-based suggestions, retains the existing
+  It remains available for reviewing the source skill explicitly, retains the existing
   definition-digest check, and cannot copy another program's private vocabulary.
-- The shared IC catalog keeps its existing admin-write and assigned-staff-read
-  boundary. Its visible Suggest tags action uses the existing shared-catalog
-  suggestion service but now preserves manual draft tags rather than replacing
-  them. It shares the same chip UI, validation and discard behavior.
+- Shared institute editors use the same phrase extraction and related-skill
+  lookup, with vocabulary limited to the selected institute's shared library.
+  Administrators manage shared skills. The existing IC editor also offers its
+  curated presets for familiar skill names. All editors preserve manual chips.
 
 ## Simplified program skill page
 
@@ -84,7 +90,13 @@ access to colleagues' private batches or student records.
 ## API and concurrency
 
 - POST `management/programs/{program}/suggest-tags/` accepts a name and
-  description, returns description phrases, and writes nothing.
+  description and returns draft tags without writing records. Reuse is scoped
+  to the latest active library of the authorized program and skips ambiguous
+  matches. POST `management/institutes/{institute}/skills/suggest-tags/` uses
+  that institute's shared skills for related vocabulary. Neither scoped endpoint
+  uses domain presets. The existing IC editor and unscoped position tools can
+  still use the curated presets in
+  [skill_taxonomy.py](../skillbridge-backend/api/skill_taxonomy.py).
 - Category detail now supports DELETE with `expected_digest` for unused skills.
   PATCH retains its digest and duplicate-name checks with program-wide coordinator
   editing. Category collection DELETE and detail POST remain disallowed.

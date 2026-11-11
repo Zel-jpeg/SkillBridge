@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .placement_scope import current_approvals
+from .company_images import company_image_url
 from .management_access import managed_batches
 from .opportunity_scope import active_positions, eligible_recommendations, for_programs
 from .analytics_activity import activity_dates, submission_activity
@@ -285,9 +286,12 @@ def analytics_payload(user, params):
                 'competency_locked': state.get('competency_locked', not unlocked),
                 'match_band': band, 'top_match': round(top.match_score, 2) if top else None,
                 'top_company': top.position.company.name if top else '',
+                'top_company_image_url': company_image_url(top.position.company.image_key) if top else None,
                 'top_position': top.position.title if top else '',
                 'company_id': placement.company_id if placement else None,
-                'company': placement.company.name if placement else '', 'position_id': placement.position_id if placement else None,
+                'company': placement.company.name if placement else '',
+                'company_image_url': company_image_url(placement.company.image_key) if placement else None,
+                'position_id': placement.position_id if placement else None,
                 'position': placement.position.title if placement else '',
                 'company_area': area_of(placement.company.address) if placement else '',
                 'resident_area': area_of(student.address),
@@ -410,7 +414,8 @@ def analytics_payload(user, params):
                 or (params.get('area') and area_of(item.company.address) != params['area'])):
             continue
         suggested_students.append({**original, 'placement_status': 'suggested', 'company_id': item.company_id,
-            'company': item.company.name, 'position_id': item.position_id, 'position': item.position.title,
+            'company': item.company.name, 'company_image_url': company_image_url(item.company.image_key),
+            'position_id': item.position_id, 'position': item.position.title,
             'suggested_recommendation': {**api_fields(valid_recs[item.recommendation_id]),
                 'match_score': round(valid_recs[item.recommendation_id].match_score, 2)},
             'company_area': area_of(item.company.address)})

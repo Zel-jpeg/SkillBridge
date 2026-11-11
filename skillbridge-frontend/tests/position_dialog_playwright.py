@@ -173,8 +173,9 @@ with sync_playwright() as playwright:
         expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Manual, Keep me')
         f.fail_tags = False
         dialog.get_by_role('button', name='Suggest / refresh tags', exact=True).click()
-        expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Django, REST API, PostgreSQL')
+        expect(dialog.get_by_label('Position tags', exact=True)).to_have_value('Manual, Keep me, Django, REST API, PostgreSQL')
         assert f.suggestions[-1]['requirements'] == {'Web Development': 50, 'Database': 75, 'Backend': 75, 'Cloud': 65}
+        assert f.suggestions[-1]['description'] == 'Maintain APIs and validate incoming records.'
         dialog.get_by_label('Position tags', exact=True).fill('Django, REST API, PostgreSQL, Custom tag')
         dialog.get_by_role('button', name='All skills (14)', exact=True).click()
         f.page.screenshot(path=str(ARTIFACTS / 'desktop.png'))

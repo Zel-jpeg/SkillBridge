@@ -24,16 +24,19 @@ with one continuous skill list that adapts to a changing category catalog.
   Escape and focus restoration. Footer actions remain outside the scrolling body.
   Clearing a row in Selected moves focus to search. Existing custom fields do
   not steal focus when opening the editor.
-- Zero capacity, editable comma-separated tags, explicit tag refresh, add/edit
-  payloads and failure recovery retain the existing contracts. Refresh explains
-  that it replaces draft tags. Pending saves prevent repeated submission and
-  closing; saving waits for tag suggestions to finish.
+- **Suggest / refresh tags** adds distinct keywords to the current draft.
+  Program positions use the role description and saved tags on selected skill
+  requirements. Existing shared IC positions can also use their curated role
+  vocabulary. Suggestions require an explicit Save to affect the position.
+  Pending saves prevent repeated submission and closing. Saving waits for tag
+  suggestions to finish.
 
 Implementation: [PositionDialog.jsx](../skillbridge-frontend/src/components/admin/PositionDialog.jsx),
 [scoped styles](../skillbridge-frontend/src/components/admin/positionDialog.css),
 and the existing [admin page](../skillbridge-frontend/src/pages/admin/AdminCompanies.jsx).
-This is a frontend-only change: no backend, schema, authorization, ranking or
-placement-rule changes and no new dependencies.
+The backend extracts description phrases through the existing tag endpoint.
+The tag editor uses the already-authorized program skill set for requirement
+vocabulary. Ranking and placement rules are unaffected.
 
 ## Verification
 

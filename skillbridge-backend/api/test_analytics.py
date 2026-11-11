@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 from unittest.mock import patch
 
 from django.db import connection
+from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -65,6 +66,35 @@ class AnalyticsTests(APITestCase):
         self.owner.save()
         self.client.force_authenticate(self.owner)
         self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    @override_settings(SUPABASE_STORAGE_URL='https://images.example.invalid', COMPANY_IMAGE_BUCKET='logos', COMPANY_IMAGE_PREFIX='companies')
+    def test_record_logo_urls_follow_top_approved_and_suggested_partners(self):
+        self.company.image_key = 'companies/' + 'a' * 32 + '.webp'
+        self.company.save(update_fields=['image_key'])
+        self.ready()
+        expected = 'https://images.example.invalid/storage/v1/object/public/logos/' + self.company.image_key
+        for user in (self.owner, self.admin):
+            self.client.force_authenticate(user)
+            row = next(row for row in self.get()['students'] if row['id'] == self.student.id)
+            self.assertEqual(row['top_company_image_url'], expected)
+            self.assertIsNone(row['company_image_url'])
+        self.client.force_authenticate(self.owner)
+        rec = Recommendation.objects.get(student=self.student, position=self.position)
+        placement = OJTPlacement.objects.create(student=self.student, batch=self.batch,
+            company=self.company, position=self.position, recommendation=rec,
+            status='suggested', is_active_suggestion=True)
+        suggested = self.get()['suggested_students'][0]
+        self.assertEqual(suggested['company_image_url'], expected)
+        placement.status = 'approved'
+        placement.is_active_suggestion = False
+        placement.save(update_fields=['status', 'is_active_suggestion'])
+        row = self.get()['students'][0]
+        self.assertEqual(row['company_image_url'], expected)
+
+    def test_record_without_current_recommendation_has_no_top_logo(self):
+        row = self.get()['students'][0]
+        self.assertIsNone(row['top_company_image_url'])
+        self.assertIsNone(row['company_image_url'])
 
     def test_admin_current_cohort_deduplicates_memberships_and_explicit_batch_is_selectable(self):
         BatchEnrollment.objects.create(batch=self.foreign, student=self.student)

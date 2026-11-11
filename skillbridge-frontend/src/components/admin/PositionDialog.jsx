@@ -8,6 +8,7 @@ import FrameworkSelect from '../assessment/FrameworkSelect'
 import PositionPrograms from './PositionPrograms'
 import ConfirmModal from './ConfirmModal'
 import { positionRequirementRows } from '../../utils/companyCollection'
+import { mergeSuggestedTags } from '../../utils/competencyAssistance'
 import './positionDialog.css'
 
 const LEVELS = [
@@ -74,7 +75,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   onSubmit, saving, setSaving, fixedProgram, defaultProgram, saveBlocked = false, recovery, requirementsReadOnly = false }) {
   const id = useId()
   const savePending = useRef(false)
-  const suggestPending = useRef(false)
+  const suggestionRequest = useRef(null)
   const listRef = useRef(null)
   const searchRef = useRef(null)
   const errorRef = useRef(null)
@@ -93,9 +94,11 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
     ? Object.fromEntries((initialData?.category_requirements || []).map(row => [row.category_id, row.percentage]))
     : { ...initialData?.requirements })
   const [suggesting, setSuggesting] = useState(false)
+  const [suggestionStatus, setSuggestionStatus] = useState('')
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedOnly, setSelectedOnly] = useState(false)
+  useEffect(() => () => suggestionRequest.current?.abort(), [title, description, reqs, frameworkId, scoped])
   const original = useRef(JSON.stringify({ title, description, slots, tags, programId, selectedFrameworkId, reqs, programs }))
   useEffect(() => {
     onDirtyChange(JSON.stringify({ title, description, slots, tags, programId, selectedFrameworkId, reqs, programs }) !== original.current)
@@ -136,7 +139,7 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (savePending.current || suggestPending.current || saveBlocked) return
+    if (savePending.current || suggestionRequest.current || saveBlocked) return
     if (!title.trim()) { reportError('Position title is required.'); return }
     if (!String(slots).trim() || !Number.isInteger(Number(slots)) || Number(slots) < 0 || Number(slots) > 2147483647) {
       reportError('Slots must be a whole number from 0 to 2147483647.'); return
@@ -168,25 +171,34 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
   }
 
   async function handleSuggestTags() {
-    if (suggestPending.current || savePending.current) return
-    if (scoped) {
-      const savedTags = [...new Set(scopeCategories.filter(row => reqs[row.id] > 0).flatMap(row => row.tags || []))]
-      if (!savedTags.length) { reportError('The selected requirements have no saved tags. You can enter tags manually.'); return }
-      setTags(savedTags.join(', '))
-      return
-    }
-    if (!title.trim()) { reportError('Enter a position title before suggesting tags.'); return }
-    suggestPending.current = true
+    if (suggestionRequest.current || savePending.current) return
+    if (!scoped && !title.trim()) { reportError('Enter a position title before suggesting tags.'); return }
+    const request = new AbortController()
+    suggestionRequest.current = request
     setSuggesting(true)
     setError('')
+    setSuggestionStatus('')
     try {
       const requirements = Object.fromEntries(Object.entries(reqs).filter(([, value]) => value > 0))
-      const res = await api.post('/api/tags/suggest/', { type: 'position', title, requirements })
-      setTags((res.data?.suggested_tags || []).join(', '))
+      const savedTags = scoped ? scopeCategories.filter(row => requirements[row.id]).flatMap(row => row.tags || []) : []
+      let suggested = []
+      if (!scoped || description.trim()) {
+        const res = await api.post('/api/tags/suggest/', { type: 'position', title, description,
+          ...(scoped ? { description_only: true } : { requirements }) }, { signal: request.signal })
+        suggested = res.data.suggested_tags
+      }
+      if (request.signal.aborted) return
+      const nextTags = mergeSuggestedTags(tags, [...suggested, ...savedTags])
+      if (nextTags !== tags && (suggested.length || savedTags.length)) {
+        setTags(nextTags)
+        setSuggestionStatus('Suggestions added. Review them before saving.')
+      } else {
+        setSuggestionStatus('No additional tags found. You can enter tags manually.')
+      }
     } catch (err) {
-      reportError(err.response?.data?.error || 'Could not suggest tags.')
+      if (!request.signal.aborted) reportError(err.response?.data?.error || 'Could not suggest tags.')
     } finally {
-      suggestPending.current = false
+      suggestionRequest.current = null
       setSuggesting(false)
     }
   }
@@ -290,14 +302,15 @@ function PositionForm({ mode = 'add', initialData = null, categories = [], onClo
         <section className="position-editor-section" aria-labelledby={`${id}-tags-heading`}>
           <div className="position-editor-tags-heading">
             <SectionHeading number="4" id={`${id}-tags-heading`}>Position tags <span className="position-editor-optional">Optional</span></SectionHeading>
-            <button type="button" className="position-editor-suggest" disabled={suggesting || requirementsReadOnly} onClick={handleSuggestTags}>
+            <button type="button" className="position-editor-suggest" disabled={requirementsReadOnly} aria-disabled={suggesting} onClick={handleSuggestTags}>
               <RefreshIcon size={14} />{suggesting ? 'Suggesting…' : 'Suggest / refresh tags'}
             </button>
           </div>
           <label htmlFor={`${id}-tags`} className="sr-only">Position tags</label>
           <textarea id={`${id}-tags`} value={tags} onChange={event => setTags(event.target.value)} rows={2} disabled={suggesting}
             aria-describedby={`${id}-tags-help`} placeholder="Enter relevant skills, activities or tools" className="position-editor-input" />
-          <p id={`${id}-tags-help`} className="position-editor-help">Comma-separated and editable. Refreshing replaces the current tag list.</p>
+          <p id={`${id}-tags-help`} className="position-editor-help">Separate tags with commas. Suggestions are added to your draft.</p>
+          {suggestionStatus && <p role="status" className="position-editor-help">{suggestionStatus}</p>}
         </section>
       </fieldset>
     </div>

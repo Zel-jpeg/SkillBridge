@@ -35,7 +35,7 @@ const PlusIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const TrashIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
 const GridIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
 const ListIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-const headerButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
+const headerButton = 'inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800'
 
 
 function scoreColor(pct) {
@@ -160,8 +160,8 @@ export default function EnrolledStudents() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex flex-col gap-1.5">
+        <header className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Enrolled students</h1>
               {isArchived && (
@@ -170,52 +170,46 @@ export default function EnrolledStudents() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm text-gray-500 dark:text-gray-400">{instructor.subject}</p>
-              <DataSection pending={initialBatchPending} url="/api/instructor/batches/" layout="control" count={1}><select aria-label="Selected batch" value={activeBatchId} onChange={e => { setActiveBatchId(Number(e.target.value)); setPage(1) }}
-                className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer font-medium">
-                {[...batches].reverse().map(b => (
-                  <option key={b.id} value={b.id}>{b.name}{b.status === 'archived' ? ' (Archived)' : ' ★ Active'}</option>
-                ))}
-              </select></DataSection>
+            <div role="group" aria-label="Page actions" className="flex items-center gap-2 flex-wrap">
+              {activeBatchId && <button type="button" className={headerButton} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>}
+              {!isArchived && activeBatch && (
+                <button type="button" disabled={initialBatchPending} onClick={() => setShowModal(true)}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-green-700 bg-green-700 px-4 text-xs font-semibold text-white hover:border-green-800 hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50 dark:border-green-600 dark:bg-green-600 dark:hover:border-green-700 dark:hover:bg-green-700">
+                  <UserPlusIcon size={16} />Enroll students
+                </button>
+              )}
+              {isArchived && (
+                <>
+                  {activeBatch && <button type="button" onClick={() => { const ab = batches.find(b => b.status === 'active'); if (ab) setActiveBatchId(ab.id) }} className={headerButton}>Switch to active batch</button>}
+                  <button type="button" disabled={initialBatchPending} onClick={() => setShowReactivate(true)} className={headerButton}><UnarchiveIcon />Reactivate batch</button>
+                </>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {activeBatchId && <button className={headerButton} onClick={() => setShowEmails(true)}><MailIcon size={16} />Enrollment emails</button>}
-            {(
-                <button onClick={() => setShowNewBatch(true)}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                  <PlusIcon /> Start new batch
-                </button>
-            )}
+          <div role="group" aria-label="Batch controls" className="flex min-w-0 items-center gap-x-3 gap-y-2 flex-wrap">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{instructor.subject}</p>
+            <div className="max-w-full min-w-0">
+              <DataSection pending={initialBatchPending} url="/api/instructor/batches/" layout="control" count={1}>
+                <div className="relative max-w-full">
+                  <select aria-label="Selected batch" value={activeBatchId} onChange={e => { setActiveBatchId(Number(e.target.value)); setPage(1) }}
+                    className="h-11 max-w-full appearance-none rounded-[10px] border border-gray-200 bg-white py-2 pl-3 pr-9 text-xs font-medium text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    {[...batches].reverse().map(b => (
+                      <option key={b.id} value={b.id}>{b.name}{b.status === 'archived' ? ' · Archived' : ' · Active'}</option>
+                    ))}
+                  </select>
+                  <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"><ChevronDown size={14} /></span>
+                </div>
+              </DataSection>
+            </div>
             {!isArchived && activeBatch && (
-              <>
-                <ActionMenu label="Batch actions" className={headerButton} disabled={initialBatchPending}
-                  items={[{ id: 'assessment', label: 'New assessment', icon: <AddIcon size={16} /> }, { id: 'transfer', label: 'Transfer student', icon: <TransferIcon size={16} /> }, { id: 'report', label: 'Save report & archive batch', icon: <ReportIcon size={16} /> }, { id: 'archive', label: 'Archive without final report', icon: <SharedArchiveIcon size={16} />, danger: true }]}
-                  onAction={action => { if (action === 'assessment') navigate('/instructor/assessment/create'); else if (action === 'transfer') setShowTransfer(true); else if (action === 'report') setShowReportReview(true); else setShowArchiveConf(true) }}><span aria-hidden="true"><BatchListIcon size={16} /></span><span>Batch actions</span><span aria-hidden="true"><ChevronDown size={14} /></span></ActionMenu>
-                <button disabled={initialBatchPending} onClick={() => setShowModal(true)}
-                  className="flex min-h-11 items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                  <UserPlusIcon size={16} />
-                  Enroll students
-                </button>
-              </>
+              <ActionMenu label="Batch actions" className={headerButton} disabled={initialBatchPending}
+                items={[{ id: 'assessment', label: 'New assessment', icon: <AddIcon size={16} /> }, { id: 'transfer', label: 'Transfer student', icon: <TransferIcon size={16} /> }, { id: 'report', label: 'Save report & archive batch', icon: <ReportIcon size={16} /> }, { id: 'archive', label: 'Archive without final report', icon: <SharedArchiveIcon size={16} />, danger: true }]}
+                onAction={action => { if (action === 'assessment') navigate('/instructor/assessment/create'); else if (action === 'transfer') setShowTransfer(true); else if (action === 'report') setShowReportReview(true); else setShowArchiveConf(true) }}><span aria-hidden="true"><BatchListIcon size={16} /></span><span>Batch actions</span><span aria-hidden="true"><ChevronDown size={14} /></span></ActionMenu>
             )}
-            {isArchived && (
-              <>
-                {activeBatch && (
-                  <button onClick={() => { const ab = batches.find(b => b.status === 'active'); if (ab) setActiveBatchId(ab.id) }}
-                    className="text-xs px-3 py-2 rounded-xl border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950 transition-colors font-medium">
-                    Switch to active batch
-                  </button>
-                )}
-                <button disabled={initialBatchPending} onClick={() => setShowReactivate(true)}
-                  className="flex items-center gap-1.5 border border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950 text-green-700 dark:text-green-400 text-sm font-semibold px-3 py-2.5 rounded-xl transition-colors">
-                  <UnarchiveIcon /> Reactivate batch
-                </button>
-              </>
-            )}
+            <span aria-hidden="true" className="hidden h-6 w-px bg-gray-200 sm:block dark:bg-gray-700" />
+            <button type="button" onClick={() => setShowNewBatch(true)} className={headerButton}><PlusIcon />Start new batch</button>
           </div>
-        </div>
+        </header>
 
 
 {showTransfer && <StudentTransferAction key={`transfer-${activeBatchId}`} batchId={activeBatchId} batchName={viewedBatch?.name || 'this batch'} isOpen onClose={() => setShowTransfer(false)} showTrigger={false} />}

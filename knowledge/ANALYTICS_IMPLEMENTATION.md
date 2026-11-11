@@ -10,6 +10,10 @@ historical trends limited to evidence actually retained by the application.
 
 ## Delivered
 
+The 10 November 2026 [detailed-record UI alignment](ANALYTICS_RECORD_COLLECTION_UI.md)
+reviews both roles against the instructor dashboard and records the shared
+table/card changes, preserved analytics meanings and verification.
+
 ### Local Reports startup crash
 
 Concurrent Vite development servers with different ports shared one dependency

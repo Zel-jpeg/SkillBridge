@@ -51,6 +51,12 @@ def shared_ic_skills(request):
                          .values('id', 'name', 'description', 'tags')))
 
 
+def shared_skill_rows(institute):
+    if institute.code.casefold() == 'ic':
+        return SkillCategory.objects.filter(framework__isnull=True)
+    return institute.shared_skills.all()
+
+
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @notify_changes('institute_skill')
@@ -62,8 +68,7 @@ def institute_skills(request, institute_id, skill_id=None):
             institutes = institutes.filter(is_active=True, programs__is_active=True,
                 programs__in=assigned_program_ids(request.user)).distinct()
         institute = get_object_or_404(institutes, pk=institute_id)
-        rows = (SkillCategory.objects.filter(framework__isnull=True) if institute.code.casefold() == 'ic'
-                else institute.shared_skills.all()).order_by('name', 'id')
+        rows = shared_skill_rows(institute).order_by('name', 'id')
         if skill_id is None:
             return Response(list(rows.values('id', 'name', 'description', 'tags')))
         return Response(category_content(get_object_or_404(rows, pk=skill_id)))

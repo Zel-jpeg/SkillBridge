@@ -255,24 +255,24 @@ remain separate from the successful local verification.
 ## Local and hosted readiness review
 
 The user additionally requested consistent local/live operation when deploying.
-The current repository `requirements-production.txt` includes the spaCy stack and
-Medium wheel; it does not include the Stanza stack, English Stanza resources or
-the Small model wheel. The local installation therefore does not establish hosted
-availability of all three selectable models.
+The current `requirements-production.txt` includes both spaCy wheels and
+Stanza. The web build installs CPU PyTorch, downloads the English resources into
+the image and probes all three models before collecting static files. Verify
+that the active Railway build uses this command. The Windows run verifies the
+local installation. The Linux image and hosted model execution remain open.
+[Current Railway handoff](RELEASE_AND_RECOVERY_HANDOFF.md#current-release-and-environment-settings)
 
 Release criteria for the implementation:
 
 - [x] Confirm existing local English files and actual strict Stanza processing.
-- [ ] One consistent configured resource path used by installation, status and
+- [x] One consistent resource path used by installation, status and
       runtime; reuse the user's Windows cache locally and a server-owned Linux
       path in the deployment image. Never hardcode this computer's path in code.
-- [ ] Install compatible, versioned CPU inference dependencies and all three
-      selectable resources in a reproducible hosted build, with offline strict
-      load/processing checks before the image is considered model-ready.
-- [ ] Put downloaded model resources into the actual application image/build
-      output, not Railway's temporary pre-deploy container filesystem. Its
-      filesystem changes are not persisted to the running service.
-- [ ] Keep request-time downloads disabled. Report requested/actual models and
+- [x] Configure the web build to install versioned CPU inference dependencies
+      and all three resources, then run strict load and processing checks.
+- [x] Configure Stanza resources in the application image build output. The
+      pre-deploy command is reserved for database migrations.
+- [x] Keep request-time downloads disabled. Report requested/actual models and
       fallback reasons truthfully; availability must not rely only on a directory
       name existing.
 - [ ] Verify cold/warm timings, resident memory and concurrent comparison/scoring

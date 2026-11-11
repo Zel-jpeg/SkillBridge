@@ -193,3 +193,6 @@ access, distinct same-name company IDs and preserved score precision. The synthe
 Chrome checks passed at 1440, 768, 375 and 320 pixels, including dark mode at 320 pixels,
 with no browser page errors. Card and dialog screenshots were reviewed. These
 checks use mocked API/map data and do not establish live-service behavior.
+
+
+10 November 2026: Score Details now reveals a labeled match-breakdown button on recommendation cards. It opens a shared modal rather than an inline disclosure; Recommendation Order and Nearest omit the card button. See [match breakdown modal](MATCH_BREAKDOWN_MODAL.md) for behavior and verification.

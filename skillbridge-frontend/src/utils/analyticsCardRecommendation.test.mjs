@@ -8,9 +8,10 @@ const row = {
   instructor: 'Synthetic owner', required_completed: 1, required_total: 1,
   recommendations_locked: false, placement_status: 'suggested', reasons: [],
   company: 'Allocated partner', position: 'Allocated opening',
+  company_image_url: 'https://images.example.invalid/allocated.webp',
   suggested_recommendation: { ranking_policy: 'legacy-hybrid', match_score: 30 },
   top_company: 'Highest alternative partner', top_position: 'Highest alternative opening',
-  top_match: 90, top_ranking_policy: 'legacy-hybrid',
+  top_match: 90, top_ranking_policy: 'legacy-hybrid', top_company_image_url: 'https://images.example.invalid/highest.webp',
 }
 
 test('suggested cards keep the allocated opening and its lower score consistent with table/export', () => {
@@ -19,11 +20,14 @@ test('suggested cards keep the allocated opening and its lower score consistent 
   assert.equal(card.available, true)
   assert.equal(card.label, 'Suggested allocation')
   assert.equal(card.company, table.rows[0][8])
+  assert.equal(card.imageUrl, row.company_image_url)
   assert.equal(card.position, table.rows[0][9])
   assert.equal(card.display, table.rows[0][10])
   assert.equal(card.display, '30%')
   assert.equal(analyticsCardRecommendation(row).display, '90%')
   assert.equal(analyticsCardRecommendation(row).company, 'Highest alternative partner')
+  assert.equal(analyticsCardRecommendation(row).imageUrl, row.top_company_image_url)
+  assert.equal(analyticsCardRecommendation({ ...row, company_image_url: null }, true).imageUrl, null)
 })
 
 test('assessment-led allocations show the allocated rank rather than the top alternative rank', () => {
