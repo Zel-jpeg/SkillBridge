@@ -79,3 +79,13 @@ Branch: `codex/coordinator-shared-editing-20261109`, based on main's visibility
 fix. The separate position-specific NLP feature remains independently unmerged
 into main. No real company, position, score, recommendation or placement snapshot
 was edited by these isolated tests. Do not push to GitHub without instruction.
+
+## Importing a partner pin
+
+The coordinator partner editor accepts full Google Maps links with an explicit
+pin. The latitude and longitude are applied to the existing map immediately.
+An on-demand Photon reverse lookup can suggest PSGC address selections, including
+Metro Manila (NCR). The coordinator reviews the suggested address and can change
+any selection or move the pin before saving. The street/building text is kept.
+An unavailable lookup leaves the pin usable, and a link without an explicit pin
+leaves the draft as entered. Short links can be opened to copy the full URL.

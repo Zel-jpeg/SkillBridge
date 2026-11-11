@@ -1,10 +1,7 @@
 // src/components/AddressDropdowns.jsx
 import { useState, useEffect, useRef, useCallback, useId } from 'react'
 
-import { externalJson } from '../utils/externalServices'
-
-// Philippine address API — no signup needed, free
-const API = 'https://psgc.gitlab.io/api'
+import { loadAddressRows, provinceOptions } from '../utils/philippineAddresses'
 
 // ================================================================
 // HOW TO USE THIS COMPONENT:
@@ -23,28 +20,14 @@ const API = 'https://psgc.gitlab.io/api'
 //   All caches clear when the browser tab is closed (sessionStorage behaviour).
 // ================================================================
 
-// ── Safe sessionStorage helpers (never crash if storage is blocked) ──
-function ssGet(key) {
-  try { return addressRows(JSON.parse(sessionStorage.getItem(key))) } catch { return null }
-}
-function ssSet(key, value) {
-  try { sessionStorage.setItem(key, value) } catch { /* quota exceeded or blocked */ }
-}
-
-function addressRows(value) {
-  if (!Array.isArray(value) || value.some(row => !row || typeof row.name !== 'string' || !row.name.trim() ||
-    !['string', 'number'].includes(typeof row.code))) throw new Error('Invalid address data')
-  return value.map(row => ({ ...row, code: String(row.code) }))
-}
-
-export default function AddressDropdowns({ label = '', onChange, error, prioritizeDavao = false }) {
+export default function AddressDropdowns({ label = '', onChange, error, prioritizeDavao = false, includeNcr = false, initialSelection }) {
   const id = useId()
 
-  const [provinces, setProvinces]   = useState([])
-  const [cities,    setCities]      = useState([])
-  const [barangays, setBarangays]   = useState([])
+  const [provinces, setProvinces]   = useState(initialSelection?.provinces ?? [])
+  const [cities,    setCities]      = useState(initialSelection?.cities ?? [])
+  const [barangays, setBarangays]   = useState(initialSelection?.barangays ?? [])
 
-  const [selected, setSelected] = useState({
+  const [selected, setSelected] = useState(initialSelection?.selected ?? {
     provinceCode: '',
     province:     '',
     cityCode:     '',
@@ -53,30 +36,25 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
   })
 
   const [loading, setLoading] = useState({
-    provinces: true,
+    provinces: !initialSelection,
     cities:    false,
     barangays: false,
   })
 
-  const [fetchError, setFetchError] = useState(null)
+  const [fetchError, setFetchError] = useState(initialSelection?.fetchError ?? null)
   const pending = useRef({})
   const load = useCallback(async (kind, code = '') => {
     pending.current[kind]?.abort()
     const controller = new AbortController()
     pending.current[kind] = controller
-    const key = kind === 'provinces' ? 'psgc_provinces' : `psgc_${kind}_${code}`
-    const url = kind === 'provinces' ? `${API}/provinces/` : kind === 'cities'
-      ? `${API}/provinces/${encodeURIComponent(code)}/cities-municipalities/`
-      : `${API}/cities-municipalities/${encodeURIComponent(code)}/barangays/`
     setLoading(prev => ({ ...prev, [kind]: true }))
     setFetchError(null)
     try {
-      const cached = ssGet(key)
-      const rows = cached ?? addressRows(await externalJson(url, { signal: controller.signal }))
+      const rows = await loadAddressRows(kind, code, controller.signal)
       if (controller.signal.aborted) return
-      rows.sort((a, b) => a.name.localeCompare(b.name))
-      ssSet(key, JSON.stringify(rows))
-      ;({ provinces: setProvinces, cities: setCities, barangays: setBarangays })[kind](rows)
+      ;({ provinces: setProvinces, cities: setCities, barangays: setBarangays })[kind](
+        kind === 'provinces' ? provinceOptions(rows, includeNcr) : rows
+      )
     } catch {
       if (!controller.signal.aborted) setFetchError({ kind, code })
     } finally {
@@ -84,14 +62,14 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
         setLoading(prev => ({ ...prev, [kind]: false }))
       }
     }
-  }, [])
+  }, [includeNcr])
 
   useEffect(() => {
     // Synchronize external address data; cleanup cancels obsolete transports.
-    load('provinces')
+    if (!initialSelection) load('provinces')
     const requests = pending.current
     return () => Object.values(requests).forEach(controller => controller.abort())
-  }, [load])
+  }, [load, initialSelection])
 
   function cancel(kind) {
     pending.current[kind]?.abort()
@@ -123,7 +101,6 @@ export default function AddressDropdowns({ label = '', onChange, error, prioriti
     onChange({ province: selected.province, city: selected.city, barangay: name })
   }
 
-  // Keep API names/codes intact and never choose an address for the student.
   const davaoProvinces = prioritizeDavao ? provinces.filter(p => /^Davao\s/i.test(p.name)) : []
   const otherProvinces = prioritizeDavao ? provinces.filter(p => !/^Davao\s/i.test(p.name)) : provinces
 
