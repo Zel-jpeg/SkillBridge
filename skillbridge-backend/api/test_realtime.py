@@ -34,6 +34,7 @@ class RealtimePilotTests(APITestCase):
     def setUp(self):
         self.key = serialization.load_pem_private_key(self.pem.encode('ascii'), password=None)
         self.options = dict(REALTIME_PILOT_ENABLED=True, REALTIME_PILOT_PUBLISH_ENABLED=False,
+            REALTIME_ROLLOUT_MODE='allowlist',
             REALTIME_PILOT_USER_IDS=f'{self.admin.id},{self.student.id}',
             SUPABASE_REALTIME_URL='https://syntheticref.supabase.co',
             SUPABASE_REALTIME_PUBLISHABLE_KEY='sb_publishable_synthetic',
@@ -265,3 +266,50 @@ class RealtimePilotTests(APITestCase):
                 self.assertEqual(publish_invalidations({self.admin.id: {'topics': ['results']}}), 0)
             self.assertNotIn('secret-url-and-key', '\n'.join(logs.output))
             self.assertEqual(post.call_count, 1)
+
+    @override_settings(REALTIME_ROLLOUT_MODE='eligible', REALTIME_PILOT_PUBLISH_ENABLED=True,
+                       REALTIME_PILOT_USER_IDS='')
+    def test_automatic_rollout_uses_account_eligibility_at_exchange(self):
+        student = User.objects.create_user('new-student@synthetic.invalid', role='student', is_approved=True)
+        self.authenticate(student)
+        self.assertEqual(self.exchange().status_code, 401)
+        BatchEnrollment.objects.create(batch=self.batch, student=student)
+        own_ticket = self.exchange().data
+        self.assertEqual(own_ticket['transport'], 'supabase_broadcast')
+        self.authenticate(self.teacher)
+        staff_ticket = self.exchange().data
+        self.assertEqual(staff_ticket['transport'], 'supabase_broadcast')
+        self.assertNotEqual(staff_ticket['topic'], own_ticket['topic'])
+        self.authenticate(self.other)
+        self.assertEqual(self.exchange().data['transport'], 'supabase_broadcast')
+        with override_settings(REALTIME_PILOT_PUBLISH_ENABLED=False):
+            self.assertEqual(self.exchange().data['transport'], 'sse')
+        with override_settings(REALTIME_ROLLOUT_MODE='typo'):
+            self.assertEqual(self.exchange().data['transport'], 'sse')
+
+    @override_settings(REALTIME_ROLLOUT_MODE='eligible', REALTIME_PILOT_PUBLISH_ENABLED=True,
+                       REALTIME_PILOT_USER_IDS='')
+    def test_automatic_rollout_batches_only_authorized_recipient_topics(self):
+        self.student.is_approved = False
+        self.student.save(update_fields=['is_approved'])
+        recipients = {user.pk: {'topics': ['results'], 'student_ids': [self.student.pk]}
+                      for user in (self.teacher, self.admin, self.other, self.student)}
+        with patch('api.realtime.requests.post', return_value=SimpleNamespace(status_code=202)) as post:
+            self.assertEqual(publish_invalidations(recipients), 3)
+        post.assert_called_once()
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], 'https://syntheticref.supabase.co/realtime/v1/api/broadcast')
+        self.assertIs(kwargs['allow_redirects'], False)
+        self.assertEqual(kwargs['timeout'], (.5, .5))
+        messages = kwargs['json']['messages']
+        self.assertEqual({message['topic'] for message in messages}, {
+            recipient_topic(user, configuration()) for user in (self.teacher, self.admin, self.other)
+        })
+        for message in messages:
+            self.assertEqual(message['event'], 'refresh')
+            self.assertIs(message['private'], True)
+            self.assertEqual(set(message['payload']), {'type', 'topics', 'event_id'})
+            self.assertEqual(message['payload']['topics'], ['results'])
+        with patch('api.realtime.MAX_BROADCAST_RECIPIENTS', 2), patch('api.realtime.requests.post') as post:
+            self.assertEqual(publish_invalidations(recipients), 0)
+            post.assert_not_called()

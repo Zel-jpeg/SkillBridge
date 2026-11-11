@@ -73,9 +73,9 @@ for authentication, authorization, grading, result visibility and placement writ
 1. Only a build with `VITE_SUPABASE_REALTIME_PILOT=true` attempts the exchange.
    The regular build starts SSE directly, without an exchange request or SDK load.
 2. React POSTs `/api/realtime/session/` through the existing Axios client. The
-   endpoint rechecks the current account, approval/enrollment and a server-side
-   allowlist capped at two accounts. Disabled/incomplete configuration and
-   nonpilot sessions return `{ "transport": "sse" }` with `no-store`.
+   endpoint rechecks the current account, approval and enrollment. The default
+   `allowlist` mode also checks the two-account list. Disabled or incomplete
+   configuration returns `{ "transport": "sse" }` with `no-store`.
 3. An eligible session receives a project URL, public API key, server-assigned
    opaque recipient topic and an ES256 JWT. The token uses the fixed limited
    database role, an opaque UUID subject, and at most 60 seconds of validity,
@@ -90,8 +90,9 @@ for authentication, authorization, grading, result visibility and placement writ
    event log is written first. An independently enabled publisher then rechecks
    eligible pilot recipients and sends a small private invalidation through the
    REST Broadcast endpoint. Messages contain only the fixed type, allowlisted
-   topic names and a random event key. Publishing uses bounded two-account
-   fanout, short timeouts and no redirect/retry. Provider failure cannot turn a
+   topic names and a random event key. Publishing uses short timeouts and no
+   redirect or retry. `allowlist` sends to at most two accounts. `eligible` uses
+   one private batch request for up to 25 recipients. Provider failure cannot turn a
    completed operation into an API failure or remove its SSE event.
 6. Hidden tabs disconnect. Resume/join resynchronizes authorized GETs. Renewal
    rechecks Django eligibility before token expiry. A failed exchange, join or
@@ -99,10 +100,38 @@ for authentication, authorization, grading, result visibility and placement writ
    work. Existing visible/focus refresh remains available for missed events and
    time-based availability changes. Tokens remain in memory.
 
-The pilot adds server HTTP work only when its publication switch is explicitly
-enabled. Its overhead, repeated joins and event fanout need measurement before
-expanding beyond two accounts. Short expiry bounds cached channel authorization;
-it does not establish instantaneous revocation of an already-open channel.
+Publishing adds server HTTP work only when its switch is enabled. Short expiry
+bounds cached channel authorization. Revocation takes effect on the next token
+check or expiry.
+
+## Defense rehearsal and wider rollout
+
+- [ ] For a defense demo, leave `REALTIME_ROLLOUT_MODE=allowlist`, set both
+  backend switches and the Vite flag to true, and enter the Django IDs of an
+  approved instructor and an approved, enrolled test student. Restart Django and
+  Vite. Open the roster and assessment in separate browser sessions.
+- [ ] Submit a test assessment and verify the roster refreshes on its own.
+  Disconnect the Realtime WebSocket and repeat to check SSE recovery. For a
+  direct rollback, set `REALTIME_PILOT_ENABLED=False` and restart Django. Open
+  tabs switch at ticket renewal or immediately on reload.
+- [x] Implement `REALTIME_ROLLOUT_MODE=eligible`. It requires both existing backend
+  switches and uses Django account eligibility without `REALTIME_PILOT_USER_IDS`.
+  The browser build flag and Supabase credentials stay the same.
+- [x] Rehearse `eligible` locally against the existing hosted Realtime project
+  with a disposable database and an empty ID list. The first assessment
+  refreshed the instructor roster through private Broadcast. After disconnect,
+  SSE refreshed the second submission with the expected final score. The browser
+  reported zero page errors. The 48 focused PostgreSQL tests passed, including
+  enrollment, assessment, scoped delivery and receiver-policy checks.
+- [ ] Before switching Railway to `eligible`, measure simultaneous tabs, broadcast
+  rates, save latency and delivery during an assessment burst. Verify the deployed
+  login-to-assessment workflow and monitor fallback. Keep `allowlist` as the
+  deployment default until these checks pass.
+
+`eligible` sends one post-commit request for up to 25 eligible recipients per
+operation. Larger audiences and failed publishes retain the saved SSE events and
+recover in WebSocket tabs through the existing visible-data revalidation. The
+limit applies to each operation's notification batch. [Supabase batch REST API](https://supabase.com/docs/guides/realtime/broadcast#broadcast-using-the-rest-api)
 
 ## Configuration and signing trust
 
@@ -122,6 +151,7 @@ SUPABASE_REALTIME_TOPIC_SECRET=
 REALTIME_PILOT_USER_IDS=
 REALTIME_PILOT_ENABLED=False
 REALTIME_PILOT_PUBLISH_ENABLED=False
+REALTIME_ROLLOUT_MODE=allowlist
 ```
 
 The blank fields require a trusted dedicated ES256 signer, its key ID, an
@@ -142,7 +172,8 @@ Backend settings are documented in [.env.example](../skillbridge-backend/.env.ex
 | --- | --- |
 | `REALTIME_PILOT_ENABLED` | Exchange opt-in; default `False` |
 | `REALTIME_PILOT_PUBLISH_ENABLED` | Post-commit publication opt-in; default `False` |
-| `REALTIME_PILOT_USER_IDS` | At most two explicit test account IDs |
+| `REALTIME_ROLLOUT_MODE` | `allowlist` by default. `eligible` enables automatic Django eligibility when both switches are true |
+| `REALTIME_PILOT_USER_IDS` | One or two explicit test account IDs for `allowlist` mode |
 | `SUPABASE_REALTIME_URL` | Exact HTTPS hosted project origin or `/realtime/v1` URL |
 | `SUPABASE_REALTIME_PUBLISHABLE_KEY` | Modern public API key |
 | `SUPABASE_REALTIME_SIGNING_KEY` | Dedicated, already trusted P-256 private PEM; backend secret |

@@ -120,9 +120,10 @@ COMPANY_IMAGE_BUCKET = os.getenv('COMPANY_IMAGE_BUCKET', 'company-branding')
 COMPANY_IMAGE_PREFIX = 'companies'
 RETAKE_EVIDENCE_BUCKET = os.getenv('RETAKE_EVIDENCE_BUCKET', 'retake-evidence')
 
-# Disabled two-user Realtime pilot; separate from Storage and Django JWT keys.
+# Disabled by default; separate from Storage and Django JWT keys.
 REALTIME_PILOT_ENABLED = os.getenv('REALTIME_PILOT_ENABLED', 'False').lower() == 'true'
 REALTIME_PILOT_PUBLISH_ENABLED = os.getenv('REALTIME_PILOT_PUBLISH_ENABLED', 'False').lower() == 'true'
+REALTIME_ROLLOUT_MODE = os.getenv('REALTIME_ROLLOUT_MODE', 'allowlist').strip().lower()
 REALTIME_PILOT_USER_IDS = os.getenv('REALTIME_PILOT_USER_IDS', '')
 SUPABASE_REALTIME_URL = os.getenv('SUPABASE_REALTIME_URL', '')
 SUPABASE_REALTIME_PUBLISHABLE_KEY = os.getenv('SUPABASE_REALTIME_PUBLISHABLE_KEY', '')

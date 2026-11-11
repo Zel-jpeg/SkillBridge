@@ -29,13 +29,14 @@ logger = logging.getLogger(__name__)
 RECEIVER_ROLE = 'sb_realtime_receiver'
 TOKEN_SECONDS = 60
 MAX_PILOT_USERS = 2
+MAX_BROADCAST_RECIPIENTS = 25
 EVENT = 'refresh'
 
 
 @dataclass(frozen=True)
 class PilotConfiguration:
     url: str
-    user_ids: frozenset
+    user_ids: frozenset | None
     publishable_key: str
     signing_key: object
     signing_kid: str
@@ -58,13 +59,21 @@ def configuration():
     if getattr(settings, 'REALTIME_PILOT_ENABLED', False) is not True:
         return None
     try:
-        ids = _pilot_ids(getattr(settings, 'REALTIME_PILOT_USER_IDS', ''))
+        mode = getattr(settings, 'REALTIME_ROLLOUT_MODE', 'allowlist')
+        if mode == 'allowlist':
+            ids = _pilot_ids(getattr(settings, 'REALTIME_PILOT_USER_IDS', ''))
+            if not ids:
+                return None
+        elif mode == 'eligible' and settings.REALTIME_PILOT_PUBLISH_ENABLED is True:
+            ids = None
+        else:
+            return None
         parsed = urlsplit(getattr(settings, 'SUPABASE_REALTIME_URL', '').strip())
         host = parsed.hostname or ''
         # An exact hosted Supabase endpoint prevents secret-bearing requests to
         # arbitrary configured paths, credentials, query strings or redirects.
         project = host.removesuffix('.supabase.co')
-        if (not ids or parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port or
+        if (parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port or
                 not host.endswith('.supabase.co') or not project or
                 not project.isascii() or not project.isalnum() or
                 parsed.path not in ('', '/', '/realtime/v1', '/realtime/v1/') or parsed.query or parsed.fragment):
@@ -119,7 +128,7 @@ def realtime_session(request):
     response['Cache-Control'] = 'no-store'
     response['Pragma'] = 'no-cache'
     config = configuration()
-    if config is None or request.user.pk not in config.user_ids:
+    if config is None or (config.user_ids is not None and request.user.pk not in config.user_ids):
         return response
     user = eligible_users([request.user.pk]).first()
     if user is None:
@@ -151,8 +160,8 @@ def realtime_session(request):
 def publish_invalidations(recipients):
     """Best-effort publication after commit; keep the persisted SSE events.
 
-    The two-user pilot bounds network fanout. No entity identifiers or records
-    cross this transport, including after permissions change between operations.
+    No entity identifiers or records cross this transport. In eligible mode a
+    single bounded request covers the private topics for the operation.
     """
     if getattr(settings, 'REALTIME_PILOT_PUBLISH_ENABLED', False) is not True:
         return 0
@@ -161,9 +170,13 @@ def publish_invalidations(recipients):
         return 0
     from .change_events import TOPICS
     allowed = {topic for topics in TOPICS.values() for topic in topics} | {'email', 'scope'}
-    candidates = config.user_ids.intersection(recipients)
-    sent = 0
-    for user in eligible_users(candidates):
+    candidates = recipients if config.user_ids is None else config.user_ids.intersection(recipients)
+    users = list(eligible_users(candidates)[:MAX_BROADCAST_RECIPIENTS + 1])
+    if len(users) > MAX_BROADCAST_RECIPIENTS:
+        logger.warning('Realtime audience exceeds batch limit; clients will revalidate')
+        return 0
+    messages = []
+    for user in users:
         data = recipients[user.pk]
         topics = data.get('topics', []) if isinstance(data, dict) else []
         if not isinstance(topics, (tuple, list)):
@@ -172,15 +185,24 @@ def publish_invalidations(recipients):
         if not topics:
             continue
         payload = {'type': 'data_changed', 'topics': topics, 'event_id': str(uuid.uuid4())}
-        endpoint = f'{config.url}/api/broadcast/{quote(recipient_topic(user, config), safe="")}/events/{EVENT}?private=true'
+        messages.append({'topic': recipient_topic(user, config), 'event': EVENT, 'private': True, 'payload': payload})
+    if not messages:
+        return 0
+
+    def send(endpoint, data):
         try:
             result = requests.post(endpoint, headers={'apikey': config.publish_key, 'Content-Type': 'application/json'},
-                                   json=payload, timeout=(.5, .5), allow_redirects=False)
+                                   json=data, timeout=(.5, .5), allow_redirects=False)
             if 200 <= result.status_code < 300:
-                sent += 1
-            else:
-                logger.warning('Realtime publication unavailable; visible refresh will recover')
+                return True
         except requests.RequestException:
             # Provider exception messages can include URLs, keys or payloads.
-            logger.warning('Realtime publication unavailable; visible refresh will recover')
-    return sent
+            pass
+        logger.warning('Realtime publication unavailable; visible refresh will recover')
+        return False
+
+    endpoint = f'{config.url}/api/broadcast'
+    if config.user_ids is None:
+        return len(messages) if send(endpoint, {'messages': messages}) else 0
+    return sum(send(f'{endpoint}/{quote(message["topic"], safe="")}/events/{EVENT}?private=true',
+                    message['payload']) for message in messages)

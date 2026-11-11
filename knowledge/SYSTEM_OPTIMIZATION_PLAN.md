@@ -458,6 +458,11 @@ the cost of the bounded HTTP call before expansion. A separate worker remains an
 option if synchronous publication increases write latency. See the [pilot runbook](SUPABASE_REALTIME_PILOT.md)
 and [event publication](../skillbridge-backend/api/change_events.py).
 
+- [x] Add opt-in automatic account eligibility and a bounded private batch request.
+- [ ] Rehearse the two-account defense demo with the intended accounts.
+- [ ] Measure peak hosted capacity and write latency before enabling automatic
+  eligibility in production. Follow the [rollout checklist](SUPABASE_REALTIME_PILOT.md#defense-rehearsal-and-wider-rollout).
+
 ### Controlled pilot in the existing project
 
 The user asked whether the current Supabase project can be used safely. Start
