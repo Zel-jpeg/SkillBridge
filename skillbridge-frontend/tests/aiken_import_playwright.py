@@ -177,6 +177,8 @@ def run(browser):
     expect(review.get_by_role('button', name=f'Mark choice {first_key} as correct', exact=True)).to_have_attribute('aria-pressed', 'true')
     question = review.get_by_role('textbox', name='Question text', exact=True)
     original_text = question.input_value()
+    if not sample:
+        expect(question).to_have_value('Which record should the trainee verify before confirming the change?')
     question.fill('')
     expect(panel.get_by_role('button', name='Add 20 questions to draft', exact=True)).to_be_disabled()
     question.fill(original_text)
@@ -213,12 +215,16 @@ def run(browser):
     questions = question_list(context, assessment['id'], 'instructor')
     original = [block.splitlines() for block in re.split(r'\r?\n\s*\r?\n', source.strip())]
     assert len(questions) == len(original) == 20
+    numbered = [re.match(r'^0*' + str(index) + r'([.)])[ \t]+(\S.*)$', block[0].strip())
+                for index, block in enumerate(original, 1)]
+    clean_stems = all(numbered) and len({match[1] for match in numbered}) == 1
     for index, (question, expected) in enumerate(zip(questions, original)):
-        assert question['question_text'] == expected[0].strip() and question['question_type'] == 'mcq'
+        stem = numbered[index][2] if clean_stems else expected[0].strip()
+        assert question['question_text'] == stem and question['question_type'] == 'mcq'
         assert [choice['text'] for choice in question['choices']] == [line[3:].strip() for line in expected[1:-1]]
         assert [choice['is_correct'] for choice in question['choices']] == [letter == expected[-1].strip()[-1] for letter in 'ABCD']
         assert question['category']['id'] == (service['id'] if index == 1 else records['id'])
-    checks.append(f'{"supplied DNSC file" if sample else "synthetic DNSC-shaped file"} stages and saves all 20 exact keys and ordered options with bulk and individual category IDs')
+    checks.append(f'{"supplied DNSC file" if sample else "synthetic DNSC-shaped file"} saves reviewed stems, all 20 exact keys and ordered options with bulk and individual category IDs')
 
     panel = fill_creator(page, 'instructor', batch, framework, 'Spreadsheet import draft')
     panel.get_by_role('button', name='Excel / CSV', exact=True).click()
@@ -272,7 +278,7 @@ def run(browser):
     editor.get_by_role('button', name='Import questions', exact=True).click()
     upload(panel, mixed)
     expect(panel.get_by_text('File question 1 · line 1', exact=True)).to_be_visible()
-    expect(panel.get_by_role('button', name='Question 1: May tala ba sa café?', exact=True)).to_be_visible()
+    expect(panel.get_by_role('button', name='Question 1: 02. May tala ba sa café?', exact=True)).to_be_visible()
     panel.get_by_label('Select question 1', exact=True).check()
     panel.get_by_role('button', name='Add 1 question to draft', exact=True).click()
     editor.get_by_role('combobox', name='Publication state').select_option('published')

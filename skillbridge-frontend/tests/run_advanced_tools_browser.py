@@ -22,7 +22,7 @@ def free_port():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--ui-only', action='store_true', help='Skip full 200-student model execution; do not use for final acceptance.')
+    parser.add_argument('--ui-only', action='store_true', help='Skip actual model execution; do not use for final acceptance.')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     out = Path(tempfile.mkdtemp(prefix='advanced-tools-browser-', dir=root / 'work'))

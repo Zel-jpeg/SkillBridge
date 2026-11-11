@@ -43,7 +43,7 @@ def _percentage(value):
             and math.isfinite(value) and 0 <= value <= 100)
 
 
-def workflow_data(program_scope='all'):
+def workflow_data(program_scope='all', *, balanced_subset=False):
     """Build only synthetic Python objects; preserve missing/zero distinctions."""
     if program_scope not in PROGRAM_SCOPES:
         raise ValueError('program_scope must be all, IT, IS, SW or TOURISM')
@@ -85,7 +85,7 @@ def workflow_data(program_scope='all'):
                 raise ValueError('Expected four positions and ten evidence patterns per program')
             all_positions.extend(positions)
             program_cases = 0
-            for scenario in program['scenarios']:
+            for scenario_index, scenario in enumerate(program['scenarios']):
                 percentages = scenario['category_percentages']
                 if len(percentages) != len(categories) or not all(
                         value is None or _percentage(value) for value in percentages):
@@ -112,7 +112,13 @@ def workflow_data(program_scope='all'):
                                 max_score=totals[category.id][1])
                             for category in categories if category.id in scores]
                 profile = build_student_profile(combined)
-                for location in definition['location_variants']:
+                locations = definition['location_variants']
+                if balanced_subset:
+                    # Rotate the start and alternate two and three variants. Over
+                    # ten patterns this uses each location five times per program.
+                    start = (scenario_index + index - 1) % len(locations)
+                    locations = (locations[start:] + locations[:start])[:2 + scenario_index % 2]
+                for location in locations:
                     cases.append({'id': f'{program["id"]}-{scenario["id"]}-{location["id"]}',
                         'program_id': program['id'], 'framework_id': framework,
                         'coverage': scenario['coverage'], 'expected': None if expected is None else positions[expected].id,
@@ -150,6 +156,17 @@ def workflow_data(program_scope='all'):
                 'is not model accuracy on real students or a probability of placement success.',
             'independent_evidence_patterns': 10 * len(program_metadata),
             'location_variants_per_pattern': 5, 'skipped_count': 0}
+        if balanced_subset:
+            metadata.update(
+                version='workflow-synthetic-100-v1',
+                sha256=_hash({'source': metadata['sha256'], 'case_ids': [case['id'] for case in cases]}),
+                description='The admin comparison uses 25 fixed cases per selected program. Each of its ten '
+                    'assessment-evidence patterns uses two or three location variants. Each location variant '
+                    'appears five times per program.',
+                location_variants_per_pattern=None,
+                limitations=[f'Full source dataset: {note}' if note.startswith('Five location variants') else note
+                             for note in metadata['limitations']],
+            )
         return cases, all_positions, metadata
     except (OSError, KeyError, TypeError, AttributeError, IndexError, ValueError) as exc:
         raise DatasetError('Current-workflow test data could not be loaded. Check api/data/nlp_workflow_evaluation_v1.json.') from exc
@@ -175,8 +192,11 @@ def _input_fingerprint(cases, positions):
                        'lat': p.company.location_lat, 'lng': p.company.location_lng} for p in positions]})
 
 
-def workflow_coverage(program_scope='all'):
-    cases, positions, metadata = workflow_data(program_scope)
+def workflow_coverage(program_scope='all', *, balanced_subset=False):
+    return _workflow_coverage(program_scope, *workflow_data(program_scope, balanced_subset=balanced_subset))
+
+
+def _workflow_coverage(program_scope, cases, positions, metadata):
     # Bounded raw inputs are fictional and contain no question/answer content.
     sample_cases = [next(c for c in cases if c['program_id'] == program['id'])
                     for program in metadata['programs']]
@@ -258,9 +278,9 @@ def _rank_case(case, positions, model_id):
     return ranked, nlp_only
 
 
-def run_workflow_comparison(program_scope='all'):
-    cases, positions, _ = workflow_data(program_scope)
-    result = workflow_coverage(program_scope)
+def run_workflow_comparison(program_scope='all', *, balanced_subset=False):
+    cases, positions, metadata = workflow_data(program_scope, balanced_subset=balanced_subset)
+    result = _workflow_coverage(program_scope, cases, positions, metadata)
     result.update(status='complete', models=[],
         metric_note='Top-1 agreement and Top-3 hit rate compare fixed synthetic reference labels with the current '
             'full workflow. No-positive-evidence cases expect no recommendation and are counted separately. '

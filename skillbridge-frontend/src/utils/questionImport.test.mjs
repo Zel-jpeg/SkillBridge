@@ -19,6 +19,45 @@ test('AIKEN keeps all twenty synthetic question stems, choices and keys in file 
   })
 })
 
+test('all import formats save the same cleaned stems they present for review', () => {
+  const questions = ['3.5 hours is the quoted time. What should you record?', '100 seats are available. What should you confirm?']
+  for (const separator of ['.', ')']) {
+    const numbered = questions.map((question, index) => `0${index + 1}${separator} ${question}`)
+    const parsed = [
+      parseAikenQuestions(numbered.map(question => `${question}\nA. 0\nB. 100\nANSWER: B`).join('\n\n')),
+      parseNativeQuestions(numbered.map(question => `QUESTION: ${question}\nA: 0\nB: 100\nCORRECT: B\nCATEGORY: Records`).join('\n---\n')),
+      parseSpreadsheetQuestions(numbered.map(question => ({ question, choice_a: 0, choice_b: 100, correct: 'B', category: 'Records' }))),
+    ]
+    for (const { rows, errs } of parsed) {
+      assert.deepEqual(errs, [])
+      assert.deepEqual(rows.map(row => row.question), questions)
+      assert.deepEqual(questionImportPayload(rows).map(row => row.question_text), questions)
+      assert.deepEqual(questionImportPayload(rows)[0].choices, [{ text: '0', is_correct: false }, { text: '100', is_correct: true }])
+    }
+  }
+})
+
+test('incomplete and ambiguous numbering remains visible for review', () => {
+  for (const questions of [
+    ['1. One item only?'],
+    ['1. First?', '3. Third?'],
+    ['1. First?', '2) Second?'],
+    ['An unnumbered first question?', '2. Second?'],
+    ['1.25 hours of work?', '2.50 hours of work?'],
+  ]) {
+    const { rows } = parseSpreadsheetQuestions(questions.map(question =>
+      ({ question, category: 'Records', type: 'identification', correct: 0 })))
+    assert.deepEqual(rows.map(row => row.question), questions)
+  }
+})
+
+test('partial AIKEN import uses original file numbers and preserves diagnostics', () => {
+  const { rows, errs } = parseAikenQuestions('01. First?\nA. a\nB. b\nANSWER: A\n\n02. Invalid?\nA. a\nB. b\nANSWER: C\n\n03. Third?\nA. a\nB. b\nANSWER: B')
+  assert.deepEqual(rows.map(row => [row.rowNum, row.question]), [[1, 'First?'], [3, 'Third?']])
+  assert.equal(errs[0].rowNum, 2)
+  assert.equal(errs[0].question, '02. Invalid?')
+})
+
 test('AIKEN handles BOM, Unicode, CR, LF, CRLF and two-choice items as MCQ', () => {
   for (const ending of ['\n', '\r', '\r\n']) {
     const { rows, errs } = parseAikenQuestions(['\ufeffMay tala ba sa café?', 'A) True', 'B) False', 'ANSWER: B'].join(ending))

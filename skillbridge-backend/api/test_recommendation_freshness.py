@@ -45,6 +45,12 @@ class RecommendationFreshnessTests(APITestCase):
         self.assertTrue(result.data['recommendations_locked'])
         self.assertTrue(result.data['recommendations_stale'])
         self.assertEqual(result.data['recommendations'], [])
+        catalog = self.client.get(reverse('student_companies'))
+        self.assertEqual(catalog.status_code, 200)
+        position = next(pos for company in catalog.data for pos in company['positions']
+                        if pos['id'] == self.position.id)
+        self.assertIsNone(position['nlp_score_component'])
+        self.assertIsNone(position['location_score_component'])
         for staff in (self.admin, self.owner):
             self.client.force_authenticate(staff)
             denied = self.client.post(reverse('placement_approve'), {'recommendation_id': self.rec.id}, format='json')

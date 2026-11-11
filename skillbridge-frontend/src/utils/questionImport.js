@@ -6,6 +6,23 @@ const answerStart = /^ANSWER\s*:/i
 const optionStart = /^[A-Z][.)](?:\s|$)/i
 const richContent = /!\[[^\]]*\]\(|<(?:img|svg|picture|audio|video|iframe|table|object|math|script)\b|\[\[(?:image|file):/i
 
+const sourceNumberPrefix = /^(\d+)([.)])[ \t]+(?=\S)/
+
+function removeSourceQuestionNumbers(rows, errors, firstSourceRow = 1) {
+  if (rows.length < 2) return rows
+  const separator = rows[0].question.match(sourceNumberPrefix)?.[2]
+  if (!separator) return rows
+
+  // Require a sequence that matches the original file positions, including
+  // rejected rows, so selecting a subset never changes how its text is read.
+  const hasSourceNumbers = [...rows, ...errors].every(({ rowNum, question }) => {
+    const prefix = question?.match(sourceNumberPrefix)
+    return prefix?.[2] === separator && Number(prefix[1]) === rowNum - firstSourceRow + 1
+  })
+  if (!hasSourceNumbers) return rows
+  return rows.map(row => ({ ...row, question: row.question.replace(sourceNumberPrefix, '') }))
+}
+
 export function detectQuestionTextFormat(content) {
   const lines = content.replace(/^\uFEFF/, '').split(/\r\n|\n|\r/).map(line => line.trim())
   const structured = lines.some(line => /^QUESTION\s*:/i.test(line))
@@ -78,7 +95,7 @@ export function parseAikenQuestions(content) {
   }
   finish()
   if (!rows.length && !errs.length) errs.push({ rowNum: '–', errors: ['The file has no AIKEN questions.'] })
-  return { rows, errs }
+  return { rows: removeSourceQuestionNumbers(rows, errs), errs }
 }
 
 function validatedRows(values) {
@@ -139,16 +156,18 @@ export function parseNativeQuestions(content) {
   })
   if (!rows.length && errs.length) return { rows, errs }
   const parsed = validatedRows(rows)
-  return { rows: parsed.rows, errs: [...parsed.errs, ...errs].sort((a, b) => a.rowNum - b.rowNum) }
+  const errors = [...parsed.errs, ...errs].sort((a, b) => a.rowNum - b.rowNum)
+  return { rows: removeSourceQuestionNumbers(parsed.rows, errors), errs: errors }
 }
 
 export function parseSpreadsheetQuestions(raw) {
-  return validatedRows(raw.map((row, index) => {
+  const { rows, errs } = validatedRows(raw.map((row, index) => {
     const field = key => String(row[key] ?? '').trim()
     return { rowNum: index + 2, question: field('question'), type: field('type').toLowerCase() || 'mcq',
       choices: CHOICE_LABELS.map(letter => field(`choice_${letter.toLowerCase()}`)),
       correct: field('correct'), category: field('category') }
   }))
+  return { rows: removeSourceQuestionNumbers(rows, errs, 2), errs }
 }
 
 export function questionImportPayload(rows) {

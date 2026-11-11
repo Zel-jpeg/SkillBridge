@@ -127,8 +127,12 @@ class RecommendationContractTests(APITestCase):
             PositionRequirement.objects.create(position=position, skill_category=self.category, required_percentage=50)
         unscored = Position.objects.create(company=self.company, title='No requirements yet')
         self.rank()
-        Recommendation.objects.filter(student=self.student, position=self.position).update(match_score=73.44)
-        Recommendation.objects.filter(student=self.student, position=second).update(match_score=0)
+        Recommendation.objects.filter(student=self.student, position=self.position).update(
+            match_score=73.44, nlp_score_component=31.54, location_score_component=97.75,
+        )
+        Recommendation.objects.filter(student=self.student, position=second).update(
+            match_score=0, nlp_score_component=0, location_score_component=0,
+        )
         self.client.force_authenticate(self.student)
         result = self.client.get(reverse('student_combined_results'))
         self.assertEqual(result.status_code, 200)
@@ -143,6 +147,11 @@ class RecommendationContractTests(APITestCase):
         company = next(row for row in catalog.data if row['id'] == self.company.id)
         scores = {row['id']: row['match_score'] for row in company['positions']}
         self.assertEqual(scores, {self.position.id: 73.44, second.id: 0, unscored.id: None})
+        components = ('nlp_score_component', 'location_score_component')
+        for row in company['positions']:
+            recommendation = by_position.get(row['id'], {})
+            for component in components:
+                self.assertEqual(row[component], recommendation.get(component))
         for staff in (self.owner, self.admin):
             self.client.force_authenticate(staff)
             self.assertEqual(self.client.get(reverse('student_companies')).status_code, 403)

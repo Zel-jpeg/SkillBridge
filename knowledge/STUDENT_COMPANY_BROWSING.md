@@ -45,6 +45,11 @@ company dialogs and keyboard focus. The existing four-viewport company-details
 regression passes again with no page errors. These checks use synthetic API/map
 data and do not change recommendation or placement logic.
 
+Partner Details provides the saved NLP similarity and location scores for each
+position with a current recommendation. The breakdown shows the same values as
+the direct Score Details action. Positions without current evidence show those
+components as unavailable.
+
 ## Dashboard saved-location and road routes
 
 The dashboard and student results page share [NearbyMap](../skillbridge-frontend/src/components/student/NearbyMap.jsx). It

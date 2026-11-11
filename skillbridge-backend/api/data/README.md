@@ -34,9 +34,15 @@ the exact program/framework; foreign-framework requirements fail closed.
 No-positive-evidence cases expect no recommendations, consistent with production.
 
 `GET /api/admin/nlp-model-comparison/` returns inspectable coverage metadata,
-source/input hashes and bounded fictional text samples without loading models.
+dataset/input hashes and bounded fictional text samples without loading models.
 `POST` with `{"mode":"workflow_simulation","program_scope":"all"}` evaluates
-all 200 scenarios; scope can also be `IT`, `IS`, `SW` or `TOURISM` (50 cases).
+the fixed `workflow-synthetic-100-v1` subset. A single `IT`, `IS`, `SW` or
+`TOURISM` scope evaluates its same 25 cases. The subset retains all ten evidence
+patterns and four positions per program, using two or three location variants
+per pattern and five cases per location. Selection depends on fixture order
+only. Coverage and evaluation use the same selected inputs, and all three
+models receive those inputs. The full 200 cases are still available locally
+through `api.nlp_workflow_evaluation.run_workflow_comparison()`.
 Omitting mode selects this workflow, replacing the old prepared-mode default.
 Both methods require an authenticated administrator. Comparison reads model
 configuration but creates no configuration, student profile or recommendation.
@@ -54,11 +60,11 @@ The **Refresh saved recommendations** button opens OJT Placements' explicit
 selected-batch/whole-system chooser and review confirmation. An unselected batch
 does not imply the whole system. Shared institute batches retain their full scope.
 
-Top-1 agreement/Top-3 hit rate include the 20 no-positive-evidence gate cases;
+Top-1 agreement/Top-3 hit rate include the selected no-positive-evidence gate cases;
 ranked-only agreement and gate agreement are also returned explicitly. Macro
 precision, recall and F1 use expected/predicted position classes plus the
 no-recommendation class. Separate **NLP-only** Top-1/Top-3 diagnostics exclude
-the gate cases (180 cases when all programs are selected). These metrics are
+the gate cases. These metrics are
 synthetic reference agreement, not a student's Match percentage, real-world
 accuracy or placement-success probability. All-zero/missing evidence is never
 claimed as a language-model success merely because other cases ranked well.

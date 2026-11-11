@@ -48,15 +48,6 @@ function reviewError(row) {
   return ''
 }
 
-function questionPreview(row, questionNumber, fileFormat) {
-  const prefix = row.question.match(/^(\d+)[.)]\s+(?=\S)/)
-  if (!prefix) return row.question
-  const sourceNumber = row.rowNum - (fileFormat === 'excel' ? 1 : 0)
-  const writtenNumber = Number(prefix[1])
-  return writtenNumber === sourceNumber || writtenNumber === questionNumber
-    ? row.question.slice(prefix[0].length) : row.question
-}
-
 function QuestionImportGuide({ initialFormat, onClose, restoreFocusRef }) {
   const [format, setFormat] = useState(initialFormat)
 
@@ -314,7 +305,7 @@ export default function QuestionImportPanel({ categories, scoped = false, onStag
                 }} />
             </label>
             <div className="min-w-0">
-              <EditableQuestionCard q={question} index={questionNumber - 1} previewText={questionPreview(row, questionNumber, fileFormat)}
+              <EditableQuestionCard q={question} index={questionNumber - 1}
                 categories={categories} autoSuggest={false}
                 onUpdate={(_, changes) => {
                   if ('_expanded' in changes) setExpandedRow(changes._expanded ? row.rowNum : null)
@@ -362,7 +353,6 @@ export default function QuestionImportPanel({ categories, scoped = false, onStag
           </thead>
           <tbody>{visibleRows.map((row, index) => {
             const questionNumber = pageStart + index + 1
-            const previewText = questionPreview(row, questionNumber, fileFormat)
             const category = categoryFor(row, categories)
             const categoryName = category?.name || (scoped && row.category ? `Unmapped · ${row.category}` : row.category || 'Unmapped')
             const answer = row.type === 'identification' ? row.identAnswer
@@ -370,7 +360,7 @@ export default function QuestionImportPanel({ categories, scoped = false, onStag
             return <tr key={row.rowNum} className="border-t border-gray-100 align-middle even:bg-gray-50/60 dark:border-gray-800 dark:even:bg-gray-800/30">
               <td className="px-3 py-1.5 tabular-nums text-gray-600 dark:text-gray-300">{questionNumber}</td>
               <td className="px-3 py-1.5">
-                <p className="truncate" title={previewText}>{previewText || 'Missing question text'}</p>
+                <p className="truncate" title={row.question}>{row.question || 'Missing question text'}</p>
                 {!selection.has(row.rowNum) && <span className="text-gray-600 dark:text-gray-300">Excluded from draft</span>}
               </td>
               <td className="px-2 py-1.5"><span className="inline-block rounded-full bg-blue-50 px-1.5 py-0.5 font-medium whitespace-nowrap text-blue-800 dark:bg-blue-950 dark:text-blue-200">{questionTypes[row.type]}</span></td>

@@ -73,10 +73,10 @@ def strict_local_and_synthetic(browser):
         assert coverage.status == 200, coverage.text()
         data = coverage.json()
         (OUT / 'coverage.json').write_text(json.dumps(data, indent=2), encoding='utf-8')
-        assert data['case_count'] == 200, data
+        assert data['case_count'] == 100, data
         assert {row['id']: row['case_count'] for row in data['dataset']['programs']} == {
-            'IT': 50, 'IS': 50, 'SW': 50, 'TOURISM': 50}, data
-        passed('admin-only real coverage endpoint supplies 200 synthetic student scenarios')
+            'IT': 25, 'IS': 25, 'SW': 25, 'TOURISM': 25}, data
+        passed('admin-only real coverage endpoint supplies 100 synthetic cases')
 
         before = snapshot()
         dialog = open_tools(page)
@@ -90,7 +90,7 @@ def strict_local_and_synthetic(browser):
         tab.focus()
         tab.press('ArrowRight')
         expect(dialog.get_by_role('tab', name='Model comparison', exact=True)).to_have_attribute('aria-selected', 'true')
-        expect(dialog.get_by_text(re.compile(r'200 synthetic'))).to_be_visible()
+        expect(dialog.get_by_text(re.compile(r'100 synthetic'))).to_be_visible()
         coverage_button = dialog.get_by_role('button', name='Test data & coverage', exact=True)
         plain_color = coverage_button.evaluate('node => getComputedStyle(node).backgroundColor')
         coverage_button.hover()
@@ -127,7 +127,7 @@ def strict_local_and_synthetic(browser):
             expect(dialog.get_by_role('button', name='Run comparison', exact=True)).to_be_enabled()
             dialog.get_by_role('combobox', name='Program scope', exact=True).select_option('IT')
             expect(dialog.get_by_role('alert')).to_have_count(0)
-            expect(dialog.get_by_text(re.compile('50 synthetic'))).to_be_visible()
+            expect(dialog.get_by_text(re.compile('25 synthetic'))).to_be_visible()
             dialog.get_by_role('combobox', name='Program scope', exact=True).select_option('all')
             passed('comparison busy controls and recoverable intercepted server error (UI-only run)')
         else:
@@ -136,8 +136,9 @@ def strict_local_and_synthetic(browser):
             result_response = response_info.value
             assert result_response.status == 200, result_response.text()
             result = result_response.json()
-            (OUT / 'comparison-200.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
-            assert result['case_count'] == 200, result
+            (OUT / 'comparison-100.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+            assert result['case_count'] == 100, result
+            assert result['input_sha256'] == data['input_sha256']
             assert len(result['models']) == 3
             for model in result['models']:
                 assert model['status'] == 'available', model
@@ -154,16 +155,16 @@ def strict_local_and_synthetic(browser):
             detail.get_by_role('searchbox', name='Search cases', exact=True).fill('no case can match this')
             expect(detail.get_by_text('No cases match this search.', exact=True)).to_be_visible()
             detail.get_by_role('searchbox', name='Search cases', exact=True).fill('')
-            expect(detail.get_by_text(re.compile('Showing 1–10 of 200'))).to_be_visible()
+            expect(detail.get_by_text(re.compile('Showing 1–10 of 100'))).to_be_visible()
             detail.get_by_role('button', name='Next →', exact=True).click()
-            expect(detail.get_by_text(re.compile('Showing 11–20 of 200'))).to_be_visible()
+            expect(detail.get_by_text(re.compile('Showing 11–20 of 100'))).to_be_visible()
             detail.get_by_role('combobox', name=re.compile('Model to inspect')).select_option('stanza_en')
-            expect(detail.get_by_text(re.compile('Showing 1–10 of 200'))).to_be_visible()
+            expect(detail.get_by_text(re.compile('Showing 1–10 of 100'))).to_be_visible()
             detail.get_by_role('button', name=re.compile('Close|Done')).last.click()
             dialog.get_by_role('tab', name='Model settings', exact=True).click()
             dialog.get_by_role('tab', name='Model comparison', exact=True).click()
             expect(dialog.get_by_role('button', name='Metrics & case results', exact=True)).to_be_enabled()
-            passed('actual 200-student comparison executes all three strict models with metrics and zero saved-evidence writes')
+            passed('actual 100-case comparison executes all three strict models with metrics and zero saved-evidence writes')
             model_controls(context, page, dialog)
         context.close()
     except Exception:
@@ -312,7 +313,7 @@ def dataset_recovery(browser):
         context.unroute('**/api/**', reject_coverage)
         dialog.get_by_role('button', name='Retry test data', exact=True).click()
         expect(dialog.get_by_role('button', name='Run comparison', exact=True)).to_be_enabled(timeout=20000)
-        expect(dialog.get_by_text(re.compile('200 synthetic'))).to_be_visible()
+        expect(dialog.get_by_text(re.compile('100 synthetic'))).to_be_visible()
         expect(comparison_panel.get_by_role('alert')).to_have_count(0)
         passed('missing dataset disables comparison and retries real metadata without starting a model run')
     except Exception:

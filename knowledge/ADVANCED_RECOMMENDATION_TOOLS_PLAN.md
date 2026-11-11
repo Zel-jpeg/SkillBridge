@@ -1,5 +1,14 @@
 # Advanced recommendation tools review and design
 
+## Hosted comparison size · 12 November 2026
+
+The admin comparison and its coverage endpoint use a fixed 100-case subset
+of the original fixture after the full run hit the deployed worker timeout.
+Each program contributes 25 cases, with all assessment-evidence patterns
+retained and each location variant used five times per program. The full
+200-case evaluator remains available locally. Compare results using the
+dataset version and input fingerprint recorded with each run.
+
 ## Implementation checkpoint · 11 November 2026
 
 Active feature branch: `codex/advanced-recommendation-tools-20261111`, based on

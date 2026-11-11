@@ -3427,21 +3427,20 @@ def student_companies(request):
 
     result = []
     for company in companies:
-        positions = [
-            {
-                'id':          p.id,
-                'title':       p.title,
-                'description': p.description,
-                'slots':       p.slots_available,
-                'match_score': user_recs[p.id].match_score if p.id in user_recs else None,
-                **api_fields(user_recs.get(p.id)),
-                'tags': [
-                    req.skill_category.name
-                    for req in p.requirements.all()
-                ] + list(p.tags or []),
-            }
-            for p in company.positions.all()
-        ]
+        positions = []
+        for position in company.positions.all():
+            recommendation = user_recs.get(position.id)
+            positions.append({
+                'id': position.id,
+                'title': position.title,
+                'description': position.description,
+                'slots': position.slots_available,
+                'match_score': getattr(recommendation, 'match_score', None),
+                'nlp_score_component': getattr(recommendation, 'nlp_score_component', None),
+                'location_score_component': getattr(recommendation, 'location_score_component', None),
+                **api_fields(recommendation),
+                'tags': [req.skill_category.name for req in position.requirements.all()] + list(position.tags or []),
+            })
         if not positions:
             continue
         result.append({

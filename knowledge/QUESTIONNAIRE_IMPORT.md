@@ -23,8 +23,10 @@ question cards and edit the type, text, choices, answer key, or skill category.
 Use the checkboxes to choose which questions to add.
 Review opens automatically when a file contains both valid questions and errors.
 The preview and review cards number valid questions from 1 across pages.
-Repeated leading numbers are hidden in summaries while the editable question
-text keeps the original wording. Import errors identify the source location.
+When a file contains a clear sequence of question prefixes such as `01.`,
+`02.`, `03.` or `1)`, `2)`, `3)`, the importer removes the prefixes before
+preview and save. It keeps single or ambiguous prefixes for review and preserves
+numbers within the question. Import errors identify the original source location.
 
 AIKEN uses a one-line question,
 consecutive uppercase letters starting at A, and one uppercase answer key.

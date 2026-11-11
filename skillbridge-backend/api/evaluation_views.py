@@ -34,8 +34,12 @@ def admin_nlp_model_comparison(request):
             if mode != 'workflow_simulation':
                 raise ValueError('Coverage is available for workflow_simulation')
             from .nlp_workflow_evaluation import workflow_coverage
-            return Response(workflow_coverage(program_scope))
-        result = run_comparison(mode, program_scope)
+            return Response(workflow_coverage(program_scope, balanced_subset=True))
+        if mode == 'workflow_simulation':
+            from .nlp_workflow_evaluation import run_workflow_comparison
+            result = run_workflow_comparison(program_scope, balanced_subset=True)
+        else:
+            result = run_comparison(mode, program_scope)
     except DatasetError as exc:
         return Response({'status': 'dataset_error', 'error': str(exc)}, status=503)
     except ValueError as exc:

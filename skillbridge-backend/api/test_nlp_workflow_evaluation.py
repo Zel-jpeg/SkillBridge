@@ -1,4 +1,5 @@
 """Synthetic current-policy evaluation contracts, isolated from school data."""
+from collections import Counter
 from copy import deepcopy
 import json
 from types import SimpleNamespace as Obj
@@ -53,6 +54,27 @@ class WorkflowDatasetTests(SimpleTestCase):
         for invalid in ('IC', '', None, 1):
             with self.assertRaises(ValueError):
                 workflow_data(invalid)
+
+    def test_balanced_subset_preserves_patterns_labels_positions_and_location_coverage(self):
+        cases, positions, metadata = workflow_data(balanced_subset=True)
+        full_cases, full_positions, _ = workflow_data()
+        full_by_id = {case['id']: case for case in full_cases}
+        self.assertEqual(len(cases), 100)
+        self.assertEqual(metadata['independent_evidence_patterns'], 40)
+        self.assertEqual([p.id for p in positions], [p.id for p in full_positions])
+        self.assertEqual({case['coverage'] for case in cases}, {case['coverage'] for case in full_cases})
+        for case in cases:
+            self.assertEqual(case['expected'], full_by_id[case['id']]['expected'])
+        for program in metadata['programs']:
+            scope = program['id']
+            program_cases = [case for case in cases if case['program_id'] == scope]
+            scoped_cases, _, _ = workflow_data(scope, balanced_subset=True)
+            self.assertEqual(program['case_count'], 25)
+            self.assertEqual([case['id'] for case in scoped_cases], [case['id'] for case in program_cases])
+            locations = Counter(case['location_variant'] for case in program_cases)
+            self.assertEqual(sorted(locations.values()), [5] * 5)
+            patterns = Counter(case['id'].removesuffix(f'-{case["location_variant"]}') for case in program_cases)
+            self.assertEqual(sorted(patterns.values()), [2] * 5 + [3] * 5)
 
     def test_pooling_uses_unequal_raw_max_totals_not_mean_of_percentages(self):
         cases, _, _ = workflow_data('IT')
@@ -189,8 +211,9 @@ class WorkflowEvaluationAPITests(APITestCase):
         with CaptureQueriesContext(connection) as queries:
             response = self.client.get(self.url, {'mode': 'workflow_simulation', 'program_scope': 'all', '_t': 'synthetic-revalidation'})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['case_count'], 200)
+        self.assertEqual(response.data['case_count'], 100)
         self.assertEqual(len(response.data['dataset']['programs']), 4)
+        self.assertEqual([program['case_count'] for program in response.data['dataset']['programs']], [25] * 4)
         load.assert_not_called()
         self.assertFalse(any(query['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for query in queries))
         self.assertEqual(self.client.post(self.url, {'_t': 'GET-only'}).status_code, 400)
@@ -199,12 +222,17 @@ class WorkflowEvaluationAPITests(APITestCase):
     @patch('api.recommendation_nlp.preprocess_texts', side_effect=identity_preprocess)
     def test_default_post_current_workflow_and_explicit_program_are_read_only(self, preprocess, load):
         from .models import Recommendation, RecommendationConfiguration, StudentCompetencyProfile
+        coverage = self.client.get(self.url, {'program_scope': 'IS'}).data
         with CaptureQueriesContext(connection) as queries:
             response = self.client.post(self.url, {'program_scope': 'IS'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['mode'], 'workflow_simulation')
-        self.assertEqual(response.data['case_count'], 50)
+        self.assertEqual(response.data['case_count'], 25)
+        self.assertEqual(response.data['input_sha256'], coverage['input_sha256'])
         self.assertEqual(len(response.data['models']), 3)
+        cases, _, _ = workflow_data('IS', balanced_subset=True)
+        for model in response.data['models']:
+            self.assertEqual([row['case_id'] for row in model['predictions']], [case['id'] for case in cases])
         self.assertTrue(response.data['evaluated_at'])
         self.assertFalse(any(query['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for query in queries))
         for model in (Recommendation, RecommendationConfiguration, StudentCompetencyProfile):
