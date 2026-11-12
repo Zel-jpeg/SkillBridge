@@ -3,12 +3,12 @@ import assert from 'node:assert/strict'
 import { NLP_COMPARISON_TIMEOUT_MS, nlpComparisonErrorMessage } from './nlpComparison.js'
 import { sanitizeApiError } from './requestErrors.js'
 
-test('comparison allows a cold Stanza run and identifies sanitized Axios timeouts', () => {
-  assert.equal(NLP_COMPARISON_TIMEOUT_MS, 300000)
+test('comparison waits four minutes and identifies sanitized Axios timeouts', () => {
+  assert.equal(NLP_COMPARISON_TIMEOUT_MS, 240000)
   for (const code of ['ECONNABORTED', 'ETIMEDOUT']) {
     const error = { code, config: { method: 'post' } }
     sanitizeApiError(error)
-    assert.match(nlpComparisonErrorMessage(error), /timed out after five minutes/)
+    assert.match(nlpComparisonErrorMessage(error), /timed out after four minutes/)
     assert.match(nlpComparisonErrorMessage(error), /may still be evaluating/)
     assert.doesNotMatch(nlpComparisonErrorMessage(error), /save|connection/i)
   }

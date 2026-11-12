@@ -9,6 +9,14 @@ retained and each location variant used five times per program. The full
 200-case evaluator remains available locally. Compare results using the
 dataset version and input fingerprint recorded with each run.
 
+For a four-minute hosted test, set `GUNICORN_WORKER_TIMEOUT_SECONDS=240` on
+the Railway staging backend and deploy the updated code there. Without this
+override, Gunicorn keeps its 120-second worker silence timeout. The override
+applies to the staging service's workers. The browser waits up to four minutes
+for the comparison request, and a browser timeout may leave evaluation running
+on the server. Use the Network and Deploy Logs to record the result and elapsed
+time for the 100-case run.
+
 ## Implementation checkpoint · 11 November 2026
 
 Active feature branch: `codex/advanced-recommendation-tools-20261111`, based on
