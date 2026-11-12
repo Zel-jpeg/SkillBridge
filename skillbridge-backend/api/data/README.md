@@ -35,8 +35,10 @@ No-positive-evidence cases expect no recommendations, consistent with production
 
 `GET /api/admin/nlp-model-comparison/` returns inspectable coverage metadata,
 dataset/input hashes and bounded fictional text samples without loading models.
-`POST` with `{"mode":"workflow_simulation","program_scope":"all"}` evaluates
-the fixed `workflow-synthetic-100-v1` subset. A single `IT`, `IS`, `SW` or
+`POST` with `{"mode":"workflow_simulation","program_scope":"all"}` queues the
+fixed `workflow-synthetic-100-v1` subset and returns `202` with a job ID.
+`GET /api/admin/nlp-model-comparison/<job_id>/` returns progress and the finished
+result. The `process_nlp_comparisons` worker runs the evaluation. A single `IT`, `IS`, `SW` or
 `TOURISM` scope evaluates its same 25 cases. The subset retains all ten evidence
 patterns and four positions per program, using two or three location variants
 per pattern and five cases per location. Selection depends on fixture order

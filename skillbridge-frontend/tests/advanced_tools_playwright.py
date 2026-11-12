@@ -131,11 +131,17 @@ def strict_local_and_synthetic(browser):
             dialog.get_by_role('combobox', name='Program scope', exact=True).select_option('all')
             passed('comparison busy controls and recoverable intercepted server error (UI-only run)')
         else:
-            with page.expect_response(lambda response: urlparse(response.url).path == COMPARISON and response.request.method == 'POST', timeout=360000) as response_info:
+            with page.expect_response(lambda response: urlparse(response.url).path == COMPARISON and response.request.method == 'POST') as response_info:
                 held[0].fallback()
-            result_response = response_info.value
-            assert result_response.status == 200, result_response.text()
-            result = result_response.json()
+            queued_response = response_info.value
+            assert queued_response.status == 202, queued_response.text()
+            queued_job = queued_response.json()
+            assert queued_job['status'] == 'queued', queued_job
+            expect(dialog.get_by_role('button', name='Metrics & case results', exact=True)).to_be_enabled(timeout=360000)
+            job_response = api(context, f"{COMPARISON}{queued_job['job_id']}/")
+            assert job_response.status == 200, job_response.text()
+            assert job_response.json()['status'] == 'complete', job_response.text()
+            result = job_response.json()['result']
             (OUT / 'comparison-100.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
             assert result['case_count'] == 100, result
             assert result['input_sha256'] == data['input_sha256']

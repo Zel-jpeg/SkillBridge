@@ -220,26 +220,43 @@ class WorkflowEvaluationAPITests(APITestCase):
 
     @patch('api.nlp_workflow_evaluation._load_model', return_value=object())
     @patch('api.recommendation_nlp.preprocess_texts', side_effect=identity_preprocess)
-    def test_default_post_current_workflow_and_explicit_program_are_read_only(self, preprocess, load):
+    def test_post_queues_once_and_worker_returns_the_same_cases_without_changing_recommendations(self, preprocess, load):
         from .models import Recommendation, RecommendationConfiguration, StudentCompetencyProfile
+        from .nlp_comparison_jobs import claim_next_job, execute_job
         coverage = self.client.get(self.url, {'program_scope': 'IS'}).data
-        with CaptureQueriesContext(connection) as queries:
-            response = self.client.post(self.url, {'program_scope': 'IS'})
+        response = self.client.post(self.url, {'program_scope': 'IS'})
+        self.assertEqual(response.status_code, 202)
+        load.assert_not_called()
+        job_id = response.data['job_id']
+        status_url = reverse('admin_nlp_comparison_job', args=[job_id])
+        self.assertEqual(self.client.post(self.url, {'program_scope': 'IS'}).data['job_id'], job_id)
+        self.assertEqual(self.client.get(status_url).data['status'], 'queued')
+        self.assertEqual(str(claim_next_job().pk), job_id)
+        self.assertIsNone(claim_next_job())
+        self.assertEqual(self.client.get(status_url).data['status'], 'running')
+        with patch('api.nlp_comparison_jobs.logger.warning') as log:
+            execute_job(job_id)
+        self.assertEqual(log.call_count, 9)
+        response = self.client.get(status_url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['mode'], 'workflow_simulation')
-        self.assertEqual(response.data['case_count'], 25)
-        self.assertEqual(response.data['input_sha256'], coverage['input_sha256'])
-        self.assertEqual(len(response.data['models']), 3)
+        self.assertEqual(response['Cache-Control'], 'no-store')
+        self.assertEqual(response.data['status'], 'complete')
+        result = response.data['result']
+        self.assertEqual(result['mode'], 'workflow_simulation')
+        self.assertEqual(result['case_count'], 25)
+        self.assertEqual(result['input_sha256'], coverage['input_sha256'])
+        self.assertEqual(len(result['models']), 3)
         cases, _, _ = workflow_data('IS', balanced_subset=True)
-        for model in response.data['models']:
+        for model in result['models']:
             self.assertEqual([row['case_id'] for row in model['predictions']], [case['id'] for case in cases])
-        self.assertTrue(response.data['evaluated_at'])
-        self.assertFalse(any(query['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for query in queries))
+        self.assertTrue(result['evaluated_at'])
         for model in (Recommendation, RecommendationConfiguration, StudentCompetencyProfile):
             self.assertEqual(model.objects.count(), 0)
 
     def test_coverage_get_permissions_and_invalid_scope(self):
         from .models import User
+        job_id = self.client.post(self.url).data['job_id']
+        status_url = reverse('admin_nlp_comparison_job', args=[job_id])
         self.assertEqual(self.client.get(self.url, {'program_scope': 'IC'}).status_code, 400)
         self.assertEqual(self.client.post(self.url, {'program_scope': 'IC'}).status_code, 400)
         for role in ('student', 'instructor'):
@@ -247,6 +264,7 @@ class WorkflowEvaluationAPITests(APITestCase):
             self.client.force_authenticate(user)
             self.assertEqual(self.client.get(self.url).status_code, 403)
             self.assertEqual(self.client.post(self.url).status_code, 403)
+            self.assertEqual(self.client.get(status_url).status_code, 403)
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get(self.url).status_code, 401)
 
@@ -265,4 +283,18 @@ class WorkflowEvaluationAPITests(APITestCase):
     def test_missing_workflow_fixture_reports_503(self, path):
         path.read_bytes.side_effect = OSError('missing')
         self.assertEqual(self.client.get(self.url).status_code, 503)
-        self.assertEqual(self.client.post(self.url).status_code, 503)
+        self.assertEqual(self.client.post(self.url).status_code, 202)
+
+    def test_subprocess_timeout_marks_the_job_failed_and_allows_a_new_run(self):
+        from subprocess import TimeoutExpired
+        from django.core.management import call_command
+        job_id = self.client.post(self.url).data['job_id']
+        status_url = reverse('admin_nlp_comparison_job', args=[job_id])
+        with (patch('api.management.commands.process_nlp_comparisons.close_old_connections'),
+              patch('api.management.commands.process_nlp_comparisons.subprocess.run',
+                    side_effect=TimeoutExpired('comparison', 900))):
+            call_command('process_nlp_comparisons', once=True)
+        result = self.client.get(status_url).data
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('15-minute', result['progress'])
+        self.assertNotEqual(self.client.post(self.url).data['job_id'], job_id)

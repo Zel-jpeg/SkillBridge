@@ -65,6 +65,22 @@ def main():
                 time.sleep(.2)
             else:
                 raise RuntimeError('Owned server did not become ready')
+        if not args.ui_only:
+            worker_log = (out / 'comparison-worker.log').open('w', encoding='utf-8')
+            logs.append(worker_log)
+            worker_env = {**env, 'DJANGO_SETTINGS_MODULE': 'core.test_settings',
+                          'SECRET_KEY': 'synthetic-comparison-worker-test-key',
+                          'SB_TEST_SQLITE_PATH': str(out / 'synthetic-browser.sqlite3')}
+            worker = subprocess.Popen(
+                [sys.executable, '-u', str(root / 'skillbridge-backend/manage.py'), 'process_nlp_comparisons'],
+                cwd=root, env=worker_env, stdout=worker_log, stderr=subprocess.STDOUT, creationflags=flags,
+            )
+            processes.append(worker)
+            end = time.monotonic() + 45
+            while 'NLP comparison worker ready.' not in (out / 'comparison-worker.log').read_text(encoding='utf-8'):
+                if worker.poll() is not None or time.monotonic() >= end:
+                    raise RuntimeError('Owned comparison worker did not start; inspect comparison-worker.log')
+                time.sleep(.2)
         with (out / 'browser.txt').open('w', encoding='utf-8') as log:
             result = subprocess.run([sys.executable, '-u', str(root / 'skillbridge-frontend/tests/advanced_tools_playwright.py')],
                                     cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT, creationflags=flags, timeout=1200)

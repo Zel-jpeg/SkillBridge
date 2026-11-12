@@ -679,6 +679,23 @@ class OJTPlacement(models.Model):
         return f'{self.student.name} → {self.position.title} ({self.status})'
 
 
+class NlpComparisonJob(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    program_scope = models.CharField(max_length=12)
+    status = models.CharField(max_length=10, default='queued', db_index=True)
+    progress = models.CharField(max_length=100, blank=True)
+    result = models.JSONField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True)
+    finished_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['program_scope'], condition=models.Q(status__in=['queued', 'running']),
+            name='unique_active_nlp_comparison_scope',
+        )]
+
+
 class RecommendationConfiguration(models.Model):
     """Singleton-style configuration for the active NLP preprocessor."""
 

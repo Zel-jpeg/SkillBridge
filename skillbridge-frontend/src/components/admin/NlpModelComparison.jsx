@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../../api/axios'
-import { NLP_COMPARISON_TIMEOUT_MS, nlpComparisonErrorMessage } from '../../api/nlpComparison'
+import { nlpComparisonErrorMessage, waitForComparisonPoll } from '../../api/nlpComparison'
 import { invalidateCache, useApi } from '../../hooks/useApi'
 import DialogShell from '../DialogShell'
 import Pagination from '../Pagination'
@@ -66,6 +66,7 @@ export default function NlpModelComparison() {
   const [programScope, setProgramScope] = useState('all')
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [dialog, setDialog] = useState(null)
   const pending = useRef(false)
@@ -82,15 +83,34 @@ export default function NlpModelComparison() {
     setBusy(true)
     setError('')
     setResult(null)
+    setProgress('Submitting comparison…')
     controller.current = new AbortController()
+    const { signal } = controller.current
     try {
-      const { data } = await api.post(URL, { mode: 'workflow_simulation', program_scope: programScope }, { timeout: NLP_COMPARISON_TIMEOUT_MS, signal: controller.current.signal })
-      if (mounted.current) setResult(data)
+      const { data } = await api.post(URL, { mode: 'workflow_simulation', program_scope: programScope }, { signal })
+      if (signal.aborted) return
+      // A frontend deployment can precede the backend deployment.
+      if (!data.job_id) {
+        setResult(data)
+        return
+      }
+      let job = data
+      while (job.status === 'queued' || job.status === 'running') {
+        setProgress(job.progress || (job.status === 'queued' ? 'Waiting for the comparison worker…' : 'Preparing the fixed test cases…'))
+        await waitForComparisonPoll(signal)
+        const response = await api.get(`${URL}${encodeURIComponent(data.job_id)}/`, { signal })
+        if (signal.aborted) return
+        job = response.data
+      }
+      if (job.status === 'complete') setResult(job.result)
+      else setError(job.progress || 'The comparison failed. Check the worker logs.')
     } catch (err) {
-      if (mounted.current && !err.staleIdentity && err.code !== 'ERR_CANCELED') setError(nlpComparisonErrorMessage(err))
+      if (mounted.current && !signal.aborted && !err.staleIdentity && err.code !== 'ERR_CANCELED') setError(nlpComparisonErrorMessage(err))
     } finally {
-      pending.current = false
-      if (mounted.current) setBusy(false)
+      if (controller.current?.signal === signal) {
+        pending.current = false
+        if (mounted.current && !signal.aborted) setBusy(false)
+      }
     }
   }
 
@@ -104,7 +124,7 @@ export default function NlpModelComparison() {
     <div className="rt-dataset"><div>{metadata && <p className="font-semibold">{selectedProgram ? selectedProgram.case_count : metadata.case_count} synthetic students · {selectedProgram ? '1 test program' : `${programs.length} test programs`}</p>}<p className="rt-note">{selectedProgram ? selectedProgram.name : programs.map(row => row.code).join(', ')} · No real student records are changed.</p></div><button className="rt-button" type="button" disabled={!metadata} onClick={() => setDialog('coverage')}><InfoCircleIcon size={16} />Test data & coverage</button></div>
     <section className="rt-section" aria-live="polite" aria-busy={busy}>
       <h3 className="rt-heading">Comparison results</h3>
-      <p className="rt-note mb-3">{busy ? 'Loading models and evaluating the fixed cases. The first run can take several minutes.' : result ? `${result.case_count} cases · ${result.position_count} positions · ${new Date(result.evaluated_at).toLocaleString()}` : 'Not run yet.'}</p>
+      <p className="rt-note mb-3">{busy ? progress : result ? `${result.case_count} cases · ${result.position_count} positions · ${new Date(result.evaluated_at).toLocaleString()}` : 'Not run yet.'}</p>
       {error && <p role="alert" className="rt-message rt-message--error mb-4">{error}</p>}
       <div className="rt-table-wrap"><table className="rt-table"><caption className="sr-only">NLP model comparison using the current system workflow</caption><thead><tr><th scope="col">Model</th><th scope="col">Runtime status</th><th scope="col">Top-1 agreement</th><th scope="col">Top-3 hit rate</th><th scope="col">Processing time</th></tr></thead><tbody>{models.map(model => <tr key={model.id}><th scope="row">{model.label}</th><td><span>{result ? model.status === 'available' ? 'Verified · evaluated' : model.status : model.verified ? 'Verified' : model.available ? 'Installed · not checked' : config ? 'Unavailable' : 'Not checked'}</span>{model.message && <p className="rt-note mt-1">{model.message}</p>}</td><td>{percentage(model.metrics?.top1_accuracy)}</td><td>{percentage(model.metrics?.top3_accuracy)}</td><td>{seconds(model.metrics?.processing_time_seconds)}</td></tr>)}</tbody></table></div>
       {result?.message && <p role="status" className="rt-message">{result.message}</p>}

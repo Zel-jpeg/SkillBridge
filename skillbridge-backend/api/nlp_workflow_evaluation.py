@@ -278,7 +278,7 @@ def _rank_case(case, positions, model_id):
     return ranked, nlp_only
 
 
-def run_workflow_comparison(program_scope='all', *, balanced_subset=False):
+def run_workflow_comparison(program_scope='all', *, balanced_subset=False, progress=None):
     cases, positions, metadata = workflow_data(program_scope, balanced_subset=balanced_subset)
     result = _workflow_coverage(program_scope, cases, positions, metadata)
     result.update(status='complete', models=[],
@@ -290,6 +290,8 @@ def run_workflow_comparison(program_scope='all', *, balanced_subset=False):
             'Model loading is measured separately. Dataset loading, text generation and metric calculation are excluded. '
             'Warm caches, repeated evidence patterns, execution order and hardware affect timings; this is not an independent speed benchmark.')
     for model_id, info in MODEL_OPTIONS.items():
+        if progress:
+            progress(f'Loading {info["label"]}…')
         row = {'id': model_id, **info, 'status': 'unavailable', 'metrics': None}
         load_start = perf_counter()
         try:
@@ -298,8 +300,12 @@ def run_workflow_comparison(program_scope='all', *, balanced_subset=False):
             logger.warning('Workflow evaluation model %s could not load', model_id, exc_info=True)
             row['message'] = f'{info["label"]} could not load its local resources. No fallback metrics are substituted.'
             result['models'].append(row)
+            if progress:
+                progress(f'{info["label"]}: unavailable')
             continue
         load_seconds = perf_counter() - load_start
+        if progress:
+            progress(f'Evaluating {info["label"]} on {len(cases)} cases…')
         try:
             start = perf_counter()
             predictions, nlp_predictions = [], []
@@ -333,4 +339,6 @@ def run_workflow_comparison(program_scope='all', *, balanced_subset=False):
             row.update(status='error', message='Strict model processing or current-workflow ranking failed. '
                        'No fallback is evaluated; other models continue.', metrics=None)
         result['models'].append(row)
+        if progress:
+            progress(f'{info["label"]}: {row["status"]}')
     return result

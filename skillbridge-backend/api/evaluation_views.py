@@ -5,8 +5,29 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import RecommendationConfiguration
+from .models import NlpComparisonJob, RecommendationConfiguration
+from .nlp_comparison_jobs import enqueue, expire_jobs
 from .nlp_evaluation import DatasetError, run_comparison
+from .nlp_workflow_evaluation import PROGRAM_SCOPES, workflow_coverage
+
+
+def _job_payload(job):
+    data = {'job_id': str(job.pk), 'status': job.status, 'progress': job.progress}
+    if job.status == 'complete':
+        data['result'] = job.result
+    return data
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_nlp_comparison_job(request, job_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admins only'}, status=403)
+    expire_jobs()
+    job = NlpComparisonJob.objects.filter(pk=job_id).first()
+    if not job:
+        return Response({'error': 'This comparison job is no longer available.'}, status=404)
+    return Response(_job_payload(job), headers={'Cache-Control': 'no-store'})
 
 
 @api_view(['GET', 'POST'])
@@ -33,13 +54,12 @@ def admin_nlp_model_comparison(request):
         if request.method == 'GET':
             if mode != 'workflow_simulation':
                 raise ValueError('Coverage is available for workflow_simulation')
-            from .nlp_workflow_evaluation import workflow_coverage
             return Response(workflow_coverage(program_scope, balanced_subset=True))
         if mode == 'workflow_simulation':
-            from .nlp_workflow_evaluation import run_workflow_comparison
-            result = run_workflow_comparison(program_scope, balanced_subset=True)
-        else:
-            result = run_comparison(mode, program_scope)
+            if program_scope not in PROGRAM_SCOPES:
+                raise ValueError('program_scope must be all, IT, IS, SW or TOURISM')
+            return Response(_job_payload(enqueue(program_scope)), status=202)
+        result = run_comparison(mode, program_scope)
     except DatasetError as exc:
         return Response({'status': 'dataset_error', 'error': str(exc)}, status=503)
     except ValueError as exc:

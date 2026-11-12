@@ -9,13 +9,37 @@ retained and each location variant used five times per program. The full
 200-case evaluator remains available locally. Compare results using the
 dataset version and input fingerprint recorded with each run.
 
-For a four-minute hosted test, set `GUNICORN_WORKER_TIMEOUT_SECONDS=240` on
-the Railway staging backend and deploy the updated code there. Without this
-override, Gunicorn keeps its 120-second worker silence timeout. The override
-applies to the staging service's workers. The browser waits up to four minutes
-for the comparison request, and a browser timeout may leave evaluation running
-on the server. Use the Network and Deploy Logs to record the result and elapsed
-time for the 100-case run.
+The four-minute hosted test reached the browser deadline and the web worker
+timed out again. The admin workflow now queues synthetic jobs in PostgreSQL.
+The screen polls for the current model and retrieves the existing metrics
+when the worker finishes. Closing the dialog stops polling while the job
+continues. Running the same scope while a job is active reconnects to it.
+
+### Deploy the comparison worker
+
+1. Deploy the backend with migration `0044_nlp_comparison_job` applied, and
+   deploy the frontend that polls the status endpoint.
+2. In the same Railway environment, create one dedicated worker service from
+   the same revision and backend root (`/skillbridge-backend`). Use the same
+   Railpack build command as the web backend in `railway.toml`, which installs
+   all three models and packages Stanza resources. Configure the worker's build
+   and start commands separately from the web service's config file.
+3. Give the worker access to the same database through the backend's `DB_*`
+   configuration and configure Django's required environment settings. Set
+   the start command to `python -u manage.py process_nlp_comparisons`. Keep
+   the service running with one replica, serverless sleep disabled, no public
+   domain and no HTTP health check. The web service owns migrations.
+4. Run **All test programs** from the admin screen. Check for a `202` followed
+   by status requests and verify that all three models return results. The
+   worker logs model load, evaluation and outcome. Remove the previous
+   `GUNICORN_WORKER_TIMEOUT_SECONDS` override when the web service no longer
+   needs the synchronous comparison test.
+
+The dedicated worker processes one comparison at a time and caps each run
+at 15 minutes. A stale queued job expires after one hour. Old results are
+pruned on submission after one day. Local development can start the same
+command alongside Django and Vite after applying migrations to the local
+database. Use `--once` to process one queued job and exit.
 
 ## Implementation checkpoint · 11 November 2026
 

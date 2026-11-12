@@ -5,7 +5,7 @@ from .student_records import previously_unenrolled, archived_student_history
 from .cycle_lifecycle import catalog_archive, batch_closeout, student_history, confirm_profile, transfer_student
 from .analytics import management_analytics
 from .management_views import admin_batch_detail, admin_batch_instructors, admin_management_actions
-from .evaluation_views import admin_nlp_model_comparison
+from .evaluation_views import admin_nlp_comparison_job, admin_nlp_model_comparison
 from .nlp_diagnostic_views import taxonomy_quality, student_nlp_text, position_nlp_text
 from . import views
 from .assessment_archives import assessment_archive
@@ -85,6 +85,7 @@ urlpatterns = [
     path('nlp/students/<int:student_id>/text/', student_nlp_text, name='student_nlp_text'),
     path('nlp/positions/<int:position_id>/text/', position_nlp_text, name='position_nlp_text'),
     path('admin/nlp-model-comparison/', admin_nlp_model_comparison, name='admin_nlp_model_comparison'),
+    path('admin/nlp-model-comparison/<uuid:job_id>/', admin_nlp_comparison_job, name='admin_nlp_comparison_job'),
     # ── Auth ─────────────────────────────────────────────────────────────────
     path('auth/login/',          views.login,           name='login'),
     path('auth/refresh/',        views.refresh,         name='refresh'),
