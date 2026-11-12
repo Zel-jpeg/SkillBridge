@@ -3,8 +3,8 @@ import Avatar from '../../components/Avatar'
 import DialogShell from '../../components/DialogShell'
 
 const inputClass = 'w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2.5 text-xs text-gray-900 dark:text-white focus-visible:outline-2 focus-visible:outline-green-600'
-function ModalShell({ children, onClose }) {
-  return <DialogShell title="Placement decision" description="Review the target student and position before confirming." size="placement" onClose={onClose} closeLabel="Close placement decision"><div className="min-h-0 overflow-y-auto">{children}</div></DialogShell>
+function ModalShell({ children, onClose, size = 'placement' }) {
+  return <DialogShell title="Placement decision" description="Review the target student and position before confirming." size={size} onClose={onClose} closeLabel="Close placement decision"><div className="min-h-0 overflow-y-auto">{children}</div></DialogShell>
 }
 
 export function ActionModal({ action, busy, onClose, onSubmit }) {
@@ -31,8 +31,8 @@ export function ActionModal({ action, busy, onClose, onSubmit }) {
     finally { pending.current = false }
   }
   return (
-    <ModalShell onClose={onClose}>
-      <form onSubmit={submit} className="p-6">
+    <ModalShell onClose={onClose} size="placement-decision">
+      <form onSubmit={submit} className="p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white pr-10">{title}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
         <div className="mt-4 rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
