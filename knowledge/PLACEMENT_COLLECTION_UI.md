@@ -110,8 +110,10 @@ genuine zero scores remain zero. No ranking or eligibility rules changed.
 
 All three candidate views show at most **eight students per page**, including their
 card layouts. Page ranges and counts reflect the full filtered list. Search and
-view changes reset pagination; live shrinking clamps it without jumping back when
-results grow. Other placement collections retain ten records per page.
+view changes reset pagination. Clearing filters returns to the first page of the
+selected partner, position and candidate view. Live shrinking clamps the page
+without jumping back when results grow. Other placement collections retain ten
+records per page.
 
 Wide screens place positions beside the candidate table. Narrower screens stack
 the position navigation, and candidate panels below 800px wide use labeled cards;

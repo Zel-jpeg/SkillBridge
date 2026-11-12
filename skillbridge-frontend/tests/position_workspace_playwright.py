@@ -4,17 +4,33 @@ import re
 import sys
 from copy import deepcopy
 from pathlib import Path
+from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).parent))
-from placement_collections_playwright import Fixture, geometry
+from placement_collections_playwright import BASE, Fixture, geometry
 from playwright.sync_api import sync_playwright, expect
 
 OUT = Path(__file__).parent / 'artifacts' / 'position-workspace'
 OUT.mkdir(parents=True, exist_ok=True)
 checks = []
 
+INSTITUTE = {'id': 1, 'name': 'Institute of Computing', 'code': 'IC', 'is_active': True}
+PROGRAM = {'id': 1, 'name': 'QA Computing', 'code': 'BSIT', 'institute_id': 1, 'is_active': True}
+
+
+class PositionFixture(Fixture):
+    def route(self, route):
+        path = urlparse(route.request.url).path
+        if path == '/api/management/organization-options/':
+            return route.fulfill(json={'institutes': [INSTITUTE], 'programs': [PROGRAM]})
+        if path == '/api/realtime/session/':
+            return route.fulfill(status=503, json={})
+        return super().route(route)
+
 
 def prepare(browser, role):
-    f = Fixture(browser, role)
+    f = PositionFixture(browser, role)
+    f.batch.update(institute_id=1, program_id=1)
+    second_batch = {'id': 2, 'name': 'QA Second Batch', 'institute_id': 1, 'program_id': 1}
     # Many synthetic matches in backend order; missing/zero remain distinct.
     values = [88.4, 85, 80, 76.25, None, 63.1, 41.94, 0] + [0] * 19
     f.companies[0]['positions'] = []
@@ -24,11 +40,11 @@ def prepare(browser, role):
             'placement_status': 'approved' if student['id'] == 27 else 'unplaced'} for student in f.students] if index < 2 else []
         f.companies[0]['positions'].append({'id': 101 + index, 'title': title, 'slots_available': 6 if index == 0 else 4 if index == 1 else 0,
             'approved_count': 1 if index == 0 else 0, 'remaining_slots': 5 if index == 0 else 4 if index == 1 else 0,
-            'suggested_students': suggestions})
+            'suggested_students': suggestions, 'eligible_programs': [PROGRAM]})
     f.draft['proposed_counts'] = {'101': 2, '102': 1}
     for row in f.draft['students']:
         student_id = row['student']['id']
-        row['batch'] = f.batch if student_id <= 13 else {'id': 2, 'name': 'QA Second Batch'}
+        row['batch'] = f.batch if student_id <= 13 else second_batch
         for company in f.companies:
             for position in company['positions']:
                 for suggestion in position['suggested_students']:
@@ -46,9 +62,11 @@ def prepare(browser, role):
 
 
 def open_position(f):
-    page = f.open()
+    page = f.page
+    scope = '?institute=1&program=1' if f.role == 'admin' else ''
+    page.goto(f'{BASE}/{f.role}/placements{scope}', wait_until='networkidle')
     card = page.get_by_role('button', name='Open partner QA Company 01', exact=True)
-    card.scroll_into_view_if_needed()
+    expect(card).to_be_visible()
     card.click()
     expect(page.get_by_role('heading', name='QA Company 01', exact=True).first).to_be_focused()
     return page
@@ -103,8 +121,9 @@ with sync_playwright() as p:
         expect(panel.locator('.pl-candidate-rank').last).to_have_text('#13')
         page.get_by_role('button', name='Clear filters', exact=True).click()
         expect(panel.locator('.pl-candidate-row')).to_have_count(8)
-        panel.get_by_role('button', name='Hybrid match: explanation', exact=True).click()
-        expect(page.get_by_role('tooltip')).to_contain_text('60% category fit')
+        expect(pager).to_contain_text('Showing 1–8 of 24 candidates')
+        panel.get_by_role('button', name='Match: explanation', exact=True).click()
+        expect(page.get_by_role('tooltip')).to_contain_text('divided by all required categories')
         page.keyboard.press('Escape')
         first = panel.locator('.pl-candidate-row').first
         expect(first).to_contain_text('Frontend Developer Intern With An Extended Synthetic Role Title')
@@ -140,6 +159,8 @@ with sync_playwright() as p:
         page.get_by_label('Student scope', exact=True).select_option('2')
         expect(panel.locator('.pl-candidate-row').first.locator('.pl-candidate-rank')).to_have_text('#14')
         page.get_by_role('button', name='Clear filters', exact=True).click()
+        expect(panel.get_by_role('heading', name='Frontend Developer Intern With An Extended Synthetic Role Title', exact=True)).to_be_visible()
+        expect(panel.locator('.pl-candidate-row').first.locator('.pl-candidate-rank')).to_have_text('#1')
         # Live shrink clamps page state; subsequent growth should not jump back.
         # With four pages, page 3 is intentionally hidden behind an ellipsis
         # while page 1 is active. Use the same visible navigation as a user.

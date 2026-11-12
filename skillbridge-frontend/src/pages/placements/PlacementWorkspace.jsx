@@ -124,14 +124,15 @@ export default function PlacementWorkspace({ role = 'admin', organizationScope =
   if (data.suggestionsReady && draft && (tab === 'awaiting' || company) && page > maxPage) setPage(maxPage)
   const areas = [...new Set(scopedCompanies.map(item => address(item.address)).filter(Boolean))].sort()
   function filter(setter, value) { setter(value); setPage(1); setCompanyPage(1); setHistoryPage(1) }
-  function clearScopeFilters() {
+  function clearFilters() {
     setPage(1)
     setCompanyPage(1)
     setHistoryPage(1)
+    setSearch('')
     setBatch('')
     setArea('')
-    setCompanyId(null)
-    setPositionId(null)
+    setAvailability('all')
+    setHistoryStatus('')
   }
   function changeTab(value) { setTab(value); setCompanyId(null); setPositionId(null); setPage(1) }
   async function refreshChoice() {
@@ -188,7 +189,7 @@ export default function PlacementWorkspace({ role = 'admin', organizationScope =
     <div className="pl-filters sb-collection-toolbar"><label className="pl-search">Search<span className="pl-search-control"><SearchIcon size={16} /><input type="search" value={search} onChange={event => filter(setSearch, event.target.value)} placeholder="Partner, position, student or school ID" /></span></label><label>Student scope<select aria-label="Student scope" value={batch} onChange={event => filter(setBatch, event.target.value)}><option value="">{role === 'admin' ? 'All batches in this scope' : 'My batches'}</option>{batches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       {tab === 'companies' && !company && <><label>Partner area<select value={area} onChange={event => filter(setArea, event.target.value)}><option value="">All areas</option>{areas.map(item => <option key={item}>{item}</option>)}</select></label><label>Suggestion availability<select value={availability} onChange={event => filter(setAvailability, event.target.value)}><option value="all">All partners</option><option value="open">Available suggestion slots</option><option value="full">No available suggestion slots</option></select></label></>}
       {tab === 'history' && <label>Decision<select aria-label="Decision" value={historyStatus} onChange={event => filter(setHistoryStatus, event.target.value)}><option value="">All decisions</option>{['approved', 'rejected', 'removed', 'suggested'].map(item => <option key={item} value={item}>{STATUS[item]}</option>)}</select></label>}
-      {(search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={() => { clearScopeFilters(); setSearch(''); setAvailability('all'); setHistoryStatus('') }}>Clear filters</button>}
+      {(search || batch || area || availability !== 'all' || historyStatus) && <button className="pl-button" onClick={clearFilters}>Clear filters</button>}
       {tab === 'companies' && !company && <CollectionViewToggle view={companyView} onChange={setCompanyView} label="Placement partner view" mobile />}
     </div>
     {tab === 'companies' && <DataSection urls={[SUGGESTIONS, DRAFT_URL]} layout={company ? 'position-review' : 'placement-company-cards'} columns={2}>{!company ? <>
