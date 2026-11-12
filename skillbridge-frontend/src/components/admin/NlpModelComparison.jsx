@@ -12,6 +12,12 @@ const percentage = value => typeof value === 'number' && Number.isFinite(value) 
 const seconds = value => typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(3)} s` : '—'
 const emptyModels = [{ id: 'spacy_sm', label: 'spaCy Small' }, { id: 'spacy_md', label: 'spaCy Medium' }, { id: 'stanza_en', label: 'Stanza English' }]
 
+function evaluationStatus(model) {
+  if (model.status === 'available') return 'Verified · evaluated'
+  if (model.status === 'timed_out') return `Exceeded ${model.limit_seconds / 60} min`
+  return model.status
+}
+
 function DetailDialog({ title, onClose, children }) {
   return <DialogShell title={title} size="recommendation-tools" closeLabel={`Close ${title.toLowerCase()}`} onClose={onClose} footer={<div className="flex justify-end"><button className="rt-button" type="button" onClick={onClose}>Done</button></div>}><div className="rt-scroll text-xs leading-relaxed">{children}</div></DialogShell>
 }
@@ -83,13 +89,14 @@ export default function NlpModelComparison() {
     setBusy(true)
     setError('')
     setResult(null)
-    setProgress('Submitting comparison…')
+    setProgress(import.meta.env.DEV ? 'Loading models and evaluating the fixed cases…' : 'Submitting comparison…')
     controller.current = new AbortController()
     const { signal } = controller.current
     try {
-      const { data } = await api.post(URL, { mode: 'workflow_simulation', program_scope: programScope }, { signal })
+      const options = import.meta.env.DEV ? { signal, timeout: 300000 } : { signal }
+      const { data } = await api.post(URL, { mode: 'workflow_simulation', program_scope: programScope }, options)
       if (signal.aborted) return
-      // A frontend deployment can precede the backend deployment.
+      // The local Django development server returns the finished result directly.
       if (!data.job_id) {
         setResult(data)
         return
@@ -126,7 +133,7 @@ export default function NlpModelComparison() {
       <h3 className="rt-heading">Comparison results</h3>
       <p className="rt-note mb-3">{busy ? progress : result ? `${result.case_count} cases · ${result.position_count} positions · ${new Date(result.evaluated_at).toLocaleString()}` : 'Not run yet.'}</p>
       {error && <p role="alert" className="rt-message rt-message--error mb-4">{error}</p>}
-      <div className="rt-table-wrap"><table className="rt-table"><caption className="sr-only">NLP model comparison using the current system workflow</caption><thead><tr><th scope="col">Model</th><th scope="col">Runtime status</th><th scope="col">Top-1 agreement</th><th scope="col">Top-3 hit rate</th><th scope="col">Processing time</th></tr></thead><tbody>{models.map(model => <tr key={model.id}><th scope="row">{model.label}</th><td><span>{result ? model.status === 'available' ? 'Verified · evaluated' : model.status : model.verified ? 'Verified' : model.available ? 'Installed · not checked' : config ? 'Unavailable' : 'Not checked'}</span>{model.message && <p className="rt-note mt-1">{model.message}</p>}</td><td>{percentage(model.metrics?.top1_accuracy)}</td><td>{percentage(model.metrics?.top3_accuracy)}</td><td>{seconds(model.metrics?.processing_time_seconds)}</td></tr>)}</tbody></table></div>
+      <div className="rt-table-wrap"><table className="rt-table"><caption className="sr-only">NLP model comparison using the current system workflow</caption><thead><tr><th scope="col">Model</th><th scope="col">Runtime status</th><th scope="col">Top-1 agreement</th><th scope="col">Top-3 hit rate</th><th scope="col">Processing time</th></tr></thead><tbody>{models.map(model => <tr key={model.id}><th scope="row">{model.label}</th><td><span>{result ? evaluationStatus(model) : model.verified ? 'Verified' : model.available ? 'Installed · not checked' : config ? 'Unavailable' : 'Not checked'}</span>{model.message && <p className="rt-note mt-1">{model.message}</p>}</td><td>{percentage(model.metrics?.top1_accuracy)}</td><td>{percentage(model.metrics?.top3_accuracy)}</td><td>{seconds(model.metrics?.processing_time_seconds)}</td></tr>)}</tbody></table></div>
       {result?.message && <p role="status" className="rt-message">{result.message}</p>}
       <p className="rt-note mt-3">Full-workflow agreement is separate from NLP-only text similarity. Models can legitimately tie when assessment evidence determines the order.</p>
       <div className="flex flex-wrap items-center gap-3 mt-4"><button type="button" className="rt-button" disabled={!result || busy} onClick={() => setDialog('metrics')}><ReportIcon size={16} />Metrics & case results</button>{!result && <p className="rt-note">Available after comparison.</p>}</div>

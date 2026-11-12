@@ -22,7 +22,9 @@ def free_port():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--ui-only', action='store_true', help='Skip actual model execution; do not use for final acceptance.')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--ui-only', action='store_true', help='Skip actual model execution; do not use for final acceptance.')
+    mode.add_argument('--local-comparison', action='store_true', help='Run the usual Vite and Django development flow without a worker.')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     out = Path(tempfile.mkdtemp(prefix='advanced-tools-browser-', dir=root / 'work'))
@@ -30,17 +32,21 @@ def main():
     env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'PYTHONIOENCODING': 'utf-8',
            'SB_ORGANIZATION_RUN': str(out), 'SB_ORGANIZATION_SCENARIO': 'staff-scope',
            'SB_ORGANIZATION_API_PORT': str(api_port), 'SB_ORGANIZATION_FRONTEND_PORT': str(frontend_port),
-           'SB_ADVANCED_UI_ONLY': '1' if args.ui_only else '0'}
+           'SB_ADVANCED_UI_ONLY': '1' if args.ui_only else '0',
+           'SB_NLP_LOCAL_DEV': '1' if args.local_comparison else '0',
+           'VITE_API_URL': 'http://127.0.0.1:8000'}
     # Sandboxed Windows shells have a different LOCALAPPDATA from the user's
     # installed Stanza resource cache. Set only this owned test process's path.
     normal_cache = Path.home() / 'AppData/Local/StanfordNLP/stanza/Cache/1.14.0/resources'
     if not env.get('STANZA_RESOURCES_DIR') and (normal_cache / 'resources.json').is_file():
         env['STANZA_RESOURCES_DIR'] = str(normal_cache)
-    shutil.copytree(root / 'skillbridge-frontend/dist', out / 'bundle')
+    frontend_args = [str(root / 'skillbridge-frontend')]
+    if not args.local_comparison:
+        shutil.copytree(root / 'skillbridge-frontend/dist', out / 'bundle')
+        frontend_args = ['preview', *frontend_args, '--outDir', str(out / 'bundle')]
     commands = [
         ([sys.executable, '-u', str(root / 'skillbridge-frontend/tests/organization_server.py')], api_port),
-        ([shutil.which('node'), str(root / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), 'preview',
-          str(root / 'skillbridge-frontend'), '--outDir', str(out / 'bundle'), '--host', '127.0.0.1',
+        ([shutil.which('node'), str(root / 'skillbridge-frontend/node_modules/vite/bin/vite.js'), *frontend_args, '--host', '127.0.0.1',
           '--port', str(frontend_port), '--strictPort'], frontend_port),
     ]
     processes, logs = [], []
@@ -65,7 +71,7 @@ def main():
                 time.sleep(.2)
             else:
                 raise RuntimeError('Owned server did not become ready')
-        if not args.ui_only:
+        if not args.ui_only and not args.local_comparison:
             worker_log = (out / 'comparison-worker.log').open('w', encoding='utf-8')
             logs.append(worker_log)
             worker_env = {**env, 'DJANGO_SETTINGS_MODULE': 'core.test_settings',

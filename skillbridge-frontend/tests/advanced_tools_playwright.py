@@ -131,17 +131,24 @@ def strict_local_and_synthetic(browser):
             dialog.get_by_role('combobox', name='Program scope', exact=True).select_option('all')
             passed('comparison busy controls and recoverable intercepted server error (UI-only run)')
         else:
-            with page.expect_response(lambda response: urlparse(response.url).path == COMPARISON and response.request.method == 'POST') as response_info:
+            local = os.environ.get('SB_NLP_LOCAL_DEV') == '1'
+            with page.expect_response(lambda response: urlparse(response.url).path == COMPARISON and response.request.method == 'POST', timeout=300000 if local else 30000) as response_info:
                 held[0].fallback()
-            queued_response = response_info.value
-            assert queued_response.status == 202, queued_response.text()
-            queued_job = queued_response.json()
-            assert queued_job['status'] == 'queued', queued_job
-            expect(dialog.get_by_role('button', name='Metrics & case results', exact=True)).to_be_enabled(timeout=360000)
-            job_response = api(context, f"{COMPARISON}{queued_job['job_id']}/")
-            assert job_response.status == 200, job_response.text()
-            assert job_response.json()['status'] == 'complete', job_response.text()
-            result = job_response.json()['result']
+            response = response_info.value
+            if local:
+                assert response.status == 200, response.text()
+                result = response.json()
+                with sqlite3.connect(OUT / 'synthetic-browser.sqlite3') as connection:
+                    assert connection.execute('SELECT count(*) FROM api_nlpcomparisonjob').fetchone() == (0,)
+            else:
+                assert response.status == 202, response.text()
+                queued_job = response.json()
+                assert queued_job['status'] == 'queued', queued_job
+                expect(dialog.get_by_role('button', name='Metrics & case results', exact=True)).to_be_enabled(timeout=360000)
+                job_response = api(context, f"{COMPARISON}{queued_job['job_id']}/")
+                assert job_response.status == 200, job_response.text()
+                assert job_response.json()['status'] == 'complete', job_response.text()
+                result = job_response.json()['result']
             (OUT / 'comparison-100.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
             assert result['case_count'] == 100, result
             assert result['input_sha256'] == data['input_sha256']
@@ -171,6 +178,10 @@ def strict_local_and_synthetic(browser):
             dialog.get_by_role('tab', name='Model comparison', exact=True).click()
             expect(dialog.get_by_role('button', name='Metrics & case results', exact=True)).to_be_enabled()
             passed('actual 100-case comparison executes all three strict models with metrics and zero saved-evidence writes')
+            if local:
+                passed('localhost Run comparison works with only Django and Vite and creates no job rows')
+                context.close()
+                return
             model_controls(context, page, dialog)
         context.close()
     except Exception:
@@ -335,9 +346,10 @@ if __name__ == '__main__':
             browser = playwright.chromium.launch(channel='chrome', headless=True)
             try:
                 strict_local_and_synthetic(browser)
-                refresh_scopes(browser)
-                responsive_and_errors(browser)
-                dataset_recovery(browser)
+                if os.environ.get('SB_NLP_LOCAL_DEV') != '1':
+                    refresh_scopes(browser)
+                    responsive_and_errors(browser)
+                    dataset_recovery(browser)
             finally:
                 browser.close()
         assert not errors, errors

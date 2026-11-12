@@ -6,7 +6,7 @@ from types import SimpleNamespace as Obj
 from unittest.mock import patch
 
 from django.db import connection
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -206,6 +206,24 @@ class WorkflowEvaluationAPITests(APITestCase):
         self.client.force_authenticate(self.admin)
         self.url = reverse('admin_nlp_model_comparison')
 
+    @override_settings(DEBUG=True, RAILWAY_ENVIRONMENT=False)
+    @patch('api.evaluation_views.run_workflow_comparison', return_value={'models': [], 'case_count': 100})
+    def test_local_debug_runs_directly_and_railway_or_remote_clients_queue(self, run):
+        from .models import NlpComparisonJob
+        payload = {'program_scope': 'all'}
+        response = self.client.post(self.url, payload, HTTP_HOST='localhost:8000', REMOTE_ADDR='127.0.0.1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['case_count'], 100)
+        self.assertFalse(NlpComparisonJob.objects.exists())
+        run.assert_called_once_with('all', balanced_subset=True)
+
+        response = self.client.post(self.url, payload, HTTP_HOST='localhost:8000', REMOTE_ADDR='192.0.2.1')
+        self.assertEqual(response.status_code, 202)
+        with override_settings(RAILWAY_ENVIRONMENT=True):
+            response = self.client.post(self.url, payload, HTTP_HOST='localhost:8000', REMOTE_ADDR='127.0.0.1')
+        self.assertEqual(response.status_code, 202)
+        run.assert_called_once()
+
     @patch('api.nlp_workflow_evaluation._load_model')
     def test_get_coverage_does_not_load_models_or_write_database(self, load):
         with CaptureQueriesContext(connection) as queries:
@@ -222,7 +240,7 @@ class WorkflowEvaluationAPITests(APITestCase):
     @patch('api.recommendation_nlp.preprocess_texts', side_effect=identity_preprocess)
     def test_post_queues_once_and_worker_returns_the_same_cases_without_changing_recommendations(self, preprocess, load):
         from .models import Recommendation, RecommendationConfiguration, StudentCompetencyProfile
-        from .nlp_comparison_jobs import claim_next_job, execute_job
+        from .nlp_comparison_jobs import claim_next_job, execute_job, report_progress
         coverage = self.client.get(self.url, {'program_scope': 'IS'}).data
         response = self.client.post(self.url, {'program_scope': 'IS'})
         self.assertEqual(response.status_code, 202)
@@ -231,11 +249,15 @@ class WorkflowEvaluationAPITests(APITestCase):
         status_url = reverse('admin_nlp_comparison_job', args=[job_id])
         self.assertEqual(self.client.post(self.url, {'program_scope': 'IS'}).data['job_id'], job_id)
         self.assertEqual(self.client.get(status_url).data['status'], 'queued')
-        self.assertEqual(str(claim_next_job().pk), job_id)
+        job = claim_next_job()
+        self.assertEqual(str(job.pk), job_id)
         self.assertIsNone(claim_next_job())
         self.assertEqual(self.client.get(status_url).data['status'], 'running')
         with patch('api.nlp_comparison_jobs.logger.warning') as log:
-            execute_job(job_id)
+            execute_job(job, lambda row, model_id: run_workflow_comparison(
+                row.program_scope, balanced_subset=True, model_ids=(model_id,),
+                progress=lambda message: report_progress(row.pk, message),
+            )['models'][0])
         self.assertEqual(log.call_count, 9)
         response = self.client.get(status_url)
         self.assertEqual(response.status_code, 200)
@@ -285,16 +307,34 @@ class WorkflowEvaluationAPITests(APITestCase):
         self.assertEqual(self.client.get(self.url).status_code, 503)
         self.assertEqual(self.client.post(self.url).status_code, 202)
 
-    def test_subprocess_timeout_marks_the_job_failed_and_allows_a_new_run(self):
+    def test_model_timeout_preserves_completed_models_and_their_metrics(self):
+        from pathlib import Path
         from subprocess import TimeoutExpired
         from django.core.management import call_command
+        from .recommendation_nlp import MODEL_OPTIONS
+
+        def run_child(command, *, timeout, check):
+            self.assertEqual(timeout, 300)
+            self.assertTrue(check)
+            model_id = command[command.index('--model-id') + 1]
+            if model_id == 'stanza_en':
+                raise TimeoutExpired(command, timeout)
+            Path(command[-1]).write_text(json.dumps({
+                'id': model_id, **MODEL_OPTIONS[model_id], 'status': 'available',
+                'metrics': {'top1_accuracy': .9, 'case_count': 100},
+            }), encoding='utf-8')
+
         job_id = self.client.post(self.url).data['job_id']
         status_url = reverse('admin_nlp_comparison_job', args=[job_id])
         with (patch('api.management.commands.process_nlp_comparisons.close_old_connections'),
               patch('api.management.commands.process_nlp_comparisons.subprocess.run',
-                    side_effect=TimeoutExpired('comparison', 900))):
+                    side_effect=run_child)):
             call_command('process_nlp_comparisons', once=True)
         result = self.client.get(status_url).data
-        self.assertEqual(result['status'], 'failed')
-        self.assertIn('15-minute', result['progress'])
+        self.assertEqual(result['status'], 'complete')
+        small, medium, stanza = result['result']['models']
+        self.assertEqual([small['metrics']['top1_accuracy'], medium['metrics']['top1_accuracy']], [.9, .9])
+        self.assertEqual(stanza['status'], 'timed_out')
+        self.assertEqual(stanza['limit_seconds'], 300)
+        self.assertIsNone(stanza['metrics'])
         self.assertNotEqual(self.client.post(self.url).data['job_id'], job_id)

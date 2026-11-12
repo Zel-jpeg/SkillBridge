@@ -7,9 +7,11 @@ from django.utils import timezone
 
 from .models import NlpComparisonJob, RecommendationConfiguration
 from .nlp_workflow_evaluation import run_workflow_comparison
+from .recommendation_nlp import MODEL_OPTIONS
 
 logger = logging.getLogger(__name__)
-RUN_LIMIT_SECONDS = 15 * 60
+MODEL_LIMIT_SECONDS = 5 * 60
+RUN_LIMIT_SECONDS = MODEL_LIMIT_SECONDS * len(MODEL_OPTIONS)
 ACTIVE = ('queued', 'running')
 
 
@@ -47,15 +49,18 @@ def fail_job(job_id, message):
     )
 
 
-def execute_job(job_id):
-    job = NlpComparisonJob.objects.get(pk=job_id, status='running')
+def report_progress(job_id, message):
+    logger.warning('NLP comparison %s: %s', job_id, message)
+    NlpComparisonJob.objects.filter(pk=job_id, status='running').update(progress=message)
+
+
+def execute_job(job, run_model):
+    job_id = job.pk
     current = NlpComparisonJob.objects.filter(pk=job_id, status='running')
-
-    def report(message):
-        logger.warning('NLP comparison %s: %s', job_id, message)
-        current.update(progress=message)
-
-    result = run_workflow_comparison(job.program_scope, balanced_subset=True, progress=report)
+    result = run_workflow_comparison(job.program_scope, balanced_subset=True, model_ids=())
+    result['timing_note'] += ' Each hosted model has five minutes to load and finish evaluation.'
+    for model_id in MODEL_OPTIONS:
+        result['models'].append(run_model(job, model_id))
     result['active_model'] = (RecommendationConfiguration.objects.filter(pk=1)
                               .values_list('active_model', flat=True).first() or 'spacy_md')
     finished = timezone.now()

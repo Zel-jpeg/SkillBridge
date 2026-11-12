@@ -278,7 +278,7 @@ def _rank_case(case, positions, model_id):
     return ranked, nlp_only
 
 
-def run_workflow_comparison(program_scope='all', *, balanced_subset=False, progress=None):
+def run_workflow_comparison(program_scope='all', *, balanced_subset=False, progress=None, model_ids=None):
     cases, positions, metadata = workflow_data(program_scope, balanced_subset=balanced_subset)
     result = _workflow_coverage(program_scope, cases, positions, metadata)
     result.update(status='complete', models=[],
@@ -290,6 +290,8 @@ def run_workflow_comparison(program_scope='all', *, balanced_subset=False, progr
             'Model loading is measured separately. Dataset loading, text generation and metric calculation are excluded. '
             'Warm caches, repeated evidence patterns, execution order and hardware affect timings; this is not an independent speed benchmark.')
     for model_id, info in MODEL_OPTIONS.items():
+        if model_ids is not None and model_id not in model_ids:
+            continue
         if progress:
             progress(f'Loading {info["label"]}…')
         row = {'id': model_id, **info, 'status': 'unavailable', 'metrics': None}

@@ -1,5 +1,7 @@
 from collections.abc import Mapping
 
+from django.conf import settings
+from django.http.request import split_domain_port
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -8,7 +10,14 @@ from rest_framework.response import Response
 from .models import NlpComparisonJob, RecommendationConfiguration
 from .nlp_comparison_jobs import enqueue, expire_jobs
 from .nlp_evaluation import DatasetError, run_comparison
-from .nlp_workflow_evaluation import PROGRAM_SCOPES, workflow_coverage
+from .nlp_workflow_evaluation import PROGRAM_SCOPES, run_workflow_comparison, workflow_coverage
+
+
+def _local_development_request(request):
+    loopback = {'localhost', '127.0.0.1', '::1', '[::1]'}
+    return (settings.DEBUG and not settings.RAILWAY_ENVIRONMENT
+            and split_domain_port(request.get_host())[0] in loopback
+            and request.META.get('REMOTE_ADDR') in loopback)
 
 
 def _job_payload(job):
@@ -58,8 +67,11 @@ def admin_nlp_model_comparison(request):
         if mode == 'workflow_simulation':
             if program_scope not in PROGRAM_SCOPES:
                 raise ValueError('program_scope must be all, IT, IS, SW or TOURISM')
-            return Response(_job_payload(enqueue(program_scope)), status=202)
-        result = run_comparison(mode, program_scope)
+            if not _local_development_request(request):
+                return Response(_job_payload(enqueue(program_scope)), status=202)
+            result = run_workflow_comparison(program_scope, balanced_subset=True)
+        else:
+            result = run_comparison(mode, program_scope)
     except DatasetError as exc:
         return Response({'status': 'dataset_error', 'error': str(exc)}, status=503)
     except ValueError as exc:

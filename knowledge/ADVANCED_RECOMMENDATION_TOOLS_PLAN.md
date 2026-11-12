@@ -35,11 +35,18 @@ continues. Running the same scope while a job is active reconnects to it.
    `GUNICORN_WORKER_TIMEOUT_SECONDS` override when the web service no longer
    needs the synchronous comparison test.
 
-The dedicated worker processes one comparison at a time and caps each run
-at 15 minutes. A stale queued job expires after one hour. Old results are
-pruned on submission after one day. Local development can start the same
-command alongside Django and Vite after applying migrations to the local
-database. Use `--once` to process one queued job and exit.
+The worker processes one comparison at a time and gives each model up to five
+minutes to load and finish evaluating. If a model exceeds that limit, its row
+shows the timeout and the completed models retain their metrics. A stale queued
+job expires after one hour. Old results are pruned on submission after one day.
+
+For localhost development, start Django with `DEBUG=True` and Vite as usual.
+With both the request host and client on loopback, the admin button runs the
+same synthetic comparison directly, without inserting a job or requiring a
+separate worker. Use an isolated test database for local testing. To exercise
+the hosted queue locally, apply migrations to that database and run
+`python manage.py process_nlp_comparisons` alongside the backend with
+`DEBUG=False`. `--once` processes one queued job and exits.
 
 ## Implementation checkpoint · 11 November 2026
 

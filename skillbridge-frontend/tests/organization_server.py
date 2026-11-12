@@ -17,7 +17,7 @@ settings.SECRET_KEY = 'synthetic-organization-browser-key'
 settings.ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 settings.SECURE_SSL_REDIRECT = False
 settings.CORS_ALLOWED_ORIGINS = [f"http://127.0.0.1:{os.environ['SB_ORGANIZATION_FRONTEND_PORT']}"]
-settings.DEBUG = False
+settings.DEBUG = os.environ.get('SB_NLP_LOCAL_DEV') == '1'
 settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {'anon': '10000/minute', 'user': '10000/minute', 'login': '10000/minute'}
 import django
 django.setup()
